@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/aporeto-inc/cid/materia/elemental"
-	"github.com/aporeto-inc/cid/materia/manipulate"
+	"github.com/aporeto-inc/elemental"
+	"github.com/aporeto-inc/manipulate"
 )
 
 // HTTPStore represents a user session.

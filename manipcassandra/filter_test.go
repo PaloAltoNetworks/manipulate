@@ -7,7 +7,7 @@ package manipcassandra
 import (
 	"testing"
 
-	"github.com/aporeto-inc/cid/materia/manipulate"
+	"github.com/aporeto-inc/manipulate"
 	. "github.com/smartystreets/goconvey/convey"
 )
 

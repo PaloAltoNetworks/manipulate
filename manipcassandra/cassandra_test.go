@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/aporeto-inc/cid/materia/elemental"
-	"github.com/aporeto-inc/cid/materia/manipulate"
+	"github.com/aporeto-inc/elemental"
+	"github.com/aporeto-inc/manipulate"
 	"github.com/aporeto-inc/gocql"
 	"github.com/aporeto-inc/kennebec/apomock"
 	. "github.com/smartystreets/goconvey/convey"

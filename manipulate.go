@@ -7,7 +7,7 @@ package manipulate
 import (
 	"reflect"
 
-	"github.com/aporeto-inc/cid/materia/elemental"
+	"github.com/aporeto-inc/elemental"
 )
 
 // ManipulablesList is a list of objects implementing the Manipulable interface.

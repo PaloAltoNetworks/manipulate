@@ -96,7 +96,7 @@ MOCK_PACKAGES = github.com/aporeto-inc/gocql
 MOCK_PACKAGES += github.com/aporeto-inc/gocql/internal/lru
 MOCK_PACKAGES += github.com/aporeto-inc/gocql/internal/murmur
 MOCK_PACKAGES += github.com/aporeto-inc/gocql/internal/streams
-MOCK_PACKAGES += github.com/aporeto-inc/cid/materia/manipulate/manipcassandra/encoding
+MOCK_PACKAGES += github.com/aporeto-inc/manipulate/manipcassandra/encoding
 
 install_mock:
 	@if [ ! -d vendor ]; then mkdir vendor; fi
