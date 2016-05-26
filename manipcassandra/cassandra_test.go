@@ -10,9 +10,9 @@ import (
 	"testing"
 
 	"github.com/aporeto-inc/elemental"
-	"github.com/aporeto-inc/manipulate"
 	"github.com/aporeto-inc/gocql"
 	"github.com/aporeto-inc/kennebec/apomock"
+	"github.com/aporeto-inc/manipulate"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -258,11 +258,10 @@ func TestCassandra_sliceMaps_EmptySliceMap(t *testing.T) {
 		})
 
 		maps, err := sliceMaps(iter)
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore Empty sliceMap error", "Slice maps of the iterator is empty", "", 500)}
 
 		Convey("Then I should get an error in return", func() {
-			So(maps, ShouldBeNil)
-			So(err[0], ShouldResemble, expectedErrors[0])
+			So(maps, ShouldResemble, make([]map[string]interface{}, 0))
+			So(err, ShouldBeNil)
 		})
 	})
 }
@@ -350,6 +349,25 @@ func TestCassandra_StartWithPanic(t *testing.T) {
 
 		Convey("Then I should get a panic", func() {
 			So(panicFunc, ShouldPanic)
+		})
+
+	})
+}
+
+func TestCassandra_unmarshalInterfaceWithEmptySliceMap(t *testing.T) {
+
+	Convey("When I call the method unmarshalInterface and get an error from sliceMaps", t, func() {
+
+		iter := &gocql.Iter{}
+
+		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
+			return []map[string]interface{}{}, nil
+		})
+
+		errs := unmarshalInterface(iter, nil)
+
+		Convey("Then I should get a panic", func() {
+			So(errs, ShouldBeNil)
 		})
 
 	})
