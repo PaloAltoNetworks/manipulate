@@ -10,6 +10,11 @@ mkdir -p test/results
 echo "Installing dependencies"
 make install_dependencies
 
+echo "Installing mock"
+pushd manipcassandra
+make apomock
+popd
+
 echo "Lauching the tests"
 make test &> test/results.txt
 
