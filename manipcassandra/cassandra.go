@@ -9,9 +9,9 @@ import (
 	"fmt"
 
 	"github.com/aporeto-inc/elemental"
+	"github.com/aporeto-inc/gocql"
 	"github.com/aporeto-inc/manipulate"
 	"github.com/aporeto-inc/manipulate/manipcassandra/encoding"
-	"github.com/aporeto-inc/gocql"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -432,10 +432,6 @@ func sliceMaps(iter *gocql.Iter) ([]map[string]interface{}, elemental.Errors) {
 		return nil, []*elemental.Error{elemental.NewError("CassandraStore Iter Close error", err.Error(), "", 500)}
 	}
 
-	if len(sliceMaps) < 1 {
-		return nil, []*elemental.Error{elemental.NewError("CassandraStore Empty sliceMap error", errors.New("Slice maps of the iterator is empty").Error(), "", 500)}
-	}
-
 	return sliceMaps, nil
 }
 
@@ -479,6 +475,10 @@ func unmarshalInterface(iter *gocql.Iter, objects interface{}) elemental.Errors 
 	if err != nil {
 		log.Info(err)
 		return err
+	}
+
+	if len(sliceMaps) < 1 {
+		return nil
 	}
 
 	if err := cassandra.Unmarshal(sliceMaps, objects); err != nil {
