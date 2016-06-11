@@ -62,6 +62,29 @@ func TestHTTP_SetInsecureSkipVerify(t *testing.T) {
 	})
 }
 
+func TestHTTP_SetTLSConfig(t *testing.T) {
+
+	Convey("Given I create a new HTTPStore", t, func() {
+
+		store := NewHTTPStore("username", "password", "http://url.com", "")
+
+		Convey("When I set a TLS config", func() {
+
+			cert, pool, _ := NewCertificateAndPool("Resources/test-cert.pem", "Resources/test-key.pem", "Resources/ca-test.pem")
+			store.SetTLSConfig(cert, pool)
+
+			Convey("Then err should be nil", func() {
+				t := &http.Transport{
+					TLSClientConfig: &tls.Config{
+						Certificates: []tls.Certificate{*cert},
+						RootCAs:      pool,
+					}}
+				So(store.client.Transport, ShouldResemble, t)
+			})
+		})
+	})
+}
+
 /*
 	Privates
 */
