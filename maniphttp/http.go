@@ -7,6 +7,7 @@ package maniphttp
 import (
 	"bytes"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -44,6 +45,18 @@ func NewHTTPStore(username, password, url, namespace string) *HTTPStore {
 func (s *HTTPStore) SetInsecureSkipVerify(skip bool) {
 
 	s.client = &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: skip}}}
+}
+
+// SetTLSConfig sets the tls config for the HTTP client
+func (s *HTTPStore) SetTLSConfig(certificate *tls.Certificate, caPool *x509.CertPool) {
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			Certificates: []tls.Certificate{*certificate},
+			RootCAs:      caPool,
+		}}
+
+	s.client = &http.Client{Transport: tr}
 }
 
 func (s *HTTPStore) makeAuthorizationHeaders() string {
