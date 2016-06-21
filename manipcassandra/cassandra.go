@@ -25,11 +25,13 @@ type AttributeUpdater struct {
 
 // CassandraStore needs doc
 type CassandraStore struct {
-	Servers      []string
-	KeySpace     string
-	ProtoVersion int
+	UseAsynchroneBatch bool
+	Servers            []string
+	KeySpace           string
+	ProtoVersion       int
 
-	nativeSession *gocql.Session
+	nativeSession   *gocql.Session
+	asynchroneBatch *gocql.Batch
 }
 
 // NewCassandraStore returns a new *CassandraStore
@@ -72,6 +74,7 @@ func (c *CassandraStore) Start() {
 	}
 
 	c.nativeSession = session
+	c.asynchroneBatch = c.nativeSession.NewBatch(gocql.UnloggedBatch)
 }
 
 // Retrieve will launch a set of select to the cassandra session
@@ -123,7 +126,7 @@ func (c *CassandraStore) Retrieve(context manipulate.Contexts, objects ...manipu
 // This method returns an array of Errors if something wrong happens
 func (c *CassandraStore) Delete(context manipulate.Contexts, objects ...manipulate.Manipulable) elemental.Errors {
 
-	batch := c.nativeSession.NewBatch(gocql.LoggedBatch)
+	batch := c.Batch()
 
 	for index, object := range objects {
 
@@ -148,6 +151,10 @@ func (c *CassandraStore) Delete(context manipulate.Contexts, objects ...manipula
 		"batch":   batch.Entries,
 		"context": context,
 	}).Info("About : sending delete command to cassandra")
+
+	if c.UseAsynchroneBatch {
+		return nil
+	}
 
 	if err := c.nativeSession.ExecuteBatch(batch); err != nil {
 
@@ -197,7 +204,7 @@ func (c *CassandraStore) RetrieveChildren(context manipulate.Contexts, parent ma
 // This method returns an array of Errors if something wrong happens
 func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.Manipulable, objects ...manipulate.Manipulable) elemental.Errors {
 
-	batch := c.nativeSession.NewBatch(gocql.LoggedBatch)
+	batch := c.Batch()
 
 	for index, object := range objects {
 		object.SetIdentifier(gocql.TimeUUID().String())
@@ -227,6 +234,10 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 		"batch":   batch.Entries,
 		"context": context,
 	}).Info("About : sending create command to cassandra")
+
+	if c.UseAsynchroneBatch {
+		return nil
+	}
 
 	if err := c.nativeSession.ExecuteBatch(batch); err != nil {
 
@@ -296,7 +307,7 @@ func (c *CassandraStore) UpdateCollection(context manipulate.Contexts, attribute
 // This method returns an array of Errors if something wrong happens
 func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipulate.Manipulable) elemental.Errors {
 
-	batch := c.nativeSession.NewBatch(gocql.LoggedBatch)
+	batch := c.Batch()
 
 	for index, object := range objects {
 
@@ -335,6 +346,10 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 		"batch":   batch.Entries,
 		"context": context,
 	}).Info("About : sending update command to cassandra")
+
+	if c.UseAsynchroneBatch {
+		return nil
+	}
 
 	if err := c.nativeSession.ExecuteBatch(batch); err != nil {
 
@@ -391,6 +406,7 @@ func (c *CassandraStore) Count(context manipulate.Contexts, identity elemental.I
 	return count, nil
 }
 
+// Assign is not yet implemented
 func (c *CassandraStore) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) elemental.Errors {
 	panic("Not implemented")
 }
@@ -404,7 +420,12 @@ func (c *CassandraStore) Query(query string, values []interface{}) *gocql.Query 
 // Batch return a new gocql.Batch
 // The dev can then do whatever he wants with
 func (c *CassandraStore) Batch() *gocql.Batch {
-	return c.nativeSession.NewBatch(gocql.LoggedBatch)
+
+	if c.UseAsynchroneBatch {
+		return c.asynchroneBatch
+	}
+
+	return c.nativeSession.NewBatch(gocql.UnloggedBatch)
 }
 
 // ExecuteBatch execute the given batch
@@ -416,6 +437,29 @@ func (c *CassandraStore) ExecuteBatch(b *gocql.Batch) error {
 	}).Info("Success : sending commands to cassandra")
 
 	return c.nativeSession.ExecuteBatch(b)
+}
+
+// Commit will execute the AsynchroneBatch of the receiver
+// The method will return an error if the batch does not succeed
+func (c *CassandraStore) Commit() elemental.Errors {
+
+	if err := c.nativeSession.ExecuteBatch(c.asynchroneBatch); err != nil {
+
+		log.WithFields(log.Fields{
+			"batch": c.asynchroneBatch.Entries,
+			"error": err.Error(),
+		}).Info("Fail : sending update command to cassandra")
+
+		return []*elemental.Error{elemental.NewError("CassandraStore batch commit failed", err.Error(), "", 500)}
+	}
+
+	log.WithFields(log.Fields{
+		"batch": c.asynchroneBatch.Entries,
+	}).Info("Success : sending batch command to cassandra")
+
+	c.asynchroneBatch = c.nativeSession.NewBatch(gocql.UnloggedBatch)
+
+	return nil
 }
 
 // sliceMaps will try to call the method SliceMap on the given iterator

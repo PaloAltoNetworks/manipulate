@@ -172,7 +172,97 @@ func TestCassandre_Batch(t *testing.T) {
 
 		Convey("Then we should get the good batch", func() {
 			So(expectedBatch, ShouldEqual, newBatch)
-			So(expectedBatchType, ShouldEqual, gocql.LoggedBatch)
+			So(expectedBatchType, ShouldEqual, gocql.UnloggedBatch)
+		})
+	})
+}
+
+func TestCassandre_BatchWithAsynchroneBatch(t *testing.T) {
+	Convey("When I create a new CassandraStore and call the method batch", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		store.nativeSession = &gocql.Session{}
+		store.UseAsynchroneBatch = true
+
+		var expectedBatchType gocql.BatchType
+		expectedBatch := &gocql.Batch{}
+
+		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+			expectedBatchType = t
+			return expectedBatch
+		})
+
+		store.asynchroneBatch = store.nativeSession.NewBatch(gocql.UnloggedBatch)
+		newBatch := store.Batch()
+
+		Convey("Then we should get the good batch", func() {
+			So(store.asynchroneBatch, ShouldEqual, newBatch)
+			So(expectedBatchType, ShouldEqual, gocql.UnloggedBatch)
+		})
+	})
+}
+
+func TestCassandre_Commit(t *testing.T) {
+	Convey("When I create a new CassandraStore and call the method Commit", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		store.nativeSession = &gocql.Session{}
+		store.UseAsynchroneBatch = true
+
+		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+			return &gocql.Batch{}
+		})
+
+		store.asynchroneBatch = store.nativeSession.NewBatch(gocql.UnloggedBatch)
+		batch := store.Batch()
+
+		var expectedBatch *gocql.Batch
+
+		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+			expectedBatch = b
+			return nil
+		})
+
+		err := store.Commit()
+
+		Convey("Then we should get the good batch", func() {
+			So(expectedBatch, ShouldEqual, batch)
+			So(store.asynchroneBatch, ShouldNotEqual, batch)
+			So(err, ShouldBeNil)
+		})
+	})
+}
+
+func TestCassandre_Commit_Error(t *testing.T) {
+	Convey("When I create a new CassandraStore and call the method Commit", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		store.nativeSession = &gocql.Session{}
+		store.UseAsynchroneBatch = true
+
+		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+			return &gocql.Batch{}
+		})
+
+		store.asynchroneBatch = store.nativeSession.NewBatch(gocql.UnloggedBatch)
+		batch := store.Batch()
+
+		var expectedBatch *gocql.Batch
+		expectedError := errors.New("error batch")
+
+		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+			expectedBatch = b
+			return expectedError
+		})
+
+		newError := store.Commit()
+		expectedErrors := elemental.Errors{elemental.NewError("CassandraStore batch commit failed", "error batch", "", 500)}
+
+		Convey("Then we should get the good batch", func() {
+			So(expectedBatch, ShouldEqual, batch)
+			So(store.asynchroneBatch, ShouldEqual, batch)
+			So(expectedBatch, ShouldEqual, batch)
+			So(expectedErrors, ShouldResemble, newError)
 		})
 	})
 }
@@ -321,6 +411,7 @@ func TestCassandra_Start(t *testing.T) {
 		Convey("Then I should have a native session", func() {
 			So(store.Servers, ShouldResemble, expectedServers)
 			So(store.nativeSession, ShouldEqual, session)
+			So(store.asynchroneBatch, ShouldResemble, store.nativeSession.NewBatch(gocql.UnloggedBatch))
 			So(cluster.Keyspace, ShouldEqual, "keyspace")
 			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
 			So(cluster.ProtoVersion, ShouldEqual, 1)
@@ -1088,12 +1179,65 @@ func TestCassandra_Delete(t *testing.T) {
 
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
-			So(expectedBatchType, ShouldEqual, gocql.LoggedBatch)
+			So(expectedBatchType, ShouldEqual, gocql.UnloggedBatch)
 			So(expectedQuery1, ShouldEqual, "DELETE FROM tag WHERE ID = ? LIMIT 10")
 			So(expectedQuery2, ShouldEqual, "DELETE FROM tag WHERE ID = ? LIMIT 10")
 			So(expectedValues1, ShouldResemble, []interface{}{"123"})
 			So(expectedValues2, ShouldResemble, []interface{}{"123"})
 			So(expectedBatch, ShouldEqual, expectedExecutedBatch)
+		})
+	})
+}
+
+func TestCassandra_Delete_AsynchroneBatch(t *testing.T) {
+
+	Convey("When I call the method Delete", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		store.nativeSession = &gocql.Session{}
+		store.asynchroneBatch = &gocql.Batch{}
+		store.UseAsynchroneBatch = true
+
+		apomock.Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+			return []string{"ID"}, []interface{}{"123"}, nil
+		})
+
+		var expectedQuery1 string
+		var expectedValues1 interface{}
+
+		var expectedQuery2 string
+		var expectedValues2 interface{}
+
+		apomock.Override("gocql.Batch.Query", func(b *gocql.Batch, command string, values ...interface{}) {
+
+			if expectedValues1 == nil {
+				expectedQuery1 = command
+				expectedValues1 = values
+				return
+			}
+
+			expectedQuery2 = command
+			expectedValues2 = values
+
+		})
+
+		tag1 := &Tag{}
+		tag1.ID = "123"
+
+		tag2 := &Tag{}
+		tag2.ID = "456"
+
+		context := &manipulate.Context{}
+		context.PageSize = 10
+
+		err := store.Delete(context, tag1, tag2)
+
+		Convey("Then everything should have been well called", func() {
+			So(err, ShouldBeNil)
+			So(expectedQuery1, ShouldEqual, "DELETE FROM tag WHERE ID = ? LIMIT 10")
+			So(expectedQuery2, ShouldEqual, "DELETE FROM tag WHERE ID = ? LIMIT 10")
+			So(expectedValues1, ShouldResemble, []interface{}{"123"})
+			So(expectedValues2, ShouldResemble, []interface{}{"123"})
 		})
 	})
 }
@@ -1239,12 +1383,84 @@ func TestCassandra_Update(t *testing.T) {
 
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
-			So(expectedBatchType, ShouldEqual, gocql.LoggedBatch)
+			So(expectedBatchType, ShouldEqual, gocql.UnloggedBatch)
 			So(expectedQuery1, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? LIMIT 10")
 			So(expectedQuery2, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? LIMIT 10")
 			So(expectedValues1, ShouldResemble, []interface{}{"description 1", "456"})
 			So(expectedValues2, ShouldResemble, []interface{}{"description 2", "456"})
 			So(expectedBatch, ShouldEqual, expectedExecutedBatch)
+			So(expectedValue1, ShouldEqual, tag1)
+			So(expectedValue2, ShouldEqual, tag2)
+		})
+	})
+}
+
+func TestCassandra_Update_AsynchroneBatch(t *testing.T) {
+
+	Convey("When I call the method Update", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		store.nativeSession = &gocql.Session{}
+		store.asynchroneBatch = &gocql.Batch{}
+		store.UseAsynchroneBatch = true
+
+		var expectedQuery1 string
+		var expectedValues1 interface{}
+
+		var expectedQuery2 string
+		var expectedValues2 interface{}
+
+		apomock.Override("gocql.Batch.Query", func(b *gocql.Batch, command string, values ...interface{}) {
+
+			if expectedValues1 == nil {
+				expectedQuery1 = command
+				expectedValues1 = values
+				return
+			}
+
+			expectedQuery2 = command
+			expectedValues2 = values
+
+		})
+
+		tag1 := &Tag{}
+		tag1.ID = "123"
+		tag1.Description = "description 1"
+
+		tag2 := &Tag{}
+		tag2.ID = "456"
+		tag2.Description = "description 2"
+
+		var expectedValue1 interface{}
+		var expectedValue2 interface{}
+
+		apomock.Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+			return []string{"ID"}, []interface{}{"456"}, nil
+		})
+
+		apomock.Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+
+			if expectedValue1 == nil {
+				expectedValue1 = val
+				return []string{"ID", "description"}, []interface{}{"123", "description 1"}, nil
+			}
+
+			expectedValue2 = val
+			return []string{"ID", "description"}, []interface{}{"456", "description 2"}, nil
+		})
+
+		context := &manipulate.Context{}
+		context.PageSize = 10
+		context.Attributes = []string{"description"}
+
+		err := store.Update(context, tag1, tag2)
+
+		Convey("Then everything should have been well called", func() {
+			So(err, ShouldBeNil)
+			So(expectedQuery1, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? LIMIT 10")
+			So(expectedQuery2, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? LIMIT 10")
+			So(expectedValues1, ShouldResemble, []interface{}{"description 1", "456"})
+			So(expectedValues2, ShouldResemble, []interface{}{"description 2", "456"})
 			So(expectedValue1, ShouldEqual, tag1)
 			So(expectedValue2, ShouldEqual, tag2)
 		})
@@ -1452,12 +1668,89 @@ func TestCassandra_Create(t *testing.T) {
 
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
-			So(expectedBatchType, ShouldEqual, gocql.LoggedBatch)
+			So(expectedBatchType, ShouldEqual, gocql.UnloggedBatch)
 			So(expectedQuery1, ShouldEqual, "INSERT INTO tag (ID, description) VALUES (?, ?) LIMIT 10")
 			So(expectedQuery2, ShouldEqual, "INSERT INTO tag (ID, description) VALUES (?, ?) LIMIT 10")
 			So(expectedValues1, ShouldResemble, []interface{}{"123", "description 1"})
 			So(expectedValues2, ShouldResemble, []interface{}{"456", "description 2"})
 			So(expectedBatch, ShouldEqual, expectedExecutedBatch)
+			So(expectedValue1, ShouldEqual, tag1)
+			So(expectedValue2, ShouldEqual, tag2)
+			So(len(tag2.ID), ShouldEqual, 36)
+			So(len(tag2.ID), ShouldEqual, 36)
+		})
+	})
+}
+
+func TestCassandra_Create_AsynchroneBatch(t *testing.T) {
+
+	Convey("When I call the method Create", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		store.nativeSession = &gocql.Session{}
+		store.asynchroneBatch = &gocql.Batch{}
+		store.UseAsynchroneBatch = true
+
+		apomock.Override("gocql.TimeUUID", func() gocql.UUID {
+			return ParseUUID("7c469413-12ed-11e6-ac73-f45c89941b79")
+		})
+
+		apomock.Override("gocql.UUID.String", func(uuid gocql.UUID) string {
+			return StringUUID(uuid)
+		})
+
+		var expectedQuery1 string
+		var expectedValues1 interface{}
+
+		var expectedQuery2 string
+		var expectedValues2 interface{}
+
+		apomock.Override("gocql.Batch.Query", func(b *gocql.Batch, command string, values ...interface{}) {
+
+			t.Log("couocu")
+
+			if expectedValues1 == nil {
+				expectedQuery1 = command
+				expectedValues1 = values
+				return
+			}
+
+			expectedQuery2 = command
+			expectedValues2 = values
+
+		})
+
+		tag1 := &Tag{}
+		tag1.Description = "description 1"
+
+		tag2 := &Tag{}
+		tag2.Description = "description 2"
+
+		var expectedValue1 interface{}
+		var expectedValue2 interface{}
+
+		apomock.Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+
+			if expectedValue1 == nil {
+				expectedValue1 = val
+				return []string{"ID", "description"}, []interface{}{"123", "description 1"}, nil
+			}
+
+			expectedValue2 = val
+			return []string{"ID", "description"}, []interface{}{"456", "description 2"}, nil
+		})
+
+		context := &manipulate.Context{}
+		context.PageSize = 10
+
+		err := store.Create(context, nil, tag1, tag2)
+
+		Convey("Then everything should have been well called", func() {
+			So(err, ShouldBeNil)
+			So(expectedQuery1, ShouldEqual, "INSERT INTO tag (ID, description) VALUES (?, ?) LIMIT 10")
+			So(expectedQuery2, ShouldEqual, "INSERT INTO tag (ID, description) VALUES (?, ?) LIMIT 10")
+			So(expectedValues1, ShouldResemble, []interface{}{"123", "description 1"})
+			So(expectedValues2, ShouldResemble, []interface{}{"456", "description 2"})
 			So(expectedValue1, ShouldEqual, tag1)
 			So(expectedValue2, ShouldEqual, tag2)
 			So(len(tag2.ID), ShouldEqual, 36)
