@@ -5,7 +5,6 @@
 package maniphttp
 
 import (
-	"crypto/tls"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -20,7 +19,7 @@ func TestHTTP_NewSHTTPStore(t *testing.T) {
 
 	Convey("When I create a new HTTPStore", t, func() {
 
-		store := NewHTTPStore("username", "password", "http://url.com", "")
+		store := NewHTTPStore("username", "password", "http://url.com", "", nil)
 
 		Convey("Then the property Username should be 'username'", func() {
 			So(store.username, ShouldEqual, "username")
@@ -42,22 +41,22 @@ func TestHTTP_NewSHTTPStore(t *testing.T) {
 			So(ok, ShouldBeTrue)
 		})
 	})
-}
 
-func TestHTTP_SetInsecureSkipVerify(t *testing.T) {
+	Convey("When I create a new HTTPStore with a good TLS config", t, func() {
 
-	Convey("Given I create a new HTTPStore", t, func() {
+		config := NewTLSConfiguration("fixtures/ca.pem", "fixtures/cert.pem", "fixtures/key.pem", true)
 
-		store := NewHTTPStore("username", "password", "http://url.com", "")
+		Convey("Then the it should should not panic", func() {
+			So(func() { NewHTTPStore("username", "password", "http://url.com", "", config) }, ShouldNotPanic)
+		})
+	})
 
-		Convey("When I set the insecure check skip to true", func() {
+	Convey("When I create a new HTTPStore with a bad TLS config", t, func() {
 
-			store.SetInsecureSkipVerify(true)
+		config := NewTLSConfiguration("bad", "fixtures/cert.pem", "fixtures/key.pem", true)
 
-			Convey("Then err should be nil", func() {
-				t := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
-				So(store.client.Transport, ShouldResemble, t)
-			})
+		Convey("Then the it should should panic", func() {
+			So(func() { NewHTTPStore("username", "password", "http://url.com", "", config) }, ShouldPanic)
 		})
 	})
 }
@@ -71,7 +70,7 @@ func TestHTTP_makeAuthorizationHeaders(t *testing.T) {
 
 		Convey("When I prepare the Authorization", func() {
 
-			store := NewHTTPStore("username", "password", "http://url.com", "")
+			store := NewHTTPStore("username", "password", "http://url.com", "", nil)
 			h := store.makeAuthorizationHeaders()
 
 			Convey("Then the header should be 'TODO=", func() {
@@ -85,7 +84,7 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 
 	Convey("Given I create an authenticated session", t, func() {
 
-		store := NewHTTPStore("username", "password", "http://fake.com", "")
+		store := NewHTTPStore("username", "password", "http://fake.com", "", nil)
 
 		Convey("Given I create a Request", func() {
 
@@ -180,7 +179,7 @@ func TestHTTP_readHeaders(t *testing.T) {
 
 	Convey("Given I create a new HTTPStore an a Context", t, func() {
 
-		store := NewHTTPStore("username", "password", "http://fake.com", "")
+		store := NewHTTPStore("username", "password", "http://fake.com", "", nil)
 		ctx := manipulate.NewContext()
 		req := &http.Response{Header: http.Header{}}
 
@@ -246,7 +245,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 		list := NewList()
 
-		store := NewHTTPStore("username", "password", "http://url.com", "")
+		store := NewHTTPStore("username", "password", "http://url.com", "", nil)
 
 		Convey("When I check personal URI of a standard object with an ID", func() {
 
@@ -324,7 +323,7 @@ func TestHTTP_Retrieve(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPStore("username", "password", ts.URL, "")
+		store := NewHTTPStore("username", "password", ts.URL, "", nil)
 
 		Convey("When I fetch an entity", func() {
 
@@ -360,7 +359,7 @@ func TestHTTP_Retrieve(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPStore("username", "password", ts.URL, "")
+		store := NewHTTPStore("username", "password", ts.URL, "", nil)
 
 		Convey("When I fetch an entity", func() {
 
@@ -381,7 +380,7 @@ func TestHTTP_Retrieve(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPStore("username", "password", ts.URL, "")
+		store := NewHTTPStore("username", "password", ts.URL, "", nil)
 
 		Convey("When I fetch an entity", func() {
 
@@ -405,7 +404,7 @@ func TestHTTP_Update(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPStore("username", "password", ts.URL, "")
+		store := NewHTTPStore("username", "password", ts.URL, "", nil)
 
 		Convey("When I save an entity", func() {
 
@@ -452,7 +451,7 @@ func TestHTTP_Update(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPStore("username", "password", ts.URL, "")
+		store := NewHTTPStore("username", "password", ts.URL, "", nil)
 
 		Convey("When I save an entity", func() {
 
@@ -473,7 +472,7 @@ func TestHTTP_Update(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPStore("username", "password", ts.URL, "")
+		store := NewHTTPStore("username", "password", ts.URL, "", nil)
 
 		Convey("When I save an entity", func() {
 
@@ -493,7 +492,7 @@ func TestHTTP_Update(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPStore("username", "password", ts.URL, "")
+		store := NewHTTPStore("username", "password", ts.URL, "", nil)
 
 		Convey("When I save an entity", func() {
 
@@ -516,7 +515,7 @@ func TestHTTP_Delete(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPStore("username", "password", ts.URL, "")
+		store := NewHTTPStore("username", "password", ts.URL, "", nil)
 
 		Convey("When I delete an entity", func() {
 
@@ -532,7 +531,7 @@ func TestHTTP_Delete(t *testing.T) {
 
 		Convey("When I delete an entity with no ID", func() {
 
-			store := NewHTTPStore("username", "password", "http://fake.com", "")
+			store := NewHTTPStore("username", "password", "http://fake.com", "", nil)
 
 			list := NewList()
 			err := store.Delete(nil, list)
@@ -551,7 +550,7 @@ func TestHTTP_Delete(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPStore("username", "password", ts.URL, "")
+		store := NewHTTPStore("username", "password", ts.URL, "", nil)
 
 		Convey("When I delete an entity", func() {
 
@@ -582,7 +581,7 @@ func TestHTTP_RetrieveChildren(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPStore("username", "password", ts.URL, "")
+			store := NewHTTPStore("username", "password", ts.URL, "", nil)
 
 			var l TasksList
 			errs := store.RetrieveChildren(nil, list, TaskIdentity, &l)
@@ -613,7 +612,7 @@ func TestHTTP_RetrieveChildren(t *testing.T) {
 
 		Convey("When I fetch its children but the parent has no ID", func() {
 
-			store := NewHTTPStore("username", "password", "http://fake.com", "")
+			store := NewHTTPStore("username", "password", "http://fake.com", "", nil)
 
 			list2 := NewList()
 			var l TasksList
@@ -631,7 +630,7 @@ func TestHTTP_RetrieveChildren(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPStore("username", "password", ts.URL, "")
+			store := NewHTTPStore("username", "password", ts.URL, "", nil)
 
 			e := NewTask()
 			var l TasksList
@@ -654,7 +653,7 @@ func TestHTTP_RetrieveChildren(t *testing.T) {
 				fmt.Fprint(w, `[]`)
 			}))
 			defer ts.Close()
-			store := NewHTTPStore("username", "password", ts.URL, "")
+			store := NewHTTPStore("username", "password", ts.URL, "", nil)
 
 			var l TasksList
 			store.RetrieveChildren(nil, list, TaskIdentity, &l)
@@ -672,7 +671,7 @@ func TestHTTP_RetrieveChildren(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPStore("username", "password", ts.URL, "")
+			store := NewHTTPStore("username", "password", ts.URL, "", nil)
 
 			var l TasksList
 			errs := store.RetrieveChildren(nil, list, TaskIdentity, &l)
@@ -690,7 +689,7 @@ func TestHTTP_RetrieveChildren(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPStore("username", "password", ts.URL, "")
+			store := NewHTTPStore("username", "password", ts.URL, "", nil)
 
 			var l TasksList
 			errs := store.RetrieveChildren(nil, list, TaskIdentity, &l)
@@ -718,7 +717,7 @@ func TestHTTP_Create(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPStore("username", "password", ts.URL, "")
+			store := NewHTTPStore("username", "password", ts.URL, "", nil)
 			task := NewTask()
 			errs := store.Create(nil, list, task)
 
@@ -733,7 +732,7 @@ func TestHTTP_Create(t *testing.T) {
 
 		Convey("When I create a child for a parent that has no ID", func() {
 
-			store := NewHTTPStore("username", "password", "url.com", "")
+			store := NewHTTPStore("username", "password", "url.com", "", nil)
 			list2 := NewList()
 			task := NewTask()
 			errs := store.Create(nil, list2, task)
@@ -745,7 +744,7 @@ func TestHTTP_Create(t *testing.T) {
 
 		Convey("When I create a child that is nil", func() {
 
-			store := NewHTTPStore("username", "password", "http://fake.com", "")
+			store := NewHTTPStore("username", "password", "http://fake.com", "", nil)
 			task := NewUnmarshalableList() // c'mon, that's fine..
 			errs := store.Create(nil, list, task)
 
@@ -761,7 +760,7 @@ func TestHTTP_Create(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPStore("username", "password", ts.URL, "")
+			store := NewHTTPStore("username", "password", ts.URL, "", nil)
 			task := NewTask()
 			errs := store.Create(nil, list, task)
 
@@ -779,7 +778,7 @@ func TestHTTP_Create(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPStore("username", "password", ts.URL, "")
+			store := NewHTTPStore("username", "password", ts.URL, "", nil)
 			task := NewTask()
 			errs := store.Create(nil, list, task)
 
@@ -804,7 +803,7 @@ func TestHTTP_Assign(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			session := NewHTTPStore("username", "password", ts.URL, "")
+			session := NewHTTPStore("username", "password", ts.URL, "", nil)
 
 			t1 := NewTask()
 			t1.ID = "xxx"
@@ -820,7 +819,7 @@ func TestHTTP_Assign(t *testing.T) {
 
 		Convey("When I assign objects to a parent that has no ID", func() {
 
-			session := NewHTTPStore("username", "password", "http://fake.com", "")
+			session := NewHTTPStore("username", "password", "http://fake.com", "", nil)
 
 			l1 := NewList()
 			t2 := NewTask()
@@ -841,7 +840,7 @@ func TestHTTP_Assign(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			session := NewHTTPStore("username", "password", ts.URL, "")
+			session := NewHTTPStore("username", "password", ts.URL, "", nil)
 
 			t1 := NewTask()
 			t1.ID = "xxx"

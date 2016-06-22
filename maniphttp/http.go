@@ -6,7 +6,6 @@ package maniphttp
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -25,25 +24,25 @@ type HTTPStore struct {
 	client      *http.Client
 }
 
-// NewHTTPStore returns a new *HTTPSeal
-// You need to provide a Rootable object that will be used to contain
-// the results of the authentication process, like the api key for instance.
-func NewHTTPStore(username, password, url, namespace string) *HTTPStore {
+// NewHTTPStore returns a new *HTTPStore
+func NewHTTPStore(username, password, url, namespace string, tlsConfig *TLSConfiguration) *HTTPStore {
+
+	if tlsConfig == nil {
+		tlsConfig = NewTLSConfiguration("", "", "", false)
+	}
+
+	client, err := tlsConfig.makeHTTPClient()
+	if err != nil {
+		panic("Invalid TLSConfiguration")
+	}
 
 	return &HTTPStore{
 		username:  username,
 		password:  password,
 		url:       url,
-		client:    &http.Client{},
+		client:    client,
 		namespace: namespace,
 	}
-}
-
-// SetInsecureSkipVerify sets if the internal HTTP client should allow to connect
-// to insecure API endpoints.
-func (s *HTTPStore) SetInsecureSkipVerify(skip bool) {
-
-	s.client = &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: skip}}}
 }
 
 func (s *HTTPStore) makeAuthorizationHeaders() string {
@@ -127,7 +126,6 @@ func (s *HTTPStore) getURLForChildrenIdentity(parent manipulate.Manipulable, chi
 func (s *HTTPStore) send(request *http.Request, context *manipulate.Context) (*http.Response, elemental.Errors) {
 
 	s.prepareHeaders(request, context)
-	// s.prepareParameters(request, context)
 
 	response, err := s.client.Do(request)
 
