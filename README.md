@@ -18,7 +18,7 @@ type Manipulator interface {
 }
 ```
 
-## Launch the test
+## Launch the test on your system
 
 First install the testing dependencies with the command
 
@@ -37,4 +37,11 @@ or
 
 ```bash
 make convey
+```
+
+## Launch the test with docker
+
+```bash
+docker build --build-arg GITHUB_TOKEN=${GITHUB_TOKEN} -t manipulabletest .
+docker run -t manipulabletest
 ```
