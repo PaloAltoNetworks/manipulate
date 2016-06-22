@@ -15,6 +15,28 @@ func TestInterfaceImplementations(t *testing.T) {
 	var _ manipulate.FilterCompiler = (*Filter)(nil)
 }
 
+func TestMethodNewFilter(t *testing.T) {
+
+	Convey("When I create a new Filter", t, func() {
+		filter := NewFilter("ID", "20", CassandraFilterEqualSeparator)
+
+		Convey("Then I should get the good values when calling the method compile", func() {
+			So(filter.Compile(), ShouldEqual, "WHERE ID = ?")
+		})
+	})
+}
+
+func TestMethodNewMultipleFilters(t *testing.T) {
+
+	Convey("When I create a new Filter", t, func() {
+		filter := NewMultipleFilters([]string{"ID", "name"}, []interface{}{"20", 0}, CassandraFilterEqualSeparator)
+
+		Convey("Then I should get the good values when calling the method compile", func() {
+			So(filter.Compile(), ShouldEqual, "WHERE ID = ? AND name = ?")
+		})
+	})
+}
+
 func TestParameterFilterParamCassandraFilterEqualSeparator(t *testing.T) {
 
 	Convey("When I create a new Filter", t, func() {
@@ -26,6 +48,17 @@ func TestParameterFilterParamCassandraFilterEqualSeparator(t *testing.T) {
 
 		Convey("Then I should get the good values when calling the method compile", func() {
 			So(filter.Compile(), ShouldEqual, "WHERE ID = ?")
+		})
+	})
+}
+
+func TestMethodNewCollectionFilter(t *testing.T) {
+
+	Convey("When I create a new Filter", t, func() {
+		filter := NewCollectionFilter([]string{"ID", "name"}, []interface{}{"20", 0}, CassandraFilterEqualSeparator)
+
+		Convey("Then I should get the good values when calling the method compile", func() {
+			So(filter.Compile(), ShouldEqual, "WHERE (ID,name) = (?,?)")
 		})
 	})
 }

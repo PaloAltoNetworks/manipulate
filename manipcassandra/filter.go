@@ -29,6 +29,48 @@ type Filter struct {
 	AllowFiltering bool
 }
 
+// NewFilter return a filter for operation as NAME = 'Alexandre'
+func NewFilter(key string, value interface{}, separator string) *Filter{
+	filter := &Filter{}
+
+	filter.Keys = [][]string{[]string{key}}
+	filter.Separators = []string{separator}
+	filter.Values = [][]interface{}{[]interface{}{value}}
+
+	return filter
+}
+
+// NewMultipleFilters return a filter for operation as ID = 123 AND Name = Alexandre
+func NewMultipleFilters(keys []string, values []interface{}, separator string) *Filter{
+	filter := &Filter{}
+
+	filter.Keys = [][]string{}
+	filter.Separators = []string{}
+	filter.Values = [][]interface{}{}
+
+	for i := 0; i < len(keys); i++ {
+		key := keys[i]
+		value := values[i]
+
+		filter.Keys = append(filter.Keys, []string{key})
+		filter.Separators = append(filter.Separators, separator)
+		filter.Values = append(filter.Values, []interface{}{value})
+	}
+
+	return filter
+}
+
+// NewCollectionFilter return a filter for operation as (ID,name) = (123,'Alexandre')
+func NewCollectionFilter(keys []string, values []interface{}, separator string) *Filter{
+	filter := &Filter{}
+
+	filter.Keys = [][]string{keys}
+	filter.Separators = []string{separator}
+	filter.Values = [][]interface{}{values}
+
+	return filter
+}
+
 // Compile returns the string of the current filer
 // for instance it could be WHERE ID IN (20,30) AND Name = Alexandre ALLOW FILTERING
 func (f *Filter) Compile() string {
