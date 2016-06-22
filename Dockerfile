@@ -23,11 +23,6 @@ ENV    GOBIN    /aporeto/golang/bin
 ENV    PATH     /aporeto/golang/bin:$PATH
 ENV    PATH     /usr/local/go/bin:$PATH
 
-RUN    go get github.com/smartystreets/goconvey/convey
-RUN    go get github.com/aporeto-inc/kennebec/
-RUN    go get github.com/golang/lint/golint
-RUN    go get golang.org/x/tools/cmd/goimports
-
 ADD . /aporeto/golang/src/github.com/aporeto-inc/manipulable
 
 WORKDIR /aporeto/golang/src/github.com/aporeto-inc/manipulable
