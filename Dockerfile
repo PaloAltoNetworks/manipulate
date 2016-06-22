@@ -27,4 +27,6 @@ ADD . /aporeto/golang/src/github.com/aporeto-inc/manipulable
 
 WORKDIR /aporeto/golang/src/github.com/aporeto-inc/manipulable
 
+RUN make install_dependencies
+
 ENTRYPOINT     ["/aporeto/golang/src/github.com/aporeto-inc/manipulable/run.sh"]

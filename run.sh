@@ -1,7 +1,5 @@
 #!/bin/bash
 
-make install_dependencies
-
 echo "Installing mock"
 pushd manipcassandra
 make apomock
