@@ -853,12 +853,26 @@ func TestCassandra_RetrieveChildren(t *testing.T) {
 			return errors.New("Errors from unmarshal")
 		})
 
+		var expectedMaps []map[string]interface{}
+
+		value := make(map[string]interface{})
+		value["ID"] = "123"
+		value["Environment"] = 4
+
+		expectedMaps = append(expectedMaps, value)
+
+		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
+			return expectedMaps, nil
+		})
+
 		var tags []*Tag
 		context := &manipulate.Context{}
 		context.PageSize = 10
 
-		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: unmarshalInterface - cassandra.Unmarshal", "Error when calling the method cassandra.Unmarshal with the objects &[] and sliceMaps [map[ID:123 Environment:%!s(int=4)] map[ID:456 Environment:%!s(int=5)]]. Go error Errors from unmarshal", "&[]", 5000)}
-		expectedErrors1 := []*elemental.Error{elemental.NewError("manipcassandra: unmarshalInterface - cassandra.Unmarshal", "Error when calling the method cassandra.Unmarshal with the objects &[] and sliceMaps [map[Environment:%!s(int=4) ID:123] map[ID:456 Environment:%!s(int=5)]]. Go error Errors from unmarshal", "&[]", 5000)}
+		tags = append(tags, &Tag{})
+
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: unmarshalInterface - cassandra.Unmarshal", "Error when calling the method cassandra.Unmarshal with the objects &[%!s(*manipcassandra.Tag=&{   0})] and sliceMaps [map[ID:123 Environment:%!s(int=4)]]. Go error Errors from unmarshal", "&[%!s(*manipcassandra.Tag=&{   0})]", 5000)}
+		expectedErrors1 := []*elemental.Error{elemental.NewError("manipcassandra: unmarshalInterface - cassandra.Unmarshal", "Error when calling the method cassandra.Unmarshal with the objects &[%!s(*manipcassandra.Tag=&{   0})] and sliceMaps [map[Environment:%!s(int=4) ID:123]]. Go error Errors from unmarshal", "&[%!s(*manipcassandra.Tag=&{   0})]", 5000)}
 		err := store.RetrieveChildren(context, nil, TagIdentity, &tags)
 
 		Convey("Then I should get no error", func() {
@@ -896,18 +910,23 @@ func TestCassandra_RetrieveWithError(t *testing.T) {
 			return &gocql.Iter{}
 		})
 
+	  var expectedMaps []map[string]interface{}
+
+		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
+			return expectedMaps, nil
+		})
+
 		tag := &Tag{}
 		tag.ID = "1234"
 
 		context := &manipulate.Context{}
 		context.PageSize = 10
 
-		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: unmarshalManipulable - number of objects different to number of maps", "The number of given objects [%!s(*manipcassandra.Tag=&{1234   0})] and number of maps [map[ID:123 Environment:%!s(int=4)] map[ID:456 Environment:%!s(int=5)]] is different", "[%!s(*manipcassandra.Tag=&{1234   0})]", 5001)}
-		expectedErrors1 := []*elemental.Error{elemental.NewError("manipcassandra: unmarshalManipulable - number of objects different to number of maps", "The number of given objects [%!s(*manipcassandra.Tag=&{1234   0})] and number of maps [map[Environment:%!s(int=4) ID:123] map[ID:456 Environment:%!s(int=5)]] is different", "[%!s(*manipcassandra.Tag=&{1234   0})]", 5001)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: unmarshalManipulable - number of objects different to number of maps", "The number of given objects [%!s(*manipcassandra.Tag=&{1234   0})] and number of maps [] is different", "[%!s(*manipcassandra.Tag=&{1234   0})]", 5001)}
 		err := store.Retrieve(context, tag)
 
 		Convey("Then I should get an error", func() {
-			So(err[0], ShouldBeIn, expectedErrors[0], expectedErrors1[0])
+			So(err[0], ShouldResemble, expectedErrors[0])
 			So(expectedCommand, ShouldEqual, "SELECT * FROM tag LIMIT 10")
 			So(expectedValues, ShouldResemble, []interface{}{})
 		})
