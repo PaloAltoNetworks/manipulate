@@ -4,7 +4,7 @@
 # File  : Makefile
 #
 # Author: alex@aporeto.com
-# Date  : 2016-03-7
+# Date  : 2016-03-8
 #
 # ------------------------------------------------
 
@@ -85,8 +85,11 @@ install_dependencies: clean_vendor get install_glide
 	@echo "Install: Process directories with Makefiles" $(DIRS_WITH_MAKEFILES)
 	@$(foreach dir,$(DIRS_WITH_MAKEFILES),echo "Install Dependencies in" $(dir) && pushd $(dir) && make install_dependencies && popd;)
 	go get -u github.com/smartystreets/goconvey/convey
-	go get -u github.com/aporeto-inc/kennebec/apomock
+	go get -u github.com/aporeto-inc/kennebec
 	go get -u github.com/golang/mock/gomock
+	go get -u github.com/golang/lint/golint
+	go get -u github.com/golang/lint/golint
+	go get -u golang.org/x/tools/cmd/goimports
 
 init_glide:
 	glide init

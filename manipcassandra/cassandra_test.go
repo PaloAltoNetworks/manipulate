@@ -172,7 +172,97 @@ func TestCassandre_Batch(t *testing.T) {
 
 		Convey("Then we should get the good batch", func() {
 			So(expectedBatch, ShouldEqual, newBatch)
-			So(expectedBatchType, ShouldEqual, gocql.LoggedBatch)
+			So(expectedBatchType, ShouldEqual, gocql.UnloggedBatch)
+		})
+	})
+}
+
+func TestCassandre_BatchWithAsynchroneBatch(t *testing.T) {
+	Convey("When I create a new CassandraStore and call the method batch", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		store.nativeSession = &gocql.Session{}
+		store.UseAsynchroneBatch = true
+
+		var expectedBatchType gocql.BatchType
+		expectedBatch := &gocql.Batch{}
+
+		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+			expectedBatchType = t
+			return expectedBatch
+		})
+
+		store.asynchroneBatch = store.nativeSession.NewBatch(gocql.UnloggedBatch)
+		newBatch := store.Batch()
+
+		Convey("Then we should get the good batch", func() {
+			So(store.asynchroneBatch, ShouldEqual, newBatch)
+			So(expectedBatchType, ShouldEqual, gocql.UnloggedBatch)
+		})
+	})
+}
+
+func TestCassandre_Commit(t *testing.T) {
+	Convey("When I create a new CassandraStore and call the method Commit", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		store.nativeSession = &gocql.Session{}
+		store.UseAsynchroneBatch = true
+
+		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+			return &gocql.Batch{}
+		})
+
+		store.asynchroneBatch = store.nativeSession.NewBatch(gocql.UnloggedBatch)
+		batch := store.Batch()
+
+		var expectedBatch *gocql.Batch
+
+		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+			expectedBatch = b
+			return nil
+		})
+
+		err := store.Commit()
+
+		Convey("Then we should get the good batch", func() {
+			So(expectedBatch, ShouldEqual, batch)
+			So(store.asynchroneBatch, ShouldNotEqual, batch)
+			So(err, ShouldBeNil)
+		})
+	})
+}
+
+func TestCassandre_Commit_Error(t *testing.T) {
+	Convey("When I create a new CassandraStore and call the method Commit", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		store.nativeSession = &gocql.Session{}
+		store.UseAsynchroneBatch = true
+
+		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+			return &gocql.Batch{}
+		})
+
+		store.asynchroneBatch = store.nativeSession.NewBatch(gocql.UnloggedBatch)
+		batch := store.Batch()
+
+		var expectedBatch *gocql.Batch
+		expectedError := errors.New("error batch")
+
+		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+			expectedBatch = b
+			return expectedError
+		})
+
+		newError := store.Commit()
+		expectedErrors := elemental.Errors{elemental.NewError("manipcassandra: executeBatch of the batch", "An issue occurs when calling executeBatch of the batch. Go error error batch", "", 5004)}
+
+		Convey("Then we should get the good batch", func() {
+			So(expectedBatch, ShouldEqual, batch)
+			So(store.asynchroneBatch, ShouldEqual, batch)
+			So(expectedBatch, ShouldEqual, batch)
+			So(expectedErrors, ShouldResemble, newError)
 		})
 	})
 }
@@ -212,7 +302,7 @@ func TestCassandra_sliceMaps_SliceMapError(t *testing.T) {
 		})
 
 		maps, err := sliceMaps(iter)
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore SliceMap error", "Error iter", "", 500)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: sliceMaps - issue with iterator sliceMap", "An issue occurs when calling sliceMap of the iterator. Go error Error iter", "", 5003)}
 
 		Convey("Then I should get an error in return", func() {
 			So(maps, ShouldBeNil)
@@ -235,7 +325,7 @@ func TestCassandra_sliceMaps_IterCloseError(t *testing.T) {
 		})
 
 		maps, err := sliceMaps(iter)
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore Iter Close error", "Iter close error", "", 500)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: sliceMaps - issue with iterator close", "An issue occurs when closing the iterator. Go error Iter close error", "", 5002)}
 
 		Convey("Then I should get an error in return", func() {
 			So(maps, ShouldBeNil)
@@ -321,6 +411,7 @@ func TestCassandra_Start(t *testing.T) {
 		Convey("Then I should have a native session", func() {
 			So(store.Servers, ShouldResemble, expectedServers)
 			So(store.nativeSession, ShouldEqual, session)
+			So(store.asynchroneBatch, ShouldResemble, store.nativeSession.NewBatch(gocql.UnloggedBatch))
 			So(cluster.Keyspace, ShouldEqual, "keyspace")
 			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
 			So(cluster.ProtoVersion, ShouldEqual, 1)
@@ -383,7 +474,7 @@ func TestCassandra_unmarshalInterfaceWithErrorFromSliceMap(t *testing.T) {
 			return nil, errors.New("Error iter")
 		})
 
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore SliceMap error", "Error iter", "", 500)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: sliceMaps - issue with iterator sliceMap", "An issue occurs when calling sliceMap of the iterator. Go error Error iter", "", 5003)}
 
 		errs := unmarshalInterface(iter, nil)
 
@@ -420,12 +511,13 @@ func TestCassandra_unmarshalInterfaceWithErrorFromUnmarshal(t *testing.T) {
 			return errors.New("Errors from unmarshal")
 		})
 
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore Unmarshal error", "Errors from unmarshal", "%!s(<nil>)", 500)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: unmarshalInterface - cassandra.Unmarshal", "Error when calling the method cassandra.Unmarshal with the objects %!s(<nil>) and sliceMaps [map[ID:123 Environment:%!s(int=4)]]. Go error Errors from unmarshal", "%!s(<nil>)", 5000)}
+		expectedErrors1 := []*elemental.Error{elemental.NewError("manipcassandra: unmarshalInterface - cassandra.Unmarshal", "Error when calling the method cassandra.Unmarshal with the objects %!s(<nil>) and sliceMaps [map[Environment:%!s(int=4) ID:123]]. Go error Errors from unmarshal", "%!s(<nil>)", 5000)}
 
 		errs := unmarshalInterface(iter, nil)
 
 		Convey("Then I should get a panic", func() {
-			So(errs[0], ShouldResemble, expectedErrors[0])
+			So(errs[0], ShouldBeIn, expectedErrors[0], expectedErrors1[0])
 		})
 
 	})
@@ -485,7 +577,7 @@ func TestCassandra_unmarshalManipulableWithErrorFromSliceMap(t *testing.T) {
 			return nil, errors.New("Error iter")
 		})
 
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore SliceMap error", "Error iter", "", 500)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: sliceMaps - issue with iterator sliceMap", "An issue occurs when calling sliceMap of the iterator. Go error Error iter", "", 5003)}
 
 		errs := unmarshalManipulable(iter, nil)
 
@@ -525,11 +617,12 @@ func TestCassandra_unmarshalManipulableWithErrorFromUnmarshal(t *testing.T) {
 		tag := &Tag{}
 		tag.Description = "Tag description"
 
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore Unmarshal error", "Errors from unmarshal", "&{ Tag description  %!s(int=0)}", 500)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: unmarshalInterface - cassandra.Unmarshal", "Error when calling the method cassandra.Unmarshal with the objects &{ Tag description  %!s(int=0)} and sliceMaps map[ID:123 Environment:%!s(int=4)]. Go error Errors from unmarshal", "[%!s(*manipcassandra.Tag=&{ Tag description  0})]", 5000)}
+		expectedErrors1 := []*elemental.Error{elemental.NewError("manipcassandra: unmarshalInterface - cassandra.Unmarshal", "Error when calling the method cassandra.Unmarshal with the objects &{ Tag description  %!s(int=0)} and sliceMaps map[Environment:%!s(int=4) ID:123]. Go error Errors from unmarshal", "[%!s(*manipcassandra.Tag=&{ Tag description  0})]", 5000)}
 		errs := unmarshalManipulable(iter, []manipulate.Manipulable{tag})
 
 		Convey("Then I should get a panic", func() {
-			So(errs[0], ShouldResemble, expectedErrors[0])
+			So(errs[0], ShouldBeIn, expectedErrors[0], expectedErrors1[0])
 		})
 
 	})
@@ -671,7 +764,7 @@ func TestCassandra_CountErrorScan(t *testing.T) {
 		context.PageSize = 10
 
 		count, err := store.Count(context, TagIdentity)
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore Iter Close error", "Error when scanning the iterator of a count command", "tag", 500)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: count - issue with iterator scan", "An issue occurs when scanning the iterator.", "tag", 5005)}
 
 		Convey("Then I should get no error", func() {
 			So(err[0], ShouldResemble, expectedErrors[0])
@@ -716,7 +809,7 @@ func TestCassandra_CountErrorCloseIter(t *testing.T) {
 		context.PageSize = 10
 
 		count, err := store.Count(context, TagIdentity)
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore Iter Close error", "Error when closing the iterator of a count command", "tag", 500)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: sliceMaps - issue with iterator close", "An issue occurs when closing the iterator. Go error Iter close error", "tag", 5002)}
 
 		Convey("Then I should get no error", func() {
 			So(err[0], ShouldResemble, expectedErrors[0])
@@ -760,15 +853,30 @@ func TestCassandra_RetrieveChildren(t *testing.T) {
 			return errors.New("Errors from unmarshal")
 		})
 
+		var expectedMaps []map[string]interface{}
+
+		value := make(map[string]interface{})
+		value["ID"] = "123"
+		value["Environment"] = 4
+
+		expectedMaps = append(expectedMaps, value)
+
+		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
+			return expectedMaps, nil
+		})
+
 		var tags []*Tag
 		context := &manipulate.Context{}
 		context.PageSize = 10
 
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore Unmarshal error", "Errors from unmarshal", "&[]", 500)}
+		tags = append(tags, &Tag{})
+
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: unmarshalInterface - cassandra.Unmarshal", "Error when calling the method cassandra.Unmarshal with the objects &[%!s(*manipcassandra.Tag=&{   0})] and sliceMaps [map[ID:123 Environment:%!s(int=4)]]. Go error Errors from unmarshal", "&[%!s(*manipcassandra.Tag=&{   0})]", 5000)}
+		expectedErrors1 := []*elemental.Error{elemental.NewError("manipcassandra: unmarshalInterface - cassandra.Unmarshal", "Error when calling the method cassandra.Unmarshal with the objects &[%!s(*manipcassandra.Tag=&{   0})] and sliceMaps [map[Environment:%!s(int=4) ID:123]]. Go error Errors from unmarshal", "&[%!s(*manipcassandra.Tag=&{   0})]", 5000)}
 		err := store.RetrieveChildren(context, nil, TagIdentity, &tags)
 
 		Convey("Then I should get no error", func() {
-			So(err[0], ShouldResemble, expectedErrors[0])
+			So(err[0], ShouldBeIn, expectedErrors[0], expectedErrors1[0])
 			So(expectedCommand, ShouldEqual, "SELECT * FROM tag LIMIT 10")
 			So(expectedValues, ShouldResemble, []interface{}{})
 			So(expectedV, ShouldEqual, &tags)
@@ -802,13 +910,19 @@ func TestCassandra_RetrieveWithError(t *testing.T) {
 			return &gocql.Iter{}
 		})
 
+	  var expectedMaps []map[string]interface{}
+
+		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
+			return expectedMaps, nil
+		})
+
 		tag := &Tag{}
 		tag.ID = "1234"
 
 		context := &manipulate.Context{}
 		context.PageSize = 10
 
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore Unmarshal error", "The number of the given objects and the number of results fetched is different", "[%!s(*manipcassandra.Tag=&{1234   0})]", 500)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: unmarshalManipulable - number of objects different to number of maps", "The number of given objects [%!s(*manipcassandra.Tag=&{1234   0})] and number of maps [] is different", "[%!s(*manipcassandra.Tag=&{1234   0})]", 5001)}
 		err := store.Retrieve(context, tag)
 
 		Convey("Then I should get an error", func() {
@@ -901,7 +1015,7 @@ func TestCassandra_UpdateCollectionWithErrorQuery(t *testing.T) {
 
 		context := &manipulate.Context{}
 
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore UpdateCollection failed", "CassandraStore query error", "&{1234   %!s(int=0)}", 500)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: session querry issue", "An issue occurs when executiong a query with the object &{1234   %!s(int=0)}. Go error CassandraStore query error", "&{1234   %!s(int=0)}", 5008)}
 		err := store.UpdateCollection(context, a, tag)
 
 		Convey("Then I should get an error", func() {
@@ -929,7 +1043,7 @@ func TestCassandra_UpdateCollectionWithErrorPrimaryFields(t *testing.T) {
 
 		context := &manipulate.Context{}
 
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore UpdateCollection failed", "CassandraStore PrimaryFieldsAndValues error", "&{1234   %!s(int=0)}", 500)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: primaryFieldAndValues", "An issue occurs when using the method primaryFieldAndValues on the object &{1234   %!s(int=0)}. Go error CassandraStore PrimaryFieldsAndValues error", "&{1234   %!s(int=0)}", 5007)}
 		err := store.UpdateCollection(context, nil, tag)
 
 		Convey("Then I should get an error", func() {
@@ -956,7 +1070,7 @@ func TestCassandra_RetrieveWithErrorPrimaryFields(t *testing.T) {
 		context := &manipulate.Context{}
 		context.PageSize = 10
 
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore retrieve failed", "CassandraStore PrimaryFieldsAndValues error", "&{1234   %!s(int=0)}", 500)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: primaryFieldAndValues", "An issue occurs when using the method primaryFieldAndValues on the object &{1234   %!s(int=0)}. Go error CassandraStore PrimaryFieldsAndValues error", "&{1234   %!s(int=0)}", 5007)}
 		err := store.Retrieve(context, tag)
 
 		Convey("Then I should get an error", func() {
@@ -1088,12 +1202,65 @@ func TestCassandra_Delete(t *testing.T) {
 
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
-			So(expectedBatchType, ShouldEqual, gocql.LoggedBatch)
+			So(expectedBatchType, ShouldEqual, gocql.UnloggedBatch)
 			So(expectedQuery1, ShouldEqual, "DELETE FROM tag WHERE ID = ? LIMIT 10")
 			So(expectedQuery2, ShouldEqual, "DELETE FROM tag WHERE ID = ? LIMIT 10")
 			So(expectedValues1, ShouldResemble, []interface{}{"123"})
 			So(expectedValues2, ShouldResemble, []interface{}{"123"})
 			So(expectedBatch, ShouldEqual, expectedExecutedBatch)
+		})
+	})
+}
+
+func TestCassandra_Delete_AsynchroneBatch(t *testing.T) {
+
+	Convey("When I call the method Delete", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		store.nativeSession = &gocql.Session{}
+		store.asynchroneBatch = &gocql.Batch{}
+		store.UseAsynchroneBatch = true
+
+		apomock.Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+			return []string{"ID"}, []interface{}{"123"}, nil
+		})
+
+		var expectedQuery1 string
+		var expectedValues1 interface{}
+
+		var expectedQuery2 string
+		var expectedValues2 interface{}
+
+		apomock.Override("gocql.Batch.Query", func(b *gocql.Batch, command string, values ...interface{}) {
+
+			if expectedValues1 == nil {
+				expectedQuery1 = command
+				expectedValues1 = values
+				return
+			}
+
+			expectedQuery2 = command
+			expectedValues2 = values
+
+		})
+
+		tag1 := &Tag{}
+		tag1.ID = "123"
+
+		tag2 := &Tag{}
+		tag2.ID = "456"
+
+		context := &manipulate.Context{}
+		context.PageSize = 10
+
+		err := store.Delete(context, tag1, tag2)
+
+		Convey("Then everything should have been well called", func() {
+			So(err, ShouldBeNil)
+			So(expectedQuery1, ShouldEqual, "DELETE FROM tag WHERE ID = ? LIMIT 10")
+			So(expectedQuery2, ShouldEqual, "DELETE FROM tag WHERE ID = ? LIMIT 10")
+			So(expectedValues1, ShouldResemble, []interface{}{"123"})
+			So(expectedValues2, ShouldResemble, []interface{}{"123"})
 		})
 	})
 }
@@ -1122,7 +1289,7 @@ func TestCassandra_DeleteError(t *testing.T) {
 		context := &manipulate.Context{}
 		context.PageSize = 10
 
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore delete failed", "Error batch", "[%!s(*manipcassandra.Tag=&{123   0}) %!s(*manipcassandra.Tag=&{456   0})]", 500)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: executeBatch of the batch", "An issue occurs when calling executeBatch of the batch. Go error Error batch", "[%!s(*manipcassandra.Tag=&{123   0}) %!s(*manipcassandra.Tag=&{456   0})]", 5004)}
 		err := store.Delete(context, tag1, tag2)
 
 		Convey("Then I should get an error", func() {
@@ -1152,7 +1319,7 @@ func TestCassandra_DeleteWithErrorPrimaryFields(t *testing.T) {
 		context := &manipulate.Context{}
 		context.PageSize = 10
 
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore delete failed", "CassandraStore PrimaryFieldsAndValues error", "&{1234   %!s(int=0)}", 500)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: primaryFieldAndValues", "An issue occurs when using the method primaryFieldAndValues on the object &{1234   %!s(int=0)}. Go error CassandraStore PrimaryFieldsAndValues error", "&{1234   %!s(int=0)}", 5007)}
 		err := store.Delete(context, tag)
 
 		Convey("Then I should get an error", func() {
@@ -1239,12 +1406,84 @@ func TestCassandra_Update(t *testing.T) {
 
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
-			So(expectedBatchType, ShouldEqual, gocql.LoggedBatch)
+			So(expectedBatchType, ShouldEqual, gocql.UnloggedBatch)
 			So(expectedQuery1, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? LIMIT 10")
 			So(expectedQuery2, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? LIMIT 10")
 			So(expectedValues1, ShouldResemble, []interface{}{"description 1", "456"})
 			So(expectedValues2, ShouldResemble, []interface{}{"description 2", "456"})
 			So(expectedBatch, ShouldEqual, expectedExecutedBatch)
+			So(expectedValue1, ShouldEqual, tag1)
+			So(expectedValue2, ShouldEqual, tag2)
+		})
+	})
+}
+
+func TestCassandra_Update_AsynchroneBatch(t *testing.T) {
+
+	Convey("When I call the method Update", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		store.nativeSession = &gocql.Session{}
+		store.asynchroneBatch = &gocql.Batch{}
+		store.UseAsynchroneBatch = true
+
+		var expectedQuery1 string
+		var expectedValues1 interface{}
+
+		var expectedQuery2 string
+		var expectedValues2 interface{}
+
+		apomock.Override("gocql.Batch.Query", func(b *gocql.Batch, command string, values ...interface{}) {
+
+			if expectedValues1 == nil {
+				expectedQuery1 = command
+				expectedValues1 = values
+				return
+			}
+
+			expectedQuery2 = command
+			expectedValues2 = values
+
+		})
+
+		tag1 := &Tag{}
+		tag1.ID = "123"
+		tag1.Description = "description 1"
+
+		tag2 := &Tag{}
+		tag2.ID = "456"
+		tag2.Description = "description 2"
+
+		var expectedValue1 interface{}
+		var expectedValue2 interface{}
+
+		apomock.Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+			return []string{"ID"}, []interface{}{"456"}, nil
+		})
+
+		apomock.Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+
+			if expectedValue1 == nil {
+				expectedValue1 = val
+				return []string{"ID", "description"}, []interface{}{"123", "description 1"}, nil
+			}
+
+			expectedValue2 = val
+			return []string{"ID", "description"}, []interface{}{"456", "description 2"}, nil
+		})
+
+		context := &manipulate.Context{}
+		context.PageSize = 10
+		context.Attributes = []string{"description"}
+
+		err := store.Update(context, tag1, tag2)
+
+		Convey("Then everything should have been well called", func() {
+			So(err, ShouldBeNil)
+			So(expectedQuery1, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? LIMIT 10")
+			So(expectedQuery2, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? LIMIT 10")
+			So(expectedValues1, ShouldResemble, []interface{}{"description 1", "456"})
+			So(expectedValues2, ShouldResemble, []interface{}{"description 2", "456"})
 			So(expectedValue1, ShouldEqual, tag1)
 			So(expectedValue2, ShouldEqual, tag2)
 		})
@@ -1281,7 +1520,7 @@ func TestCassandra_Update_ErrorFieldsAndValues(t *testing.T) {
 		context := &manipulate.Context{}
 		context.PageSize = 10
 
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore update failed", "Error from FieldsAndValues", "&{123 description 1  %!s(int=0)}", 500)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: fieldAndValues", "An issue occurs when using the method fieldAndValues on the object &{123 description 1  %!s(int=0)}. Go error Error from FieldsAndValues", "&{123 description 1  %!s(int=0)}", 5006)}
 		err := store.Update(context, tag1, tag2)
 
 		Convey("Then everything should have been well called", func() {
@@ -1316,7 +1555,7 @@ func TestCassandra_Update_ErrorPrimaryFieldsAndValues(t *testing.T) {
 		context := &manipulate.Context{}
 		context.PageSize = 10
 
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore update failed", "CassandraStore PrimaryFieldsAndValues error", "&{123 description 1  %!s(int=0)}", 500)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: primaryFieldAndValues", "An issue occurs when using the method primaryFieldAndValues on the object &{123 description 1  %!s(int=0)}. Go error CassandraStore PrimaryFieldsAndValues error", "&{123 description 1  %!s(int=0)}", 5007)}
 		err := store.Update(context, tag1, tag2)
 
 		Convey("Then everything should have been well called", func() {
@@ -1363,7 +1602,7 @@ func TestCassandra_Update_ErrorExecuteBatch(t *testing.T) {
 		context := &manipulate.Context{}
 		context.PageSize = 10
 
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore update failed", "Error batch", "[%!s(*manipcassandra.Tag=&{123 description 1  0}) %!s(*manipcassandra.Tag=&{456 description 2  0})]", 500)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: executeBatch of the batch", "An issue occurs when calling executeBatch of the batch. Go error Error batch", "[%!s(*manipcassandra.Tag=&{123 description 1  0}) %!s(*manipcassandra.Tag=&{456 description 2  0})]", 5004)}
 		err := store.Update(context, tag1, tag2)
 
 		Convey("Then everything should have been well called", func() {
@@ -1452,12 +1691,89 @@ func TestCassandra_Create(t *testing.T) {
 
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
-			So(expectedBatchType, ShouldEqual, gocql.LoggedBatch)
+			So(expectedBatchType, ShouldEqual, gocql.UnloggedBatch)
 			So(expectedQuery1, ShouldEqual, "INSERT INTO tag (ID, description) VALUES (?, ?) LIMIT 10")
 			So(expectedQuery2, ShouldEqual, "INSERT INTO tag (ID, description) VALUES (?, ?) LIMIT 10")
 			So(expectedValues1, ShouldResemble, []interface{}{"123", "description 1"})
 			So(expectedValues2, ShouldResemble, []interface{}{"456", "description 2"})
 			So(expectedBatch, ShouldEqual, expectedExecutedBatch)
+			So(expectedValue1, ShouldEqual, tag1)
+			So(expectedValue2, ShouldEqual, tag2)
+			So(len(tag2.ID), ShouldEqual, 36)
+			So(len(tag2.ID), ShouldEqual, 36)
+		})
+	})
+}
+
+func TestCassandra_Create_AsynchroneBatch(t *testing.T) {
+
+	Convey("When I call the method Create", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		store.nativeSession = &gocql.Session{}
+		store.asynchroneBatch = &gocql.Batch{}
+		store.UseAsynchroneBatch = true
+
+		apomock.Override("gocql.TimeUUID", func() gocql.UUID {
+			return ParseUUID("7c469413-12ed-11e6-ac73-f45c89941b79")
+		})
+
+		apomock.Override("gocql.UUID.String", func(uuid gocql.UUID) string {
+			return StringUUID(uuid)
+		})
+
+		var expectedQuery1 string
+		var expectedValues1 interface{}
+
+		var expectedQuery2 string
+		var expectedValues2 interface{}
+
+		apomock.Override("gocql.Batch.Query", func(b *gocql.Batch, command string, values ...interface{}) {
+
+			t.Log("couocu")
+
+			if expectedValues1 == nil {
+				expectedQuery1 = command
+				expectedValues1 = values
+				return
+			}
+
+			expectedQuery2 = command
+			expectedValues2 = values
+
+		})
+
+		tag1 := &Tag{}
+		tag1.Description = "description 1"
+
+		tag2 := &Tag{}
+		tag2.Description = "description 2"
+
+		var expectedValue1 interface{}
+		var expectedValue2 interface{}
+
+		apomock.Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+
+			if expectedValue1 == nil {
+				expectedValue1 = val
+				return []string{"ID", "description"}, []interface{}{"123", "description 1"}, nil
+			}
+
+			expectedValue2 = val
+			return []string{"ID", "description"}, []interface{}{"456", "description 2"}, nil
+		})
+
+		context := &manipulate.Context{}
+		context.PageSize = 10
+
+		err := store.Create(context, nil, tag1, tag2)
+
+		Convey("Then everything should have been well called", func() {
+			So(err, ShouldBeNil)
+			So(expectedQuery1, ShouldEqual, "INSERT INTO tag (ID, description) VALUES (?, ?) LIMIT 10")
+			So(expectedQuery2, ShouldEqual, "INSERT INTO tag (ID, description) VALUES (?, ?) LIMIT 10")
+			So(expectedValues1, ShouldResemble, []interface{}{"123", "description 1"})
+			So(expectedValues2, ShouldResemble, []interface{}{"456", "description 2"})
 			So(expectedValue1, ShouldEqual, tag1)
 			So(expectedValue2, ShouldEqual, tag2)
 			So(len(tag2.ID), ShouldEqual, 36)
@@ -1504,7 +1820,7 @@ func TestCassandra_Create_ErrorFieldsAndValues(t *testing.T) {
 		context := &manipulate.Context{}
 		context.PageSize = 10
 
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore create failed", "Error from FieldsAndValues", "&{ description 1  %!s(int=0)}", 500)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: fieldAndValues", "An issue occurs when using the method fieldAndValues on the object &{ description 1  %!s(int=0)}. Go error Error from FieldsAndValues", "&{ description 1  %!s(int=0)}", 5006)}
 		err := store.Create(context, nil, tag1, tag2)
 
 		Convey("Then everything should have been well called", func() {
@@ -1557,7 +1873,7 @@ func TestCassandra_Create_ErrorExecuteBatch(t *testing.T) {
 		context := &manipulate.Context{}
 		context.PageSize = 10
 
-		expectedErrors := []*elemental.Error{elemental.NewError("CassandraStore create failed", "Error batch", "[%!s(*manipcassandra.Tag=&{ description 1  0}) %!s(*manipcassandra.Tag=&{ description 2  0})]", 500)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: executeBatch of the batch", "An issue occurs when calling executeBatch of the batch. Go error Error batch", "[%!s(*manipcassandra.Tag=&{ description 1  0}) %!s(*manipcassandra.Tag=&{ description 2  0})]", 5004)}
 		err := store.Create(context, nil, tag1, tag2)
 
 		Convey("Then everything should have been well called", func() {
