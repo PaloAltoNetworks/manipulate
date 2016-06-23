@@ -7,6 +7,7 @@ package maniphttp
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -28,12 +29,12 @@ type HTTPStore struct {
 func NewHTTPStore(username, password, url, namespace string, tlsConfig *TLSConfiguration) *HTTPStore {
 
 	if tlsConfig == nil {
-		tlsConfig = NewTLSConfiguration("", "", "", false)
+		tlsConfig = NewTLSConfiguration("", "", false)
 	}
 
 	client, err := tlsConfig.makeHTTPClient()
 	if err != nil {
-		panic("Invalid TLSConfiguration")
+		panic(fmt.Sprintf("Invalid TLSConfiguration: %s", err))
 	}
 
 	return &HTTPStore{

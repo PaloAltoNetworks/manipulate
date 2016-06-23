@@ -44,7 +44,7 @@ func TestHTTP_NewSHTTPStore(t *testing.T) {
 
 	Convey("When I create a new HTTPStore with a good TLS config", t, func() {
 
-		config := NewTLSConfiguration("fixtures/ca.pem", "fixtures/cert.pem", "fixtures/key.pem", true)
+		config := NewTLSConfiguration("fixtures/cert.p12", "password", true)
 
 		Convey("Then the it should should not panic", func() {
 			So(func() { NewHTTPStore("username", "password", "http://url.com", "", config) }, ShouldNotPanic)
@@ -53,7 +53,7 @@ func TestHTTP_NewSHTTPStore(t *testing.T) {
 
 	Convey("When I create a new HTTPStore with a bad TLS config", t, func() {
 
-		config := NewTLSConfiguration("bad", "fixtures/cert.pem", "fixtures/key.pem", true)
+		config := NewTLSConfiguration("fixtures/cerbadt.p12", "password", true)
 
 		Convey("Then the it should should panic", func() {
 			So(func() { NewHTTPStore("username", "password", "http://url.com", "", config) }, ShouldPanic)
