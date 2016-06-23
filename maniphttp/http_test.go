@@ -19,7 +19,7 @@ func TestHTTP_NewSHTTPStore(t *testing.T) {
 
 	Convey("When I create a new HTTPStore", t, func() {
 
-		store := NewHTTPStore("username", "password", "http://url.com", "", nil)
+		store := NewHTTPStore("username", "password", "http://url.com", "myns", nil)
 
 		Convey("Then the property Username should be 'username'", func() {
 			So(store.username, ShouldEqual, "username")
@@ -31,6 +31,10 @@ func TestHTTP_NewSHTTPStore(t *testing.T) {
 
 		Convey("Then the property URL should be 'http://url.com'", func() {
 			So(store.url, ShouldEqual, "http://url.com")
+		})
+
+		Convey("Then the property namespace should be 'myns'", func() {
+			So(store.namespace, ShouldEqual, "myns")
 		})
 
 		Convey("Then the it should implement Manpilater interface", func() {
@@ -61,29 +65,6 @@ func TestHTTP_NewSHTTPStore(t *testing.T) {
 	})
 }
 
-func TestHTTP_SetTLSConfig(t *testing.T) {
-
-	Convey("Given I create a new HTTPStore", t, func() {
-
-		store := NewHTTPStore("username", "password", "http://url.com", "")
-
-		Convey("When I set a TLS config", func() {
-
-			cert, pool, _ := NewCertificateAndPool("Resources/test-cert.pem", "Resources/test-key.pem", "Resources/ca-test.pem")
-			store.SetTLSConfig(cert, pool)
-
-			Convey("Then err should be nil", func() {
-				t := &http.Transport{
-					TLSClientConfig: &tls.Config{
-						Certificates: []tls.Certificate{*cert},
-						RootCAs:      pool,
-					}}
-				So(store.client.Transport, ShouldResemble, t)
-			})
-		})
-	})
-}
-
 /*
 	Privates
 */
@@ -107,7 +88,7 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 
 	Convey("Given I create an authenticated session", t, func() {
 
-		store := NewHTTPStore("username", "password", "http://fake.com", "", nil)
+		store := NewHTTPStore("username", "password", "http://fake.com", "myns", nil)
 
 		Convey("Given I create a Request", func() {
 
@@ -116,6 +97,10 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 			Convey("When I prepareHeaders with a no context", func() {
 
 				store.prepareHeaders(req, nil)
+
+				Convey("Then I should have a the X-Namespace set to 'myns'", func() {
+					So(req.Header.Get("X-Namespace"), ShouldEqual, "myns")
+				})
 
 				Convey("Then I should not have a value for X-Page-Current", func() {
 					So(req.Header.Get("X-Page-Current"), ShouldEqual, "")
@@ -291,6 +276,20 @@ func TestHTTP_standardURI(t *testing.T) {
 
 			Convey("Then it should be http://url.com/lists", func() {
 				So(url, ShouldEqual, "http://url.com/lists")
+			})
+		})
+
+		Convey("When I check children URL for a root object", func() {
+
+			list.SetIdentifier("xxx")
+			url, err := store.getURLForChildrenIdentity(nil, ListIdentity)
+
+			Convey("Then URL of the children with ListIdentity should be http://url.com/lists", func() {
+				So(url, ShouldEqual, "http://url.com/lists")
+			})
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
 			})
 		})
 
