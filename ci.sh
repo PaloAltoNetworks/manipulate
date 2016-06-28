@@ -2,7 +2,11 @@
 
 set -x
 
-docker build --build-arg GITHUB_TOKEN=${GITHUB_TOKEN} -t manipulabletest .
-docker run -t manipulabletest
+if [ ! -n "${BUILD_NUMBER+1}" ]; then
+  BUILD_NUMBER="latest"
+fi
+
+docker build --build-arg GITHUB_TOKEN=${GITHUB_TOKEN} -t manipulate-test:${BUILD_NUMBER} .
+docker run --rm manipulate-test:${BUILD_NUMBER}
 
 exit $?
