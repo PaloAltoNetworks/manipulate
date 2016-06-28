@@ -85,3 +85,34 @@ apoclean_apomock:
 	@$(foreach dir,$(DIRS_WITH_MAKEFILES),pushd $(dir) && make apoclean_apomock && popd;)
 	@echo "# Running apoclean_apomock in" $(PWD)
 	rm -rf ${APOMOCK_FOLDER}
+
+
+## Docker Test Container
+
+define DOCKER_IGNORE
+**/.apomock
+**/vendor
+endef
+export DOCKER_IGNORE
+
+define DOCKER_FILE
+FROM golang:1.6
+
+MAINTAINER Antoine Mercadal <antoine@aporeto.com>
+
+ARG GITHUB_TOKEN
+
+ADD . /go/src/github.com/aporeto-inc/manipulate
+
+RUN wget https://github.com/Masterminds/glide/releases/download/0.10.2/glide-0.10.2-linux-amd64.tar.gz > /dev/null 2>&1
+RUN tar -xzf glide-*.tar.gz && cp linux-amd64/glide /go/bin/ && rm -rf linux-amd64 glide-*-.tar.gz
+RUN git config --global url."https://$$GITHUB_TOKEN:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+WORKDIR /go/src/github.com/aporeto-inc/manipulate
+CMD make init && make test && make release
+endef
+export DOCKER_FILE
+
+apodocker:
+	echo "$$DOCKER_IGNORE" > .dockerignore
+	echo "$$DOCKER_FILE" > Dockerfile
