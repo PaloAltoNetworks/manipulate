@@ -89,12 +89,6 @@ apoclean_apomock:
 
 ## Docker Test Container
 
-define DOCKER_IGNORE
-**/.apomock
-**/vendor
-endef
-export DOCKER_IGNORE
-
 define DOCKER_FILE
 FROM golang:1.6
 
@@ -114,5 +108,7 @@ endef
 export DOCKER_FILE
 
 apodocker:
-	echo "$$DOCKER_IGNORE" > .dockerignore
-	echo "$$DOCKER_FILE" > Dockerfile
+	echo "$$DOCKER_FILE" > .dockerfile-test
+
+clean_apodocker:
+	rm .dockerfile-test
