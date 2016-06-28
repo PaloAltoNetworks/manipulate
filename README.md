@@ -23,7 +23,7 @@ type Manipulator interface {
 First install the testing dependencies with the command
 
 ```bash
-make install_dependencies
+make apoinit
 pushd manipcassandra; make apomock; popd
 ```
 

@@ -1,32 +1,17 @@
-FROM ubuntu:14.04
-MAINTAINER Alexandre Wilhelm <alex@aporeto.com>
+FROM golang:1.6
 
-ARG     GITHUB_TOKEN
+MAINTAINER Antoine Mercadal <antoine@aporeto.com>
 
-RUN     apt-get update && apt-get install -y software-properties-common
-RUN     add-apt-repository ppa:masterminds/glide
+ARG GITHUB_TOKEN
 
-# Install curl, make and git glide
-RUN     apt-get update && apt-get install -y curl make git glide
+ADD . /go/src/github.com/aporeto-inc/manipulate
 
-RUN     git config --global url."https://$GITHUB_TOKEN:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+RUN cd /tmp && \
+    wget https://github.com/Masterminds/glide/releases/download/0.10.2/glide-0.10.2-linux-amd64.tar.gz > /dev/null 2>&1 && \
+    tar -xzf glide-*.tar.gz && \
+    cp linux-amd64/glide /go/bin/ && rm -rf linux-amd64 glide-*-.tar.gz && \
+    git config --global url."https://$GITHUB_TOKEN:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
-# Install golang
-RUN     curl -O https://storage.googleapis.com/golang/go1.6.linux-amd64.tar.gz && \
-        tar -xvf go1.6.linux-amd64.tar.gz && \
-        mv go /usr/local
+WORKDIR /go/src/github.com/aporeto-inc/manipulate
 
-RUN    mkdir -p /aporeto/golang/src/github.com/aporeto-inc/manipulable && mkdir /aporeto/golang/bin
-
-ENV    GOPATH   /aporeto/golang/
-ENV    GOBIN    /aporeto/golang/bin
-ENV    PATH     /aporeto/golang/bin:$PATH
-ENV    PATH     /usr/local/go/bin:$PATH
-
-ADD . /aporeto/golang/src/github.com/aporeto-inc/manipulable
-
-WORKDIR /aporeto/golang/src/github.com/aporeto-inc/manipulable
-
-RUN make install_dependencies
-
-ENTRYPOINT     ["/aporeto/golang/src/github.com/aporeto-inc/manipulable/run.sh"]
+CMD make apoinit && make test

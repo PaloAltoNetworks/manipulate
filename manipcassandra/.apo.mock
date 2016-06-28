@@ -1,0 +1,5 @@
+github.com/aporeto-inc/gocql
+github.com/aporeto-inc/gocql/internal/lru
+github.com/aporeto-inc/gocql/internal/murmur
+github.com/aporeto-inc/gocql/internal/streams
+github.com/aporeto-inc/manipulate/manipcassandra/encoding
