@@ -107,17 +107,17 @@ CMD make init && make test && make release
 endef
 export DOCKER_FILE
 
-BUILD_CONTAINER_IMAGE_NAME?=test-container
+PROJECT_NAME?=my-super-project
 BUILD_NUMBER?=latest
 GITHUB_TOKEN?=
 
 create_test_container:
 	echo "$$DOCKER_FILE" > .dockerfile-test
-	docker build --file .dockerfile-test --build-arg GITHUB_TOKEN=$(GITHUB_TOKEN) -t $(BUILD_CONTAINER_IMAGE_NAME):$(BUILD_NUMBER) .
+	docker build --file .dockerfile-test --build-arg GITHUB_TOKEN=$(GITHUB_TOKEN) -t $(PROJECT_NAME)-build-image:$(BUILD_NUMBER) .
 
 run_test_container:
-	docker run --rm $(BUILD_CONTAINER_IMAGE_NAME):$(BUILD_NUMBER)
+	docker run --rm $(PROJECT_NAME)-build-image:$(BUILD_NUMBER)
 
 clean_test_container:
-	docker rmi $(BUILD_CONTAINER_IMAGE_NAME):$(BUILD_NUMBER)
+	docker rmi $(PROJECT_NAME)-build-image:$(BUILD_NUMBER)
 	rm -f .dockerfile-test

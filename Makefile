@@ -1,10 +1,10 @@
 include apobuild.mk
 
+PROJECT_NAME := manipulate
+
 clean: apoclean_vendor apoclean_apomock
-
-build:
-	go build
-
 init: apoinit
 test: apotest
 release:
+
+ci: create_test_container run_test_container clean_test_container
