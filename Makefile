@@ -2,7 +2,7 @@ include domingo.mk
 
 PROJECT_NAME := manipulate
 
-clean: domingocleanvendor domingomock
+clean: domingocleanvendor domingocleanmock
 init: domingoinit
 test: domingotest
 release:
