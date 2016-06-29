@@ -1,1 +1,1 @@
-include ../../apomock.mk
+include ../../apobuild.mk

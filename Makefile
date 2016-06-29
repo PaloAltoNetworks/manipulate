@@ -1,4 +1,4 @@
-include apomock.mk
+include apobuild.mk
 
 clean: apoclean_vendor apoclean_apomock
 
