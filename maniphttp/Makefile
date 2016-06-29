@@ -1,1 +1,1 @@
-include ../apobuild.mk
+include ../domingo.mk
