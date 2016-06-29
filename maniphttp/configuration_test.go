@@ -17,14 +17,14 @@ func TestTLSConfiguration_NewTLSConfiguration(t *testing.T) {
 	Convey("Given I create a new TLSConfiguration with no certificate info", t, func() {
 
 		Convey("Then it should not panic", func() {
-			So(func() { NewTLSConfiguration("", "", true) }, ShouldNotPanic)
+			So(func() { NewTLSConfiguration("", "", "", true) }, ShouldNotPanic)
 		})
 	})
 
 	Convey("Given I create a new TLSConfiguration with certificate info", t, func() {
 
 		Convey("Then it should not panic", func() {
-			So(func() { NewTLSConfiguration("1", "password", true) }, ShouldNotPanic)
+			So(func() { NewTLSConfiguration("1", "password", "", true) }, ShouldNotPanic)
 		})
 	})
 }
@@ -33,7 +33,7 @@ func TestTLSConfiguration_makeHTTPClient(t *testing.T) {
 
 	Convey("Given I create a new TLSConfiguration with no p12 info", t, func() {
 
-		config := NewTLSConfiguration("", "", true)
+		config := NewTLSConfiguration("", "", "", true)
 
 		Convey("When I make a http client", func() {
 			client, err := config.makeHTTPClient()
@@ -50,7 +50,7 @@ func TestTLSConfiguration_makeHTTPClient(t *testing.T) {
 
 	Convey("Given I create a new TLSConfiguration with bad p12 path", t, func() {
 
-		config := NewTLSConfiguration("bad.p12", "", true)
+		config := NewTLSConfiguration("bad.p12", "", "", true)
 
 		Convey("When I make a http client", func() {
 			_, err := config.makeHTTPClient()
@@ -63,7 +63,7 @@ func TestTLSConfiguration_makeHTTPClient(t *testing.T) {
 
 	Convey("Given I create a new TLSConfiguration with bad p12 content", t, func() {
 
-		config := NewTLSConfiguration("./Makefile", "", true)
+		config := NewTLSConfiguration("./Makefile", "", "", true)
 
 		Convey("When I make a http client", func() {
 			_, err := config.makeHTTPClient()
@@ -76,7 +76,7 @@ func TestTLSConfiguration_makeHTTPClient(t *testing.T) {
 
 	Convey("Given I create a new TLSConfiguration with all good p12 and password", t, func() {
 
-		config := NewTLSConfiguration("fixtures/cert.p12", "password", true)
+		config := NewTLSConfiguration("fixtures/cert.p12", "password", "fixtures/ca.pem", true)
 
 		Convey("When I make a http client", func() {
 			_, err := config.makeHTTPClient()
@@ -89,7 +89,7 @@ func TestTLSConfiguration_makeHTTPClient(t *testing.T) {
 
 	Convey("Given I create a new TLSConfiguration with all good p12 info and bad password", t, func() {
 
-		config := NewTLSConfiguration("fixtures/cert.p12", "bad", true)
+		config := NewTLSConfiguration("fixtures/cert.p12", "bad", "", true)
 
 		Convey("When I make a http client", func() {
 			_, err := config.makeHTTPClient()
@@ -99,4 +99,29 @@ func TestTLSConfiguration_makeHTTPClient(t *testing.T) {
 			})
 		})
 	})
+
+	Convey("Given that I create a new TLSConfiguration with good p12 and good CA certificate", t, func() {
+		config := NewTLSConfiguration("fixtures/cert.p12", "password", "fixtures/ca.pem", true)
+
+		Convey("When I make an http client", func() {
+			_, err := config.makeHTTPClient()
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+		})
+	})
+
+	Convey("Given that I create a new TLSConfiguration with good p12 and bad CA certificate path", t, func() {
+		config := NewTLSConfiguration("fixtures/cert.p12", "password", "fixtures/badca.pem", true)
+
+		Convey("When I make an http client", func() {
+			_, err := config.makeHTTPClient()
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+			})
+		})
+	})
+
 }

@@ -29,7 +29,7 @@ type HTTPStore struct {
 func NewHTTPStore(username, password, url, namespace string, tlsConfig *TLSConfiguration) *HTTPStore {
 
 	if tlsConfig == nil {
-		tlsConfig = NewTLSConfiguration("", "", false)
+		tlsConfig = NewTLSConfiguration("", "", "", false)
 	}
 
 	client, err := tlsConfig.makeHTTPClient()
