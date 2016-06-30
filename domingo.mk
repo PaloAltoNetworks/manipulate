@@ -46,7 +46,7 @@ TEST_DIRS 				:= $(filter-out $(NOTEST_DIRS),$(NOVENDOR))
 domingo_update:
 	@echo "# Updating Domingo..."
 	@echo "REMINDER: you need to export GITHUB_TOKEN for this to work"
-	@curl --fail -o domingo.mk -H "Cache-Control: no-cache" -H "Authorization: token $(GITHUB_TOKEN)" https://raw.githubusercontent.com/aporeto-inc/domingo/master/domingo.mk
+	curl --fail -o domingo.mk -H "Cache-Control: no-cache" -H "Authorization: token $(GITHUB_TOKEN)" https://raw.githubusercontent.com/aporeto-inc/domingo/master/domingo.mk
 	@echo "domingo.mk updated!"
 
 
@@ -62,7 +62,8 @@ domingo_init:
 domingo_test:
 	echo > $(ROOT_DIR)/testresults.xml
 	make domingo_lint domingo_apomock
-	echo '<?xml version="1.0" encoding="utf-8"?>' | cat - $(ROOT_DIR)/testresults.xml > $(ROOT_DIR)/.testresults.xml
+	echo "<?xml version=\"1.0\" encoding=\"utf-8\"?><testsuites>" | cat - $(ROOT_DIR)/testresults.xml > $(ROOT_DIR)/.testresults.xml
+	echo '</testsuites>' >> $(ROOT_DIR)/.testresults.xml
 	rm -f $(ROOT_DIR)/testresults.xml
 	mv $(ROOT_DIR)/.testresults.xml $(ROOT_DIR)/testresults.xml
 	if [ -d /outside_world ]; then cp $(ROOT_DIR)/testresults.xml /outside_world; fi
@@ -74,7 +75,7 @@ domingo_lint:
 
 domingo_apomock:
 	@$(foreach dir,$(MANAGED_DIRS),pushd $(dir) && make domingo_apomock && popd;)
-	@echo "# Running ApoMock in" $(PWD)
+	@echo "# Running ApoMock in" $(dir)
 	if [ -f $(APOMOCK_FILE) ]; then make dominingo_init_apomock; fi;
 	go test -v -race -cover $(TEST_DIRS) | tee >(go2xunit -fail | tail -n +2 >> $(ROOT_DIR)/testresults.xml)
 	if [ -f $(APOMOCK_FILE) ]; then make dominingo_deinit_apomock; fi;
