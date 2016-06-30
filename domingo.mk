@@ -21,7 +21,6 @@ DOCKER_ENABLE_BUILD?=0
 DOCKER_ENABLE_PUSH?=0
 DOCKER_ENABLE_RETAG?=0
 DOMINGO_BASE_IMAGE?=$(DOCKER_REGISTRY)/domingo:1.0-2
-DOMINGO_TEST_RESULT?=$(PWD)/testresults.xml
 
 ######################################################################
 ######################################################################
