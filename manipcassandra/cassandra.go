@@ -67,7 +67,7 @@ func (c *CassandraStore) Start() {
 			"keyspace":     c.KeySpace,
 			"consistency":  gocql.Quorum,
 			"protoVersion": c.ProtoVersion,
-		}).Info("Fail : creation of a cassandra session failed")
+		}).Error("Fail : creation of a cassandra session failed")
 
 		panic(err)
 	}
@@ -92,7 +92,7 @@ func (c *CassandraStore) Retrieve(context manipulate.Contexts, objects ...manipu
 			log.WithFields(log.Fields{
 				"context": context,
 				"error":   err.Error(),
-			}).Info("Fail : sending select command to cassandra")
+			}).Error("Fail : sending select command to cassandra")
 
 			return []*elemental.Error{elemental.NewError(ManipCassandraPrimaryFieldsAndValuesErrorTitle, fmt.Sprintf(ManipCassandraPrimaryFieldsAndValuesErrorDescription, object, err.Error()), fmt.Sprintf("%s", object), ManipCassandraPrimaryFieldsAndValuesErrorCode)}
 		}
@@ -103,7 +103,7 @@ func (c *CassandraStore) Retrieve(context manipulate.Contexts, objects ...manipu
 		log.WithFields(log.Fields{
 			"command": command,
 			"context": context,
-		}).Info("About : sending select command to cassandra")
+		}).Debug("About : sending select command to cassandra")
 
 		// There is mabe a way to create only one request based on every context
 		// TODO: intern work one day :D
@@ -136,7 +136,7 @@ func (c *CassandraStore) Delete(context manipulate.Contexts, objects ...manipula
 			log.WithFields(log.Fields{
 				"context": context,
 				"error":   err.Error(),
-			}).Info("Fail : sending select command to cassandra")
+			}).Error("Fail : sending select command to cassandra")
 
 			return []*elemental.Error{elemental.NewError(ManipCassandraPrimaryFieldsAndValuesErrorTitle, fmt.Sprintf(ManipCassandraPrimaryFieldsAndValuesErrorDescription, object, err.Error()), fmt.Sprintf("%s", object), ManipCassandraPrimaryFieldsAndValuesErrorCode)}
 		}
@@ -149,7 +149,7 @@ func (c *CassandraStore) Delete(context manipulate.Contexts, objects ...manipula
 	log.WithFields(log.Fields{
 		"batch":   batch.Entries,
 		"context": context,
-	}).Info("About : sending delete command to cassandra")
+	}).Debug("About : sending delete command to cassandra")
 
 	if c.UseAsynchroneBatch {
 		return nil
@@ -161,7 +161,7 @@ func (c *CassandraStore) Delete(context manipulate.Contexts, objects ...manipula
 			"batch":   batch.Entries,
 			"context": context,
 			"error":   err.Error(),
-		}).Info("Fail : sending delete command to cassandra")
+		}).Error("Fail : sending delete command to cassandra")
 
 		return []*elemental.Error{elemental.NewError(ManipCassandraExecuteBatchErrorTitle, fmt.Sprintf(ManipCassandraExecuteBatchErrorDescription, err.Error()), fmt.Sprintf("%s", objects), ManipCassandraExecuteBatchErrorCode)}
 	}
@@ -169,7 +169,7 @@ func (c *CassandraStore) Delete(context manipulate.Contexts, objects ...manipula
 	log.WithFields(log.Fields{
 		"batch":   batch.Entries,
 		"context": context,
-	}).Info("Success : sending delete command to cassandra")
+	}).Debug("Success : sending delete command to cassandra")
 
 	return nil
 }
@@ -188,7 +188,7 @@ func (c *CassandraStore) RetrieveChildren(context manipulate.Contexts, parent ma
 	log.WithFields(log.Fields{
 		"query":   command,
 		"context": context,
-	}).Info("About : sending select all command to cassandra")
+	}).Debug("About : sending select all command to cassandra")
 
 	iter := c.nativeSession.Query(command, values...).Iter()
 
@@ -219,7 +219,7 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 				"batch":   batch.Entries,
 				"context": context,
 				"error":   err.Error(),
-			}).Info("Fail : sending update command to cassandra")
+			}).Error("Fail : sending update command to cassandra")
 
 			return []*elemental.Error{elemental.NewError(ManipCassandraFieldsAndValuesErrorTitle, fmt.Sprintf(ManipCassandraFieldsAndValuesErrorDescription, object, err.Error()), fmt.Sprintf("%s", object), ManipCassandraFieldsAndValuesErrorCode)}
 		}
@@ -232,7 +232,7 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 	log.WithFields(log.Fields{
 		"batch":   batch.Entries,
 		"context": context,
-	}).Info("About : sending create command to cassandra")
+	}).Debug("About : sending create command to cassandra")
 
 	if c.UseAsynchroneBatch {
 		return nil
@@ -244,7 +244,7 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 			"batch":   batch.Entries,
 			"context": context,
 			"error":   err.Error(),
-		}).Info("Fail : sending create command to cassandra")
+		}).Error("Fail : sending create command to cassandra")
 
 		for _, object := range objects {
 			object.SetIdentifier("")
@@ -256,7 +256,7 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 	log.WithFields(log.Fields{
 		"batch":   batch.Entries,
 		"context": context,
-	}).Info("Success : sending create command to cassandra")
+	}).Debug("Success : sending create command to cassandra")
 
 	return nil
 }
@@ -276,7 +276,7 @@ func (c *CassandraStore) UpdateCollection(context manipulate.Contexts, attribute
 		log.WithFields(log.Fields{
 			"context": context,
 			"error":   err.Error(),
-		}).Info("Fail : sending update collection command to cassandra")
+		}).Error("Fail : sending update collection command to cassandra")
 
 		return []*elemental.Error{elemental.NewError(ManipCassandraPrimaryFieldsAndValuesErrorTitle, fmt.Sprintf(ManipCassandraPrimaryFieldsAndValuesErrorDescription, object, err.Error()), fmt.Sprintf("%s", object), ManipCassandraPrimaryFieldsAndValuesErrorCode)}
 	}
@@ -289,7 +289,7 @@ func (c *CassandraStore) UpdateCollection(context manipulate.Contexts, attribute
 		log.WithFields(log.Fields{
 			"context": context,
 			"error":   err.Error(),
-		}).Info("Fail : sending update collection command to cassandra")
+		}).Error("Fail : sending update collection command to cassandra")
 
 		return []*elemental.Error{elemental.NewError(ManipCassandraQueryErrorTitle, fmt.Sprintf(ManipCassandraQueryErrorDescription, object, err.Error()), fmt.Sprintf("%s", object), ManipCassandraQueryErrorCode)}
 	}
@@ -315,7 +315,7 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 			log.WithFields(log.Fields{
 				"context": context,
 				"error":   err.Error(),
-			}).Info("Fail : sending select command to cassandra")
+			}).Error("Fail : sending select command to cassandra")
 
 			return []*elemental.Error{elemental.NewError(ManipCassandraPrimaryFieldsAndValuesErrorTitle, fmt.Sprintf(ManipCassandraPrimaryFieldsAndValuesErrorDescription, object, err.Error()), fmt.Sprintf("%s", object), ManipCassandraPrimaryFieldsAndValuesErrorCode)}
 		}
@@ -328,7 +328,7 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 				"batch":   batch.Entries,
 				"context": context,
 				"error":   err.Error(),
-			}).Info("Fail : sending update command to cassandra")
+			}).Error("Fail : sending update command to cassandra")
 
 			return []*elemental.Error{elemental.NewError(ManipCassandraFieldsAndValuesErrorTitle, fmt.Sprintf(ManipCassandraFieldsAndValuesErrorDescription, object, err.Error()), fmt.Sprintf("%s", object), ManipCassandraFieldsAndValuesErrorCode)}
 		}
@@ -342,7 +342,7 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 	log.WithFields(log.Fields{
 		"batch":   batch.Entries,
 		"context": context,
-	}).Info("About : sending update command to cassandra")
+	}).Debug("About : sending update command to cassandra")
 
 	if c.UseAsynchroneBatch {
 		return nil
@@ -354,7 +354,7 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 			"batch":   batch.Entries,
 			"context": context,
 			"error":   err.Error(),
-		}).Info("Fail : sending update command to cassandra")
+		}).Error("Fail : sending update command to cassandra")
 
 		return []*elemental.Error{elemental.NewError(ManipCassandraExecuteBatchErrorTitle, fmt.Sprintf(ManipCassandraExecuteBatchErrorDescription, err.Error()), fmt.Sprintf("%s", objects), ManipCassandraExecuteBatchErrorCode)}
 	}
@@ -362,7 +362,7 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 	log.WithFields(log.Fields{
 		"batch":   batch.Entries,
 		"context": context,
-	}).Info("Success : sending update command to cassandra")
+	}).Debug("Success : sending update command to cassandra")
 
 	return nil
 }
@@ -380,7 +380,7 @@ func (c *CassandraStore) Count(context manipulate.Contexts, identity elemental.I
 	log.WithFields(log.Fields{
 		"query":   command,
 		"context": context,
-	}).Info("About : sending count command to cassandra")
+	}).Debug("About : sending count command to cassandra")
 
 	iter := c.nativeSession.Query(command, values...).Iter()
 
@@ -398,7 +398,7 @@ func (c *CassandraStore) Count(context manipulate.Contexts, identity elemental.I
 	log.WithFields(log.Fields{
 		"query":   command,
 		"context": context,
-	}).Info("Success : sending count command to cassandra")
+	}).Debug("Success : sending count command to cassandra")
 
 	return count, nil
 }
@@ -431,7 +431,7 @@ func (c *CassandraStore) ExecuteBatch(b *gocql.Batch) error {
 
 	log.WithFields(log.Fields{
 		"batch": b.Entries,
-	}).Info("Success : sending commands to cassandra")
+	}).Debug("Success : sending commands to cassandra")
 
 	return c.nativeSession.ExecuteBatch(b)
 }
@@ -445,14 +445,14 @@ func (c *CassandraStore) Commit() elemental.Errors {
 		log.WithFields(log.Fields{
 			"batch": c.asynchroneBatch.Entries,
 			"error": err.Error(),
-		}).Info("Fail : sending update command to cassandra")
+		}).Debug("Fail : sending update command to cassandra")
 
 		return []*elemental.Error{elemental.NewError(ManipCassandraExecuteBatchErrorTitle, fmt.Sprintf(ManipCassandraExecuteBatchErrorDescription, err.Error()), "", ManipCassandraExecuteBatchErrorCode)}
 	}
 
 	log.WithFields(log.Fields{
 		"batch": c.asynchroneBatch.Entries,
-	}).Info("Success : sending batch command to cassandra")
+	}).Debug("Success : sending batch command to cassandra")
 
 	c.asynchroneBatch = c.nativeSession.NewBatch(gocql.UnloggedBatch)
 
@@ -482,12 +482,12 @@ func unmarshalManipulable(iter *gocql.Iter, objects []manipulate.Manipulable) el
 	sliceMaps, err := sliceMaps(iter)
 
 	if err != nil {
-		log.Info(err)
+		log.Error(err)
 		return err
 	}
 
 	if len(objects) != len(sliceMaps) {
-		log.Info("The number of the given objects and the number of results fetched is different")
+		log.Error("The number of the given objects and the number of results fetched is different")
 		return []*elemental.Error{elemental.NewError(ManipCassandraUnmarshalNumberObjectsAndSliceMapsErrorTitle, fmt.Sprintf(ManipCassandraUnmarshalNumberObjectsAndSliceMapsErrorDescription, objects, sliceMaps), fmt.Sprintf("%s", objects), ManipCassandraUnmarshalNumberObjectsAndSliceMapsErrorCode)}
 	}
 
@@ -500,7 +500,7 @@ func unmarshalManipulable(iter *gocql.Iter, objects []manipulate.Manipulable) el
 		err := cassandra.Unmarshal(sliceMap, objects[index])
 
 		if err != nil {
-			log.Info(err)
+			log.Error(err)
 			return []*elemental.Error{elemental.NewError(ManipCassandraUnmarshalErrorTitle, fmt.Sprintf(ManipCassandraUnmarshalErrorDescription, objects[index], sliceMap, err.Error()), fmt.Sprintf("%s", objects), ManipCassandraUnmarshalErrorCode)}
 		}
 	}
@@ -514,7 +514,7 @@ func unmarshalInterface(iter *gocql.Iter, objects interface{}) elemental.Errors 
 	sliceMaps, err := sliceMaps(iter)
 
 	if err != nil {
-		log.Info(err)
+		log.Error(err)
 		return err
 	}
 
@@ -523,7 +523,7 @@ func unmarshalInterface(iter *gocql.Iter, objects interface{}) elemental.Errors 
 	}
 
 	if err := cassandra.Unmarshal(sliceMaps, objects); err != nil {
-		log.Info(err)
+		log.Error(err)
 		return []*elemental.Error{elemental.NewError(ManipCassandraUnmarshalErrorTitle, fmt.Sprintf(ManipCassandraUnmarshalErrorDescription, objects, sliceMaps, err.Error()), fmt.Sprintf("%s", objects), ManipCassandraUnmarshalErrorCode)}
 	}
 
