@@ -22,7 +22,7 @@ DOCKER_ENABLE_PUSH?=0
 DOCKER_ENABLE_RETAG?=0
 DOCKER_LATEST_TAG?=latest
 DOMINGO_EXPORT_FOLDER?=/outside_world
-DOMINGO_BASE_IMAGE?=$(DOCKER_REGISTRY)/domingo:1.0-2
+DOMINGO_BASE_IMAGE?=$(DOCKER_REGISTRY)/domingo
 
 ######################################################################
 ######################################################################
