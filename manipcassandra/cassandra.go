@@ -449,7 +449,7 @@ func (c *CassandraStore) Commit() elemental.Errors {
 		log.WithFields(log.Fields{
 			"batch": c.asynchroneBatch.Entries,
 			"error": err.Error(),
-		}).Debug("sending update command to cassandra")
+		}).Debug("sending batch command to cassandra")
 
 		return []*elemental.Error{elemental.NewError(ManipCassandraExecuteBatchErrorTitle, fmt.Sprintf(ManipCassandraExecuteBatchErrorDescription, err.Error()), "", ManipCassandraExecuteBatchErrorCode)}
 	}
