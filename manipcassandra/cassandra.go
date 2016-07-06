@@ -6,6 +6,7 @@ package manipcassandra
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/gocql"
@@ -44,6 +45,27 @@ func NewCassandraStore(servers []string, keyspace string, version int) *Cassandr
 	}
 }
 
+func (c *CassandraStore) createNativeSession(srvs []string, ks string, v int) *gocql.Session {
+	cluster := gocql.NewCluster(srvs...)
+	cluster.Keyspace = ks
+	cluster.Consistency = gocql.Quorum
+	cluster.ProtoVersion = v
+
+	session, err := cluster.CreateSession()
+
+	if err != nil {
+		log.WithFields(log.Fields{
+			"servers":      srvs,
+			"keyspace":     ks,
+			"protoVersion": v,
+		}).Error("creation of a cassandra session failed")
+
+		panic(err)
+	}
+
+	return session
+}
+
 // Stop will close the cassandra session
 func (c *CassandraStore) Stop() {
 	c.nativeSession.Close()
@@ -54,25 +76,7 @@ func (c *CassandraStore) Stop() {
 // This method will panic if the host is not reachable
 func (c *CassandraStore) Start() {
 
-	cluster := gocql.NewCluster(c.Servers...)
-	cluster.Keyspace = c.KeySpace
-	cluster.Consistency = gocql.Quorum
-	cluster.ProtoVersion = c.ProtoVersion
-
-	session, err := cluster.CreateSession()
-
-	if err != nil {
-		log.WithFields(log.Fields{
-			"servers":      c.Servers,
-			"keyspace":     c.KeySpace,
-			"consistency":  gocql.Quorum,
-			"protoVersion": c.ProtoVersion,
-		}).Error("Fail : creation of a cassandra session failed")
-
-		panic(err)
-	}
-
-	c.nativeSession = session
+	c.nativeSession = c.createNativeSession(c.Servers, c.KeySpace, c.ProtoVersion)
 	c.asynchroneBatch = c.nativeSession.NewBatch(gocql.UnloggedBatch)
 }
 
@@ -92,7 +96,7 @@ func (c *CassandraStore) Retrieve(context manipulate.Contexts, objects ...manipu
 			log.WithFields(log.Fields{
 				"context": context,
 				"error":   err.Error(),
-			}).Error("Fail : sending select command to cassandra")
+			}).Error("sending select command to cassandra")
 
 			return []*elemental.Error{elemental.NewError(ManipCassandraPrimaryFieldsAndValuesErrorTitle, fmt.Sprintf(ManipCassandraPrimaryFieldsAndValuesErrorDescription, object, err.Error()), fmt.Sprintf("%s", object), ManipCassandraPrimaryFieldsAndValuesErrorCode)}
 		}
@@ -136,7 +140,7 @@ func (c *CassandraStore) Delete(context manipulate.Contexts, objects ...manipula
 			log.WithFields(log.Fields{
 				"context": context,
 				"error":   err.Error(),
-			}).Error("Fail : sending select command to cassandra")
+			}).Error("sending select command to cassandra")
 
 			return []*elemental.Error{elemental.NewError(ManipCassandraPrimaryFieldsAndValuesErrorTitle, fmt.Sprintf(ManipCassandraPrimaryFieldsAndValuesErrorDescription, object, err.Error()), fmt.Sprintf("%s", object), ManipCassandraPrimaryFieldsAndValuesErrorCode)}
 		}
@@ -161,7 +165,7 @@ func (c *CassandraStore) Delete(context manipulate.Contexts, objects ...manipula
 			"batch":   batch.Entries,
 			"context": context,
 			"error":   err.Error(),
-		}).Error("Fail : sending delete command to cassandra")
+		}).Error("sending delete command to cassandra")
 
 		return []*elemental.Error{elemental.NewError(ManipCassandraExecuteBatchErrorTitle, fmt.Sprintf(ManipCassandraExecuteBatchErrorDescription, err.Error()), fmt.Sprintf("%s", objects), ManipCassandraExecuteBatchErrorCode)}
 	}
@@ -219,7 +223,7 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 				"batch":   batch.Entries,
 				"context": context,
 				"error":   err.Error(),
-			}).Error("Fail : sending update command to cassandra")
+			}).Error("sending update command to cassandra")
 
 			return []*elemental.Error{elemental.NewError(ManipCassandraFieldsAndValuesErrorTitle, fmt.Sprintf(ManipCassandraFieldsAndValuesErrorDescription, object, err.Error()), fmt.Sprintf("%s", object), ManipCassandraFieldsAndValuesErrorCode)}
 		}
@@ -244,7 +248,7 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 			"batch":   batch.Entries,
 			"context": context,
 			"error":   err.Error(),
-		}).Error("Fail : sending create command to cassandra")
+		}).Error("sending create command to cassandra")
 
 		for _, object := range objects {
 			object.SetIdentifier("")
@@ -276,7 +280,7 @@ func (c *CassandraStore) UpdateCollection(context manipulate.Contexts, attribute
 		log.WithFields(log.Fields{
 			"context": context,
 			"error":   err.Error(),
-		}).Error("Fail : sending update collection command to cassandra")
+		}).Error("sending update collection command to cassandra")
 
 		return []*elemental.Error{elemental.NewError(ManipCassandraPrimaryFieldsAndValuesErrorTitle, fmt.Sprintf(ManipCassandraPrimaryFieldsAndValuesErrorDescription, object, err.Error()), fmt.Sprintf("%s", object), ManipCassandraPrimaryFieldsAndValuesErrorCode)}
 	}
@@ -289,7 +293,7 @@ func (c *CassandraStore) UpdateCollection(context manipulate.Contexts, attribute
 		log.WithFields(log.Fields{
 			"context": context,
 			"error":   err.Error(),
-		}).Error("Fail : sending update collection command to cassandra")
+		}).Error("sending update collection command to cassandra")
 
 		return []*elemental.Error{elemental.NewError(ManipCassandraQueryErrorTitle, fmt.Sprintf(ManipCassandraQueryErrorDescription, object, err.Error()), fmt.Sprintf("%s", object), ManipCassandraQueryErrorCode)}
 	}
@@ -315,7 +319,7 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 			log.WithFields(log.Fields{
 				"context": context,
 				"error":   err.Error(),
-			}).Error("Fail : sending select command to cassandra")
+			}).Error("sending select command to cassandra")
 
 			return []*elemental.Error{elemental.NewError(ManipCassandraPrimaryFieldsAndValuesErrorTitle, fmt.Sprintf(ManipCassandraPrimaryFieldsAndValuesErrorDescription, object, err.Error()), fmt.Sprintf("%s", object), ManipCassandraPrimaryFieldsAndValuesErrorCode)}
 		}
@@ -328,7 +332,7 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 				"batch":   batch.Entries,
 				"context": context,
 				"error":   err.Error(),
-			}).Error("Fail : sending update command to cassandra")
+			}).Error("sending update command to cassandra")
 
 			return []*elemental.Error{elemental.NewError(ManipCassandraFieldsAndValuesErrorTitle, fmt.Sprintf(ManipCassandraFieldsAndValuesErrorDescription, object, err.Error()), fmt.Sprintf("%s", object), ManipCassandraFieldsAndValuesErrorCode)}
 		}
@@ -354,7 +358,7 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 			"batch":   batch.Entries,
 			"context": context,
 			"error":   err.Error(),
-		}).Error("Fail : sending update command to cassandra")
+		}).Error("sending update command to cassandra")
 
 		return []*elemental.Error{elemental.NewError(ManipCassandraExecuteBatchErrorTitle, fmt.Sprintf(ManipCassandraExecuteBatchErrorDescription, err.Error()), fmt.Sprintf("%s", objects), ManipCassandraExecuteBatchErrorCode)}
 	}
@@ -445,7 +449,7 @@ func (c *CassandraStore) Commit() elemental.Errors {
 		log.WithFields(log.Fields{
 			"batch": c.asynchroneBatch.Entries,
 			"error": err.Error(),
-		}).Debug("Fail : sending update command to cassandra")
+		}).Debug("sending update command to cassandra")
 
 		return []*elemental.Error{elemental.NewError(ManipCassandraExecuteBatchErrorTitle, fmt.Sprintf(ManipCassandraExecuteBatchErrorDescription, err.Error()), "", ManipCassandraExecuteBatchErrorCode)}
 	}
@@ -526,6 +530,69 @@ func unmarshalInterface(iter *gocql.Iter, objects interface{}) elemental.Errors 
 		log.Error(err)
 		return []*elemental.Error{elemental.NewError(ManipCassandraUnmarshalErrorTitle, fmt.Sprintf(ManipCassandraUnmarshalErrorDescription, objects, sliceMaps, err.Error()), fmt.Sprintf("%s", objects), ManipCassandraUnmarshalErrorCode)}
 	}
+
+	return nil
+}
+
+// DoesKeyspaceExist checks if the configured keyspace exists
+func (c *CassandraStore) DoesKeyspaceExist() (bool, error) {
+
+	session := c.createNativeSession(c.Servers, "", c.ProtoVersion)
+	info, err := session.KeyspaceMetadata(c.KeySpace)
+
+	if err != nil {
+		log.WithFields(log.Fields{
+			"keyspace": c.KeySpace,
+			"error":    err,
+		}).Error("unable to get keyspace metadata")
+
+		return false, err
+	}
+
+	session.Close()
+
+	return err == nil && len(info.Tables) > 0, nil
+}
+
+// CreateKeySpace creates a new keyspace
+func (c *CassandraStore) CreateKeySpace(replicationFactor int) error {
+
+	session := c.createNativeSession(c.Servers, "", c.ProtoVersion)
+	query := session.Query(
+		fmt.Sprintf("CREATE KEYSPACE %s WITH replication = {'class' : 'SimpleStrategy', 'replication_factor': %d}", c.KeySpace, replicationFactor))
+
+	return query.Exec()
+}
+
+// DropKeySpace deletes the given keyspace
+func (c *CassandraStore) DropKeySpace() error {
+
+	session := c.createNativeSession(c.Servers, "", c.ProtoVersion)
+	query := session.Query(fmt.Sprintf("DROP KEYSPACE IF EXISTS %s", c.KeySpace))
+
+	return query.Exec()
+}
+
+// ExecuteScript opens a new session, runs the given script in a mode and close the session.
+func (c *CassandraStore) ExecuteScript(data string) error {
+
+	session := c.createNativeSession(c.Servers, c.KeySpace, c.ProtoVersion)
+	for _, statement := range strings.Split(data, ";\n") {
+
+		if len(statement) == 0 {
+			continue
+		}
+
+		if err := session.Query(statement).Exec(); err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).Error("unable to execute query. aborting script in the middle. be sure to clean up my mess.")
+
+			return err
+		}
+	}
+
+	session.Close()
 
 	return nil
 }
