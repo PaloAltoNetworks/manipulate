@@ -260,7 +260,7 @@ func TestCassandre_Commit_Error(t *testing.T) {
 
 		Convey("Then we should get the good batch", func() {
 			So(expectedBatch, ShouldEqual, batch)
-			So(store.asynchroneBatch, ShouldEqual, batch)
+			So(store.asynchroneBatch, ShouldNotEqual, batch)
 			So(expectedBatch, ShouldEqual, batch)
 			So(expectedErrors, ShouldResemble, newError)
 		})
@@ -910,7 +910,7 @@ func TestCassandra_RetrieveWithError(t *testing.T) {
 			return &gocql.Iter{}
 		})
 
-	  var expectedMaps []map[string]interface{}
+		var expectedMaps []map[string]interface{}
 
 		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return expectedMaps, nil
