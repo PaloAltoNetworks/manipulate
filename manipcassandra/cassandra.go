@@ -7,6 +7,7 @@ package manipcassandra
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/gocql"
@@ -15,6 +16,9 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 )
+
+// GocqlTimeout changes the timeout that will be used for the next gocql session
+var GocqlTimeout = 600 * time.Millisecond
 
 // AttributeUpdater structu used to make request as UPDATE policy SET NAME = NAME - ?
 type AttributeUpdater struct {
@@ -50,6 +54,7 @@ func (c *CassandraStore) createNativeSession(srvs []string, ks string, v int) *g
 	cluster.Keyspace = ks
 	cluster.Consistency = gocql.Quorum
 	cluster.ProtoVersion = v
+	cluster.Timeout = GocqlTimeout
 
 	session, err := cluster.CreateSession()
 
@@ -538,6 +543,8 @@ func unmarshalInterface(iter *gocql.Iter, objects interface{}) elemental.Errors 
 func (c *CassandraStore) DoesKeyspaceExist() (bool, error) {
 
 	session := c.createNativeSession(c.Servers, "", c.ProtoVersion)
+	defer session.Close()
+
 	info, err := session.KeyspaceMetadata(c.KeySpace)
 
 	if err != nil {
@@ -549,8 +556,6 @@ func (c *CassandraStore) DoesKeyspaceExist() (bool, error) {
 		return false, err
 	}
 
-	session.Close()
-
 	return err == nil && len(info.Tables) > 0, nil
 }
 
@@ -558,6 +563,8 @@ func (c *CassandraStore) DoesKeyspaceExist() (bool, error) {
 func (c *CassandraStore) CreateKeySpace(replicationFactor int) error {
 
 	session := c.createNativeSession(c.Servers, "", c.ProtoVersion)
+	defer session.Close()
+
 	query := session.Query(
 		fmt.Sprintf("CREATE KEYSPACE %s WITH replication = {'class' : 'SimpleStrategy', 'replication_factor': %d}", c.KeySpace, replicationFactor))
 
@@ -568,6 +575,8 @@ func (c *CassandraStore) CreateKeySpace(replicationFactor int) error {
 func (c *CassandraStore) DropKeySpace() error {
 
 	session := c.createNativeSession(c.Servers, "", c.ProtoVersion)
+	defer session.Close()
+
 	query := session.Query(fmt.Sprintf("DROP KEYSPACE IF EXISTS %s", c.KeySpace))
 
 	return query.Exec()
@@ -577,6 +586,8 @@ func (c *CassandraStore) DropKeySpace() error {
 func (c *CassandraStore) ExecuteScript(data string) error {
 
 	session := c.createNativeSession(c.Servers, c.KeySpace, c.ProtoVersion)
+	defer session.Close()
+
 	for _, statement := range strings.Split(data, ";\n") {
 
 		if len(statement) == 0 {
@@ -591,8 +602,6 @@ func (c *CassandraStore) ExecuteScript(data string) error {
 			return err
 		}
 	}
-
-	session.Close()
 
 	return nil
 }
