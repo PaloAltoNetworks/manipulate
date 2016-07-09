@@ -49,7 +49,7 @@ func NewCassandraStore(servers []string, keyspace string, version int) *Cassandr
 	}
 }
 
-func (c *CassandraStore) createNativeSession(srvs []string, ks string, v int) *gocql.Session {
+func (c *CassandraStore) createNativeSession(srvs []string, ks string, v int) (*gocql.Session, error) {
 	cluster := gocql.NewCluster(srvs...)
 	cluster.Keyspace = ks
 	cluster.Consistency = gocql.Quorum
@@ -65,10 +65,10 @@ func (c *CassandraStore) createNativeSession(srvs []string, ks string, v int) *g
 			"protoVersion": v,
 		}).Error("creation of a cassandra session failed")
 
-		panic(err)
+		return nil, err
 	}
 
-	return session
+	return session, nil
 }
 
 // Stop will close the cassandra session
@@ -78,11 +78,16 @@ func (c *CassandraStore) Stop() {
 }
 
 // Start will start the cassandra session
-// This method will panic if the host is not reachable
-func (c *CassandraStore) Start() {
+func (c *CassandraStore) Start() error {
 
-	c.nativeSession = c.createNativeSession(c.Servers, c.KeySpace, c.ProtoVersion)
+	session, err := c.createNativeSession(c.Servers, c.KeySpace, c.ProtoVersion)
+	if err != nil {
+		return err
+	}
+	c.nativeSession = session
 	c.asynchroneBatch = c.nativeSession.NewBatch(gocql.UnloggedBatch)
+
+	return nil
 }
 
 // Retrieve will launch a set of select to the cassandra session
@@ -544,7 +549,10 @@ func unmarshalInterface(iter *gocql.Iter, objects interface{}) elemental.Errors 
 // DoesKeyspaceExist checks if the configured keyspace exists
 func (c *CassandraStore) DoesKeyspaceExist() (bool, error) {
 
-	session := c.createNativeSession(c.Servers, "", c.ProtoVersion)
+	session, err := c.createNativeSession(c.Servers, "", c.ProtoVersion)
+	if err != nil {
+		return false, err
+	}
 	defer session.Close()
 
 	info, err := session.KeyspaceMetadata(c.KeySpace)
@@ -564,7 +572,10 @@ func (c *CassandraStore) DoesKeyspaceExist() (bool, error) {
 // CreateKeySpace creates a new keyspace
 func (c *CassandraStore) CreateKeySpace(replicationFactor int) error {
 
-	session := c.createNativeSession(c.Servers, "", c.ProtoVersion)
+	session, err := c.createNativeSession(c.Servers, "", c.ProtoVersion)
+	if err != nil {
+		return err
+	}
 	defer session.Close()
 
 	query := session.Query(
@@ -576,7 +587,10 @@ func (c *CassandraStore) CreateKeySpace(replicationFactor int) error {
 // DropKeySpace deletes the given keyspace
 func (c *CassandraStore) DropKeySpace() error {
 
-	session := c.createNativeSession(c.Servers, "", c.ProtoVersion)
+	session, err := c.createNativeSession(c.Servers, "", c.ProtoVersion)
+	if err != nil {
+		return err
+	}
 	defer session.Close()
 
 	query := session.Query(fmt.Sprintf("DROP KEYSPACE IF EXISTS %s", c.KeySpace))
@@ -587,7 +601,10 @@ func (c *CassandraStore) DropKeySpace() error {
 // ExecuteScript opens a new session, runs the given script in a mode and close the session.
 func (c *CassandraStore) ExecuteScript(data string) error {
 
-	session := c.createNativeSession(c.Servers, c.KeySpace, c.ProtoVersion)
+	session, err := c.createNativeSession(c.Servers, c.KeySpace, c.ProtoVersion)
+	if err != nil {
+		return err
+	}
 	defer session.Close()
 
 	for _, statement := range strings.Split(data, ";\n") {

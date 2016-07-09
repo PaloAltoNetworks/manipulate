@@ -420,7 +420,7 @@ func TestCassandra_Start(t *testing.T) {
 	})
 }
 
-func TestCassandra_StartWithPanic(t *testing.T) {
+func TestCassandra_StartWithError(t *testing.T) {
 	Convey("When I call the method start, the session should be init with the cassandre store", t, func() {
 
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
@@ -434,14 +434,11 @@ func TestCassandra_StartWithPanic(t *testing.T) {
 			return nil, errors.New("should panic session")
 		})
 
-		panicFunc := func() {
-			store.Start()
-		}
+		err := store.Start()
 
-		Convey("Then I should get a panic", func() {
-			So(panicFunc, ShouldPanic)
+		Convey("Then error should not be nil", func() {
+			So(err, ShouldNotBeNil)
 		})
-
 	})
 }
 
