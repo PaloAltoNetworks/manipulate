@@ -59,12 +59,6 @@ func (c *CassandraStore) createNativeSession(srvs []string, ks string, v int) (*
 	session, err := cluster.CreateSession()
 
 	if err != nil {
-		log.WithFields(log.Fields{
-			"servers":      srvs,
-			"keyspace":     ks,
-			"protoVersion": v,
-		}).Error("creation of a cassandra session failed")
-
 		return nil, err
 	}
 
