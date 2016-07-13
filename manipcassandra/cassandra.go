@@ -433,40 +433,39 @@ func (c *CassandraStore) Batch() *gocql.Batch {
 	return c.nativeSession.NewBatch(gocql.UnloggedBatch)
 }
 
-// ExecuteBatch execute the given batch
+// CommitBatch commit the given batch
 // The dev can then do whatever he wants with
-func (c *CassandraStore) ExecuteBatch(b *gocql.Batch) error {
+func (c *CassandraStore) CommitBatch(b *gocql.Batch) elemental.Errors {
 
 	log.WithFields(log.Fields{
 		"batch": b.Entries,
-	}).Debug("Success : sending commands to cassandra")
+	}).Debug("About : commit batch to cassandra")
 
-	return c.nativeSession.ExecuteBatch(b)
+	if err := c.nativeSession.ExecuteBatch(b); err != nil {
+
+		log.WithFields(log.Fields{
+			"batch": b.Entries,
+			"error": err.Error(),
+		}).Debug("Fail : sending batch command to cassandra")
+
+		return []*elemental.Error{elemental.NewError(ManipCassandraExecuteBatchErrorTitle, fmt.Sprintf(ManipCassandraExecuteBatchErrorDescription, err.Error()), "", ManipCassandraExecuteBatchErrorCode)}
+	}
+
+	log.WithFields(log.Fields{
+		"batch": b.Entries,
+	}).Debug("Success : commit batch to cassandra")
+
+	return nil
 }
 
 // Commit will execute the AsynchroneBatch of the receiver
 // The method will return an error if the batch does not succeed
 func (c *CassandraStore) Commit() elemental.Errors {
 
-	if err := c.nativeSession.ExecuteBatch(c.asynchroneBatch); err != nil {
-
-		log.WithFields(log.Fields{
-			"batch": c.asynchroneBatch.Entries,
-			"error": err.Error(),
-		}).Debug("sending batch command to cassandra")
-
-		c.asynchroneBatch = c.nativeSession.NewBatch(gocql.UnloggedBatch)
-
-		return []*elemental.Error{elemental.NewError(ManipCassandraExecuteBatchErrorTitle, fmt.Sprintf(ManipCassandraExecuteBatchErrorDescription, err.Error()), "", ManipCassandraExecuteBatchErrorCode)}
-	}
-
-	log.WithFields(log.Fields{
-		"batch": c.asynchroneBatch.Entries,
-	}).Debug("Success : sending batch command to cassandra")
-
+	err := c.CommitBatch(c.asynchroneBatch)
 	c.asynchroneBatch = c.nativeSession.NewBatch(gocql.UnloggedBatch)
 
-	return nil
+	return err
 }
 
 // sliceMaps will try to call the method SliceMap on the given iterator
@@ -560,7 +559,7 @@ func (c *CassandraStore) DoesKeyspaceExist() (bool, error) {
 		return false, err
 	}
 
-	return err == nil && len(info.Tables) > 0, nil
+	return len(info.Tables) > 0, nil
 }
 
 // CreateKeySpace creates a new keyspace
