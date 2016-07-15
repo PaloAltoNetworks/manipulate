@@ -276,18 +276,18 @@ func TestCassandra_ExecuteBatch(t *testing.T) {
 		batch := &gocql.Batch{}
 
 		var expectedBatch *gocql.Batch
-		expectedError := errors.New("error batch")
+		expectedError := elemental.Errors{elemental.NewError("manipcassandra: executeBatch of the batch", "An issue occurs when calling executeBatch of the batch. Go error error batch", "", 5004)}
 
 		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
 			expectedBatch = b
-			return expectedError
+			return errors.New("error batch")
 		})
 
-		newError := store.ExecuteBatch(batch)
+		newError := store.CommitBatch(batch)
 
 		Convey("Then we should see that execute bash has been called", func() {
 			So(expectedBatch, ShouldEqual, batch)
-			So(expectedError, ShouldEqual, newError)
+			So(expectedError, ShouldResemble, newError)
 		})
 	})
 }
@@ -1877,6 +1877,652 @@ func TestCassandra_Create_ErrorExecuteBatch(t *testing.T) {
 			So(err[0], ShouldResemble, expectedErrors[0])
 			So(len(tag2.ID), ShouldEqual, 0)
 			So(len(tag2.ID), ShouldEqual, 0)
+		})
+	})
+}
+
+func TestCassandraCreateKeySpace(t *testing.T) {
+	Convey("When I call the method createKeySpace, a new key sapce should be created", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+
+		var expectedServers []string
+		cluster := &gocql.ClusterConfig{}
+
+		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+			expectedServers = servers
+			return cluster
+		})
+
+		session := &gocql.Session{}
+
+		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+			return session, nil
+		})
+
+		var expectedQueryString string
+		newQuery := &gocql.Query{}
+
+		apomock.Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
+			expectedQueryString = query
+			return newQuery
+		})
+
+		var expectedQuery *gocql.Query
+		apomock.Override("gocql.Query.Exec", func(query *gocql.Query) error {
+			expectedQuery = query
+			return nil
+		})
+
+		var sessionCloseCalled bool
+
+		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+			sessionCloseCalled = true
+		})
+
+		err := store.CreateKeySpace(5)
+
+		Convey("Then I should have a native session", func() {
+			So(store.Servers, ShouldResemble, expectedServers)
+			So(cluster.Keyspace, ShouldEqual, "")
+			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
+			So(cluster.ProtoVersion, ShouldEqual, 1)
+			So(expectedQueryString, ShouldEqual, "CREATE KEYSPACE keyspace WITH replication = {'class' : 'SimpleStrategy', 'replication_factor': 5}")
+			So(expectedQuery, ShouldEqual, newQuery)
+			So(sessionCloseCalled, ShouldBeTrue)
+			So(err, ShouldBeNil)
+		})
+	})
+}
+
+func TestCassandraCreateKeySpaceWithErrorFromSession(t *testing.T) {
+	Convey("When I call the method createKeySpace and got an error from the creation of the session", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		cluster := &gocql.ClusterConfig{}
+
+		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+			return cluster
+		})
+
+		session := &gocql.Session{}
+
+		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+			return session, errors.New("should panic session")
+		})
+
+		err := store.CreateKeySpace(5)
+
+		Convey("Then I should have get a session", func() {
+			So(err, ShouldResemble, errors.New("should panic session"))
+		})
+	})
+}
+
+func TestCassandraCreateKeySpaceErrorQuery(t *testing.T) {
+	Convey("When I call the method createKeySpace, with an error from the query", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+
+		var expectedServers []string
+		cluster := &gocql.ClusterConfig{}
+
+		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+			expectedServers = servers
+			return cluster
+		})
+
+		session := &gocql.Session{}
+
+		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+			return session, nil
+		})
+
+		var expectedQueryString string
+		newQuery := &gocql.Query{}
+
+		apomock.Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
+			expectedQueryString = query
+			return newQuery
+		})
+
+		var expectedQuery *gocql.Query
+		apomock.Override("gocql.Query.Exec", func(query *gocql.Query) error {
+			expectedQuery = query
+			return errors.New("query error")
+		})
+
+		var sessionCloseCalled bool
+
+		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+			sessionCloseCalled = true
+		})
+
+		err := store.CreateKeySpace(5)
+
+		Convey("Then I should have a native session", func() {
+			So(store.Servers, ShouldResemble, expectedServers)
+			So(cluster.Keyspace, ShouldEqual, "")
+			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
+			So(cluster.ProtoVersion, ShouldEqual, 1)
+			So(expectedQueryString, ShouldEqual, "CREATE KEYSPACE keyspace WITH replication = {'class' : 'SimpleStrategy', 'replication_factor': 5}")
+			So(expectedQuery, ShouldEqual, newQuery)
+			So(sessionCloseCalled, ShouldBeTrue)
+			So(err, ShouldResemble, errors.New("query error"))
+		})
+	})
+}
+
+func TestCassandraDropKeySpace(t *testing.T) {
+	Convey("When I call the method DropKeySpace, a new key sapce should be created", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+
+		var expectedServers []string
+		cluster := &gocql.ClusterConfig{}
+
+		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+			expectedServers = servers
+			return cluster
+		})
+
+		session := &gocql.Session{}
+
+		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+			return session, nil
+		})
+
+		var expectedQueryString string
+		newQuery := &gocql.Query{}
+
+		apomock.Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
+			expectedQueryString = query
+			return newQuery
+		})
+
+		var expectedQuery *gocql.Query
+		apomock.Override("gocql.Query.Exec", func(query *gocql.Query) error {
+			expectedQuery = query
+			return nil
+		})
+
+		var sessionCloseCalled bool
+
+		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+			sessionCloseCalled = true
+		})
+
+		err := store.DropKeySpace()
+
+		Convey("Then I should have a native session", func() {
+			So(store.Servers, ShouldResemble, expectedServers)
+			So(cluster.Keyspace, ShouldEqual, "")
+			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
+			So(cluster.ProtoVersion, ShouldEqual, 1)
+			So(expectedQueryString, ShouldEqual, "DROP KEYSPACE IF EXISTS keyspace")
+			So(expectedQuery, ShouldEqual, newQuery)
+			So(sessionCloseCalled, ShouldBeTrue)
+			So(err, ShouldBeNil)
+		})
+	})
+}
+
+func TestCassandraDropKeySpaceWithErrorFromSession(t *testing.T) {
+	Convey("When I call the method DropKeySpace and got an error from the creation of the session", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		cluster := &gocql.ClusterConfig{}
+
+		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+			return cluster
+		})
+
+		session := &gocql.Session{}
+
+		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+			return session, errors.New("should panic session")
+		})
+
+		err := store.DropKeySpace()
+
+		Convey("Then I should have get a session", func() {
+			So(err, ShouldResemble, errors.New("should panic session"))
+		})
+	})
+}
+
+func TestCassandraDropKeySpaceErrorQuery(t *testing.T) {
+	Convey("When I call the method DropKeySpace, with an error from the query", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+
+		var expectedServers []string
+		cluster := &gocql.ClusterConfig{}
+
+		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+			expectedServers = servers
+			return cluster
+		})
+
+		session := &gocql.Session{}
+
+		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+			return session, nil
+		})
+
+		var expectedQueryString string
+		newQuery := &gocql.Query{}
+
+		apomock.Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
+			expectedQueryString = query
+			return newQuery
+		})
+
+		var expectedQuery *gocql.Query
+		apomock.Override("gocql.Query.Exec", func(query *gocql.Query) error {
+			expectedQuery = query
+			return errors.New("query error")
+		})
+
+		var sessionCloseCalled bool
+
+		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+			sessionCloseCalled = true
+		})
+
+		err := store.DropKeySpace()
+
+		Convey("Then I should have a native session", func() {
+			So(store.Servers, ShouldResemble, expectedServers)
+			So(cluster.Keyspace, ShouldEqual, "")
+			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
+			So(cluster.ProtoVersion, ShouldEqual, 1)
+			So(expectedQueryString, ShouldEqual, "DROP KEYSPACE IF EXISTS keyspace")
+			So(expectedQuery, ShouldEqual, newQuery)
+			So(sessionCloseCalled, ShouldBeTrue)
+			So(err, ShouldResemble, errors.New("query error"))
+		})
+	})
+}
+
+func TestCassandraDoesKeyspaceExist(t *testing.T) {
+	Convey("When I call the method DoesKeyspaceExist, with a keyspace which is exist", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+
+		var expectedServers []string
+		cluster := &gocql.ClusterConfig{}
+
+		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+			expectedServers = servers
+			return cluster
+		})
+
+		session := &gocql.Session{}
+
+		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+			return session, nil
+		})
+
+		var sessionCloseCalled bool
+
+		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+			sessionCloseCalled = true
+		})
+
+		keyspaceMetadata := &gocql.KeyspaceMetadata{}
+		keyspaceMetadata.Tables = make(map[string]*gocql.TableMetadata)
+		keyspaceMetadata.Tables["1"] = &gocql.TableMetadata{}
+
+		apomock.Override("gocql.Session.KeyspaceMetadata", func(session *gocql.Session, keyspace string) (*gocql.KeyspaceMetadata, error) {
+			return keyspaceMetadata, nil
+		})
+
+		ok, err := store.DoesKeyspaceExist()
+
+		Convey("Then I should have a native session", func() {
+			So(store.Servers, ShouldResemble, expectedServers)
+			So(cluster.Keyspace, ShouldEqual, "")
+			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
+			So(cluster.ProtoVersion, ShouldEqual, 1)
+			So(sessionCloseCalled, ShouldBeTrue)
+			So(err, ShouldBeNil)
+			So(ok, ShouldBeTrue)
+		})
+	})
+}
+
+func TestCassandraDoesKeyspaceExistWithNoKeyspace(t *testing.T) {
+	Convey("When I call the method DoesKeyspaceExist, with a keyspace which is not exist", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+
+		var expectedServers []string
+		cluster := &gocql.ClusterConfig{}
+
+		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+			expectedServers = servers
+			return cluster
+		})
+
+		session := &gocql.Session{}
+
+		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+			return session, nil
+		})
+
+		var sessionCloseCalled bool
+
+		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+			sessionCloseCalled = true
+		})
+
+		keyspaceMetadata := &gocql.KeyspaceMetadata{}
+
+		apomock.Override("gocql.Session.KeyspaceMetadata", func(session *gocql.Session, keyspace string) (*gocql.KeyspaceMetadata, error) {
+			return keyspaceMetadata, nil
+		})
+
+		ok, err := store.DoesKeyspaceExist()
+
+		Convey("Then I should have a native session", func() {
+			So(store.Servers, ShouldResemble, expectedServers)
+			So(cluster.Keyspace, ShouldEqual, "")
+			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
+			So(cluster.ProtoVersion, ShouldEqual, 1)
+			So(sessionCloseCalled, ShouldBeTrue)
+			So(err, ShouldBeNil)
+			So(ok, ShouldBeFalse)
+		})
+	})
+}
+
+func TestCassandraDoesKeyspaceExistWithErrorFromKeySpace(t *testing.T) {
+	Convey("When I call the method DoesKeyspaceExist, with a keyspace which an error", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+
+		var expectedServers []string
+		cluster := &gocql.ClusterConfig{}
+
+		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+			expectedServers = servers
+			return cluster
+		})
+
+		session := &gocql.Session{}
+
+		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+			return session, nil
+		})
+
+		var sessionCloseCalled bool
+
+		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+			sessionCloseCalled = true
+		})
+
+		apomock.Override("gocql.Session.KeyspaceMetadata", func(session *gocql.Session, keyspace string) (*gocql.KeyspaceMetadata, error) {
+			return nil, errors.New("error from KeyspaceMetadata")
+		})
+
+		ok, err := store.DoesKeyspaceExist()
+
+		Convey("Then I should have a native session", func() {
+			So(store.Servers, ShouldResemble, expectedServers)
+			So(cluster.Keyspace, ShouldEqual, "")
+			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
+			So(cluster.ProtoVersion, ShouldEqual, 1)
+			So(sessionCloseCalled, ShouldBeTrue)
+			So(err, ShouldResemble, errors.New("error from KeyspaceMetadata"))
+			So(ok, ShouldBeFalse)
+		})
+	})
+}
+
+func TestCassandraDoesKeyspaceExistWithErrorFromSessio(t *testing.T) {
+	Convey("When I call the method DoesKeyspaceExist, with an error from the session", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+
+		var expectedServers []string
+		cluster := &gocql.ClusterConfig{}
+
+		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+			expectedServers = servers
+			return cluster
+		})
+
+		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+			return nil, errors.New("should panic session")
+		})
+
+		ok, err := store.DoesKeyspaceExist()
+
+		Convey("Then I should have a native session", func() {
+			So(store.Servers, ShouldResemble, expectedServers)
+			So(cluster.Keyspace, ShouldEqual, "")
+			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
+			So(cluster.ProtoVersion, ShouldEqual, 1)
+			So(err, ShouldResemble, errors.New("should panic session"))
+			So(ok, ShouldBeFalse)
+		})
+	})
+}
+
+func TestCassandraExecuteScript(t *testing.T) {
+	Convey("When I call the method ExecuteScript, with a good script", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+
+		var expectedServers []string
+		cluster := &gocql.ClusterConfig{}
+
+		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+			expectedServers = servers
+			return cluster
+		})
+
+		session := &gocql.Session{}
+
+		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+			return session, nil
+		})
+
+		var expectedQueryString1 string
+		var expectedQueryString2 string
+		newQuery := &gocql.Query{}
+
+		apomock.Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
+
+			if expectedQueryString1 == "" {
+				expectedQueryString1 = query
+			} else {
+				expectedQueryString2 = query
+			}
+
+			return newQuery
+		})
+
+		var expectedQuery *gocql.Query
+		apomock.Override("gocql.Query.Exec", func(query *gocql.Query) error {
+			expectedQuery = query
+			return nil
+		})
+
+		var sessionCloseCalled bool
+
+		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+			sessionCloseCalled = true
+		})
+
+		err := store.ExecuteScript("Alexandre;\nAntoine")
+
+		Convey("Then I should have a native session", func() {
+			So(store.Servers, ShouldResemble, expectedServers)
+			So(cluster.Keyspace, ShouldEqual, "keyspace")
+			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
+			So(cluster.ProtoVersion, ShouldEqual, 1)
+			So(sessionCloseCalled, ShouldBeTrue)
+			So(expectedQueryString1, ShouldResemble, "Alexandre")
+			So(expectedQueryString2, ShouldResemble, "Antoine")
+			So(expectedQuery, ShouldEqual, newQuery)
+			So(err, ShouldBeNil)
+		})
+	})
+}
+
+func TestCassandraExecuteScriptWithError(t *testing.T) {
+	Convey("When I call the method ExecuteScript, with a error", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+
+		var expectedServers []string
+		cluster := &gocql.ClusterConfig{}
+
+		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+			expectedServers = servers
+			return cluster
+		})
+
+		session := &gocql.Session{}
+
+		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+			return session, nil
+		})
+
+		var expectedQueryString1 string
+		var expectedQueryString2 string
+		newQuery := &gocql.Query{}
+
+		apomock.Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
+
+			if expectedQueryString1 == "" {
+				expectedQueryString1 = query
+			} else {
+				expectedQueryString2 = query
+			}
+
+			return newQuery
+		})
+
+		var expectedQuery *gocql.Query
+		apomock.Override("gocql.Query.Exec", func(query *gocql.Query) error {
+			expectedQuery = query
+			return errors.New("should error exec")
+		})
+
+		var sessionCloseCalled bool
+
+		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+			sessionCloseCalled = true
+		})
+
+		err := store.ExecuteScript("Alexandre;\nAntoine")
+
+		Convey("Then I should have a native session", func() {
+			So(store.Servers, ShouldResemble, expectedServers)
+			So(cluster.Keyspace, ShouldEqual, "keyspace")
+			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
+			So(cluster.ProtoVersion, ShouldEqual, 1)
+			So(sessionCloseCalled, ShouldBeTrue)
+			So(expectedQueryString1, ShouldResemble, "Alexandre")
+			So(expectedQueryString2, ShouldResemble, "")
+			So(expectedQuery, ShouldEqual, newQuery)
+			So(err, ShouldResemble, errors.New("should error exec"))
+		})
+	})
+}
+
+func TestCassandraExecuteScriptWithErrorSession(t *testing.T) {
+	Convey("When I call the method ExecuteScript, with a error session", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+
+		var expectedServers []string
+		cluster := &gocql.ClusterConfig{}
+
+		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+			expectedServers = servers
+			return cluster
+		})
+
+		session := &gocql.Session{}
+
+		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+			return session, errors.New("should error panic")
+		})
+
+		err := store.ExecuteScript("Alexandre;\nAntoine")
+
+		Convey("Then I should have a native session", func() {
+			So(store.Servers, ShouldResemble, expectedServers)
+			So(cluster.Keyspace, ShouldEqual, "keyspace")
+			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
+			So(cluster.ProtoVersion, ShouldEqual, 1)
+			So(err, ShouldResemble, errors.New("should error panic"))
+		})
+	})
+}
+
+func TestCassandraExecuteScriptWithEmptyLine(t *testing.T) {
+	Convey("When I call the method ExecuteScript, with a good script", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+
+		var expectedServers []string
+		cluster := &gocql.ClusterConfig{}
+
+		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+			expectedServers = servers
+			return cluster
+		})
+
+		session := &gocql.Session{}
+
+		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+			return session, nil
+		})
+
+		var expectedQueryString1 string
+		var expectedQueryString2 string
+		newQuery := &gocql.Query{}
+
+		apomock.Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
+
+			if expectedQueryString1 == "" {
+				expectedQueryString1 = query
+			} else {
+				expectedQueryString2 = query
+			}
+
+			return newQuery
+		})
+
+		var expectedQuery *gocql.Query
+		apomock.Override("gocql.Query.Exec", func(query *gocql.Query) error {
+			expectedQuery = query
+			return nil
+		})
+
+		var sessionCloseCalled bool
+
+		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+			sessionCloseCalled = true
+		})
+
+		err := store.ExecuteScript("Alexandre;\n;\nAntoine")
+
+		Convey("Then I should have a native session", func() {
+			So(store.Servers, ShouldResemble, expectedServers)
+			So(cluster.Keyspace, ShouldEqual, "keyspace")
+			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
+			So(cluster.ProtoVersion, ShouldEqual, 1)
+			So(sessionCloseCalled, ShouldBeTrue)
+			So(expectedQueryString1, ShouldResemble, "Alexandre")
+			So(expectedQueryString2, ShouldResemble, "Antoine")
+			So(expectedQuery, ShouldEqual, newQuery)
+			So(err, ShouldBeNil)
 		})
 	})
 }
