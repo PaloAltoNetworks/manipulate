@@ -20,6 +20,9 @@ import (
 // GocqlTimeout changes the timeout that will be used for the next gocql session
 var GocqlTimeout = 600 * time.Millisecond
 
+//ExtendedTimeout is used  for creating/dropping tables since gocql gives timeouts
+var ExtendedTimeout = 2000 * time.Millisecond
+
 // AttributeUpdater structu used to make request as UPDATE policy SET NAME = NAME - ?
 type AttributeUpdater struct {
 	Key       string
@@ -49,12 +52,12 @@ func NewCassandraStore(servers []string, keyspace string, version int) *Cassandr
 	}
 }
 
-func (c *CassandraStore) createNativeSession(srvs []string, ks string, v int) (*gocql.Session, error) {
+func (c *CassandraStore) createNativeSession(srvs []string, ks string, v int, timeout time.Duration) (*gocql.Session, error) {
 	cluster := gocql.NewCluster(srvs...)
 	cluster.Keyspace = ks
 	cluster.Consistency = gocql.Quorum
 	cluster.ProtoVersion = v
-	cluster.Timeout = GocqlTimeout
+	cluster.Timeout = timeout
 
 	session, err := cluster.CreateSession()
 
@@ -74,7 +77,7 @@ func (c *CassandraStore) Stop() {
 // Start will start the cassandra session
 func (c *CassandraStore) Start() error {
 
-	session, err := c.createNativeSession(c.Servers, c.KeySpace, c.ProtoVersion)
+	session, err := c.createNativeSession(c.Servers, c.KeySpace, c.ProtoVersion, GocqlTimeout)
 	if err != nil {
 		return err
 	}
@@ -543,7 +546,7 @@ func unmarshalInterface(iter *gocql.Iter, objects interface{}) elemental.Errors 
 // DoesKeyspaceExist checks if the configured keyspace exists
 func (c *CassandraStore) DoesKeyspaceExist() (bool, error) {
 
-	session, err := c.createNativeSession(c.Servers, "", c.ProtoVersion)
+	session, err := c.createNativeSession(c.Servers, "", c.ProtoVersion, GocqlTimeout)
 	if err != nil {
 		return false, err
 	}
@@ -566,7 +569,7 @@ func (c *CassandraStore) DoesKeyspaceExist() (bool, error) {
 // CreateKeySpace creates a new keyspace
 func (c *CassandraStore) CreateKeySpace(replicationFactor int) error {
 
-	session, err := c.createNativeSession(c.Servers, "", c.ProtoVersion)
+	session, err := c.createNativeSession(c.Servers, "", c.ProtoVersion, ExtendedTimeout)
 	if err != nil {
 		return err
 	}
@@ -581,7 +584,7 @@ func (c *CassandraStore) CreateKeySpace(replicationFactor int) error {
 // DropKeySpace deletes the given keyspace
 func (c *CassandraStore) DropKeySpace() error {
 
-	session, err := c.createNativeSession(c.Servers, "", c.ProtoVersion)
+	session, err := c.createNativeSession(c.Servers, "", c.ProtoVersion, ExtendedTimeout)
 	if err != nil {
 		return err
 	}
@@ -595,7 +598,8 @@ func (c *CassandraStore) DropKeySpace() error {
 // ExecuteScript opens a new session, runs the given script in a mode and close the session.
 func (c *CassandraStore) ExecuteScript(data string) error {
 
-	session, err := c.createNativeSession(c.Servers, c.KeySpace, c.ProtoVersion)
+	session, err := c.createNativeSession(c.Servers, c.KeySpace, c.ProtoVersion, ExtendedTimeout)
+
 	if err != nil {
 		return err
 	}
