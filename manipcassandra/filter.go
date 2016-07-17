@@ -6,8 +6,11 @@ package manipcassandra
 
 import (
 	"bytes"
+	"errors"
 	"reflect"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 // CassandraFilterEqualSeparator is equal to =
@@ -55,6 +58,34 @@ func NewMultipleFilters(keys []string, values []interface{}, separator string) *
 
 		filter.Keys = append(filter.Keys, []string{key})
 		filter.Separators = append(filter.Separators, separator)
+		filter.Values = append(filter.Values, []interface{}{value})
+	}
+
+	return filter
+}
+
+// NewMultiSeparatorFilter return a filter for operation as ID = 123 AND Name = Alexandre
+func NewMultiSeparatorFilter(keys []string, values []interface{}, separator []string) *Filter {
+
+	if len(keys) != len(separator) || len(keys) != len(values) {
+		log.WithFields(log.Fields{
+			"context": "Multiseparator query",
+			"error":   errors.New("Invalid query"),
+		}).Error("Invalid query")
+		return nil
+	}
+	filter := &Filter{}
+
+	filter.Keys = [][]string{}
+	filter.Separators = []string{}
+	filter.Values = [][]interface{}{}
+
+	for i := 0; i < len(keys); i++ {
+		key := keys[i]
+		value := values[i]
+
+		filter.Keys = append(filter.Keys, []string{key})
+		filter.Separators = append(filter.Separators, separator[i])
 		filter.Values = append(filter.Values, []interface{}{value})
 	}
 
