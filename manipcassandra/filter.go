@@ -19,6 +19,7 @@ const (
 	CassandraFilterEqualOrSuperiorSeparator = ">="
 	CassandraFilterEqualOrInferiorSeparator = "<="
 	CassandraFilterInSeparator              = "IN"
+	CassandraFilterContainsSeparator        = "CONTAINS"
 )
 
 // Filter is a filter struct which can be used with Cassandra
@@ -30,7 +31,7 @@ type Filter struct {
 }
 
 // NewFilter return a filter for operation as NAME = 'Alexandre'
-func NewFilter(key string, value interface{}, separator string) *Filter{
+func NewFilter(key string, value interface{}, separator string) *Filter {
 	filter := &Filter{}
 
 	filter.Keys = [][]string{[]string{key}}
@@ -41,7 +42,7 @@ func NewFilter(key string, value interface{}, separator string) *Filter{
 }
 
 // NewMultipleFilters return a filter for operation as ID = 123 AND Name = Alexandre
-func NewMultipleFilters(keys []string, values []interface{}, separator string) *Filter{
+func NewMultipleFilters(keys []string, values []interface{}, separator string) *Filter {
 	filter := &Filter{}
 
 	filter.Keys = [][]string{}
@@ -61,7 +62,7 @@ func NewMultipleFilters(keys []string, values []interface{}, separator string) *
 }
 
 // NewCollectionFilter return a filter for operation as (ID,name) = (123,'Alexandre')
-func NewCollectionFilter(keys []string, values []interface{}, separator string) *Filter{
+func NewCollectionFilter(keys []string, values []interface{}, separator string) *Filter {
 	filter := &Filter{}
 
 	filter.Keys = [][]string{keys}
