@@ -11,6 +11,9 @@ import (
 	"github.com/gocql/gocql"
 )
 
+// TransactionID is the type used to define a transcation ID of a store
+type TransactionID string
+
 // Contexts is a type, this type will be checked and can be only a Context or []*Context
 type Contexts interface{}
 
@@ -27,7 +30,7 @@ type Context struct {
 	Filter        FilterCompiler
 	Parameter     ParameterCompiler
 	Attributes    []string
-	TransactionID string
+	TransactionID TransactionID
 }
 
 // FilterCompiler is a interface which allows to create a filter
@@ -78,6 +81,6 @@ func ContextForIndex(c Contexts, index int) *Context {
 
 // NewTransactionID returns a new transaction ID
 // TransactionID is in the format of a uuid
-func NewTransactionID() string {
-	return gocql.TimeUUID().String()
+func NewTransactionID() TransactionID {
+	return TransactionID(gocql.TimeUUID().String())
 }

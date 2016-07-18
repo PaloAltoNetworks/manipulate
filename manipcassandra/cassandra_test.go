@@ -198,7 +198,7 @@ func TestCassandre_BatchForIDWithAnID(t *testing.T) {
 		Convey("Then we should get the good batch", func() {
 			So(expectedBatchType, ShouldEqual, gocql.UnloggedBatch)
 			So(numberOfCalls, ShouldEqual, 1)
-			So(store.batches["123"], ShouldEqual, newBatch)
+			So(store.batchRegistry["123"], ShouldEqual, newBatch)
 		})
 	})
 }
@@ -222,12 +222,12 @@ func TestCassandre_CommitTransaction(t *testing.T) {
 			return nil
 		})
 
-		err := store.CommitTransaction("123")
+		err := store.Commit("123")
 
 		Convey("Then we should get the good batch", func() {
 			So(expectedBatch, ShouldEqual, batch)
 			So(err, ShouldBeNil)
-			So(store.batches["123"], ShouldBeNil)
+			So(store.batchRegistry["123"], ShouldBeNil)
 		})
 	})
 }
@@ -238,7 +238,7 @@ func TestCassandre_CommitTransaction_ErrorBadID(t *testing.T) {
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
 
-		newError := store.CommitTransaction("123")
+		newError := store.Commit("123")
 		expectedErrors := elemental.Errors{elemental.NewError("manipcassandra: commit transaction", "An issue occurs when trying to commit the following transacation 123", "", 5009)}
 
 		Convey("Then we should get the good batch", func() {
@@ -267,14 +267,14 @@ func TestCassandre_CommitTransaction_Error(t *testing.T) {
 			return expectedError
 		})
 
-		newError := store.CommitTransaction("123")
+		newError := store.Commit("123")
 		expectedErrors := elemental.Errors{elemental.NewError("manipcassandra: executeBatch of the batch", "An issue occurs when calling executeBatch of the batch. Go error error batch", "", 5004)}
 
 		Convey("Then we should get the good batch", func() {
 			So(expectedBatch, ShouldEqual, batch)
 			So(expectedBatch, ShouldEqual, batch)
 			So(expectedErrors, ShouldResemble, newError)
-			So(store.batches["123"], ShouldBeNil)
+			So(store.batchRegistry["123"], ShouldBeNil)
 		})
 	})
 }
@@ -1306,7 +1306,7 @@ func TestCassandra_DeleteError(t *testing.T) {
 		context := &manipulate.Context{}
 		context.PageSize = 10
 
-		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: executeBatch of the batch", "An issue occurs when calling executeBatch of the batch. Go error Error batch", "[%!s(*manipcassandra.Tag=&{123   0}) %!s(*manipcassandra.Tag=&{456   0})]", 5004)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: executeBatch of the batch", "An issue occurs when calling executeBatch of the batch. Go error Error batch", "", 5004)}
 		err := store.Delete(context, tag1, tag2)
 
 		Convey("Then I should get an error", func() {
@@ -1628,7 +1628,7 @@ func TestCassandra_Update_ErrorExecuteBatch(t *testing.T) {
 		context := &manipulate.Context{}
 		context.PageSize = 10
 
-		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: executeBatch of the batch", "An issue occurs when calling executeBatch of the batch. Go error Error batch", "[%!s(*manipcassandra.Tag=&{123 description 1  0}) %!s(*manipcassandra.Tag=&{456 description 2  0})]", 5004)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: executeBatch of the batch", "An issue occurs when calling executeBatch of the batch. Go error Error batch", "", 5004)}
 		err := store.Update(context, tag1, tag2)
 
 		Convey("Then everything should have been well called", func() {
