@@ -7,6 +7,8 @@ package manipulate
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/gocql/gocql"
 )
 
 // Contexts is a type, this type will be checked and can be only a Context or []*Context
@@ -14,17 +16,18 @@ type Contexts interface{}
 
 // Context is a structure
 type Context struct {
-	PageCurrent int
-	PageSize    int
-	PageFirst   string
-	PageNext    string
-	PagePrev    string
-	PageLast    string
-	CountLocal  int
-	CountTotal  int
-	Filter      FilterCompiler
-	Parameter   ParameterCompiler
-	Attributes  []string
+	PageCurrent   int
+	PageSize      int
+	PageFirst     string
+	PageNext      string
+	PagePrev      string
+	PageLast      string
+	CountLocal    int
+	CountTotal    int
+	Filter        FilterCompiler
+	Parameter     ParameterCompiler
+	Attributes    []string
+	TransactionID string
 }
 
 // FilterCompiler is a interface which allows to create a filter
@@ -71,4 +74,10 @@ func ContextForIndex(c Contexts, index int) *Context {
 	}
 
 	return castContextFunction(c)
+}
+
+// NewTransactionID returns a new transaction ID
+// TransactionID is in the format of a uuid
+func NewTransactionID() string {
+	return gocql.TimeUUID().String()
 }

@@ -15,6 +15,7 @@ const (
 	ManipCassandraFieldsAndValuesErrorTitle                    = `manipcassandra: fieldAndValues`
 	ManipCassandraPrimaryFieldsAndValuesErrorTitle             = `manipcassandra: primaryFieldAndValues`
 	ManipCassandraQueryErrorTitle                              = `manipcassandra: session querry issue`
+	ManipCassandraCommitTransactionErrorTitle                  = `manipcassandra: commit transaction`
 )
 
 // ManipCassandraUnmarshalErrorDescription represents the description...
@@ -28,6 +29,7 @@ const (
 	ManipCassandraFieldsAndValuesErrorDescription                    = `An issue occurs when using the method fieldAndValues on the object %s. Go error %s`
 	ManipCassandraPrimaryFieldsAndValuesErrorDescription             = `An issue occurs when using the method primaryFieldAndValues on the object %s. Go error %s`
 	ManipCassandraQueryErrorDescription                              = `An issue occurs when executiong a query with the object %s. Go error %s`
+	ManipCassandraCommitTransactionErrorDescription                  = `An issue occurs when trying to commit the following transacation %s`
 )
 
 // ManipCassandraUnmarshalErrorCode represents the code...
@@ -41,4 +43,5 @@ const (
 	ManipCassandraFieldsAndValuesErrorCode                    = 5006
 	ManipCassandraPrimaryFieldsAndValuesErrorCode             = 5007
 	ManipCassandraQueryErrorCode                              = 5008
+	ManipCassandraCommitTransactionErrorCode                  = 5009
 )
