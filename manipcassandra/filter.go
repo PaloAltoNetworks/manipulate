@@ -6,11 +6,8 @@ package manipcassandra
 
 import (
 	"bytes"
-	"errors"
 	"reflect"
 	"strings"
-
-	log "github.com/Sirupsen/logrus"
 )
 
 // CassandraFilterEqualSeparator is equal to =
@@ -45,9 +42,16 @@ func NewFilter(key string, value interface{}, separator string) *Filter {
 }
 
 // NewMultipleFilters return a filter for operation as ID = 123 AND Name = Alexandre
-func NewMultipleFilters(keys []string, values []interface{}, separator string) *Filter {
-	filter := &Filter{}
+// The arg separator could be either a list of string or a string, if only one string is given, the same separator will be used everywhere
+func NewMultipleFilters(keys []string, values []interface{}, separators interface{}) *Filter {
 
+	var isSeparatorArray bool
+
+	if reflect.TypeOf(separators).Kind() == reflect.Slice || reflect.TypeOf(separators).Kind() == reflect.Array {
+		isSeparatorArray = true
+	}
+
+	filter := &Filter{}
 	filter.Keys = [][]string{}
 	filter.Separators = []string{}
 	filter.Values = [][]interface{}{}
@@ -57,35 +61,13 @@ func NewMultipleFilters(keys []string, values []interface{}, separator string) *
 		value := values[i]
 
 		filter.Keys = append(filter.Keys, []string{key})
-		filter.Separators = append(filter.Separators, separator)
-		filter.Values = append(filter.Values, []interface{}{value})
-	}
 
-	return filter
-}
+		if isSeparatorArray {
+			filter.Separators = append(filter.Separators, separators.([]string)[i])
+		} else {
+			filter.Separators = append(filter.Separators, separators.(string))
+		}
 
-// NewMultiSeparatorFilter return a filter for operation as ID = 123 AND Name = Alexandre
-func NewMultiSeparatorFilter(keys []string, values []interface{}, separator []string) *Filter {
-
-	if len(keys) != len(separator) || len(keys) != len(values) {
-		log.WithFields(log.Fields{
-			"context": "Multiseparator query",
-			"error":   errors.New("Invalid query"),
-		}).Error("Invalid query")
-		return nil
-	}
-	filter := &Filter{}
-
-	filter.Keys = [][]string{}
-	filter.Separators = []string{}
-	filter.Values = [][]interface{}{}
-
-	for i := 0; i < len(keys); i++ {
-		key := keys[i]
-		value := values[i]
-
-		filter.Keys = append(filter.Keys, []string{key})
-		filter.Separators = append(filter.Separators, separator[i])
 		filter.Values = append(filter.Values, []interface{}{value})
 	}
 

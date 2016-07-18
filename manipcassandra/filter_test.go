@@ -37,6 +37,17 @@ func TestMethodNewMultipleFilters(t *testing.T) {
 	})
 }
 
+func TestMethodNewMultipleFiltersAnsMultipleSeparators(t *testing.T) {
+
+	Convey("When I create a new Filter", t, func() {
+		filter := NewMultipleFilters([]string{"ID", "name"}, []interface{}{"20", 0}, []string{CassandraFilterEqualSeparator, CassandraFilterEqualOrInferiorSeparator})
+
+		Convey("Then I should get the good values when calling the method compile", func() {
+			So(filter.Compile(), ShouldEqual, "WHERE ID = ? AND name <= ?")
+		})
+	})
+}
+
 func TestParameterFilterParamCassandraFilterEqualSeparator(t *testing.T) {
 
 	Convey("When I create a new Filter", t, func() {

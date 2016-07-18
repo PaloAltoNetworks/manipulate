@@ -154,8 +154,8 @@ func TestCassandra_Query(t *testing.T) {
 	})
 }
 
-func TestCassandre_Batch(t *testing.T) {
-	Convey("When I create a new CassandraStore and call the method batch", t, func() {
+func TestCassandre_BatchForID(t *testing.T) {
+	Convey("When I create a new CassandraStore and call the method batch with no id", t, func() {
 
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
@@ -168,7 +168,7 @@ func TestCassandre_Batch(t *testing.T) {
 			return expectedBatch
 		})
 
-		newBatch := store.Batch()
+		newBatch := store.BatchForID("")
 
 		Convey("Then we should get the good batch", func() {
 			So(expectedBatch, ShouldEqual, newBatch)
@@ -177,44 +177,43 @@ func TestCassandre_Batch(t *testing.T) {
 	})
 }
 
-func TestCassandre_BatchWithAsynchroneBatch(t *testing.T) {
-	Convey("When I create a new CassandraStore and call the method batch", t, func() {
+func TestCassandre_BatchForIDWithAnID(t *testing.T) {
+	Convey("When I create a new CassandraStore and call the method BatchForID, NewBatch should be called once", t, func() {
 
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
-		store.UseAsynchroneBatch = true
 
 		var expectedBatchType gocql.BatchType
 		expectedBatch := &gocql.Batch{}
+		var numberOfCalls int
 
 		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			expectedBatchType = t
+			numberOfCalls++
 			return expectedBatch
 		})
 
-		store.asynchroneBatch = store.nativeSession.NewBatch(gocql.UnloggedBatch)
-		newBatch := store.Batch()
+		newBatch := store.BatchForID("123")
 
 		Convey("Then we should get the good batch", func() {
-			So(store.asynchroneBatch, ShouldEqual, newBatch)
 			So(expectedBatchType, ShouldEqual, gocql.UnloggedBatch)
+			So(numberOfCalls, ShouldEqual, 1)
+			So(store.batchRegistry["123"], ShouldEqual, newBatch)
 		})
 	})
 }
 
-func TestCassandre_Commit(t *testing.T) {
-	Convey("When I create a new CassandraStore and call the method Commit", t, func() {
+func TestCassandre_CommitTransaction(t *testing.T) {
+	Convey("When I create a new CassandraStore and call the method CommitTransaction", t, func() {
 
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
-		store.UseAsynchroneBatch = true
 
 		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
 		})
 
-		store.asynchroneBatch = store.nativeSession.NewBatch(gocql.UnloggedBatch)
-		batch := store.Batch()
+		batch := store.BatchForID("123")
 
 		var expectedBatch *gocql.Batch
 
@@ -223,29 +222,42 @@ func TestCassandre_Commit(t *testing.T) {
 			return nil
 		})
 
-		err := store.Commit()
+		err := store.Commit("123")
 
 		Convey("Then we should get the good batch", func() {
 			So(expectedBatch, ShouldEqual, batch)
-			So(store.asynchroneBatch, ShouldNotEqual, batch)
 			So(err, ShouldBeNil)
+			So(store.batchRegistry["123"], ShouldBeNil)
 		})
 	})
 }
 
-func TestCassandre_Commit_Error(t *testing.T) {
+func TestCassandre_CommitTransaction_ErrorBadID(t *testing.T) {
 	Convey("When I create a new CassandraStore and call the method Commit", t, func() {
 
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
-		store.UseAsynchroneBatch = true
+
+		newError := store.Commit("123")
+		expectedErrors := elemental.Errors{elemental.NewError("manipcassandra: commit transaction", "An issue occurs when trying to commit the following transacation 123", "", 5009)}
+
+		Convey("Then we should get the good batch", func() {
+			So(expectedErrors, ShouldResemble, newError)
+		})
+	})
+}
+
+func TestCassandre_CommitTransaction_Error(t *testing.T) {
+	Convey("When I create a new CassandraStore and call the method Commit", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		store.nativeSession = &gocql.Session{}
 
 		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
 		})
 
-		store.asynchroneBatch = store.nativeSession.NewBatch(gocql.UnloggedBatch)
-		batch := store.Batch()
+		batch := store.BatchForID("123")
 
 		var expectedBatch *gocql.Batch
 		expectedError := errors.New("error batch")
@@ -255,14 +267,14 @@ func TestCassandre_Commit_Error(t *testing.T) {
 			return expectedError
 		})
 
-		newError := store.Commit()
+		newError := store.Commit("123")
 		expectedErrors := elemental.Errors{elemental.NewError("manipcassandra: executeBatch of the batch", "An issue occurs when calling executeBatch of the batch. Go error error batch", "", 5004)}
 
 		Convey("Then we should get the good batch", func() {
 			So(expectedBatch, ShouldEqual, batch)
-			So(store.asynchroneBatch, ShouldNotEqual, batch)
 			So(expectedBatch, ShouldEqual, batch)
 			So(expectedErrors, ShouldResemble, newError)
+			So(store.batchRegistry["123"], ShouldBeNil)
 		})
 	})
 }
@@ -411,7 +423,6 @@ func TestCassandra_Start(t *testing.T) {
 		Convey("Then I should have a native session", func() {
 			So(store.Servers, ShouldResemble, expectedServers)
 			So(store.nativeSession, ShouldEqual, session)
-			So(store.asynchroneBatch, ShouldResemble, store.nativeSession.NewBatch(gocql.UnloggedBatch))
 			So(cluster.Keyspace, ShouldEqual, "keyspace")
 			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
 			So(cluster.ProtoVersion, ShouldEqual, 1)
@@ -1209,14 +1220,12 @@ func TestCassandra_Delete(t *testing.T) {
 	})
 }
 
-func TestCassandra_Delete_AsynchroneBatch(t *testing.T) {
+func TestCassandra_Delete_WithTransactionID(t *testing.T) {
 
 	Convey("When I call the method Delete", t, func() {
 
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
-		store.asynchroneBatch = &gocql.Batch{}
-		store.UseAsynchroneBatch = true
 
 		apomock.Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{"ID"}, []interface{}{"123"}, nil
@@ -1241,6 +1250,15 @@ func TestCassandra_Delete_AsynchroneBatch(t *testing.T) {
 
 		})
 
+		var numberOfCallOfExecuteBatch int
+
+		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+
+			numberOfCallOfExecuteBatch++
+			return nil
+
+		})
+
 		tag1 := &Tag{}
 		tag1.ID = "123"
 
@@ -1249,6 +1267,7 @@ func TestCassandra_Delete_AsynchroneBatch(t *testing.T) {
 
 		context := &manipulate.Context{}
 		context.PageSize = 10
+		context.TransactionID = "123"
 
 		err := store.Delete(context, tag1, tag2)
 
@@ -1258,6 +1277,7 @@ func TestCassandra_Delete_AsynchroneBatch(t *testing.T) {
 			So(expectedQuery2, ShouldEqual, "DELETE FROM tag WHERE ID = ? LIMIT 10")
 			So(expectedValues1, ShouldResemble, []interface{}{"123"})
 			So(expectedValues2, ShouldResemble, []interface{}{"123"})
+			So(numberOfCallOfExecuteBatch, ShouldEqual, 0)
 		})
 	})
 }
@@ -1286,7 +1306,7 @@ func TestCassandra_DeleteError(t *testing.T) {
 		context := &manipulate.Context{}
 		context.PageSize = 10
 
-		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: executeBatch of the batch", "An issue occurs when calling executeBatch of the batch. Go error Error batch", "[%!s(*manipcassandra.Tag=&{123   0}) %!s(*manipcassandra.Tag=&{456   0})]", 5004)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: executeBatch of the batch", "An issue occurs when calling executeBatch of the batch. Go error Error batch", "", 5004)}
 		err := store.Delete(context, tag1, tag2)
 
 		Convey("Then I should get an error", func() {
@@ -1415,14 +1435,12 @@ func TestCassandra_Update(t *testing.T) {
 	})
 }
 
-func TestCassandra_Update_AsynchroneBatch(t *testing.T) {
+func TestCassandra_Update_WithTransactionID(t *testing.T) {
 
 	Convey("When I call the method Update", t, func() {
 
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
-		store.asynchroneBatch = &gocql.Batch{}
-		store.UseAsynchroneBatch = true
 
 		var expectedQuery1 string
 		var expectedValues1 interface{}
@@ -1469,9 +1487,19 @@ func TestCassandra_Update_AsynchroneBatch(t *testing.T) {
 			return []string{"ID", "description"}, []interface{}{"456", "description 2"}, nil
 		})
 
+		var numberOfCallOfExecuteBatch int
+
+		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+
+			numberOfCallOfExecuteBatch++
+			return nil
+
+		})
+
 		context := &manipulate.Context{}
 		context.PageSize = 10
 		context.Attributes = []string{"description"}
+		context.TransactionID = "123"
 
 		err := store.Update(context, tag1, tag2)
 
@@ -1483,6 +1511,7 @@ func TestCassandra_Update_AsynchroneBatch(t *testing.T) {
 			So(expectedValues2, ShouldResemble, []interface{}{"description 2", "456"})
 			So(expectedValue1, ShouldEqual, tag1)
 			So(expectedValue2, ShouldEqual, tag2)
+			So(numberOfCallOfExecuteBatch, ShouldEqual, 0)
 		})
 	})
 }
@@ -1599,7 +1628,7 @@ func TestCassandra_Update_ErrorExecuteBatch(t *testing.T) {
 		context := &manipulate.Context{}
 		context.PageSize = 10
 
-		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: executeBatch of the batch", "An issue occurs when calling executeBatch of the batch. Go error Error batch", "[%!s(*manipcassandra.Tag=&{123 description 1  0}) %!s(*manipcassandra.Tag=&{456 description 2  0})]", 5004)}
+		expectedErrors := []*elemental.Error{elemental.NewError("manipcassandra: executeBatch of the batch", "An issue occurs when calling executeBatch of the batch. Go error Error batch", "", 5004)}
 		err := store.Update(context, tag1, tag2)
 
 		Convey("Then everything should have been well called", func() {
@@ -1702,14 +1731,12 @@ func TestCassandra_Create(t *testing.T) {
 	})
 }
 
-func TestCassandra_Create_AsynchroneBatch(t *testing.T) {
+func TestCassandra_Create_WithTransacationID(t *testing.T) {
 
 	Convey("When I call the method Create", t, func() {
 
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
-		store.asynchroneBatch = &gocql.Batch{}
-		store.UseAsynchroneBatch = true
 
 		apomock.Override("gocql.TimeUUID", func() gocql.UUID {
 			return ParseUUID("7c469413-12ed-11e6-ac73-f45c89941b79")
@@ -1760,8 +1787,18 @@ func TestCassandra_Create_AsynchroneBatch(t *testing.T) {
 			return []string{"ID", "description"}, []interface{}{"456", "description 2"}, nil
 		})
 
+		var numberOfCallOfExecuteBatch int
+
+		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+
+			numberOfCallOfExecuteBatch++
+			return nil
+
+		})
+
 		context := &manipulate.Context{}
 		context.PageSize = 10
+		context.TransactionID = "123"
 
 		err := store.Create(context, nil, tag1, tag2)
 
@@ -1775,6 +1812,7 @@ func TestCassandra_Create_AsynchroneBatch(t *testing.T) {
 			So(expectedValue2, ShouldEqual, tag2)
 			So(len(tag2.ID), ShouldEqual, 36)
 			So(len(tag2.ID), ShouldEqual, 36)
+			So(numberOfCallOfExecuteBatch, ShouldEqual, 0)
 		})
 	})
 }
