@@ -151,7 +151,7 @@ func (c *CassandraStore) Delete(context manipulate.Contexts, objects ...manipula
 
 			log.WithFields(log.Fields{
 				"context": context,
-				"error":   err.Error(),
+				"error":   err,
 			}).Error("PrimaryFieldsAndValues in Delete")
 
 			return []*elemental.Error{elemental.NewError(ManipCassandraPrimaryFieldsAndValuesErrorTitle, fmt.Sprintf(ManipCassandraPrimaryFieldsAndValuesErrorDescription, object, err.Error()), fmt.Sprintf("%s", object), ManipCassandraPrimaryFieldsAndValuesErrorCode)}
@@ -215,7 +215,7 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 
 			log.WithFields(log.Fields{
 				"context": context,
-				"error":   err.Error(),
+				"error":   err,
 			}).Error("FieldsAndValues in Create")
 
 			return []*elemental.Error{elemental.NewError(ManipCassandraFieldsAndValuesErrorTitle, fmt.Sprintf(ManipCassandraFieldsAndValuesErrorDescription, object, err.Error()), fmt.Sprintf("%s", object), ManipCassandraFieldsAndValuesErrorCode)}
@@ -242,7 +242,7 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 		log.WithFields(log.Fields{
 			"batch":   batch.Entries,
 			"context": context,
-			"error":   err.Error(),
+			"error":   err,
 		}).Error("sending create command to cassandra")
 
 		for _, object := range objects {
