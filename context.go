@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/gocql/gocql"
+	"github.com/aporeto-inc/gocql"
 )
 
 // TransactionID is the type used to define a transcation ID of a store
