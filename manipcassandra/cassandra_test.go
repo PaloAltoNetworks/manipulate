@@ -110,7 +110,7 @@ func TestCassandra_Stop(t *testing.T) {
 
 		var closeHasBeenCalled bool
 
-		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+		apomock.T(t).Override("gocql.Session.Close", func(session *gocql.Session) {
 			closeHasBeenCalled = true
 		})
 
@@ -136,7 +136,7 @@ func TestCassandra_Query(t *testing.T) {
 		var expectedValues []interface{}
 		expectedQuery := &gocql.Query{}
 
-		apomock.Override("gocql.Session.Query", func(session *gocql.Session, command string, values ...interface{}) *gocql.Query {
+		apomock.T(t).Override("gocql.Session.Query", func(session *gocql.Session, command string, values ...interface{}) *gocql.Query {
 			expectedCommand = command
 			expectedValues = values
 
@@ -163,7 +163,7 @@ func TestCassandre_BatchForID(t *testing.T) {
 		var expectedBatchType gocql.BatchType
 		expectedBatch := &gocql.Batch{}
 
-		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			expectedBatchType = t
 			return expectedBatch
 		})
@@ -187,7 +187,7 @@ func TestCassandre_BatchForIDWithAnID(t *testing.T) {
 		expectedBatch := &gocql.Batch{}
 		var numberOfCalls int
 
-		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			expectedBatchType = t
 			numberOfCalls++
 			return expectedBatch
@@ -209,7 +209,7 @@ func TestCassandre_CommitTransaction(t *testing.T) {
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
 
-		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
 		})
 
@@ -217,7 +217,7 @@ func TestCassandre_CommitTransaction(t *testing.T) {
 
 		var expectedBatch *gocql.Batch
 
-		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+		apomock.T(t).Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
 			expectedBatch = b
 			return nil
 		})
@@ -253,7 +253,7 @@ func TestCassandre_CommitTransaction_Error(t *testing.T) {
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
 
-		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
 		})
 
@@ -262,7 +262,7 @@ func TestCassandre_CommitTransaction_Error(t *testing.T) {
 		var expectedBatch *gocql.Batch
 		expectedError := errors.New("error batch")
 
-		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+		apomock.T(t).Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
 			expectedBatch = b
 			return expectedError
 		})
@@ -290,7 +290,7 @@ func TestCassandra_ExecuteBatch(t *testing.T) {
 		var expectedBatch *gocql.Batch
 		expectedError := elemental.Errors{elemental.NewError("manipcassandra: executeBatch of the batch", "An issue occurs when calling executeBatch of the batch. Go error error batch", "", 5004)}
 
-		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+		apomock.T(t).Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
 			expectedBatch = b
 			return errors.New("error batch")
 		})
@@ -309,7 +309,7 @@ func TestCassandra_sliceMaps_SliceMapError(t *testing.T) {
 
 		iter := &gocql.Iter{}
 
-		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
+		apomock.T(t).Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return nil, errors.New("Error iter")
 		})
 
@@ -328,11 +328,11 @@ func TestCassandra_sliceMaps_IterCloseError(t *testing.T) {
 
 		iter := &gocql.Iter{}
 
-		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
+		apomock.T(t).Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return nil, nil
 		})
 
-		apomock.Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
+		apomock.T(t).Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
 			return errors.New("Iter close error")
 		})
 
@@ -351,11 +351,11 @@ func TestCassandra_sliceMaps_EmptySliceMap(t *testing.T) {
 
 		iter := &gocql.Iter{}
 
-		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
+		apomock.T(t).Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return make([]map[string]interface{}, 0), nil
 		})
 
-		apomock.Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
+		apomock.T(t).Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
 			return nil
 		})
 
@@ -381,11 +381,11 @@ func TestCassandra_sliceMaps(t *testing.T) {
 
 		expectedValues = append(expectedValues, value)
 
-		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
+		apomock.T(t).Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return expectedValues, nil
 		})
 
-		apomock.Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
+		apomock.T(t).Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
 			return nil
 		})
 
@@ -406,14 +406,14 @@ func TestCassandra_Start(t *testing.T) {
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
 
-		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
 			expectedServers = servers
 			return cluster
 		})
 
 		session := &gocql.Session{}
 
-		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+		apomock.T(t).Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
 
 			return session, nil
 		})
@@ -436,11 +436,11 @@ func TestCassandra_StartWithError(t *testing.T) {
 
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 
-		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
 			return &gocql.ClusterConfig{}
 		})
 
-		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+		apomock.T(t).Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
 
 			return nil, errors.New("should panic session")
 		})
@@ -459,7 +459,7 @@ func TestCassandra_unmarshalInterfaceWithEmptySliceMap(t *testing.T) {
 
 		iter := &gocql.Iter{}
 
-		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
+		apomock.T(t).Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return []map[string]interface{}{}, nil
 		})
 
@@ -478,7 +478,7 @@ func TestCassandra_unmarshalInterfaceWithErrorFromSliceMap(t *testing.T) {
 
 		iter := &gocql.Iter{}
 
-		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
+		apomock.T(t).Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return nil, errors.New("Error iter")
 		})
 
@@ -507,15 +507,15 @@ func TestCassandra_unmarshalInterfaceWithErrorFromUnmarshal(t *testing.T) {
 
 		expectedValues = append(expectedValues, value)
 
-		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
+		apomock.T(t).Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return expectedValues, nil
 		})
 
-		apomock.Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
+		apomock.T(t).Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
 			return nil
 		})
 
-		apomock.Override("cassandra.Unmarshal", func(data interface{}, v interface{}) error {
+		apomock.T(t).Override("cassandra.Unmarshal", func(data interface{}, v interface{}) error {
 			return errors.New("Errors from unmarshal")
 		})
 
@@ -545,18 +545,18 @@ func TestCassandra_unmarshalInterface(t *testing.T) {
 
 		expectedValues = append(expectedValues, value)
 
-		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
+		apomock.T(t).Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return expectedValues, nil
 		})
 
-		apomock.Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
+		apomock.T(t).Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
 			return nil
 		})
 
 		var expectedDatas interface{}
 		var expectedV interface{}
 
-		apomock.Override("cassandra.Unmarshal", func(data interface{}, v interface{}) error {
+		apomock.T(t).Override("cassandra.Unmarshal", func(data interface{}, v interface{}) error {
 			expectedDatas = data
 			expectedV = v
 
@@ -581,7 +581,7 @@ func TestCassandra_unmarshalManipulableWithErrorFromSliceMap(t *testing.T) {
 
 		iter := &gocql.Iter{}
 
-		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
+		apomock.T(t).Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return nil, errors.New("Error iter")
 		})
 
@@ -610,15 +610,15 @@ func TestCassandra_unmarshalManipulableWithErrorFromUnmarshal(t *testing.T) {
 
 		expectedValues = append(expectedValues, value)
 
-		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
+		apomock.T(t).Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return expectedValues, nil
 		})
 
-		apomock.Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
+		apomock.T(t).Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
 			return nil
 		})
 
-		apomock.Override("cassandra.Unmarshal", func(data interface{}, v interface{}) error {
+		apomock.T(t).Override("cassandra.Unmarshal", func(data interface{}, v interface{}) error {
 			return errors.New("Errors from unmarshal")
 		})
 
@@ -654,11 +654,11 @@ func TestCassandra_unmarshalManipulable(t *testing.T) {
 
 		expectedValues = append(expectedValues, value, value2)
 
-		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
+		apomock.T(t).Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return expectedValues, nil
 		})
 
-		apomock.Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
+		apomock.T(t).Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
 			return nil
 		})
 
@@ -667,7 +667,7 @@ func TestCassandra_unmarshalManipulable(t *testing.T) {
 		var expectedDatas2 interface{}
 		var expectedV2 interface{}
 
-		apomock.Override("cassandra.Unmarshal", func(data interface{}, v interface{}) error {
+		apomock.T(t).Override("cassandra.Unmarshal", func(data interface{}, v interface{}) error {
 
 			if expectedDatas1 == nil {
 				expectedDatas1 = data
@@ -712,18 +712,18 @@ func TestCassandra_Count(t *testing.T) {
 		var expectedValues []interface{}
 		expectedQuery := &gocql.Query{}
 
-		apomock.Override("gocql.Session.Query", func(session *gocql.Session, command string, values ...interface{}) *gocql.Query {
+		apomock.T(t).Override("gocql.Session.Query", func(session *gocql.Session, command string, values ...interface{}) *gocql.Query {
 			expectedCommand = command
 			expectedValues = values
 
 			return expectedQuery
 		})
 
-		apomock.Override("gocql.Query.Iter", func(q *gocql.Query) *gocql.Iter {
+		apomock.T(t).Override("gocql.Query.Iter", func(q *gocql.Query) *gocql.Iter {
 			return &gocql.Iter{}
 		})
 
-		apomock.Override("gocql.Iter.Scan", func(iter *gocql.Iter, i ...interface{}) bool {
+		apomock.T(t).Override("gocql.Iter.Scan", func(iter *gocql.Iter, i ...interface{}) bool {
 			reflect.ValueOf(i[0]).Elem().SetInt(100)
 			return true
 		})
@@ -753,18 +753,18 @@ func TestCassandra_CountErrorScan(t *testing.T) {
 		var expectedValues []interface{}
 		expectedQuery := &gocql.Query{}
 
-		apomock.Override("gocql.Session.Query", func(session *gocql.Session, command string, values ...interface{}) *gocql.Query {
+		apomock.T(t).Override("gocql.Session.Query", func(session *gocql.Session, command string, values ...interface{}) *gocql.Query {
 			expectedCommand = command
 			expectedValues = values
 
 			return expectedQuery
 		})
 
-		apomock.Override("gocql.Query.Iter", func(q *gocql.Query) *gocql.Iter {
+		apomock.T(t).Override("gocql.Query.Iter", func(q *gocql.Query) *gocql.Iter {
 			return &gocql.Iter{}
 		})
 
-		apomock.Override("gocql.Iter.Scan", func(iter *gocql.Iter, i ...interface{}) bool {
+		apomock.T(t).Override("gocql.Iter.Scan", func(iter *gocql.Iter, i ...interface{}) bool {
 			return false
 		})
 
@@ -794,22 +794,22 @@ func TestCassandra_CountErrorCloseIter(t *testing.T) {
 		var expectedValues []interface{}
 		expectedQuery := &gocql.Query{}
 
-		apomock.Override("gocql.Session.Query", func(session *gocql.Session, command string, values ...interface{}) *gocql.Query {
+		apomock.T(t).Override("gocql.Session.Query", func(session *gocql.Session, command string, values ...interface{}) *gocql.Query {
 			expectedCommand = command
 			expectedValues = values
 
 			return expectedQuery
 		})
 
-		apomock.Override("gocql.Query.Iter", func(q *gocql.Query) *gocql.Iter {
+		apomock.T(t).Override("gocql.Query.Iter", func(q *gocql.Query) *gocql.Iter {
 			return &gocql.Iter{}
 		})
 
-		apomock.Override("gocql.Iter.Scan", func(iter *gocql.Iter, i ...interface{}) bool {
+		apomock.T(t).Override("gocql.Iter.Scan", func(iter *gocql.Iter, i ...interface{}) bool {
 			return true
 		})
 
-		apomock.Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
+		apomock.T(t).Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
 			return errors.New("Iter close error")
 		})
 
@@ -839,24 +839,24 @@ func TestCassandra_RetrieveChildren(t *testing.T) {
 		var expectedValues []interface{}
 		expectedQuery := &gocql.Query{}
 
-		apomock.Override("gocql.Session.Query", func(session *gocql.Session, command string, values ...interface{}) *gocql.Query {
+		apomock.T(t).Override("gocql.Session.Query", func(session *gocql.Session, command string, values ...interface{}) *gocql.Query {
 			expectedCommand = command
 			expectedValues = values
 
 			return expectedQuery
 		})
 
-		apomock.Override("gocql.Query.Iter", func(q *gocql.Query) *gocql.Iter {
+		apomock.T(t).Override("gocql.Query.Iter", func(q *gocql.Query) *gocql.Iter {
 			return &gocql.Iter{}
 		})
 
-		apomock.Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
+		apomock.T(t).Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
 			return nil
 		})
 
 		var expectedV interface{}
 
-		apomock.Override("cassandra.Unmarshal", func(data interface{}, v interface{}) error {
+		apomock.T(t).Override("cassandra.Unmarshal", func(data interface{}, v interface{}) error {
 			expectedV = v
 			return errors.New("Errors from unmarshal")
 		})
@@ -869,7 +869,7 @@ func TestCassandra_RetrieveChildren(t *testing.T) {
 
 		expectedMaps = append(expectedMaps, value)
 
-		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
+		apomock.T(t).Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return expectedMaps, nil
 		})
 
@@ -903,24 +903,24 @@ func TestCassandra_RetrieveWithError(t *testing.T) {
 		var expectedValues []interface{}
 		expectedQuery := &gocql.Query{}
 
-		apomock.Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{}, []interface{}{}, nil
 		})
 
-		apomock.Override("gocql.Session.Query", func(session *gocql.Session, command string, values ...interface{}) *gocql.Query {
+		apomock.T(t).Override("gocql.Session.Query", func(session *gocql.Session, command string, values ...interface{}) *gocql.Query {
 			expectedCommand = command
 			expectedValues = values
 
 			return expectedQuery
 		})
 
-		apomock.Override("gocql.Query.Iter", func(q *gocql.Query) *gocql.Iter {
+		apomock.T(t).Override("gocql.Query.Iter", func(q *gocql.Query) *gocql.Iter {
 			return &gocql.Iter{}
 		})
 
 		var expectedMaps []map[string]interface{}
 
-		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
+		apomock.T(t).Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return expectedMaps, nil
 		})
 
@@ -948,7 +948,7 @@ func TestCassandra_UpdateCollection(t *testing.T) {
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
 
-		apomock.Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{"ID"}, []interface{}{"123"}, nil
 		})
 
@@ -964,14 +964,14 @@ func TestCassandra_UpdateCollection(t *testing.T) {
 		var expectedValues []interface{}
 		expectedQuery := &gocql.Query{}
 
-		apomock.Override("gocql.Session.Query", func(session *gocql.Session, command string, values ...interface{}) *gocql.Query {
+		apomock.T(t).Override("gocql.Session.Query", func(session *gocql.Session, command string, values ...interface{}) *gocql.Query {
 			expectedCommand = command
 			expectedValues = values
 
 			return expectedQuery
 		})
 
-		apomock.Override("gocql.Query.Exec", func(session *gocql.Query) error {
+		apomock.T(t).Override("gocql.Query.Exec", func(session *gocql.Query) error {
 			return nil
 		})
 
@@ -994,7 +994,7 @@ func TestCassandra_UpdateCollectionWithErrorQuery(t *testing.T) {
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
 
-		apomock.Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{"ID"}, []interface{}{"123"}, nil
 		})
 
@@ -1010,14 +1010,14 @@ func TestCassandra_UpdateCollectionWithErrorQuery(t *testing.T) {
 		var expectedValues []interface{}
 		expectedQuery := &gocql.Query{}
 
-		apomock.Override("gocql.Session.Query", func(session *gocql.Session, command string, values ...interface{}) *gocql.Query {
+		apomock.T(t).Override("gocql.Session.Query", func(session *gocql.Session, command string, values ...interface{}) *gocql.Query {
 			expectedCommand = command
 			expectedValues = values
 
 			return expectedQuery
 		})
 
-		apomock.Override("gocql.Query.Exec", func(session *gocql.Query) error {
+		apomock.T(t).Override("gocql.Query.Exec", func(session *gocql.Query) error {
 			return errors.New("CassandraStore query error")
 		})
 
@@ -1042,7 +1042,7 @@ func TestCassandra_UpdateCollectionWithErrorPrimaryFields(t *testing.T) {
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
 
-		apomock.Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{}, []interface{}{}, errors.New("CassandraStore PrimaryFieldsAndValues error")
 		})
 
@@ -1068,7 +1068,7 @@ func TestCassandra_RetrieveWithErrorPrimaryFields(t *testing.T) {
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
 
-		apomock.Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{}, []interface{}{}, errors.New("CassandraStore PrimaryFieldsAndValues error")
 		})
 
@@ -1099,18 +1099,18 @@ func TestCassandra_Retrieve(t *testing.T) {
 		var expectedValues []interface{}
 		expectedQuery := &gocql.Query{}
 
-		apomock.Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{"ID"}, []interface{}{"678"}, nil
 		})
 
-		apomock.Override("gocql.Session.Query", func(session *gocql.Session, command string, values ...interface{}) *gocql.Query {
+		apomock.T(t).Override("gocql.Session.Query", func(session *gocql.Session, command string, values ...interface{}) *gocql.Query {
 			expectedCommand = command
 			expectedValues = values
 
 			return expectedQuery
 		})
 
-		apomock.Override("gocql.Query.Iter", func(q *gocql.Query) *gocql.Iter {
+		apomock.T(t).Override("gocql.Query.Iter", func(q *gocql.Query) *gocql.Iter {
 			return &gocql.Iter{}
 		})
 
@@ -1122,15 +1122,15 @@ func TestCassandra_Retrieve(t *testing.T) {
 
 		sliceMaps = append(sliceMaps, value)
 
-		apomock.Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
+		apomock.T(t).Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return sliceMaps, nil
 		})
 
-		apomock.Override("cassandra.Unmarshal", func(data interface{}, v interface{}) error {
+		apomock.T(t).Override("cassandra.Unmarshal", func(data interface{}, v interface{}) error {
 			return nil
 		})
 
-		apomock.Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
+		apomock.T(t).Override("gocql.Iter.Close", func(iter *gocql.Iter) error {
 			return nil
 		})
 
@@ -1160,11 +1160,11 @@ func TestCassandra_Delete(t *testing.T) {
 		var expectedBatchType gocql.BatchType
 		expectedBatch := &gocql.Batch{}
 
-		apomock.Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{"ID"}, []interface{}{"123"}, nil
 		})
 
-		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			expectedBatchType = t
 			return expectedBatch
 		})
@@ -1175,7 +1175,7 @@ func TestCassandra_Delete(t *testing.T) {
 		var expectedQuery2 string
 		var expectedValues2 interface{}
 
-		apomock.Override("gocql.Batch.Query", func(b *gocql.Batch, command string, values ...interface{}) {
+		apomock.T(t).Override("gocql.Batch.Query", func(b *gocql.Batch, command string, values ...interface{}) {
 
 			if expectedValues1 == nil {
 				expectedQuery1 = command
@@ -1190,7 +1190,7 @@ func TestCassandra_Delete(t *testing.T) {
 
 		var expectedExecutedBatch *gocql.Batch
 
-		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+		apomock.T(t).Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
 
 			expectedExecutedBatch = b
 			return nil
@@ -1227,7 +1227,7 @@ func TestCassandra_Delete_WithTransactionID(t *testing.T) {
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
 
-		apomock.Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{"ID"}, []interface{}{"123"}, nil
 		})
 
@@ -1237,7 +1237,7 @@ func TestCassandra_Delete_WithTransactionID(t *testing.T) {
 		var expectedQuery2 string
 		var expectedValues2 interface{}
 
-		apomock.Override("gocql.Batch.Query", func(b *gocql.Batch, command string, values ...interface{}) {
+		apomock.T(t).Override("gocql.Batch.Query", func(b *gocql.Batch, command string, values ...interface{}) {
 
 			if expectedValues1 == nil {
 				expectedQuery1 = command
@@ -1252,7 +1252,7 @@ func TestCassandra_Delete_WithTransactionID(t *testing.T) {
 
 		var numberOfCallOfExecuteBatch int
 
-		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+		apomock.T(t).Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
 
 			numberOfCallOfExecuteBatch++
 			return nil
@@ -1289,11 +1289,11 @@ func TestCassandra_DeleteError(t *testing.T) {
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
 
-		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
 		})
 
-		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+		apomock.T(t).Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
 			return errors.New("Error batch")
 		})
 
@@ -1322,11 +1322,11 @@ func TestCassandra_DeleteWithErrorPrimaryFields(t *testing.T) {
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
 
-		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
 		})
 
-		apomock.Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{}, []interface{}{}, errors.New("CassandraStore PrimaryFieldsAndValues error")
 		})
 
@@ -1356,7 +1356,7 @@ func TestCassandra_Update(t *testing.T) {
 		var expectedBatchType gocql.BatchType
 		expectedBatch := &gocql.Batch{}
 
-		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			expectedBatchType = t
 			return expectedBatch
 		})
@@ -1367,7 +1367,7 @@ func TestCassandra_Update(t *testing.T) {
 		var expectedQuery2 string
 		var expectedValues2 interface{}
 
-		apomock.Override("gocql.Batch.Query", func(b *gocql.Batch, command string, values ...interface{}) {
+		apomock.T(t).Override("gocql.Batch.Query", func(b *gocql.Batch, command string, values ...interface{}) {
 
 			if expectedValues1 == nil {
 				expectedQuery1 = command
@@ -1382,7 +1382,7 @@ func TestCassandra_Update(t *testing.T) {
 
 		var expectedExecutedBatch *gocql.Batch
 
-		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+		apomock.T(t).Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
 
 			expectedExecutedBatch = b
 			return nil
@@ -1400,11 +1400,11 @@ func TestCassandra_Update(t *testing.T) {
 		var expectedValue1 interface{}
 		var expectedValue2 interface{}
 
-		apomock.Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{"ID"}, []interface{}{"456"}, nil
 		})
 
-		apomock.Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 
 			if expectedValue1 == nil {
 				expectedValue1 = val
@@ -1448,7 +1448,7 @@ func TestCassandra_Update_WithTransactionID(t *testing.T) {
 		var expectedQuery2 string
 		var expectedValues2 interface{}
 
-		apomock.Override("gocql.Batch.Query", func(b *gocql.Batch, command string, values ...interface{}) {
+		apomock.T(t).Override("gocql.Batch.Query", func(b *gocql.Batch, command string, values ...interface{}) {
 
 			if expectedValues1 == nil {
 				expectedQuery1 = command
@@ -1472,11 +1472,11 @@ func TestCassandra_Update_WithTransactionID(t *testing.T) {
 		var expectedValue1 interface{}
 		var expectedValue2 interface{}
 
-		apomock.Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{"ID"}, []interface{}{"456"}, nil
 		})
 
-		apomock.Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 
 			if expectedValue1 == nil {
 				expectedValue1 = val
@@ -1489,7 +1489,7 @@ func TestCassandra_Update_WithTransactionID(t *testing.T) {
 
 		var numberOfCallOfExecuteBatch int
 
-		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+		apomock.T(t).Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
 
 			numberOfCallOfExecuteBatch++
 			return nil
@@ -1523,11 +1523,11 @@ func TestCassandra_Update_ErrorFieldsAndValues(t *testing.T) {
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
 
-		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
 		})
 
-		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+		apomock.T(t).Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
 			return nil
 		})
 
@@ -1539,7 +1539,7 @@ func TestCassandra_Update_ErrorFieldsAndValues(t *testing.T) {
 		tag2.ID = "456"
 		tag2.Description = "description 2"
 
-		apomock.Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return nil, nil, errors.New("Error from FieldsAndValues")
 		})
 
@@ -1562,11 +1562,11 @@ func TestCassandra_Update_ErrorPrimaryFieldsAndValues(t *testing.T) {
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
 
-		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
 		})
 
-		apomock.Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{}, []interface{}{}, errors.New("CassandraStore PrimaryFieldsAndValues error")
 		})
 
@@ -1597,11 +1597,11 @@ func TestCassandra_Update_ErrorExecuteBatch(t *testing.T) {
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
 
-		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
 		})
 
-		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+		apomock.T(t).Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
 			return nil
 		})
 
@@ -1613,15 +1613,15 @@ func TestCassandra_Update_ErrorExecuteBatch(t *testing.T) {
 		tag2.ID = "456"
 		tag2.Description = "description 2"
 
-		apomock.Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{"ID", "description"}, []interface{}{"123", "description 1"}, nil
 		})
 
-		apomock.Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{}, []interface{}{}, nil
 		})
 
-		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+		apomock.T(t).Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
 			return errors.New("Error batch")
 		})
 
@@ -1647,16 +1647,16 @@ func TestCassandra_Create(t *testing.T) {
 		var expectedBatchType gocql.BatchType
 		expectedBatch := &gocql.Batch{}
 
-		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			expectedBatchType = t
 			return expectedBatch
 		})
 
-		apomock.Override("gocql.TimeUUID", func() gocql.UUID {
+		apomock.T(t).Override("gocql.TimeUUID", func() gocql.UUID {
 			return ParseUUID("7c469413-12ed-11e6-ac73-f45c89941b79")
 		})
 
-		apomock.Override("gocql.UUID.String", func(uuid gocql.UUID) string {
+		apomock.T(t).Override("gocql.UUID.String", func(uuid gocql.UUID) string {
 			return StringUUID(uuid)
 		})
 
@@ -1666,7 +1666,7 @@ func TestCassandra_Create(t *testing.T) {
 		var expectedQuery2 string
 		var expectedValues2 interface{}
 
-		apomock.Override("gocql.Batch.Query", func(b *gocql.Batch, command string, values ...interface{}) {
+		apomock.T(t).Override("gocql.Batch.Query", func(b *gocql.Batch, command string, values ...interface{}) {
 
 			t.Log("couocu")
 
@@ -1683,7 +1683,7 @@ func TestCassandra_Create(t *testing.T) {
 
 		var expectedExecutedBatch *gocql.Batch
 
-		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+		apomock.T(t).Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
 
 			expectedExecutedBatch = b
 			return nil
@@ -1699,7 +1699,7 @@ func TestCassandra_Create(t *testing.T) {
 		var expectedValue1 interface{}
 		var expectedValue2 interface{}
 
-		apomock.Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 
 			if expectedValue1 == nil {
 				expectedValue1 = val
@@ -1738,11 +1738,11 @@ func TestCassandra_Create_WithTransacationID(t *testing.T) {
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
 
-		apomock.Override("gocql.TimeUUID", func() gocql.UUID {
+		apomock.T(t).Override("gocql.TimeUUID", func() gocql.UUID {
 			return ParseUUID("7c469413-12ed-11e6-ac73-f45c89941b79")
 		})
 
-		apomock.Override("gocql.UUID.String", func(uuid gocql.UUID) string {
+		apomock.T(t).Override("gocql.UUID.String", func(uuid gocql.UUID) string {
 			return StringUUID(uuid)
 		})
 
@@ -1752,7 +1752,7 @@ func TestCassandra_Create_WithTransacationID(t *testing.T) {
 		var expectedQuery2 string
 		var expectedValues2 interface{}
 
-		apomock.Override("gocql.Batch.Query", func(b *gocql.Batch, command string, values ...interface{}) {
+		apomock.T(t).Override("gocql.Batch.Query", func(b *gocql.Batch, command string, values ...interface{}) {
 
 			t.Log("couocu")
 
@@ -1776,7 +1776,7 @@ func TestCassandra_Create_WithTransacationID(t *testing.T) {
 		var expectedValue1 interface{}
 		var expectedValue2 interface{}
 
-		apomock.Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 
 			if expectedValue1 == nil {
 				expectedValue1 = val
@@ -1789,7 +1789,7 @@ func TestCassandra_Create_WithTransacationID(t *testing.T) {
 
 		var numberOfCallOfExecuteBatch int
 
-		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+		apomock.T(t).Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
 
 			numberOfCallOfExecuteBatch++
 			return nil
@@ -1824,19 +1824,19 @@ func TestCassandra_Create_ErrorFieldsAndValues(t *testing.T) {
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
 
-		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
 		})
 
-		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+		apomock.T(t).Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
 			return nil
 		})
 
-		apomock.Override("gocql.TimeUUID", func() gocql.UUID {
+		apomock.T(t).Override("gocql.TimeUUID", func() gocql.UUID {
 			return ParseUUID("7c469413-12ed-11e6-ac73-f45c89941b79")
 		})
 
-		apomock.Override("gocql.UUID.String", func(uuid gocql.UUID) string {
+		apomock.T(t).Override("gocql.UUID.String", func(uuid gocql.UUID) string {
 			return StringUUID(uuid)
 		})
 
@@ -1848,7 +1848,7 @@ func TestCassandra_Create_ErrorFieldsAndValues(t *testing.T) {
 		tag2.ID = "456"
 		tag2.Description = "description 2"
 
-		apomock.Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return nil, nil, errors.New("Error from FieldsAndValues")
 		})
 
@@ -1873,19 +1873,19 @@ func TestCassandra_Create_ErrorExecuteBatch(t *testing.T) {
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		store.nativeSession = &gocql.Session{}
 
-		apomock.Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
+		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
 		})
 
-		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+		apomock.T(t).Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
 			return nil
 		})
 
-		apomock.Override("gocql.TimeUUID", func() gocql.UUID {
+		apomock.T(t).Override("gocql.TimeUUID", func() gocql.UUID {
 			return ParseUUID("7c469413-12ed-11e6-ac73-f45c89941b79")
 		})
 
-		apomock.Override("gocql.UUID.String", func(uuid gocql.UUID) string {
+		apomock.T(t).Override("gocql.UUID.String", func(uuid gocql.UUID) string {
 			return StringUUID(uuid)
 		})
 
@@ -1897,11 +1897,11 @@ func TestCassandra_Create_ErrorExecuteBatch(t *testing.T) {
 		tag2.ID = "456"
 		tag2.Description = "description 2"
 
-		apomock.Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
+		apomock.T(t).Override("cassandra.FieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{"ID", "description"}, []interface{}{"123", "description 1"}, nil
 		})
 
-		apomock.Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
+		apomock.T(t).Override("gocql.Session.ExecuteBatch", func(session *gocql.Session, b *gocql.Batch) error {
 			return errors.New("Error batch")
 		})
 
@@ -1927,34 +1927,34 @@ func TestCassandraCreateKeySpace(t *testing.T) {
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
 
-		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
 			expectedServers = servers
 			return cluster
 		})
 
 		session := &gocql.Session{}
 
-		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+		apomock.T(t).Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
 			return session, nil
 		})
 
 		var expectedQueryString string
 		newQuery := &gocql.Query{}
 
-		apomock.Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
+		apomock.T(t).Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
 			expectedQueryString = query
 			return newQuery
 		})
 
 		var expectedQuery *gocql.Query
-		apomock.Override("gocql.Query.Exec", func(query *gocql.Query) error {
+		apomock.T(t).Override("gocql.Query.Exec", func(query *gocql.Query) error {
 			expectedQuery = query
 			return nil
 		})
 
 		var sessionCloseCalled bool
 
-		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+		apomock.T(t).Override("gocql.Session.Close", func(session *gocql.Session) {
 			sessionCloseCalled = true
 		})
 
@@ -1979,13 +1979,13 @@ func TestCassandraCreateKeySpaceWithErrorFromSession(t *testing.T) {
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		cluster := &gocql.ClusterConfig{}
 
-		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
 			return cluster
 		})
 
 		session := &gocql.Session{}
 
-		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+		apomock.T(t).Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
 			return session, errors.New("should panic session")
 		})
 
@@ -2005,34 +2005,34 @@ func TestCassandraCreateKeySpaceErrorQuery(t *testing.T) {
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
 
-		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
 			expectedServers = servers
 			return cluster
 		})
 
 		session := &gocql.Session{}
 
-		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+		apomock.T(t).Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
 			return session, nil
 		})
 
 		var expectedQueryString string
 		newQuery := &gocql.Query{}
 
-		apomock.Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
+		apomock.T(t).Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
 			expectedQueryString = query
 			return newQuery
 		})
 
 		var expectedQuery *gocql.Query
-		apomock.Override("gocql.Query.Exec", func(query *gocql.Query) error {
+		apomock.T(t).Override("gocql.Query.Exec", func(query *gocql.Query) error {
 			expectedQuery = query
 			return errors.New("query error")
 		})
 
 		var sessionCloseCalled bool
 
-		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+		apomock.T(t).Override("gocql.Session.Close", func(session *gocql.Session) {
 			sessionCloseCalled = true
 		})
 
@@ -2059,34 +2059,34 @@ func TestCassandraDropKeySpace(t *testing.T) {
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
 
-		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
 			expectedServers = servers
 			return cluster
 		})
 
 		session := &gocql.Session{}
 
-		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+		apomock.T(t).Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
 			return session, nil
 		})
 
 		var expectedQueryString string
 		newQuery := &gocql.Query{}
 
-		apomock.Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
+		apomock.T(t).Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
 			expectedQueryString = query
 			return newQuery
 		})
 
 		var expectedQuery *gocql.Query
-		apomock.Override("gocql.Query.Exec", func(query *gocql.Query) error {
+		apomock.T(t).Override("gocql.Query.Exec", func(query *gocql.Query) error {
 			expectedQuery = query
 			return nil
 		})
 
 		var sessionCloseCalled bool
 
-		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+		apomock.T(t).Override("gocql.Session.Close", func(session *gocql.Session) {
 			sessionCloseCalled = true
 		})
 
@@ -2111,13 +2111,13 @@ func TestCassandraDropKeySpaceWithErrorFromSession(t *testing.T) {
 		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		cluster := &gocql.ClusterConfig{}
 
-		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
 			return cluster
 		})
 
 		session := &gocql.Session{}
 
-		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+		apomock.T(t).Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
 			return session, errors.New("should panic session")
 		})
 
@@ -2137,34 +2137,34 @@ func TestCassandraDropKeySpaceErrorQuery(t *testing.T) {
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
 
-		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
 			expectedServers = servers
 			return cluster
 		})
 
 		session := &gocql.Session{}
 
-		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+		apomock.T(t).Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
 			return session, nil
 		})
 
 		var expectedQueryString string
 		newQuery := &gocql.Query{}
 
-		apomock.Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
+		apomock.T(t).Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
 			expectedQueryString = query
 			return newQuery
 		})
 
 		var expectedQuery *gocql.Query
-		apomock.Override("gocql.Query.Exec", func(query *gocql.Query) error {
+		apomock.T(t).Override("gocql.Query.Exec", func(query *gocql.Query) error {
 			expectedQuery = query
 			return errors.New("query error")
 		})
 
 		var sessionCloseCalled bool
 
-		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+		apomock.T(t).Override("gocql.Session.Close", func(session *gocql.Session) {
 			sessionCloseCalled = true
 		})
 
@@ -2191,20 +2191,20 @@ func TestCassandraDoesKeyspaceExist(t *testing.T) {
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
 
-		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
 			expectedServers = servers
 			return cluster
 		})
 
 		session := &gocql.Session{}
 
-		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+		apomock.T(t).Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
 			return session, nil
 		})
 
 		var sessionCloseCalled bool
 
-		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+		apomock.T(t).Override("gocql.Session.Close", func(session *gocql.Session) {
 			sessionCloseCalled = true
 		})
 
@@ -2212,7 +2212,7 @@ func TestCassandraDoesKeyspaceExist(t *testing.T) {
 		keyspaceMetadata.Tables = make(map[string]*gocql.TableMetadata)
 		keyspaceMetadata.Tables["1"] = &gocql.TableMetadata{}
 
-		apomock.Override("gocql.Session.KeyspaceMetadata", func(session *gocql.Session, keyspace string) (*gocql.KeyspaceMetadata, error) {
+		apomock.T(t).Override("gocql.Session.KeyspaceMetadata", func(session *gocql.Session, keyspace string) (*gocql.KeyspaceMetadata, error) {
 			return keyspaceMetadata, nil
 		})
 
@@ -2238,26 +2238,26 @@ func TestCassandraDoesKeyspaceExistWithNoKeyspace(t *testing.T) {
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
 
-		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
 			expectedServers = servers
 			return cluster
 		})
 
 		session := &gocql.Session{}
 
-		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+		apomock.T(t).Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
 			return session, nil
 		})
 
 		var sessionCloseCalled bool
 
-		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+		apomock.T(t).Override("gocql.Session.Close", func(session *gocql.Session) {
 			sessionCloseCalled = true
 		})
 
 		keyspaceMetadata := &gocql.KeyspaceMetadata{}
 
-		apomock.Override("gocql.Session.KeyspaceMetadata", func(session *gocql.Session, keyspace string) (*gocql.KeyspaceMetadata, error) {
+		apomock.T(t).Override("gocql.Session.KeyspaceMetadata", func(session *gocql.Session, keyspace string) (*gocql.KeyspaceMetadata, error) {
 			return keyspaceMetadata, nil
 		})
 
@@ -2283,24 +2283,24 @@ func TestCassandraDoesKeyspaceExistWithErrorFromKeySpace(t *testing.T) {
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
 
-		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
 			expectedServers = servers
 			return cluster
 		})
 
 		session := &gocql.Session{}
 
-		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+		apomock.T(t).Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
 			return session, nil
 		})
 
 		var sessionCloseCalled bool
 
-		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+		apomock.T(t).Override("gocql.Session.Close", func(session *gocql.Session) {
 			sessionCloseCalled = true
 		})
 
-		apomock.Override("gocql.Session.KeyspaceMetadata", func(session *gocql.Session, keyspace string) (*gocql.KeyspaceMetadata, error) {
+		apomock.T(t).Override("gocql.Session.KeyspaceMetadata", func(session *gocql.Session, keyspace string) (*gocql.KeyspaceMetadata, error) {
 			return nil, errors.New("error from KeyspaceMetadata")
 		})
 
@@ -2326,12 +2326,12 @@ func TestCassandraDoesKeyspaceExistWithErrorFromSessio(t *testing.T) {
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
 
-		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
 			expectedServers = servers
 			return cluster
 		})
 
-		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+		apomock.T(t).Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
 			return nil, errors.New("should panic session")
 		})
 
@@ -2356,14 +2356,14 @@ func TestCassandraExecuteScript(t *testing.T) {
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
 
-		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
 			expectedServers = servers
 			return cluster
 		})
 
 		session := &gocql.Session{}
 
-		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+		apomock.T(t).Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
 			return session, nil
 		})
 
@@ -2371,7 +2371,7 @@ func TestCassandraExecuteScript(t *testing.T) {
 		var expectedQueryString2 string
 		newQuery := &gocql.Query{}
 
-		apomock.Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
+		apomock.T(t).Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
 
 			if expectedQueryString1 == "" {
 				expectedQueryString1 = query
@@ -2383,14 +2383,14 @@ func TestCassandraExecuteScript(t *testing.T) {
 		})
 
 		var expectedQuery *gocql.Query
-		apomock.Override("gocql.Query.Exec", func(query *gocql.Query) error {
+		apomock.T(t).Override("gocql.Query.Exec", func(query *gocql.Query) error {
 			expectedQuery = query
 			return nil
 		})
 
 		var sessionCloseCalled bool
 
-		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+		apomock.T(t).Override("gocql.Session.Close", func(session *gocql.Session) {
 			sessionCloseCalled = true
 		})
 
@@ -2418,14 +2418,14 @@ func TestCassandraExecuteScriptWithError(t *testing.T) {
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
 
-		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
 			expectedServers = servers
 			return cluster
 		})
 
 		session := &gocql.Session{}
 
-		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+		apomock.T(t).Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
 			return session, nil
 		})
 
@@ -2433,7 +2433,7 @@ func TestCassandraExecuteScriptWithError(t *testing.T) {
 		var expectedQueryString2 string
 		newQuery := &gocql.Query{}
 
-		apomock.Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
+		apomock.T(t).Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
 
 			if expectedQueryString1 == "" {
 				expectedQueryString1 = query
@@ -2445,14 +2445,14 @@ func TestCassandraExecuteScriptWithError(t *testing.T) {
 		})
 
 		var expectedQuery *gocql.Query
-		apomock.Override("gocql.Query.Exec", func(query *gocql.Query) error {
+		apomock.T(t).Override("gocql.Query.Exec", func(query *gocql.Query) error {
 			expectedQuery = query
 			return errors.New("should error exec")
 		})
 
 		var sessionCloseCalled bool
 
-		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+		apomock.T(t).Override("gocql.Session.Close", func(session *gocql.Session) {
 			sessionCloseCalled = true
 		})
 
@@ -2480,14 +2480,14 @@ func TestCassandraExecuteScriptWithErrorSession(t *testing.T) {
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
 
-		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
 			expectedServers = servers
 			return cluster
 		})
 
 		session := &gocql.Session{}
 
-		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+		apomock.T(t).Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
 			return session, errors.New("should error panic")
 		})
 
@@ -2511,14 +2511,14 @@ func TestCassandraExecuteScriptWithEmptyLine(t *testing.T) {
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
 
-		apomock.Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
 			expectedServers = servers
 			return cluster
 		})
 
 		session := &gocql.Session{}
 
-		apomock.Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
+		apomock.T(t).Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
 			return session, nil
 		})
 
@@ -2526,7 +2526,7 @@ func TestCassandraExecuteScriptWithEmptyLine(t *testing.T) {
 		var expectedQueryString2 string
 		newQuery := &gocql.Query{}
 
-		apomock.Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
+		apomock.T(t).Override("gocql.Session.Query", func(session *gocql.Session, query string, i ...interface{}) *gocql.Query {
 
 			if expectedQueryString1 == "" {
 				expectedQueryString1 = query
@@ -2538,14 +2538,14 @@ func TestCassandraExecuteScriptWithEmptyLine(t *testing.T) {
 		})
 
 		var expectedQuery *gocql.Query
-		apomock.Override("gocql.Query.Exec", func(query *gocql.Query) error {
+		apomock.T(t).Override("gocql.Query.Exec", func(query *gocql.Query) error {
 			expectedQuery = query
 			return nil
 		})
 
 		var sessionCloseCalled bool
 
-		apomock.Override("gocql.Session.Close", func(session *gocql.Session) {
+		apomock.T(t).Override("gocql.Session.Close", func(session *gocql.Session) {
 			sessionCloseCalled = true
 		})
 
