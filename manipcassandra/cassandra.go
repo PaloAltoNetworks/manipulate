@@ -426,7 +426,7 @@ func (c *CassandraStore) CommitBatch(b *gocql.Batch) elemental.Errors {
 		log.WithFields(log.Fields{
 			"batch": b.Entries,
 			"error": err.Error(),
-		}).Error("sending batch command to cassandra")
+		}).Debug("sending batch command to cassandra")
 
 		return []*elemental.Error{elemental.NewError(ManipCassandraExecuteBatchErrorTitle, fmt.Sprintf(ManipCassandraExecuteBatchErrorDescription, err.Error()), "", ManipCassandraExecuteBatchErrorCode)}
 	}
