@@ -371,3 +371,34 @@ func TestMethodMarshalWithListOfStructInAStruct(t *testing.T) {
 		})
 	})
 }
+
+func TestMethodFieldsAndValuesWithListOfStructInAStruct(t *testing.T) {
+
+	Convey("Given I call the method cassandra.Marshal", t, func() {
+
+		world := &World{}
+		world.Name = "Earth"
+
+		person := Person{}
+		person.Name = "Alexandre"
+
+		person1 := Person{}
+		person1.Name = "Antoine"
+
+		world.People = []Person{person, person1}
+		p, pErr := Marshal(person)
+		p1, p1Err := Marshal(person1)
+
+		fields, values, err := FieldsAndValues(world)
+
+		Convey("Then I should get the appropriate map", func() {
+			So(err, ShouldBeNil)
+			So(pErr, ShouldBeNil)
+			So(p1Err, ShouldBeNil)
+			So(fields, ShouldResemble, []string{"name", "people"})
+			So(values[0], ShouldResemble, "Earth")
+			So(values[1].([]map[string]interface{})[0], ShouldResemble, p)
+			So(values[1].([]map[string]interface{})[1], ShouldResemble, p1)
+		})
+	})
+}

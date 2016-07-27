@@ -50,6 +50,7 @@ func Marshal(v interface{}) (map[string]interface{}, error) {
 			mapVal[info.name] = dict
 
 		} else if (kind == reflect.Slice || kind == reflect.Array) && (field.Type().Elem().Kind() == reflect.Struct || (field.Type().Elem().Kind() == reflect.Ptr && field.Type().Elem().Elem().Kind() == reflect.Struct)) {
+
 			count := field.Len()
 			objects := []map[string]interface{}{}
 
@@ -117,6 +118,7 @@ func FieldsAndValues(val interface{}) ([]string, []interface{}, error) {
 			continue
 		}
 
+		kind := field.Kind()
 		fields = append(fields, info.name)
 
 		if isEmptyValue(field) && info.autoTimestamp {
@@ -125,6 +127,23 @@ func FieldsAndValues(val interface{}) ([]string, []interface{}, error) {
 		} else if info.autoTimestampOverride {
 			// TODO: should it be calculated directly in cassandra ?
 			values = append(values, time.Now())
+		} else if (kind == reflect.Slice || kind == reflect.Array) && (field.Type().Elem().Kind() == reflect.Struct || (field.Type().Elem().Kind() == reflect.Ptr && field.Type().Elem().Elem().Kind() == reflect.Struct)) {
+
+			count := field.Len()
+			objects := []map[string]interface{}{}
+
+			for index := 0; index < count; index++ {
+				dict, err := Marshal(field.Index(index).Interface())
+
+				if err != nil {
+					return nil, nil, err
+				}
+
+				objects = append(objects, dict)
+			}
+
+			values = append(values, objects)
+
 		} else {
 			values = append(values, field.Interface())
 		}
