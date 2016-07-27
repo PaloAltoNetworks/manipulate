@@ -254,13 +254,9 @@ func TestMethodMarshalWithStructInAStruct(t *testing.T) {
 	})
 }
 
-var te *testing.T
-
 func TestMethodMarshalWithStructInAStructNotAsigned(t *testing.T) {
 
 	Convey("Given I call the method cassandra.Marshal", t, func() {
-
-		te = t
 
 		master := &Master{}
 		master.Name = "Alexandre"
@@ -342,6 +338,36 @@ func TestMethodMarshalErrorNoneStruct(t *testing.T) {
 		Convey("Then I should get the appropriate map", func() {
 			So(dict, ShouldBeNil)
 			So(err.Error(), ShouldEqual, "The given interface is not a struct type")
+		})
+	})
+}
+
+func TestMethodMarshalWithListOfStructInAStruct(t *testing.T) {
+
+	Convey("Given I call the method cassandra.Marshal", t, func() {
+
+		world := &World{}
+		world.Name = "Earth"
+
+		person := Person{}
+		person.Name = "Alexandre"
+
+		person1 := Person{}
+		person1.Name = "Antoine"
+
+		world.People = []Person{person, person1}
+
+		dict, err := Marshal(world)
+		p, pErr := Marshal(person)
+		p1, p1Err := Marshal(person1)
+
+		Convey("Then I should get the appropriate map", func() {
+			So(err, ShouldBeNil)
+			So(pErr, ShouldBeNil)
+			So(p1Err, ShouldBeNil)
+			So(dict["name"], ShouldEqual, "Earth")
+			So(dict["people"].([]map[string]interface{})[0], ShouldResemble, p)
+			So(dict["people"].([]map[string]interface{})[1], ShouldResemble, p1)
 		})
 	})
 }
