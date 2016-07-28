@@ -159,7 +159,11 @@ func (c *CassandraStore) Delete(context manipulate.Contexts, objects ...manipula
 
 		context := manipulate.ContextForIndex(context, index)
 		transactionID = context.TransactionID
-		batch = c.BatchForID(transactionID)
+
+		if transactionID != "" || batch == nil {
+			batch = c.BatchForID(transactionID)
+		}
+
 		command, values := buildDeleteCommand(context, object.Identity().Name, primaryKeys, primaryValues)
 		batch.Query(command, values...)
 	}
@@ -223,7 +227,11 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 
 		context := manipulate.ContextForIndex(context, index)
 		transactionID = context.TransactionID
-		batch = c.BatchForID(transactionID)
+
+		if transactionID != "" || batch == nil {
+			batch = c.BatchForID(transactionID)
+		}
+
 		command, values := buildInsertCommand(context, object.Identity().Name, list, values)
 		batch.Query(command, values...)
 	}
@@ -334,7 +342,11 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 
 		context := manipulate.ContextForIndex(context, index)
 		transactionID = context.TransactionID
-		batch = c.BatchForID(transactionID)
+
+		if transactionID != "" || batch == nil {
+			batch = c.BatchForID(transactionID)
+		}
+
 		command, values := buildUpdateCommand(context, object.Identity().Name, list, values, primaryKeys, primaryValues)
 
 		batch.Query(command, values...)
