@@ -117,6 +117,7 @@ func (c *CassandraStore) Retrieve(context manipulate.Contexts, objects ...manipu
 
 		log.WithFields(log.Fields{
 			"command": command,
+			"values":  values,
 			"context": context,
 		}).Debug("sending select command to cassandra")
 
@@ -183,7 +184,8 @@ func (c *CassandraStore) RetrieveChildren(context manipulate.Contexts, parent ma
 	command, values := buildGetCommand(ctx, identity.Name, []string{}, []interface{}{})
 
 	log.WithFields(log.Fields{
-		"query":   command,
+		"command": command,
+		"values":  values,
 		"context": context,
 	}).Debug("sending select all command to cassandra")
 
@@ -485,7 +487,7 @@ func unmarshalManipulable(iter *gocql.Iter, objects []manipulate.Manipulable) el
 	}
 
 	if len(objects) != len(sliceMaps) {
-		log.Error("The number of the given objects and the number of results fetched is different")
+		log.Debug("The number of the given objects and the number of results fetched is different")
 		return []*elemental.Error{elemental.NewError(ManipCassandraUnmarshalNumberObjectsAndSliceMapsErrorTitle, fmt.Sprintf(ManipCassandraUnmarshalNumberObjectsAndSliceMapsErrorDescription, objects, sliceMaps), fmt.Sprintf("%s", objects), ManipCassandraUnmarshalNumberObjectsAndSliceMapsErrorCode)}
 	}
 
