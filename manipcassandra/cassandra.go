@@ -28,9 +28,9 @@ type BatchRegistry map[manipulate.TransactionID]*gocql.Batch
 
 // AttributeUpdater structu used to make request as UPDATE policy SET NAME = NAME - ?
 type AttributeUpdater struct {
-	Key       string
-	Values    interface{}
-	Operation elemental.Operation
+	Key             string
+	Values          interface{}
+	AssignationType elemental.AssignationType
 }
 
 // CassandraStore needs doc

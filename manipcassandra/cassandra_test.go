@@ -957,7 +957,7 @@ func TestCassandra_UpdateCollection(t *testing.T) {
 
 		a := &AttributeUpdater{}
 		a.Key = "NAME"
-		a.Operation = elemental.OperationSubstractive
+		a.AssignationType = elemental.AssignationTypeSubstract
 		a.Values = "coucou"
 
 		var expectedCommand string
@@ -1003,7 +1003,7 @@ func TestCassandra_UpdateCollectionWithErrorQuery(t *testing.T) {
 
 		a := &AttributeUpdater{}
 		a.Key = "NAME"
-		a.Operation = elemental.OperationSubstractive
+		a.AssignationType = elemental.AssignationTypeSubstract
 		a.Values = "coucou"
 
 		var expectedCommand string
