@@ -188,7 +188,7 @@ func TestMethodBuildUpdateCollectionCommandOperationAdditive(t *testing.T) {
 
 		a := &AttributeUpdater{}
 		a.Key = "NAME"
-		a.Operation = elemental.OperationAdditive
+		a.Operation = elemental.OperationModeAdditive
 		a.Values = "coucou"
 
 		command, values := buildUpdateCollectionCommand(nil, "policy", a, []string{}, []interface{}{})
@@ -217,7 +217,7 @@ func TestMethodBuildUpdateCollectionCommandOperationSubstractive(t *testing.T) {
 
 		a := &AttributeUpdater{}
 		a.Key = "NAME"
-		a.Operation = elemental.OperationSubstractive
+		a.Operation = elemental.OperationModeSubstractive
 		a.Values = "coucou"
 
 		command, values := buildUpdateCollectionCommand(nil, "policy", a, []string{}, []interface{}{})
@@ -232,7 +232,7 @@ func TestMethodBuildUpdateCollectionCommandOperationSet(t *testing.T) {
 
 		a := &AttributeUpdater{}
 		a.Key = "NAME"
-		a.Operation = elemental.OperationSet
+		a.Operation = elemental.OperationModeSet
 		a.Values = "coucou"
 
 		command, values := buildUpdateCollectionCommand(nil, "policy", a, []string{}, []interface{}{})
@@ -247,7 +247,7 @@ func TestMethodBuildUpdateCollectionCommandOperationSubstractiveWithPrimaryKeys(
 
 		a := &AttributeUpdater{}
 		a.Key = "NAME"
-		a.Operation = elemental.OperationSubstractive
+		a.Operation = elemental.OperationModeSubstractive
 		a.Values = "coucou"
 
 		command, values := buildUpdateCollectionCommand(nil, "policy", a, []string{"ID"}, []interface{}{"123"})
@@ -262,7 +262,7 @@ func TestMethodBuildUpdateCollectionCommandOperationSubstractiveWithPrimaryKeysA
 
 		a := &AttributeUpdater{}
 		a.Key = "NAME"
-		a.Operation = elemental.OperationSubstractive
+		a.Operation = elemental.OperationModeSubstractive
 		a.Values = "coucou"
 
 		context := manipulate.NewContext()

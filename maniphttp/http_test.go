@@ -831,7 +831,7 @@ func TestHTTP_Assign(t *testing.T) {
 			t1.ID = "xxx"
 			t2 := NewTask()
 			t2.ID = "yyy"
-			assignation := elemental.NewAssignation(elemental.OperationAdditive, TaskIdentity, t1, t2)
+			assignation := elemental.NewAssignation(elemental.OperationModeAdditive, TaskIdentity, t1, t2)
 			errs := session.Assign(nil, l, assignation)
 
 			Convey("Then err should be nil", func() {
@@ -846,7 +846,7 @@ func TestHTTP_Assign(t *testing.T) {
 			l1 := NewList()
 			t2 := NewTask()
 			t2.ID = "yyy"
-			assignation := elemental.NewAssignation(elemental.OperationAdditive, TaskIdentity, t2)
+			assignation := elemental.NewAssignation(elemental.OperationModeAdditive, TaskIdentity, t2)
 
 			errs := session.Assign(nil, l1, assignation)
 
@@ -868,7 +868,7 @@ func TestHTTP_Assign(t *testing.T) {
 			t1.ID = "xxx"
 			t2 := NewTask()
 			t2.ID = "yyy"
-			assignation := elemental.NewAssignation(elemental.OperationAdditive, TaskIdentity, t1, t2)
+			assignation := elemental.NewAssignation(elemental.OperationModeAdditive, TaskIdentity, t1, t2)
 			errs := session.Assign(nil, l, assignation)
 
 			Convey("Then errs should not be nil", func() {

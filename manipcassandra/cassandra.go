@@ -30,7 +30,7 @@ type BatchRegistry map[manipulate.TransactionID]*gocql.Batch
 type AttributeUpdater struct {
 	Key       string
 	Values    interface{}
-	Operation elemental.Operation
+	Operation elemental.OperationMode
 }
 
 // CassandraStore needs doc

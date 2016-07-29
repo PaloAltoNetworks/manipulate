@@ -94,17 +94,17 @@ func buildUpdateCollectionCommand(c *manipulate.Context, tableName string, attri
 	buffer.WriteString(attributeUpdate.Key)
 
 	switch attributeUpdate.Operation {
-	case elemental.OperationSet:
+	case elemental.OperationModeSet:
 		buffer.WriteString(" = ")
 		break
 
-	case elemental.OperationAdditive:
+	case elemental.OperationModeAdditive:
 		buffer.WriteString(" = ")
 		buffer.WriteString(attributeUpdate.Key)
 		buffer.WriteString(" + ")
 		break
 
-	case elemental.OperationSubstractive:
+	case elemental.OperationModeSubstractive:
 		buffer.WriteString(" = ")
 		buffer.WriteString(attributeUpdate.Key)
 		buffer.WriteString(" - ")
