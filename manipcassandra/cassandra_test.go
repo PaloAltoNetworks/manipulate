@@ -1211,8 +1211,8 @@ func TestCassandra_Delete(t *testing.T) {
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
 			So(expectedBatchType, ShouldEqual, gocql.UnloggedBatch)
-			So(expectedQuery1, ShouldEqual, "DELETE FROM tag WHERE ID = ? LIMIT 10")
-			So(expectedQuery2, ShouldEqual, "DELETE FROM tag WHERE ID = ? LIMIT 10")
+			So(expectedQuery1, ShouldEqual, "DELETE FROM tag WHERE ID = ?")
+			So(expectedQuery2, ShouldEqual, "DELETE FROM tag WHERE ID = ?")
 			So(expectedValues1, ShouldResemble, []interface{}{"123"})
 			So(expectedValues2, ShouldResemble, []interface{}{"123"})
 			So(expectedBatch, ShouldEqual, expectedExecutedBatch)
@@ -1273,8 +1273,8 @@ func TestCassandra_Delete_WithTransactionID(t *testing.T) {
 
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
-			So(expectedQuery1, ShouldEqual, "DELETE FROM tag WHERE ID = ? LIMIT 10")
-			So(expectedQuery2, ShouldEqual, "DELETE FROM tag WHERE ID = ? LIMIT 10")
+			So(expectedQuery1, ShouldEqual, "DELETE FROM tag WHERE ID = ?")
+			So(expectedQuery2, ShouldEqual, "DELETE FROM tag WHERE ID = ?")
 			So(expectedValues1, ShouldResemble, []interface{}{"123"})
 			So(expectedValues2, ShouldResemble, []interface{}{"123"})
 			So(numberOfCallOfExecuteBatch, ShouldEqual, 0)
@@ -1424,8 +1424,8 @@ func TestCassandra_Update(t *testing.T) {
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
 			So(expectedBatchType, ShouldEqual, gocql.UnloggedBatch)
-			So(expectedQuery1, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? LIMIT 10")
-			So(expectedQuery2, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? LIMIT 10")
+			So(expectedQuery1, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ?")
+			So(expectedQuery2, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ?")
 			So(expectedValues1, ShouldResemble, []interface{}{"description 1", "456"})
 			So(expectedValues2, ShouldResemble, []interface{}{"description 2", "456"})
 			So(expectedBatch, ShouldEqual, expectedExecutedBatch)
@@ -1505,8 +1505,8 @@ func TestCassandra_Update_WithTransactionID(t *testing.T) {
 
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
-			So(expectedQuery1, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? LIMIT 10")
-			So(expectedQuery2, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? LIMIT 10")
+			So(expectedQuery1, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ?")
+			So(expectedQuery2, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ?")
 			So(expectedValues1, ShouldResemble, []interface{}{"description 1", "456"})
 			So(expectedValues2, ShouldResemble, []interface{}{"description 2", "456"})
 			So(expectedValue1, ShouldEqual, tag1)
@@ -1718,8 +1718,8 @@ func TestCassandra_Create(t *testing.T) {
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
 			So(expectedBatchType, ShouldEqual, gocql.UnloggedBatch)
-			So(expectedQuery1, ShouldEqual, "INSERT INTO tag (ID, description) VALUES (?, ?) LIMIT 10")
-			So(expectedQuery2, ShouldEqual, "INSERT INTO tag (ID, description) VALUES (?, ?) LIMIT 10")
+			So(expectedQuery1, ShouldEqual, "INSERT INTO tag (ID, description) VALUES (?, ?)")
+			So(expectedQuery2, ShouldEqual, "INSERT INTO tag (ID, description) VALUES (?, ?)")
 			So(expectedValues1, ShouldResemble, []interface{}{"123", "description 1"})
 			So(expectedValues2, ShouldResemble, []interface{}{"456", "description 2"})
 			So(expectedBatch, ShouldEqual, expectedExecutedBatch)
@@ -1804,8 +1804,8 @@ func TestCassandra_Create_WithTransacationID(t *testing.T) {
 
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
-			So(expectedQuery1, ShouldEqual, "INSERT INTO tag (ID, description) VALUES (?, ?) LIMIT 10")
-			So(expectedQuery2, ShouldEqual, "INSERT INTO tag (ID, description) VALUES (?, ?) LIMIT 10")
+			So(expectedQuery1, ShouldEqual, "INSERT INTO tag (ID, description) VALUES (?, ?)")
+			So(expectedQuery2, ShouldEqual, "INSERT INTO tag (ID, description) VALUES (?, ?)")
 			So(expectedValues1, ShouldResemble, []interface{}{"123", "description 1"})
 			So(expectedValues2, ShouldResemble, []interface{}{"456", "description 2"})
 			So(expectedValue1, ShouldEqual, tag1)

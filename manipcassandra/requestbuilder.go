@@ -17,7 +17,7 @@ const sep = ", "
 
 // commandAndValuesFromContext will apply a context to the given command
 // it now supports limit, filer (where) and parameters (IF NOT EXISTS)
-func commandAndValuesFromContext(command string, c *manipulate.Context, primaryKeys []string) (string, []interface{}) {
+func commandAndValuesFromContext(command string, operation elemental.Operation, c *manipulate.Context, primaryKeys []string) (string, []interface{}) {
 
 	values := []interface{}{}
 	numberOfPrimaryKeys := len(primaryKeys)
@@ -64,7 +64,7 @@ func commandAndValuesFromContext(command string, c *manipulate.Context, primaryK
 		}
 	}
 
-	if c.PageSize > 0 {
+	if c.PageSize > 0 && operation == elemental.OperationRetrieveMany || operation == elemental.OperationInfo {
 		buffer.WriteString(` LIMIT `)
 		buffer.WriteString(strconv.Itoa(c.PageSize))
 	}
@@ -121,7 +121,7 @@ func buildUpdateCollectionCommand(c *manipulate.Context, tableName string, attri
 
 	v = append(v, attributeUpdate.Values)
 	v = append(v, primaryValues...)
-	command, newValues := commandAndValuesFromContext(buffer.String(), c, primaryKeys)
+	command, newValues := commandAndValuesFromContext(buffer.String(), elemental.OperationUpdate, c, primaryKeys)
 
 	return command, append(v, newValues...)
 }
@@ -167,7 +167,7 @@ func buildUpdateCommand(c *manipulate.Context, tableName string, p []string, v [
 	}
 
 	v = append(v, primaryValues...)
-	command, newValues := commandAndValuesFromContext(buffer.String(), c, primaryKeys)
+	command, newValues := commandAndValuesFromContext(buffer.String(), elemental.OperationUpdate, c, primaryKeys)
 
 	return command, append(v, newValues...)
 }
@@ -222,7 +222,7 @@ func buildInsertCommand(c *manipulate.Context, tableName string, p []string, v [
 	}
 
 	buffer.WriteString(")")
-	command, newValues := commandAndValuesFromContext(buffer.String(), c, []string{})
+	command, newValues := commandAndValuesFromContext(buffer.String(), elemental.OperationCreate, c, []string{})
 
 	return command, append(v, newValues...)
 }
@@ -261,7 +261,7 @@ func buildGetCommand(c *manipulate.Context, tableName string, primaryKeys []stri
 
 	buffer.WriteString(tableName)
 
-	command, values := commandAndValuesFromContext(buffer.String(), c, primaryKeys)
+	command, values := commandAndValuesFromContext(buffer.String(), elemental.OperationRetrieveMany, c, primaryKeys)
 
 	return command, append(primaryValues, values...)
 }
@@ -276,7 +276,7 @@ func buildDeleteCommand(c *manipulate.Context, tableName string, primaryKeys []s
 	buffer.WriteString(`DELETE FROM `)
 	buffer.WriteString(tableName)
 
-	command, values := commandAndValuesFromContext(buffer.String(), c, primaryKeys)
+	command, values := commandAndValuesFromContext(buffer.String(), elemental.OperationDelete, c, primaryKeys)
 
 	return command, append(primaryValues, values...)
 }
@@ -291,5 +291,5 @@ func buildCountCommand(c *manipulate.Context, tableName string) (string, []inter
 	buffer.WriteString(`SELECT COUNT(*) FROM `)
 	buffer.WriteString(tableName)
 
-	return commandAndValuesFromContext(buffer.String(), c, []string{})
+	return commandAndValuesFromContext(buffer.String(), elemental.OperationInfo, c, []string{})
 }

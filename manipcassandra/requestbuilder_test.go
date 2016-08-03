@@ -19,7 +19,7 @@ func TestMethodAddOptionsFromContextWithPrimaryKeys(t *testing.T) {
 		query := `SELECT * FROM policy`
 		context := manipulate.NewContext()
 
-		command, values := commandAndValuesFromContext(query, context, []string{"name", "ID"})
+		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{"name", "ID"})
 
 		So(command, ShouldEqual, `SELECT * FROM policy WHERE name = ? AND ID = ? LIMIT 100`)
 		So(values, ShouldResemble, []interface{}{})
@@ -33,7 +33,7 @@ func TestMethodAddOptionsFromContextWithLimitEqualTo0(t *testing.T) {
 		query := `SELECT * FROM policy`
 		context := manipulate.NewContext()
 
-		command, values := commandAndValuesFromContext(query, context, []string{})
+		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{})
 
 		So(command, ShouldEqual, `SELECT * FROM policy LIMIT 100`)
 		So(values, ShouldResemble, []interface{}{})
@@ -45,20 +45,20 @@ func TestMethodAddOptionsFromContextWithNilContext(t *testing.T) {
 	Convey("Given I call the method addOptionsFromContext", t, func() {
 
 		query := `SELECT * FROM policy`
-		command, values := commandAndValuesFromContext(query, nil, []string{})
+		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, nil, []string{})
 
 		So(command, ShouldEqual, `SELECT * FROM policy`)
 		So(values, ShouldResemble, []interface{}{})
 	})
 }
 
-func TestMethodAddOptionsFromContextWithLimitEqualTo10(t *testing.T) {
+func TestMethodAddOptionsFromContextWithLimitEqualTo20(t *testing.T) {
 
 	Convey("Given I call the method addOptionsFromContext", t, func() {
 		query := `SELECT * FROM policy`
 		context := manipulate.NewContext()
 		context.PageSize = 20
-		command, values := commandAndValuesFromContext(query, context, []string{})
+		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{})
 
 		So(command, ShouldEqual, `SELECT * FROM policy LIMIT 20`)
 		So(values, ShouldResemble, []interface{}{})
@@ -71,7 +71,7 @@ func TestMethodAddOptionsFromContextWithParameter(t *testing.T) {
 		query := `SELECT * FROM policy`
 		context := manipulate.NewContext()
 		context.Parameter = &Parameter{IfNotExists: true}
-		command, values := commandAndValuesFromContext(query, context, []string{})
+		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{})
 
 		So(command, ShouldEqual, `SELECT * FROM policy LIMIT 100 IF NOT EXISTS `)
 		So(values, ShouldResemble, []interface{}{})
@@ -90,7 +90,7 @@ func TestMethodAddOptionsFromContextWithFilter(t *testing.T) {
 		filter.Values = [][]interface{}{[]interface{}{"12345"}}
 
 		context.Filter = filter
-		command, values := commandAndValuesFromContext(query, context, []string{})
+		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{})
 
 		So(command, ShouldEqual, `SELECT * FROM policy WHERE ID = ? LIMIT 100`)
 		So(values, ShouldResemble, []interface{}{"12345"})
@@ -114,7 +114,7 @@ func TestMethodAddOptionsFromContextWithEverything(t *testing.T) {
 
 		context.Parameter = &Parameter{IfNotExists: true}
 
-		command, values := commandAndValuesFromContext(query, context, []string{"name", "age"})
+		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{"name", "age"})
 
 		So(command, ShouldEqual, `SELECT * FROM policy WHERE name = ? AND age = ? AND ID = ? LIMIT 20 IF NOT EXISTS  ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{"12345"})
@@ -134,7 +134,7 @@ func TestMethodAddOptionsFromContextWithMultiColumnAndValues(t *testing.T) {
 
 		context.Filter = filter
 
-		command, values := commandAndValuesFromContext(query, context, []string{})
+		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{})
 
 		So(command, ShouldEqual, `SELECT * FROM policy WHERE (ID,name) = ((?,?),(?,?)) LIMIT 100`)
 		So(values, ShouldResemble, []interface{}{"20", 0, "60", 122})
