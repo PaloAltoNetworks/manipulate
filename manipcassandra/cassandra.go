@@ -55,22 +55,6 @@ func NewCassandraStore(servers []string, keyspace string, version int) *Cassandr
 	}
 }
 
-func (c *CassandraStore) createNativeSession(srvs []string, ks string, v int, timeout time.Duration) (*gocql.Session, error) {
-	cluster := gocql.NewCluster(srvs...)
-	cluster.Keyspace = ks
-	cluster.Consistency = gocql.Quorum
-	cluster.ProtoVersion = v
-	cluster.Timeout = timeout
-
-	session, err := cluster.CreateSession()
-
-	if err != nil {
-		return nil, err
-	}
-
-	return session, nil
-}
-
 // Stop will close the cassandra session
 func (c *CassandraStore) Stop() {
 	c.nativeSession.Close()
@@ -162,7 +146,7 @@ func (c *CassandraStore) Delete(context manipulate.Contexts, objects ...manipula
 		transactionID = context.TransactionID
 
 		if transactionID != "" || batch == nil {
-			batch = c.BatchForID(transactionID)
+			batch = c.batchForID(transactionID)
 		}
 
 		command, values := buildDeleteCommand(context, object.Identity().Name, primaryKeys, primaryValues)
@@ -173,7 +157,7 @@ func (c *CassandraStore) Delete(context manipulate.Contexts, objects ...manipula
 		return nil
 	}
 
-	if err := c.CommitBatch(batch); err != nil {
+	if err := c.commitBatch(batch); err != nil {
 		return makeManipCassandraErrors(err.Error(), ManipCassandraExecuteBatchErrorCode)
 	}
 
@@ -239,7 +223,7 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 		transactionID = context.TransactionID
 
 		if transactionID != "" || batch == nil {
-			batch = c.BatchForID(transactionID)
+			batch = c.batchForID(transactionID)
 		}
 
 		command, values := buildInsertCommand(context, object.Identity().Name, list, values)
@@ -352,7 +336,7 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 		transactionID = context.TransactionID
 
 		if transactionID != "" || batch == nil {
-			batch = c.BatchForID(transactionID)
+			batch = c.batchForID(transactionID)
 		}
 
 		command, values := buildUpdateCommand(context, object.Identity().Name, list, values, primaryKeys, primaryValues)
@@ -364,7 +348,7 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 		return nil
 	}
 
-	if err := c.CommitBatch(batch); err != nil {
+	if err := c.commitBatch(batch); err != nil {
 		return makeManipCassandraErrors(err.Error(), ManipCassandraExecuteBatchErrorCode)
 	}
 
@@ -412,52 +396,6 @@ func (c *CassandraStore) Assign(contexts manipulate.Contexts, parent manipulate.
 	panic("Not implemented")
 }
 
-// Query return a gocql.Query.
-// The dev can then do whatever he wants with
-func (c *CassandraStore) Query(query string, values []interface{}) *gocql.Query {
-	return c.nativeSession.Query(query, values...)
-}
-
-// BatchForID return a gocql.Batch,
-// The dev can then do whatever he wants with
-// If id is emptyn it will return a new batch
-// If id does not match with a batch, it will create a new batch
-func (c *CassandraStore) BatchForID(id manipulate.TransactionID) *gocql.Batch {
-
-	if id == "" {
-		return c.nativeSession.NewBatch(gocql.UnloggedBatch)
-	}
-
-	batch := c.batchRegistry[id]
-
-	if batch == nil {
-		c.batchRegistry[id] = c.nativeSession.NewBatch(gocql.UnloggedBatch)
-	}
-
-	return c.batchRegistry[id]
-}
-
-// CommitBatch commit the given batch
-// The dev can then do whatever he wants with
-func (c *CassandraStore) CommitBatch(b *gocql.Batch) error {
-
-	log.WithFields(log.Fields{
-		"batch": b.Entries,
-	}).Debug("Commiting batch to cassandra.")
-
-	if err := c.nativeSession.ExecuteBatch(b); err != nil {
-
-		log.WithFields(log.Fields{
-			"batch": b.Entries,
-			"error": err,
-		}).Debug("Unable to send batch command.")
-
-		return err
-	}
-
-	return nil
-}
-
 // Commit will execute the batch of the given transaction
 // The method will return an error if the batch does not succeed
 func (c *CassandraStore) Commit(id manipulate.TransactionID) elemental.Errors {
@@ -473,73 +411,26 @@ func (c *CassandraStore) Commit(id manipulate.TransactionID) elemental.Errors {
 		return makeManipCassandraErrors("No batch found for the given transaction.", ManipCassandraCommitTransactionErrorCode)
 	}
 
-	if err := c.CommitBatch(c.batchRegistry[id]); err != nil {
+	if err := c.commitBatch(c.batchRegistry[id]); err != nil {
 		return makeManipCassandraErrors(err.Error(), ManipCassandraExecuteBatchErrorCode)
 	}
 
 	return nil
 }
 
-// sliceMaps will try to call the method SliceMap on the given iterator
-// It will return an array of map ot an array of errors
-func sliceMaps(iter *gocql.Iter) ([]map[string]interface{}, error) {
+// Abort aborts the given transaction ID.
+func (c *CassandraStore) Abort(id manipulate.TransactionID) elemental.Errors {
 
-	sliceMaps, err := iter.SliceMap()
+	if c.batchRegistry[id] == nil {
+		log.WithFields(log.Fields{
+			"store":         c,
+			"transactionID": id,
+		}).Error("No batch found for the given transaction.")
 
-	if err != nil {
-		return nil, err
+		return makeManipCassandraErrors("No batch found for the given transaction.", ManipCassandraCommitTransactionErrorCode)
 	}
 
-	if err = iter.Close(); err != nil {
-		return nil, err
-	}
-
-	return sliceMaps, nil
-}
-
-// unmarshalManipulable this will be called by the method retrieve as we know in which object we will store the retrieved data
-func unmarshalManipulable(iter *gocql.Iter, objects []manipulate.Manipulable) error {
-
-	sliceMaps, err := sliceMaps(iter)
-
-	if err != nil {
-		return err
-	}
-
-	if len(objects) != len(sliceMaps) {
-		return fmt.Errorf("Unexpected number of objects in unmarshaled data.")
-	}
-
-	for index, sliceMap := range sliceMaps {
-
-		// We access the object here and give it to Unmarshal
-		// We can't give the array objects as the type is manipulate.Manipulable which is an interface
-		// It won't be possible to decode that...or in an easy (or not) way...
-		// TODO : intern work one day :D
-		if err := cassandra.Unmarshal(sliceMap, objects[index]); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// unmarshalManipulable this will be called by the method retrieveChildren, we will store the objects in the empty given array/interface
-func unmarshalInterface(iter *gocql.Iter, objects interface{}) error {
-
-	sliceMaps, err := sliceMaps(iter)
-
-	if err != nil {
-		return err
-	}
-
-	if len(sliceMaps) < 1 {
-		return nil
-	}
-
-	if err := cassandra.Unmarshal(sliceMaps, objects); err != nil {
-		return err
-	}
+	delete(c.batchRegistry, id)
 
 	return nil
 }
@@ -619,6 +510,133 @@ func (c *CassandraStore) ExecuteScript(data string) error {
 
 			return err
 		}
+	}
+
+	return nil
+}
+
+// createNativeSession returns a native gocql.Session.
+func (c *CassandraStore) createNativeSession(srvs []string, ks string, v int, timeout time.Duration) (*gocql.Session, error) {
+	cluster := gocql.NewCluster(srvs...)
+	cluster.Keyspace = ks
+	cluster.Consistency = gocql.Quorum
+	cluster.ProtoVersion = v
+	cluster.Timeout = timeout
+
+	session, err := cluster.CreateSession()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return session, nil
+}
+
+// query return a gocql.Query.
+// The dev can then do whatever he wants with
+func (c *CassandraStore) query(query string, values []interface{}) *gocql.Query {
+	return c.nativeSession.Query(query, values...)
+}
+
+// batchForID return a gocql.Batch,
+// The dev can then do whatever he wants with
+// If id is emptyn it will return a new batch
+// If id does not match with a batch, it will create a new batch
+func (c *CassandraStore) batchForID(id manipulate.TransactionID) *gocql.Batch {
+
+	if id == "" {
+		return c.nativeSession.NewBatch(gocql.UnloggedBatch)
+	}
+
+	batch := c.batchRegistry[id]
+
+	if batch == nil {
+		c.batchRegistry[id] = c.nativeSession.NewBatch(gocql.UnloggedBatch)
+	}
+
+	return c.batchRegistry[id]
+}
+
+// CommitBatch commit the given batch
+// The dev can then do whatever he wants with
+func (c *CassandraStore) commitBatch(b *gocql.Batch) error {
+
+	log.WithFields(log.Fields{
+		"batch": b.Entries,
+	}).Debug("Commiting batch to cassandra.")
+
+	if err := c.nativeSession.ExecuteBatch(b); err != nil {
+
+		log.WithFields(log.Fields{
+			"batch": b.Entries,
+			"error": err,
+		}).Debug("Unable to send batch command.")
+
+		return err
+	}
+
+	return nil
+}
+
+// sliceMaps will try to call the method SliceMap on the given iterator
+// It will return an array of map ot an array of errors
+func sliceMaps(iter *gocql.Iter) ([]map[string]interface{}, error) {
+
+	sliceMaps, err := iter.SliceMap()
+
+	if err != nil {
+		return nil, err
+	}
+
+	if err = iter.Close(); err != nil {
+		return nil, err
+	}
+
+	return sliceMaps, nil
+}
+
+// unmarshalManipulable this will be called by the method retrieve as we know in which object we will store the retrieved data
+func unmarshalManipulable(iter *gocql.Iter, objects []manipulate.Manipulable) error {
+
+	sliceMaps, err := sliceMaps(iter)
+
+	if err != nil {
+		return err
+	}
+
+	if len(objects) != len(sliceMaps) {
+		return fmt.Errorf("Unexpected number of objects in unmarshaled data.")
+	}
+
+	for index, sliceMap := range sliceMaps {
+
+		// We access the object here and give it to Unmarshal
+		// We can't give the array objects as the type is manipulate.Manipulable which is an interface
+		// It won't be possible to decode that...or in an easy (or not) way...
+		// TODO : intern work one day :D
+		if err := cassandra.Unmarshal(sliceMap, objects[index]); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// unmarshalManipulable this will be called by the method retrieveChildren, we will store the objects in the empty given array/interface
+func unmarshalInterface(iter *gocql.Iter, objects interface{}) error {
+
+	sliceMaps, err := sliceMaps(iter)
+
+	if err != nil {
+		return err
+	}
+
+	if len(sliceMaps) < 1 {
+		return nil
+	}
+
+	if err := cassandra.Unmarshal(sliceMaps, objects); err != nil {
+		return err
 	}
 
 	return nil

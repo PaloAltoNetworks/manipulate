@@ -143,7 +143,7 @@ func TestCassandra_Query(t *testing.T) {
 			return expectedQuery
 		})
 
-		query := store.Query(command, values)
+		query := store.query(command, values)
 
 		Convey("Then we should get the good query", func() {
 			So(expectedCommand, ShouldEqual, command)
@@ -168,7 +168,7 @@ func TestCassandre_BatchForID(t *testing.T) {
 			return expectedBatch
 		})
 
-		newBatch := store.BatchForID("")
+		newBatch := store.batchForID("")
 
 		Convey("Then we should get the good batch", func() {
 			So(expectedBatch, ShouldEqual, newBatch)
@@ -193,7 +193,7 @@ func TestCassandre_BatchForIDWithAnID(t *testing.T) {
 			return expectedBatch
 		})
 
-		newBatch := store.BatchForID("123")
+		newBatch := store.batchForID("123")
 
 		Convey("Then we should get the good batch", func() {
 			So(expectedBatchType, ShouldEqual, gocql.UnloggedBatch)
@@ -213,7 +213,7 @@ func TestCassandre_CommitTransaction(t *testing.T) {
 			return &gocql.Batch{}
 		})
 
-		batch := store.BatchForID("123")
+		batch := store.batchForID("123")
 
 		var expectedBatch *gocql.Batch
 
@@ -257,7 +257,7 @@ func TestCassandre_CommitTransaction_Error(t *testing.T) {
 			return &gocql.Batch{}
 		})
 
-		batch := store.BatchForID("123")
+		batch := store.batchForID("123")
 
 		var expectedBatch *gocql.Batch
 
@@ -291,7 +291,7 @@ func TestCassandra_ExecuteBatch(t *testing.T) {
 			return errors.New("error batch")
 		})
 
-		err := store.CommitBatch(batch)
+		err := store.commitBatch(batch)
 
 		Convey("Then we should see that execute bash has been called", func() {
 			So(expectedBatch, ShouldEqual, batch)
@@ -2541,6 +2541,45 @@ func TestCassandraExecuteScriptWithEmptyLine(t *testing.T) {
 			So(expectedQueryString2, ShouldResemble, "Antoine")
 			So(expectedQuery, ShouldEqual, newQuery)
 			So(err, ShouldBeNil)
+		})
+	})
+}
+
+func TestCassandraAbort(t *testing.T) {
+
+	Convey("Given I have a store with a transaction", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		tid := manipulate.TransactionID("tid")
+
+		store.batchRegistry[tid] = &gocql.Batch{}
+
+		Convey("When I use Abort", func() {
+
+			err := store.Abort(tid)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then the transactionID should have been removed", func() {
+				So(store.batchRegistry, ShouldNotContainKey, tid)
+			})
+		})
+	})
+
+	Convey("Given I have a store with no transaction", t, func() {
+
+		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		tid := manipulate.TransactionID("tid")
+
+		Convey("When I use Abort", func() {
+
+			err := store.Abort(tid)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+			})
 		})
 	})
 }
