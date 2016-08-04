@@ -419,20 +419,15 @@ func (c *CassandraStore) Commit(id manipulate.TransactionID) elemental.Errors {
 }
 
 // Abort aborts the given transaction ID.
-func (c *CassandraStore) Abort(id manipulate.TransactionID) elemental.Errors {
+func (c *CassandraStore) Abort(id manipulate.TransactionID) bool {
 
 	if c.batchRegistry[id] == nil {
-		log.WithFields(log.Fields{
-			"store":         c,
-			"transactionID": id,
-		}).Error("No batch found for the given transaction.")
-
-		return makeManipCassandraErrors("No batch found for the given transaction.", ManipCassandraCommitTransactionErrorCode)
+		return false
 	}
 
 	delete(c.batchRegistry, id)
 
-	return nil
+	return true
 }
 
 // DoesKeyspaceExist checks if the configured keyspace exists

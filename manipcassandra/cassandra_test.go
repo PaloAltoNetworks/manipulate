@@ -2556,10 +2556,10 @@ func TestCassandraAbort(t *testing.T) {
 
 		Convey("When I use Abort", func() {
 
-			err := store.Abort(tid)
+			ok := store.Abort(tid)
 
-			Convey("Then err should be nil", func() {
-				So(err, ShouldBeNil)
+			Convey("Then ok should be true", func() {
+				So(ok, ShouldBeTrue)
 			})
 
 			Convey("Then the transactionID should have been removed", func() {
@@ -2575,10 +2575,10 @@ func TestCassandraAbort(t *testing.T) {
 
 		Convey("When I use Abort", func() {
 
-			err := store.Abort(tid)
+			ok := store.Abort(tid)
 
-			Convey("Then err should not be nil", func() {
-				So(err, ShouldNotBeNil)
+			Convey("Then ok should not be false", func() {
+				So(ok, ShouldBeFalse)
 			})
 		})
 	})
