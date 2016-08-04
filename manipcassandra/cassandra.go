@@ -517,6 +517,7 @@ func (c *CassandraStore) createNativeSession(srvs []string, ks string, v int, ti
 	cluster.Consistency = gocql.Quorum
 	cluster.ProtoVersion = v
 	cluster.Timeout = timeout
+	cluster.RetryPolicy = &gocql.SimpleRetryPolicy{NumRetries: 5}
 
 	session, err := cluster.CreateSession()
 
