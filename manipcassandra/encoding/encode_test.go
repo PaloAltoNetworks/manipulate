@@ -77,6 +77,7 @@ func TestMethodFieldsAndTags(t *testing.T) {
 			So(now2.After(values[0].(time.Time)), ShouldBeTrue)
 			So(now.Before(values[1].(time.Time)), ShouldBeTrue)
 			So(now2.After(values[1].(time.Time)), ShouldBeTrue)
+			So(values[2], ShouldEqual, "")
 
 			date.CreationDate = values[0].(time.Time)
 			date.UpdateDate = values[1].(time.Time)
