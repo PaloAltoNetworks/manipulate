@@ -293,3 +293,24 @@ func buildCountCommand(c *manipulate.Context, tableName string) (string, []inter
 
 	return commandAndValuesFromContext(buffer.String(), elemental.OperationInfo, c, []string{})
 }
+
+// buildIncrementCommand build a counter incrementation command for cassandra
+// example : UPDATE counter_table_name SET count = count + n WHERE k = x
+// every values will be replace by a ?
+// then it will apply the given context on the query
+func buildIncrementCommand(c *manipulate.Context, tableName, counterName string, inc int, primaryKeys []string, primaryValues []interface{}) (string, []interface{}) {
+
+	var buffer bytes.Buffer
+	buffer.WriteString(`UPDATE `)
+	buffer.WriteString(tableName)
+	buffer.WriteString(` SET `)
+	buffer.WriteString(counterName)
+	buffer.WriteString(` = `)
+	buffer.WriteString(counterName)
+	buffer.WriteString(` + `)
+	buffer.WriteString(strconv.Itoa(inc))
+
+	command, values := commandAndValuesFromContext(buffer.String(), elemental.OperationUpdate, c, primaryKeys)
+
+	return command, append(primaryValues, values...)
+}

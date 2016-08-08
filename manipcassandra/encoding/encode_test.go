@@ -55,7 +55,7 @@ func TestMethodFields(t *testing.T) {
 
 		Convey("Then I should get the appropriate map", func() {
 			So(err, ShouldBeNil)
-			So(fields, ShouldResemble, []string{"id", "name", "Age", "siblings"})
+			So(fields, ShouldResemble, []string{"id", "name", "Age", "siblings", "zipcode", "country"})
 			So(values[1], ShouldEqual, "Alexandre")
 		})
 	})
@@ -72,11 +72,12 @@ func TestMethodFieldsAndTags(t *testing.T) {
 
 		Convey("Then I should get the appropriate map", func() {
 			So(err, ShouldBeNil)
-			So(fields, ShouldResemble, []string{"creationDate", "updateDate"})
+			So(fields, ShouldResemble, []string{"creationDate", "updateDate", "name"})
 			So(now.Before(values[0].(time.Time)), ShouldBeTrue)
 			So(now2.After(values[0].(time.Time)), ShouldBeTrue)
 			So(now.Before(values[1].(time.Time)), ShouldBeTrue)
 			So(now2.After(values[1].(time.Time)), ShouldBeTrue)
+			So(values[2], ShouldEqual, "")
 
 			date.CreationDate = values[0].(time.Time)
 			date.UpdateDate = values[1].(time.Time)

@@ -430,6 +430,35 @@ func (c *CassandraStore) Abort(id manipulate.TransactionID) bool {
 	return true
 }
 
+// Increment increments the given counter name from the given counter table name by the given number.
+// To Decrement, simply pass a negative value.
+func (c *CassandraStore) Increment(contexts manipulate.Contexts, name, counter string, inc int, primaryKeys []string, primaryValues []interface{}) elemental.Errors {
+
+	var transactionID manipulate.TransactionID
+	var batch *gocql.Batch
+
+	context := manipulate.ContextForIndex(contexts, 0)
+	transactionID = context.TransactionID
+
+	if transactionID != "" {
+		batch = c.batchForID(transactionID)
+	}
+
+	command, values := buildIncrementCommand(context, name, counter, inc, primaryKeys, primaryValues)
+
+	batch.Query(command, values...)
+
+	if transactionID != "" {
+		return nil
+	}
+
+	if err := c.commitBatch(batch); err != nil {
+		return makeManipCassandraErrors(err.Error(), ManipCassandraExecuteBatchErrorCode)
+	}
+
+	return nil
+}
+
 // DoesKeyspaceExist checks if the configured keyspace exists
 func (c *CassandraStore) DoesKeyspaceExist() (bool, error) {
 

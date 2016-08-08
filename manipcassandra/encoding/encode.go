@@ -172,7 +172,7 @@ func PrimaryFieldsAndValues(val interface{}) ([]string, []interface{}, error) {
 	for _, info := range structFields {
 		field := fieldByIndex(structVal, info.index)
 
-		if !info.isPrimaryKey || isEmptyValue(field) {
+		if !info.isPrimaryKey || isEmptyPrimaryValue(field) {
 			continue
 		}
 
@@ -183,7 +183,7 @@ func PrimaryFieldsAndValues(val interface{}) ([]string, []interface{}, error) {
 	return fields, values, nil
 }
 
-func isEmptyValue(v reflect.Value) bool {
+func isEmptyPrimaryValue(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
 		return v.Len() == 0
@@ -194,6 +194,20 @@ func isEmptyValue(v reflect.Value) bool {
 	case reflect.Float32, reflect.Float64:
 		return v.Float() == 0
 	case reflect.Interface, reflect.Ptr:
+		return v.IsNil()
+	}
+
+	var defaultTime time.Time
+	if v.Type() == reflect.TypeOf(defaultTime) {
+		return v.Interface() == defaultTime
+	}
+
+	return false
+}
+
+func isEmptyValue(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Array, reflect.Map, reflect.Slice, reflect.Interface, reflect.Ptr:
 		return v.IsNil()
 	}
 

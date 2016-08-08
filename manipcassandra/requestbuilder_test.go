@@ -414,9 +414,19 @@ func TestMethodBuildGetCommandWithAttributesAndPrimaryKeysAndValues(t *testing.T
 
 func TestMethodBuildCountCommand(t *testing.T) {
 
-	Convey("Given I call the method buildGetCommand", t, func() {
+	Convey("Given I call the method buildCountCommand", t, func() {
 		command, values := buildCountCommand(nil, "policy")
 		So(command, ShouldEqual, `SELECT COUNT(*) FROM policy`)
 		So(values, ShouldResemble, []interface{}{})
+	})
+}
+
+func TestMethodBuildIncrementCommand(t *testing.T) {
+
+	Convey("Given I call the method buildIncrementCommand with two primary keys", t, func() {
+
+		command, values := buildIncrementCommand(nil, "thecounter", "count", 2, []string{"id", "name"}, []interface{}{"12", "toto"})
+		So(command, ShouldEqual, `UPDATE thecounter SET count = count + 2 WHERE id = ? AND name = ?`)
+		So(values, ShouldResemble, []interface{}{"12", "toto"})
 	})
 }
