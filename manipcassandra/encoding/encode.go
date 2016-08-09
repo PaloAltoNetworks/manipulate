@@ -199,7 +199,7 @@ func isEmptyPrimaryValue(v reflect.Value) bool {
 
 	var defaultTime time.Time
 	if v.Type() == reflect.TypeOf(defaultTime) {
-		return v.Interface() == defaultTime
+		return defaultTime.Equal(v.Interface().(time.Time))
 	}
 
 	return false
@@ -213,7 +213,7 @@ func isEmptyValue(v reflect.Value) bool {
 
 	var defaultTime time.Time
 	if v.Type() == reflect.TypeOf(defaultTime) {
-		return v.Interface() == defaultTime
+		return defaultTime.Equal(v.Interface().(time.Time))
 	}
 
 	return false
