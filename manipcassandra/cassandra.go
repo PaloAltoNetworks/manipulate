@@ -630,7 +630,11 @@ func unmarshalManipulable(iter *gocql.Iter, objects []manipulate.Manipulable) er
 	}
 
 	if len(objects) != len(sliceMaps) {
-		return fmt.Errorf("Unexpected number of objects in unmarshaled data.")
+		name := objects[0].Identity().Name
+		if len(objects) > 1 {
+			name = objects[0].Identity().Category
+		}
+		return fmt.Errorf("Expected to retrieve %d %s from database, but got %d.", len(objects), name, len(sliceMaps))
 	}
 
 	for index, sliceMap := range sliceMaps {
