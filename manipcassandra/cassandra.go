@@ -440,7 +440,7 @@ func (c *CassandraStore) Increment(contexts manipulate.Contexts, name, counter s
 	context := manipulate.ContextForIndex(contexts, 0)
 	transactionID = context.TransactionID
 
-	if transactionID != "" {
+	if transactionID != "" || batch == nil {
 		batch = c.batchForID(transactionID)
 	}
 
