@@ -5,6 +5,7 @@
 package manipcassandra
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/aporeto-inc/elemental"
@@ -16,7 +17,7 @@ func TestMethodAddOptionsFromContextWithPrimaryKeys(t *testing.T) {
 
 	Convey("Given I call the method addOptionsFromContext", t, func() {
 
-		query := `SELECT * FROM policy`
+		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		context := manipulate.NewContext()
 
 		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{"name", "ID"})
@@ -30,7 +31,7 @@ func TestMethodAddOptionsFromContextWithLimitEqualTo0(t *testing.T) {
 
 	Convey("Given I call the method addOptionsFromContext", t, func() {
 
-		query := `SELECT * FROM policy`
+		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		context := manipulate.NewContext()
 
 		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{})
@@ -44,7 +45,7 @@ func TestMethodAddOptionsFromContextWithNilContext(t *testing.T) {
 
 	Convey("Given I call the method addOptionsFromContext", t, func() {
 
-		query := `SELECT * FROM policy`
+		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, nil, []string{})
 
 		So(command, ShouldEqual, `SELECT * FROM policy`)
@@ -55,7 +56,7 @@ func TestMethodAddOptionsFromContextWithNilContext(t *testing.T) {
 func TestMethodAddOptionsFromContextWithLimitEqualTo20(t *testing.T) {
 
 	Convey("Given I call the method addOptionsFromContext", t, func() {
-		query := `SELECT * FROM policy`
+		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		context := manipulate.NewContext()
 		context.PageSize = 20
 		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{})
@@ -68,7 +69,7 @@ func TestMethodAddOptionsFromContextWithLimitEqualTo20(t *testing.T) {
 func TestMethodAddOptionsFromContextWithParameter(t *testing.T) {
 
 	Convey("Given I call the method addOptionsFromContext", t, func() {
-		query := `SELECT * FROM policy`
+		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		context := manipulate.NewContext()
 		context.Parameter = &Parameter{IfNotExists: true}
 		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{})
@@ -81,7 +82,7 @@ func TestMethodAddOptionsFromContextWithParameter(t *testing.T) {
 func TestMethodAddOptionsFromContextWithFilter(t *testing.T) {
 
 	Convey("Given I call the method addOptionsFromContext", t, func() {
-		query := `SELECT * FROM policy`
+		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		context := manipulate.NewContext()
 
 		filter := &Filter{}
@@ -100,7 +101,7 @@ func TestMethodAddOptionsFromContextWithFilter(t *testing.T) {
 func TestMethodAddOptionsFromContextWithEverything(t *testing.T) {
 
 	Convey("Given I call the method addOptionsFromContext", t, func() {
-		query := `SELECT * FROM policy`
+		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		context := manipulate.NewContext()
 
 		filter := &Filter{}
@@ -124,7 +125,7 @@ func TestMethodAddOptionsFromContextWithEverything(t *testing.T) {
 func TestMethodAddOptionsFromContextWithMultiColumnAndValues(t *testing.T) {
 
 	Convey("Given I call the method addOptionsFromContext", t, func() {
-		query := `SELECT * FROM policy`
+		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		context := manipulate.NewContext()
 
 		filter := &Filter{}
