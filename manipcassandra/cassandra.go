@@ -7,6 +7,7 @@ package manipcassandra
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aporeto-inc/elemental"
@@ -39,8 +40,9 @@ type CassandraStore struct {
 	KeySpace     string
 	ProtoVersion int
 
-	nativeSession *gocql.Session
-	batchRegistry BatchRegistry
+	nativeSession     *gocql.Session
+	batchRegistry     BatchRegistry
+	batchRegistryLock *sync.Mutex
 }
 
 // NewCassandraStore returns a new *CassandraStore
@@ -48,10 +50,11 @@ type CassandraStore struct {
 func NewCassandraStore(servers []string, keyspace string, version int) *CassandraStore {
 
 	return &CassandraStore{
-		Servers:       servers,
-		KeySpace:      keyspace,
-		ProtoVersion:  version,
-		batchRegistry: BatchRegistry{},
+		Servers:           servers,
+		KeySpace:          keyspace,
+		ProtoVersion:      version,
+		batchRegistry:     BatchRegistry{},
+		batchRegistryLock: &sync.Mutex{},
 	}
 }
 
@@ -400,9 +403,9 @@ func (c *CassandraStore) Assign(contexts manipulate.Contexts, parent manipulate.
 // The method will return an error if the batch does not succeed
 func (c *CassandraStore) Commit(id manipulate.TransactionID) elemental.Errors {
 
-	defer func() { delete(c.batchRegistry, id) }()
+	defer func() { c.unregisterBatch(id) }()
 
-	if c.batchRegistry[id] == nil {
+	if c.registeredBatchWithID(id) == nil {
 		log.WithFields(log.Fields{
 			"store":         c,
 			"transactionID": id,
@@ -411,7 +414,7 @@ func (c *CassandraStore) Commit(id manipulate.TransactionID) elemental.Errors {
 		return makeManipCassandraErrors("No batch found for the given transaction.", ManipCassandraCommitTransactionErrorCode)
 	}
 
-	if err := c.commitBatch(c.batchRegistry[id]); err != nil {
+	if err := c.commitBatch(c.registeredBatchWithID(id)); err != nil {
 		return makeManipCassandraErrors(err.Error(), ManipCassandraExecuteBatchErrorCode)
 	}
 
@@ -421,11 +424,11 @@ func (c *CassandraStore) Commit(id manipulate.TransactionID) elemental.Errors {
 // Abort aborts the given transaction ID.
 func (c *CassandraStore) Abort(id manipulate.TransactionID) bool {
 
-	if c.batchRegistry[id] == nil {
+	if c.registeredBatchWithID(id) == nil {
 		return false
 	}
 
-	delete(c.batchRegistry, id)
+	c.unregisterBatch(id)
 
 	return true
 }
@@ -573,13 +576,14 @@ func (c *CassandraStore) batchForID(id manipulate.TransactionID) *gocql.Batch {
 		return c.nativeSession.NewBatch(gocql.UnloggedBatch)
 	}
 
-	batch := c.batchRegistry[id]
+	batch := c.registeredBatchWithID(id)
 
 	if batch == nil {
-		c.batchRegistry[id] = c.nativeSession.NewBatch(gocql.UnloggedBatch)
+		batch = c.nativeSession.NewBatch(gocql.UnloggedBatch)
+		c.registerBatch(id, batch)
 	}
 
-	return c.batchRegistry[id]
+	return batch
 }
 
 // CommitBatch commit the given batch
@@ -601,6 +605,29 @@ func (c *CassandraStore) commitBatch(b *gocql.Batch) error {
 	}
 
 	return nil
+}
+
+func (c *CassandraStore) registerBatch(id manipulate.TransactionID, batch *gocql.Batch) {
+
+	c.batchRegistryLock.Lock()
+	c.batchRegistry[id] = batch
+	c.batchRegistryLock.Unlock()
+}
+
+func (c *CassandraStore) unregisterBatch(id manipulate.TransactionID) {
+
+	c.batchRegistryLock.Lock()
+	delete(c.batchRegistry, id)
+	c.batchRegistryLock.Unlock()
+}
+
+func (c *CassandraStore) registeredBatchWithID(id manipulate.TransactionID) *gocql.Batch {
+
+	c.batchRegistryLock.Lock()
+	b := c.batchRegistry[id]
+	c.batchRegistryLock.Unlock()
+
+	return b
 }
 
 // sliceMaps will try to call the method SliceMap on the given iterator
