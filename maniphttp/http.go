@@ -48,7 +48,7 @@ func NewHTTPStore(username, password, url, namespace string, tlsConfig *TLSConfi
 
 func (s *HTTPStore) makeAuthorizationHeaders() string {
 
-	return "TODO"
+	return s.username + " " + s.password
 }
 
 func (s *HTTPStore) prepareHeaders(request *http.Request, context *manipulate.Context) *elemental.Error {

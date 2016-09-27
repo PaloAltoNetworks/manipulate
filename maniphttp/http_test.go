@@ -77,8 +77,8 @@ func TestHTTP_makeAuthorizationHeaders(t *testing.T) {
 			store := NewHTTPStore("username", "password", "http://url.com", "", nil)
 			h := store.makeAuthorizationHeaders()
 
-			Convey("Then the header should be 'TODO=", func() {
-				So(h, ShouldEqual, "TODO")
+			Convey("Then the header should be correct", func() {
+				So(h, ShouldEqual, "username password")
 			})
 		})
 	})
