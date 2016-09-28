@@ -17,12 +17,11 @@ import (
 
 // HTTPStore represents a user session.
 type HTTPStore struct {
-	certificate string
-	username    string
-	password    string
-	url         string
-	namespace   string
-	client      *http.Client
+	username  string
+	password  string
+	url       string
+	namespace string
+	client    *http.Client
 }
 
 // NewHTTPStore returns a new *HTTPStore
@@ -57,7 +56,10 @@ func (s *HTTPStore) prepareHeaders(request *http.Request, context *manipulate.Co
 		request.Header.Set("X-Namespace", s.namespace)
 	}
 
-	request.Header.Set("Authorization", s.makeAuthorizationHeaders())
+	if s.username != "" && s.password != "" {
+		request.Header.Set("Authorization", s.makeAuthorizationHeaders())
+	}
+
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
 	if context == nil {
