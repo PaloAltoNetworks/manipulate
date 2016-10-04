@@ -87,7 +87,7 @@ func NewCollectionFilter(keys []string, values []interface{}, separator string) 
 
 // Compile returns the string of the current filer
 // for instance it could be WHERE ID IN (20,30) AND Name = Alexandre ALLOW FILTERING
-func (f *Filter) Compile() string {
+func (f *Filter) Compile() interface{} {
 
 	var buffer bytes.Buffer
 
