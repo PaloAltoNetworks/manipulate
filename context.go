@@ -35,12 +35,12 @@ type Context struct {
 
 // FilterCompiler is a interface which allows to create a filter
 type FilterCompiler interface {
-	Compile() string
+	Compile() interface{}
 }
 
 // ParameterCompiler is a interface which allows to add more parameters
 type ParameterCompiler interface {
-	Compile() string
+	Compile() interface{}
 }
 
 // NewContext returns a new *Context

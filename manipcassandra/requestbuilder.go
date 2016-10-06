@@ -44,7 +44,7 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 	if c.Filter != nil {
 		buffer.WriteString(` `)
 
-		filterString := c.Filter.Compile()
+		filterString := c.Filter.Compile().(string)
 
 		if hasPrimaryKey {
 			filterString = strings.Replace(filterString, "WHERE", "AND", 1)
@@ -68,7 +68,7 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 
 	if c.Parameter != nil {
 		buffer.WriteString(` `)
-		buffer.WriteString(c.Parameter.Compile())
+		buffer.WriteString(c.Parameter.Compile().(string))
 	}
 
 	if c.Filter != nil && c.Filter.(*Filter).AllowFiltering {

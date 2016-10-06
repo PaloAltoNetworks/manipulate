@@ -13,6 +13,8 @@ import (
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 // HTTPStore represents a user session.
@@ -133,8 +135,24 @@ func (s *HTTPStore) send(request *http.Request, context *manipulate.Context) (*h
 	response, err := s.client.Do(request)
 
 	if err != nil {
+		log.WithFields(log.Fields{
+			"package":  "maniphttp",
+			"method":   request.Method,
+			"url":      request.URL,
+			"request":  request,
+			"response": response,
+			"error":    err,
+		}).Debug("Unable to send the request.")
 		return response, elemental.NewErrors(elemental.NewError("Error while sending the request", err.Error(), "manipulate", 0))
 	}
+
+	log.WithFields(log.Fields{
+		"package":  "maniphttp",
+		"method":   request.Method,
+		"url":      request.URL,
+		"request":  request,
+		"response": response,
+	}).Debug("Request sent.")
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 

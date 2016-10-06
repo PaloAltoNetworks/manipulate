@@ -16,7 +16,7 @@ type Parameter struct {
 }
 
 // Compile returns the string of the current parameter
-func (p *Parameter) Compile() string {
+func (p *Parameter) Compile() interface{} {
 
 	var buffer bytes.Buffer
 
