@@ -92,6 +92,7 @@ func (c *CassandraStore) Retrieve(context manipulate.Contexts, objects ...manipu
 		if err != nil {
 
 			log.WithFields(log.Fields{
+				"package": "manipcassandra",
 				"context": context,
 				"error":   err,
 			}).Debug("Unable to send select command to cassandra.")
@@ -103,6 +104,7 @@ func (c *CassandraStore) Retrieve(context manipulate.Contexts, objects ...manipu
 		command, values := buildGetCommand(context, object.Identity().Name, primaryKeys, primaryValues)
 
 		log.WithFields(log.Fields{
+			"package": "manipcassandra",
 			"command": command,
 			"values":  values,
 			"context": context,
@@ -138,6 +140,7 @@ func (c *CassandraStore) Delete(context manipulate.Contexts, objects ...manipula
 		if err != nil {
 
 			log.WithFields(log.Fields{
+				"package": "manipcassandra",
 				"context": context,
 				"error":   err,
 			}).Error("Unable to extract primary keys and values.")
@@ -179,6 +182,7 @@ func (c *CassandraStore) RetrieveChildren(context manipulate.Contexts, parent ma
 	command, values := buildGetCommand(ctx, identity.Name, []string{}, []interface{}{})
 
 	log.WithFields(log.Fields{
+		"package": "manipcassandra",
 		"command": command,
 		"values":  values,
 		"context": context,
@@ -215,6 +219,7 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 			}
 
 			log.WithFields(log.Fields{
+				"package": "manipcassandra",
 				"context": context,
 				"error":   err,
 			}).Error("Unable to extract fields and values.")
@@ -238,6 +243,7 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 	}
 
 	log.WithFields(log.Fields{
+		"package": "manipcassandra",
 		"batch":   batch.Entries,
 		"context": context,
 	}).Debug("sending create command to cassandra")
@@ -245,6 +251,7 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 	if err := c.nativeSession.ExecuteBatch(batch); err != nil {
 
 		log.WithFields(log.Fields{
+			"package": "manipcassandra",
 			"batch":   batch.Entries,
 			"context": context,
 			"error":   err,
@@ -258,6 +265,7 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 	}
 
 	log.WithFields(log.Fields{
+		"package": "manipcassandra",
 		"batch":   batch.Entries,
 		"context": context,
 	}).Debug("create command to cassandra sent")
@@ -278,6 +286,7 @@ func (c *CassandraStore) UpdateCollection(context manipulate.Contexts, attribute
 	if err != nil {
 
 		log.WithFields(log.Fields{
+			"package": "manipcassandra",
 			"context": context,
 			"error":   err,
 		}).Error("Unable to extract primary fields and values.")
@@ -289,6 +298,7 @@ func (c *CassandraStore) UpdateCollection(context manipulate.Contexts, attribute
 	if err := c.nativeSession.Query(command, values...).Exec(); err != nil {
 
 		log.WithFields(log.Fields{
+			"package": "manipcassandra",
 			"context": context,
 			"error":   err,
 		}).Error("Unable to send update collection command to cassandra.")
@@ -316,6 +326,7 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 		if err != nil {
 
 			log.WithFields(log.Fields{
+				"package": "manipcassandra",
 				"context": context,
 				"error":   err,
 			}).Error("Unable to extract primary fields and values.")
@@ -328,6 +339,7 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 		if err != nil {
 
 			log.WithFields(log.Fields{
+				"package": "manipcassandra",
 				"context": context,
 				"error":   err,
 			}).Debug("Unable to extract fields and values.")
@@ -369,6 +381,7 @@ func (c *CassandraStore) Count(context manipulate.Contexts, identity elemental.I
 	command, values := buildCountCommand(ctx, identity.Name)
 
 	log.WithFields(log.Fields{
+		"package": "manipcassandra",
 		"query":   command,
 		"context": context,
 	}).Debug("sending count command to cassandra")
@@ -387,6 +400,7 @@ func (c *CassandraStore) Count(context manipulate.Contexts, identity elemental.I
 	}
 
 	log.WithFields(log.Fields{
+		"package": "manipcassandra",
 		"query":   command,
 		"context": context,
 	}).Debug("count command to cassandra sent")
@@ -407,6 +421,7 @@ func (c *CassandraStore) Commit(id manipulate.TransactionID) elemental.Errors {
 
 	if c.registeredBatchWithID(id) == nil {
 		log.WithFields(log.Fields{
+			"package":       "manipcassandra",
 			"store":         c,
 			"transactionID": id,
 		}).Error("No batch found for the given transaction.")
@@ -475,6 +490,7 @@ func (c *CassandraStore) DoesKeyspaceExist() (bool, error) {
 
 	if err != nil {
 		log.WithFields(log.Fields{
+			"package":  "manipcassandra",
 			"keyspace": c.KeySpace,
 			"error":    err,
 		}).Error("unable to get keyspace metadata")
@@ -532,7 +548,8 @@ func (c *CassandraStore) ExecuteScript(data string) error {
 
 		if err := session.Query(statement).Exec(); err != nil {
 			log.WithFields(log.Fields{
-				"error": err,
+				"package": "manipcassandra",
+				"error":   err,
 			}).Error("unable to execute query. aborting script in the middle. be sure to clean up my mess.")
 
 			return err
@@ -591,14 +608,16 @@ func (c *CassandraStore) batchForID(id manipulate.TransactionID) *gocql.Batch {
 func (c *CassandraStore) commitBatch(b *gocql.Batch) error {
 
 	log.WithFields(log.Fields{
-		"batch": b.Entries,
+		"package": "manipcassandra",
+		"batch":   b.Entries,
 	}).Debug("Commiting batch to cassandra.")
 
 	if err := c.nativeSession.ExecuteBatch(b); err != nil {
 
 		log.WithFields(log.Fields{
-			"batch": b.Entries,
-			"error": err,
+			"package": "manipcassandra",
+			"batch":   b.Entries,
+			"error":   err,
 		}).Debug("Unable to send batch command.")
 
 		return err
