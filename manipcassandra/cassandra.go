@@ -87,20 +87,18 @@ func (c *CassandraStore) Retrieve(context manipulate.Contexts, objects ...manipu
 
 	for index, object := range objects {
 
+		context := manipulate.ContextForIndex(context, index)
 		primaryKeys, primaryValues, err := cassandra.PrimaryFieldsAndValues(object)
 
 		if err != nil {
-
 			log.WithFields(log.Fields{
 				"package": "manipcassandra",
 				"context": context,
 				"error":   err,
-			}).Debug("Unable to send select command to cassandra.")
-
-			return makeManipCassandraErrors(err.Error(), ManipCassandraPrimaryFieldsAndValuesErrorCode)
+			}).Error("Unable to extract primary keys and values.")
+			return makeManipCassandraErrors(err.Error(), ErrCannotExractPrimaryFieldsAndValues)
 		}
 
-		context := manipulate.ContextForIndex(context, index)
 		command, values := buildGetCommand(context, object.Identity().Name, primaryKeys, primaryValues)
 
 		log.WithFields(log.Fields{
@@ -110,13 +108,8 @@ func (c *CassandraStore) Retrieve(context manipulate.Contexts, objects ...manipu
 			"context": context,
 		}).Debug("sending select command to cassandra")
 
-		// There is mabe a way to create only one request based on every context
-		// TODO: intern work one day :D
-		iter := c.nativeSession.Query(command, values...).Iter()
-		err = unmarshalManipulable(iter, []manipulate.Manipulable{object})
-
-		if err != nil {
-			return makeManipCassandraErrors(err.Error(), ManipCassandraUnmarshalErrorCode)
+		if errs := unmarshalManipulable(c.nativeSession.Query(command, values...).Iter(), object); errs != nil {
+			return errs
 		}
 	}
 
@@ -145,7 +138,7 @@ func (c *CassandraStore) Delete(context manipulate.Contexts, objects ...manipula
 				"error":   err,
 			}).Error("Unable to extract primary keys and values.")
 
-			return makeManipCassandraErrors(err.Error(), ManipCassandraPrimaryFieldsAndValuesErrorCode)
+			return makeManipCassandraErrors(err.Error(), ErrCannotExractPrimaryFieldsAndValues)
 		}
 
 		context := manipulate.ContextForIndex(context, index)
@@ -164,7 +157,7 @@ func (c *CassandraStore) Delete(context manipulate.Contexts, objects ...manipula
 	}
 
 	if err := c.commitBatch(batch); err != nil {
-		return makeManipCassandraErrors(err.Error(), ManipCassandraExecuteBatchErrorCode)
+		return makeManipCassandraErrors(err.Error(), ErrCannotExecuteBatch)
 	}
 
 	return nil
@@ -190,8 +183,8 @@ func (c *CassandraStore) RetrieveChildren(context manipulate.Contexts, parent ma
 
 	iter := c.nativeSession.Query(command, values...).Iter()
 
-	if err := unmarshalInterface(iter, dest); err != nil {
-		return makeManipCassandraErrors(err.Error(), ManipCassandraUnmarshalErrorCode)
+	if errs := unmarshalManipulables(iter, dest); errs != nil {
+		return errs
 	}
 
 	return nil
@@ -224,7 +217,7 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 				"error":   err,
 			}).Error("Unable to extract fields and values.")
 
-			return makeManipCassandraErrors(err.Error(), ManipCassandraFieldsAndValuesErrorCode)
+			return makeManipCassandraErrors(err.Error(), ErrCannotExtractFieldsAndValues)
 		}
 
 		context := manipulate.ContextForIndex(context, index)
@@ -261,7 +254,7 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 			object.SetIdentifier("")
 		}
 
-		return makeManipCassandraErrors(err.Error(), ManipCassandraExecuteBatchErrorCode)
+		return makeManipCassandraErrors(err.Error(), ErrCannotExecuteBatch)
 	}
 
 	log.WithFields(log.Fields{
@@ -291,7 +284,7 @@ func (c *CassandraStore) UpdateCollection(context manipulate.Contexts, attribute
 			"error":   err,
 		}).Error("Unable to extract primary fields and values.")
 
-		return makeManipCassandraErrors(err.Error(), ManipCassandraPrimaryFieldsAndValuesErrorCode)
+		return makeManipCassandraErrors(err.Error(), ErrCannotExractPrimaryFieldsAndValues)
 	}
 
 	command, values := buildUpdateCollectionCommand(manipulate.ContextForIndex(context, 0), object.Identity().Name, attributeUpdate, primaryKeys, primaryValues)
@@ -303,7 +296,7 @@ func (c *CassandraStore) UpdateCollection(context manipulate.Contexts, attribute
 			"error":   err,
 		}).Error("Unable to send update collection command to cassandra.")
 
-		return makeManipCassandraErrors(err.Error(), ManipCassandraQueryErrorCode)
+		return makeManipCassandraErrors(err.Error(), ErrCannotExecuteQuery)
 	}
 
 	return nil
@@ -331,7 +324,7 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 				"error":   err,
 			}).Error("Unable to extract primary fields and values.")
 
-			return makeManipCassandraErrors(err.Error(), ManipCassandraPrimaryFieldsAndValuesErrorCode)
+			return makeManipCassandraErrors(err.Error(), ErrCannotExractPrimaryFieldsAndValues)
 		}
 
 		list, values, err := cassandra.FieldsAndValues(object)
@@ -344,7 +337,7 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 				"error":   err,
 			}).Debug("Unable to extract fields and values.")
 
-			return makeManipCassandraErrors(err.Error(), ManipCassandraFieldsAndValuesErrorCode)
+			return makeManipCassandraErrors(err.Error(), ErrCannotExtractFieldsAndValues)
 		}
 
 		context := manipulate.ContextForIndex(context, index)
@@ -364,7 +357,7 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 	}
 
 	if err := c.commitBatch(batch); err != nil {
-		return makeManipCassandraErrors(err.Error(), ManipCassandraExecuteBatchErrorCode)
+		return makeManipCassandraErrors(err.Error(), ErrCannotExecuteBatch)
 	}
 
 	return nil
@@ -392,11 +385,11 @@ func (c *CassandraStore) Count(context manipulate.Contexts, identity elemental.I
 	success := iter.Scan(&count)
 
 	if !success {
-		return -1, makeManipCassandraErrors("Unable to scan collection", ManipCassandraIteratorScanErrorCode)
+		return -1, makeManipCassandraErrors("Unable to scan collection", ErrCannotScan)
 	}
 
 	if err := iter.Close(); err != nil {
-		return -1, makeManipCassandraErrors(err.Error(), ManipCassandraIteratorCloseErrorCode)
+		return -1, makeManipCassandraErrors(err.Error(), ErrCannotCloseIterator)
 	}
 
 	log.WithFields(log.Fields{
@@ -426,11 +419,11 @@ func (c *CassandraStore) Commit(id manipulate.TransactionID) elemental.Errors {
 			"transactionID": id,
 		}).Error("No batch found for the given transaction.")
 
-		return makeManipCassandraErrors("No batch found for the given transaction.", ManipCassandraCommitTransactionErrorCode)
+		return makeManipCassandraErrors("No batch found for the given transaction.", ErrCannotCommit)
 	}
 
 	if err := c.commitBatch(c.registeredBatchWithID(id)); err != nil {
-		return makeManipCassandraErrors(err.Error(), ManipCassandraExecuteBatchErrorCode)
+		return makeManipCassandraErrors(err.Error(), ErrCannotExecuteBatch)
 	}
 
 	return nil
@@ -471,7 +464,7 @@ func (c *CassandraStore) Increment(contexts manipulate.Contexts, name, counter s
 	}
 
 	if err := c.commitBatch(batch); err != nil {
-		return makeManipCassandraErrors(err.Error(), ManipCassandraExecuteBatchErrorCode)
+		return makeManipCassandraErrors(err.Error(), ErrCannotExecuteBatch)
 	}
 
 	return nil
@@ -577,12 +570,6 @@ func (c *CassandraStore) createNativeSession(srvs []string, ks string, v int, ti
 	return session, nil
 }
 
-// query return a gocql.Query.
-// The dev can then do whatever he wants with
-func (c *CassandraStore) query(query string, values []interface{}) *gocql.Query {
-	return c.nativeSession.Query(query, values...)
-}
-
 // batchForID return a gocql.Batch,
 // The dev can then do whatever he wants with
 // If id is emptyn it will return a new batch
@@ -649,70 +636,56 @@ func (c *CassandraStore) registeredBatchWithID(id manipulate.TransactionID) *goc
 	return b
 }
 
-// sliceMaps will try to call the method SliceMap on the given iterator
-// It will return an array of map ot an array of errors
-func sliceMaps(iter *gocql.Iter) ([]map[string]interface{}, error) {
-
-	sliceMaps, err := iter.SliceMap()
-
-	if err != nil {
-		return nil, err
-	}
-
-	if err = iter.Close(); err != nil {
-		return nil, err
-	}
-
-	return sliceMaps, nil
-}
-
 // unmarshalManipulable this will be called by the method retrieve as we know in which object we will store the retrieved data
-func unmarshalManipulable(iter *gocql.Iter, objects []manipulate.Manipulable) error {
+func unmarshalManipulable(iter *gocql.Iter, object manipulate.Manipulable) elemental.Errors {
 
-	sliceMaps, err := sliceMaps(iter)
-
-	if err != nil {
-		return err
+	maps, errs := sliceMaps(iter)
+	if errs != nil {
+		return errs
 	}
 
-	if len(objects) != len(sliceMaps) {
-		name := objects[0].Identity().Name
-		if len(objects) > 1 {
-			name = objects[0].Identity().Category
-		}
-		return fmt.Errorf("Expected to retrieve %d %s from database, but got %d.", len(objects), name, len(sliceMaps))
+	if len(maps) != 1 {
+		return makeManipCassandraErrors(fmt.Sprintf("Could not find object %s.", object), ErrObjectNotFound)
 	}
 
-	for index, sliceMap := range sliceMaps {
-
-		// We access the object here and give it to Unmarshal
-		// We can't give the array objects as the type is manipulate.Manipulable which is an interface
-		// It won't be possible to decode that...or in an easy (or not) way...
-		// TODO : intern work one day :D
-		if err := cassandra.Unmarshal(sliceMap, objects[index]); err != nil {
-			return err
-		}
+	if err := cassandra.Unmarshal(maps[0], object); err != nil {
+		return makeManipCassandraErrors(err.Error(), ErrCannotUnmarshal)
 	}
 
 	return nil
 }
 
-// unmarshalManipulable this will be called by the method retrieveChildren, we will store the objects in the empty given array/interface
-func unmarshalInterface(iter *gocql.Iter, objects interface{}) error {
+// unmarshalManipulables this will be called by the method retrieveChildren, we will store the objects in the empty given array/interface
+func unmarshalManipulables(iter *gocql.Iter, objects interface{}) elemental.Errors {
 
-	sliceMaps, err := sliceMaps(iter)
-
-	if err != nil {
-		return err
+	maps, errs := sliceMaps(iter)
+	if errs != nil {
+		return errs
 	}
 
-	if len(sliceMaps) < 1 {
+	if len(maps) < 1 {
 		return nil
 	}
 
-	if err := cassandra.Unmarshal(sliceMaps, objects); err != nil {
-		return err
+	if err := cassandra.Unmarshal(maps, objects); err != nil {
+		return makeManipCassandraErrors(err.Error(), ErrCannotUnmarshal)
 	}
 
 	return nil
+}
+
+// sliceMaps will try to call the method SliceMap on the given iterator
+// It will return an array of map ot an array of errors
+func sliceMaps(iter *gocql.Iter) ([]map[string]interface{}, elemental.Errors) {
+
+	maps, err := iter.SliceMap()
+	if err != nil {
+		return nil, makeManipCassandraErrors(err.Error(), ErrCannotSlice)
+	}
+
+	if err = iter.Close(); err != nil {
+		return nil, makeManipCassandraErrors(err.Error(), ErrCannotCloseIterator)
+	}
+
+	return maps, nil
 }

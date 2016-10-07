@@ -1,5 +1,0 @@
-gopkg.in/mgo.v2
-gopkg.in/mgo.v2/bson
-gopkg.in/mgo.v2/txn
-gopkg.in/mgo.v2/internal/scram
-gopkg.in/mgo.v2/internal/sasl

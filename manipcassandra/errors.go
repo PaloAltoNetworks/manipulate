@@ -9,15 +9,34 @@ const (
 	ManipCassandraDatabaseError = "Database Manipulation Error"
 )
 
-// ManipCassandraUnmarshalErrorCode represents the code...
 const (
-	ManipCassandraUnmarshalErrorCode                          = 5000
-	ManipCassandraUnmarshalNumberObjectsAndSliceMapsErrorCode = 5001
-	ManipCassandraIteratorCloseErrorCode                      = 5002
-	ManipCassandraExecuteBatchErrorCode                       = 5004
-	ManipCassandraIteratorScanErrorCode                       = 5005
-	ManipCassandraFieldsAndValuesErrorCode                    = 5006
-	ManipCassandraPrimaryFieldsAndValuesErrorCode             = 5007
-	ManipCassandraQueryErrorCode                              = 5008
-	ManipCassandraCommitTransactionErrorCode                  = 5009
+	// ErrCannotUnmarshal represents unmarshaling error.
+	ErrCannotUnmarshal int = iota + 5000
+
+	// ErrObjectNotFound represents object not found error.
+	ErrObjectNotFound
+
+	// ErrCannotSlice represents slicing error.
+	ErrCannotSlice
+
+	// ErrCannotCloseIterator represents iterator closing error.
+	ErrCannotCloseIterator
+
+	// ErrCannotExecuteBatch represents batch execution error.
+	ErrCannotExecuteBatch
+
+	// ErrCannotScan represents scanning error.
+	ErrCannotScan
+
+	// ErrCannotExecuteQuery represents query execution error.
+	ErrCannotExecuteQuery
+
+	// ErrCannotExtractFieldsAndValues represents field an values extraction error.
+	ErrCannotExtractFieldsAndValues
+
+	// ErrCannotExractPrimaryFieldsAndValues represents primary field an values extraction error.
+	ErrCannotExractPrimaryFieldsAndValues
+
+	// ErrCannotCommit represents commit execution error.
+	ErrCannotCommit
 )

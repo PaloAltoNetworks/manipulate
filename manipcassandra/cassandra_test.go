@@ -123,37 +123,6 @@ func TestCassandra_Stop(t *testing.T) {
 	})
 }
 
-func TestCassandra_Query(t *testing.T) {
-	Convey("When I create a new CassandraStore and call the method query", t, func() {
-
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
-
-		command := "SELECT * FROM table WHERE ID IN (?,?,?)"
-		values := []interface{}{"1", "2", "3"}
-
-		var expectedCommand string
-		var expectedValues []interface{}
-		expectedQuery := &gocql.Query{}
-
-		apomock.T(t).Override("gocql.Session.Query", func(session *gocql.Session, command string, values ...interface{}) *gocql.Query {
-			expectedCommand = command
-			expectedValues = values
-
-			return expectedQuery
-		})
-
-		query := store.query(command, values)
-
-		Convey("Then we should get the good query", func() {
-			So(expectedCommand, ShouldEqual, command)
-			So(expectedValues, ShouldResemble, values)
-			So(expectedQuery, ShouldEqual, query)
-		})
-
-	})
-}
-
 func TestCassandre_BatchForID(t *testing.T) {
 	Convey("When I create a new CassandraStore and call the method batch with no id", t, func() {
 
@@ -242,7 +211,7 @@ func TestCassandre_CommitTransaction_ErrorBadID(t *testing.T) {
 
 		Convey("Then we should get the good batch", func() {
 			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Code, ShouldEqual, ManipCassandraCommitTransactionErrorCode)
+			So(errs[0].Code, ShouldEqual, ErrCannotCommit)
 		})
 	})
 }
@@ -271,7 +240,7 @@ func TestCassandre_CommitTransaction_Error(t *testing.T) {
 		Convey("Then we should get the good batch", func() {
 			So(expectedBatch, ShouldEqual, batch)
 			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Code, ShouldEqual, ManipCassandraExecuteBatchErrorCode)
+			So(errs[0].Code, ShouldEqual, ErrCannotExecuteBatch)
 			So(store.batchRegistry["123"], ShouldBeNil)
 		})
 	})
@@ -457,7 +426,7 @@ func TestCassandra_unmarshalInterfaceWithEmptySliceMap(t *testing.T) {
 			return []map[string]interface{}{}, nil
 		})
 
-		errs := unmarshalInterface(iter, nil)
+		errs := unmarshalManipulables(iter, nil)
 
 		Convey("Then I should get a panic", func() {
 			So(errs, ShouldBeNil)
@@ -476,7 +445,7 @@ func TestCassandra_unmarshalInterfaceWithErrorFromSliceMap(t *testing.T) {
 			return nil, errors.New("Error iter")
 		})
 
-		err := unmarshalInterface(iter, nil)
+		err := unmarshalManipulables(iter, nil)
 
 		Convey("Then I should get a panic", func() {
 			So(err, ShouldNotBeNil)
@@ -510,7 +479,7 @@ func TestCassandra_unmarshalInterfaceWithErrorFromUnmarshal(t *testing.T) {
 			return errors.New("Errors from unmarshal")
 		})
 
-		err := unmarshalInterface(iter, nil)
+		err := unmarshalManipulables(iter, nil)
 
 		Convey("Then I should get a panic", func() {
 			So(err, ShouldNotBeNil)
@@ -552,7 +521,7 @@ func TestCassandra_unmarshalInterface(t *testing.T) {
 
 		var dest []interface{}
 
-		errs := unmarshalInterface(iter, dest)
+		errs := unmarshalManipulables(iter, dest)
 
 		Convey("Then I should get a panic", func() {
 			So(errs, ShouldBeNil)
@@ -610,7 +579,7 @@ func TestCassandra_unmarshalManipulableWithErrorFromUnmarshal(t *testing.T) {
 		tag := &Tag{}
 		tag.Description = "Tag description"
 
-		err := unmarshalManipulable(iter, []manipulate.Manipulable{tag})
+		err := unmarshalManipulable(iter, tag)
 
 		Convey("Then I should get a panic", func() {
 			So(err, ShouldNotBeNil)
@@ -630,11 +599,7 @@ func TestCassandra_unmarshalManipulable(t *testing.T) {
 		value["ID"] = "123"
 		value["Environment"] = 4
 
-		value2 := make(map[string]interface{})
-		value2["ID"] = "456"
-		value2["Environment"] = 5
-
-		expectedValues = append(expectedValues, value, value2)
+		expectedValues = append(expectedValues, value)
 
 		apomock.T(t).Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return expectedValues, nil
@@ -646,39 +611,23 @@ func TestCassandra_unmarshalManipulable(t *testing.T) {
 
 		var expectedDatas1 interface{}
 		var expectedV1 interface{}
-		var expectedDatas2 interface{}
-		var expectedV2 interface{}
 
 		apomock.T(t).Override("cassandra.Unmarshal", func(data interface{}, v interface{}) error {
-
-			if expectedDatas1 == nil {
-				expectedDatas1 = data
-				expectedV1 = v
-				return nil
-			}
-
-			expectedDatas2 = data
-			expectedV2 = v
-
+			expectedDatas1 = data
+			expectedV1 = v
 			return nil
 		})
 
 		tag1 := &Tag{}
 		tag1.Description = "Tag description"
 
-		tag2 := &Tag{}
-		tag2.Description = "Tag 2 description"
-
-		errs := unmarshalManipulable(iter, []manipulate.Manipulable{tag1, tag2})
+		errs := unmarshalManipulable(iter, tag1)
 
 		Convey("Then I should get a panic", func() {
 			So(errs, ShouldBeNil)
 
 			So(expectedDatas1, ShouldResemble, value)
 			So(expectedV1, ShouldEqual, tag1)
-
-			So(expectedDatas2, ShouldResemble, value2)
-			So(expectedV2, ShouldEqual, tag2)
 		})
 	})
 }
@@ -757,7 +706,7 @@ func TestCassandra_CountErrorScan(t *testing.T) {
 
 		Convey("Then I should get no error", func() {
 			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Code, ShouldEqual, ManipCassandraIteratorScanErrorCode)
+			So(errs[0].Code, ShouldEqual, ErrCannotScan)
 			So(expectedCommand, ShouldEqual, "SELECT COUNT(*) FROM tag LIMIT 10")
 			So(expectedValues, ShouldResemble, []interface{}{})
 			So(count, ShouldEqual, -1)
@@ -802,7 +751,7 @@ func TestCassandra_CountErrorCloseIter(t *testing.T) {
 
 		Convey("Then I should get no error", func() {
 			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Code, ShouldEqual, ManipCassandraIteratorCloseErrorCode)
+			So(errs[0].Code, ShouldEqual, ErrCannotCloseIterator)
 			So(expectedCommand, ShouldEqual, "SELECT COUNT(*) FROM tag LIMIT 10")
 			So(expectedValues, ShouldResemble, []interface{}{})
 			So(count, ShouldEqual, -1)
@@ -864,7 +813,7 @@ func TestCassandra_RetrieveChildren(t *testing.T) {
 
 		Convey("Then I should get no error", func() {
 			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Code, ShouldEqual, ManipCassandraUnmarshalErrorCode)
+			So(errs[0].Code, ShouldEqual, ErrCannotUnmarshal)
 			So(expectedCommand, ShouldEqual, "SELECT * FROM tag LIMIT 10")
 			So(expectedValues, ShouldResemble, []interface{}{})
 			So(expectedV, ShouldEqual, &tags)
@@ -914,7 +863,7 @@ func TestCassandra_RetrieveWithError(t *testing.T) {
 
 		Convey("Then I should get an error", func() {
 			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Code, ShouldEqual, ManipCassandraUnmarshalErrorCode)
+			So(errs[0].Code, ShouldEqual, ErrObjectNotFound)
 			So(expectedCommand, ShouldEqual, "SELECT * FROM tag LIMIT 10")
 			So(expectedValues, ShouldResemble, []interface{}{})
 		})
@@ -1007,7 +956,7 @@ func TestCassandra_UpdateCollectionWithErrorQuery(t *testing.T) {
 
 		Convey("Then I should get an error", func() {
 			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Code, ShouldEqual, ManipCassandraQueryErrorCode)
+			So(errs[0].Code, ShouldEqual, ErrCannotExecuteQuery)
 			So(tag, ShouldResemble, &Tag{ID: "1234"})
 			So(expectedCommand, ShouldResemble, "UPDATE tag SET NAME = NAME - ? WHERE ID = ?")
 			So(expectedValues, ShouldResemble, []interface{}{"coucou", "123"})
@@ -1035,7 +984,7 @@ func TestCassandra_UpdateCollectionWithErrorPrimaryFields(t *testing.T) {
 
 		Convey("Then I should get an error", func() {
 			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Code, ShouldEqual, ManipCassandraPrimaryFieldsAndValuesErrorCode)
+			So(errs[0].Code, ShouldEqual, ErrCannotExractPrimaryFieldsAndValues)
 			So(tag, ShouldResemble, &Tag{ID: "1234"})
 		})
 	})
@@ -1062,7 +1011,7 @@ func TestCassandra_RetrieveWithErrorPrimaryFields(t *testing.T) {
 
 		Convey("Then I should get an error", func() {
 			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Code, ShouldEqual, ManipCassandraPrimaryFieldsAndValuesErrorCode)
+			So(errs[0].Code, ShouldEqual, ErrCannotExractPrimaryFieldsAndValues)
 			So(tag, ShouldResemble, &Tag{ID: "1234"})
 		})
 	})
@@ -1290,7 +1239,7 @@ func TestCassandra_DeleteError(t *testing.T) {
 
 		Convey("Then I should get an error", func() {
 			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Code, ShouldEqual, ManipCassandraExecuteBatchErrorCode)
+			So(errs[0].Code, ShouldEqual, ErrCannotExecuteBatch)
 		})
 	})
 }
@@ -1320,7 +1269,7 @@ func TestCassandra_DeleteWithErrorPrimaryFields(t *testing.T) {
 
 		Convey("Then I should get an error", func() {
 			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Code, ShouldEqual, ManipCassandraPrimaryFieldsAndValuesErrorCode)
+			So(errs[0].Code, ShouldEqual, ErrCannotExractPrimaryFieldsAndValues)
 			So(tag, ShouldResemble, &Tag{ID: "1234"})
 		})
 	})
@@ -1530,7 +1479,7 @@ func TestCassandra_Update_ErrorFieldsAndValues(t *testing.T) {
 
 		Convey("Then everything should have been well called", func() {
 			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Code, ShouldEqual, ManipCassandraFieldsAndValuesErrorCode)
+			So(errs[0].Code, ShouldEqual, ErrCannotExtractFieldsAndValues)
 		})
 	})
 }
@@ -1565,7 +1514,7 @@ func TestCassandra_Update_ErrorPrimaryFieldsAndValues(t *testing.T) {
 
 		Convey("Then everything should have been well called", func() {
 			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Code, ShouldEqual, ManipCassandraPrimaryFieldsAndValuesErrorCode)
+			So(errs[0].Code, ShouldEqual, ErrCannotExractPrimaryFieldsAndValues)
 		})
 	})
 }
@@ -1612,7 +1561,7 @@ func TestCassandra_Update_ErrorExecuteBatch(t *testing.T) {
 
 		Convey("Then everything should have been well called", func() {
 			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Code, ShouldEqual, ManipCassandraExecuteBatchErrorCode)
+			So(errs[0].Code, ShouldEqual, ErrCannotExecuteBatch)
 		})
 	})
 }
@@ -1839,7 +1788,7 @@ func TestCassandra_Create_ErrorFieldsAndValues(t *testing.T) {
 
 		Convey("Then everything should have been well called", func() {
 			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Code, ShouldEqual, ManipCassandraFieldsAndValuesErrorCode)
+			So(errs[0].Code, ShouldEqual, ErrCannotExtractFieldsAndValues)
 			So(len(tag2.ID), ShouldEqual, 0)
 			So(len(tag2.ID), ShouldEqual, 0)
 		})
@@ -1892,7 +1841,7 @@ func TestCassandra_Create_ErrorExecuteBatch(t *testing.T) {
 
 		Convey("Then everything should have been well called", func() {
 			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Code, ShouldEqual, ManipCassandraExecuteBatchErrorCode)
+			So(errs[0].Code, ShouldEqual, ErrCannotExecuteBatch)
 			So(len(tag2.ID), ShouldEqual, 0)
 			So(len(tag2.ID), ShouldEqual, 0)
 		})
