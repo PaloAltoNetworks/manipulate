@@ -71,7 +71,7 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 		buffer.WriteString(c.Parameter.Compile().(string))
 	}
 
-	if c.Filter != nil && c.Filter.(*Filter).AllowFiltering {
+	if c.Filter != nil {
 		buffer.WriteString(` ALLOW FILTERING`)
 	}
 

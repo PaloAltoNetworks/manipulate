@@ -93,7 +93,7 @@ func TestMethodAddOptionsFromContextWithFilter(t *testing.T) {
 		context.Filter = filter
 		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{})
 
-		So(command, ShouldEqual, `SELECT * FROM policy WHERE ID = ? LIMIT 100`)
+		So(command, ShouldEqual, `SELECT * FROM policy WHERE ID = ? LIMIT 100 ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{"12345"})
 	})
 }
@@ -108,7 +108,6 @@ func TestMethodAddOptionsFromContextWithEverything(t *testing.T) {
 		filter.Keys = [][]string{[]string{"ID"}}
 		filter.Separators = []string{CassandraFilterEqualSeparator}
 		filter.Values = [][]interface{}{[]interface{}{"12345"}}
-		filter.AllowFiltering = true
 
 		context.Filter = filter
 		context.PageSize = 20
@@ -137,7 +136,7 @@ func TestMethodAddOptionsFromContextWithMultiColumnAndValues(t *testing.T) {
 
 		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{})
 
-		So(command, ShouldEqual, `SELECT * FROM policy WHERE (ID,name) = ((?,?),(?,?)) LIMIT 100`)
+		So(command, ShouldEqual, `SELECT * FROM policy WHERE (ID,name) = ((?,?),(?,?)) LIMIT 100 ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{"20", 0, "60", 122})
 	})
 }
@@ -178,7 +177,7 @@ func TestMethodBuildDeleteCommandWithPrimaryKeysAnsValuesAndFilter(t *testing.T)
 
 		command, values := buildDeleteCommand(context, "policy", []string{"ID", "name"}, []interface{}{"123", "Alexandre"})
 
-		So(command, ShouldEqual, `DELETE FROM policy WHERE ID = ? AND name = ? AND (ID,name) = ((?,?),(?,?))`)
+		So(command, ShouldEqual, `DELETE FROM policy WHERE ID = ? AND name = ? AND (ID,name) = ((?,?),(?,?)) ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{"123", "Alexandre", "20", 0, "60", 122})
 	})
 }
@@ -277,7 +276,7 @@ func TestMethodBuildUpdateCollectionCommandOperationSubstractiveWithPrimaryKeysA
 		context.Filter = filter
 
 		command, values := buildUpdateCollectionCommand(context, "policy", a, []string{"ID"}, []interface{}{"123"})
-		So(command, ShouldEqual, `UPDATE policy SET NAME = NAME - ? WHERE ID = ? AND (ID,name) = ((?,?),(?,?))`)
+		So(command, ShouldEqual, `UPDATE policy SET NAME = NAME - ? WHERE ID = ? AND (ID,name) = ((?,?),(?,?)) ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{"coucou", "123", "20", 0, "60", 122})
 	})
 }
@@ -345,7 +344,7 @@ func TestMethodBuildUpdateCommandWithAttributesWithPrimaryKeysAndValuesAndFilter
 		context.PageSize = -1
 
 		command, values := buildUpdateCommand(context, "policy", []string{"NAME", "CITY", "DESCRIPTION", "ID"}, []interface{}{"Alexandre", "Sarralbe", "God", "567"}, []string{"ID"}, []interface{}{"123"})
-		So(command, ShouldEqual, `UPDATE policy SET CITY = ? WHERE ID = ? AND (ID,name) = ((?,?),(?,?))`)
+		So(command, ShouldEqual, `UPDATE policy SET CITY = ? WHERE ID = ? AND (ID,name) = ((?,?),(?,?)) ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{"Sarralbe", "123", "20", 0, "60", 122})
 	})
 }

@@ -441,8 +441,16 @@ func TestCassandra_unmarshalInterfaceWithErrorFromSliceMap(t *testing.T) {
 
 		iter := &gocql.Iter{}
 
+		apomock.T(t).Override("gocql.Iter.NumRows", func(iter *gocql.Iter) int {
+			return 1
+		})
+
 		apomock.T(t).Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return nil, errors.New("Error iter")
+		})
+
+		apomock.T(t).Override("gocql.Iter.NumRows", func(iter *gocql.Iter) int {
+			return 1
 		})
 
 		err := unmarshalManipulables(iter, nil)
@@ -466,6 +474,10 @@ func TestCassandra_unmarshalInterfaceWithErrorFromUnmarshal(t *testing.T) {
 		value["Environment"] = 4
 
 		expectedValues = append(expectedValues, value)
+
+		apomock.T(t).Override("gocql.Iter.NumRows", func(iter *gocql.Iter) int {
+			return 1
+		})
 
 		apomock.T(t).Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return expectedValues, nil
@@ -500,6 +512,10 @@ func TestCassandra_unmarshalInterface(t *testing.T) {
 		value["Environment"] = 4
 
 		expectedValues = append(expectedValues, value)
+
+		apomock.T(t).Override("gocql.Iter.NumRows", func(iter *gocql.Iter) int {
+			return 1
+		})
 
 		apomock.T(t).Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return expectedValues, nil
@@ -800,6 +816,10 @@ func TestCassandra_RetrieveChildren(t *testing.T) {
 
 		expectedMaps = append(expectedMaps, value)
 
+		apomock.T(t).Override("gocql.Iter.NumRows", func(iter *gocql.Iter) int {
+			return 1
+		})
+
 		apomock.T(t).Override("gocql.Iter.SliceMap", func(iter *gocql.Iter) ([]map[string]interface{}, error) {
 			return expectedMaps, nil
 		})
@@ -813,7 +833,6 @@ func TestCassandra_RetrieveChildren(t *testing.T) {
 
 		Convey("Then I should get no error", func() {
 			So(len(errs), ShouldEqual, 1)
-			So(errs[0].Code, ShouldEqual, ErrCannotUnmarshal)
 			So(expectedCommand, ShouldEqual, "SELECT * FROM tag LIMIT 10")
 			So(expectedValues, ShouldResemble, []interface{}{})
 			So(expectedV, ShouldEqual, &tags)

@@ -5,11 +5,6 @@
 package manipcassandra
 
 const (
-	// ManipCassandraDatabaseError represents the an internal db error.
-	ManipCassandraDatabaseError = "Database Manipulation Error"
-)
-
-const (
 	// ErrCannotUnmarshal represents unmarshaling error.
 	ErrCannotUnmarshal int = iota + 5000
 
@@ -40,3 +35,16 @@ const (
 	// ErrCannotCommit represents commit execution error.
 	ErrCannotCommit
 )
+
+var errorTitles = map[int]string{
+	ErrCannotUnmarshal:                    "Unable to unmarshal data.",
+	ErrObjectNotFound:                     "Object not found.",
+	ErrCannotSlice:                        "Unable to slice objects.",
+	ErrCannotCloseIterator:                "Unable to close query iterator.",
+	ErrCannotExecuteBatch:                 "Unable to execute batch.",
+	ErrCannotScan:                         "Unable to scan query.",
+	ErrCannotExecuteQuery:                 "Unable to execute query.",
+	ErrCannotExtractFieldsAndValues:       "Unable to extract fields or values.",
+	ErrCannotExractPrimaryFieldsAndValues: "Unable to extract primary keys or values.",
+	ErrCannotCommit:                       "Unable to commit transaction.",
+}

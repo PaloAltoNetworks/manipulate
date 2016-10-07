@@ -164,7 +164,6 @@ func TestParameterFilterWithEverything(t *testing.T) {
 
 	Convey("When I create a new Filter", t, func() {
 		filter := &Filter{}
-		filter.AllowFiltering = true
 
 		filter.Keys = [][]string{[]string{"ID"}, []string{"Name"}}
 		filter.Separators = []string{CassandraFilterInSeparator, CassandraFilterEqualSeparator}

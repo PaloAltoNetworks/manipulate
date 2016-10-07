@@ -39,10 +39,10 @@ func getValues(v []interface{}) []interface{} {
 	return values
 }
 
-func makeManipCassandraErrors(err string, code int) elemental.Errors {
+func makeError(err string, code int) elemental.Errors {
 	return elemental.NewErrors(
 		elemental.NewError(
-			ManipCassandraDatabaseError,
+			errorTitles[code],
 			err,
 			"manipulate",
 			code,

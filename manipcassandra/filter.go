@@ -24,10 +24,9 @@ const (
 
 // Filter is a filter struct which can be used with Cassandra
 type Filter struct {
-	Keys           [][]string
-	Values         [][]interface{}
-	Separators     []string
-	AllowFiltering bool
+	Keys       [][]string
+	Values     [][]interface{}
+	Separators []string
 }
 
 // NewFilter return a filter for operation as NAME = 'Alexandre'
