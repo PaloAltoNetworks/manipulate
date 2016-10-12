@@ -38,7 +38,7 @@ func (t *Tag) SetIdentifier(ID string) {
 }
 
 // SetIdentifier sets the value of the object's unique identifier.
-func (t *Tag) Validate() elemental.Errors {
+func (t *Tag) Validate() error {
 	return nil
 }
 
