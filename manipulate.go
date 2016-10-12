@@ -21,13 +21,13 @@ type Manipulable interface {
 
 // Manipulator is the interface of a storage backend.
 type Manipulator interface {
-	RetrieveChildren(contexts Contexts, parent Manipulable, identity elemental.Identity, dest interface{}) elemental.Errors
-	Retrieve(contexts Contexts, objects ...Manipulable) elemental.Errors
-	Create(contexts Contexts, parent Manipulable, objects ...Manipulable) elemental.Errors
-	Update(contexts Contexts, objects ...Manipulable) elemental.Errors
-	Delete(contexts Contexts, objects ...Manipulable) elemental.Errors
-	Count(contexts Contexts, identity elemental.Identity) (int, elemental.Errors)
-	Assign(contexts Contexts, parent Manipulable, assignation *elemental.Assignation) elemental.Errors
+	RetrieveChildren(contexts Contexts, parent Manipulable, identity elemental.Identity, dest interface{}) error
+	Retrieve(contexts Contexts, objects ...Manipulable) error
+	Create(contexts Contexts, parent Manipulable, objects ...Manipulable) error
+	Update(contexts Contexts, objects ...Manipulable) error
+	Delete(contexts Contexts, objects ...Manipulable) error
+	Count(contexts Contexts, identity elemental.Identity) (int, error)
+	Assign(contexts Contexts, parent Manipulable, assignation *elemental.Assignation) error
 }
 
 // ConvertArrayToManipulables convert the given array of interface into an array of Manipulable

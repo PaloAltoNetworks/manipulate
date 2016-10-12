@@ -54,7 +54,7 @@ func (o *List) SetIdentifier(ID string) {
 }
 
 // Validate valides the current information stored into the structure.
-func (o *List) Validate() elemental.Errors {
+func (o *List) Validate() error {
 
 	errors := elemental.Errors{}
 
@@ -62,7 +62,11 @@ func (o *List) Validate() elemental.Errors {
 		errors = append(errors, err)
 	}
 
-	return errors
+	if len(errors) > 0 {
+		return errors
+	}
+
+	return nil
 }
 
 // TaskIdentity represents the Identity of the object
@@ -112,7 +116,7 @@ func (o *Task) SetIdentifier(ID string) {
 }
 
 // Validate valides the current information stored into the structure.
-func (o *Task) Validate() elemental.Errors {
+func (o *Task) Validate() error {
 
 	errors := elemental.Errors{}
 
@@ -147,4 +151,4 @@ func (o *UnmarshalableList) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("error marshalling")
 }
 
-func (o *UnmarshalableList) Validate() elemental.Errors { return nil }
+func (o *UnmarshalableList) Validate() error { return nil }
