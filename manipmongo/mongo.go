@@ -59,7 +59,7 @@ func (s *MongoStore) Stop() {
 }
 
 // Create creates a new child Identifiable under the given parent Identifiable in the server.
-func (s *MongoStore) Create(contexts manipulate.Contexts, parent manipulate.Manipulable, children ...manipulate.Manipulable) elemental.Errors {
+func (s *MongoStore) Create(contexts manipulate.Contexts, parent manipulate.Manipulable, children ...manipulate.Manipulable) error {
 
 	collection := collectionFromIdentity(s.db, children[0].Identity())
 	context := manipulate.ContextForIndex(contexts, 0)
@@ -73,7 +73,7 @@ func (s *MongoStore) Create(contexts manipulate.Contexts, parent manipulate.Mani
 
 	if tid == "" {
 		if err := s.commitBulk(bulk); err != nil {
-			return elemental.NewErrors(elemental.NewError("Error", err.Error(), "", 5000))
+			return elemental.NewError("Error", err.Error(), "", 5000)
 		}
 	}
 
@@ -81,14 +81,14 @@ func (s *MongoStore) Create(contexts manipulate.Contexts, parent manipulate.Mani
 }
 
 // Retrieve fetchs the given Identifiable from the server.
-func (s *MongoStore) Retrieve(contexts manipulate.Contexts, objects ...manipulate.Manipulable) elemental.Errors {
+func (s *MongoStore) Retrieve(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	collection := collectionFromIdentity(s.db, objects[0].Identity())
 
 	for i := 0; i < len(objects); i++ {
 		query := collection.Find(bson.M{"_id": objects[i].Identifier()})
 		if err := query.One(objects[i]); err != nil {
-			return elemental.NewErrors(elemental.NewError("Error", err.Error(), "", 5000))
+			return elemental.NewError("Error", err.Error(), "", 5000)
 		}
 	}
 
@@ -96,7 +96,7 @@ func (s *MongoStore) Retrieve(contexts manipulate.Contexts, objects ...manipulat
 }
 
 // Update saves the given Identifiable into the server.
-func (s *MongoStore) Update(contexts manipulate.Contexts, objects ...manipulate.Manipulable) elemental.Errors {
+func (s *MongoStore) Update(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	collection := collectionFromIdentity(s.db, objects[0].Identity())
 	context := manipulate.ContextForIndex(contexts, 0)
@@ -109,7 +109,7 @@ func (s *MongoStore) Update(contexts manipulate.Contexts, objects ...manipulate.
 
 	if tid == "" {
 		if err := s.commitBulk(bulk); err != nil {
-			return elemental.NewErrors(elemental.NewError("Error", err.Error(), "", 5000))
+			return elemental.NewError("Error", err.Error(), "", 5000)
 		}
 	}
 
@@ -117,7 +117,7 @@ func (s *MongoStore) Update(contexts manipulate.Contexts, objects ...manipulate.
 }
 
 // Delete deletes the given Identifiable from the server.
-func (s *MongoStore) Delete(contexts manipulate.Contexts, objects ...manipulate.Manipulable) elemental.Errors {
+func (s *MongoStore) Delete(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	collection := collectionFromIdentity(s.db, objects[0].Identity())
 	context := manipulate.ContextForIndex(contexts, 0)
@@ -130,7 +130,7 @@ func (s *MongoStore) Delete(contexts manipulate.Contexts, objects ...manipulate.
 
 	if tid == "" {
 		if err := s.commitBulk(bulk); err != nil {
-			return elemental.NewErrors(elemental.NewError("Error", err.Error(), "", 5000))
+			return elemental.NewError("Error", err.Error(), "", 5000)
 		}
 	}
 
@@ -138,7 +138,7 @@ func (s *MongoStore) Delete(contexts manipulate.Contexts, objects ...manipulate.
 }
 
 // RetrieveChildren fetches the children with of given parent identified by the given Identity.
-func (s *MongoStore) RetrieveChildren(contexts manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) elemental.Errors {
+func (s *MongoStore) RetrieveChildren(contexts manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) error {
 
 	collection := collectionFromIdentity(s.db, identity)
 	context := manipulate.ContextForIndex(contexts, 0)
@@ -151,7 +151,7 @@ func (s *MongoStore) RetrieveChildren(contexts manipulate.Contexts, parent manip
 	}
 
 	if err := query.All(dest); err != nil {
-		return elemental.NewErrors(elemental.NewError("Error", err.Error(), "", 5000))
+		return elemental.NewError("Error", err.Error(), "", 5000)
 	}
 
 	return nil
@@ -159,7 +159,7 @@ func (s *MongoStore) RetrieveChildren(contexts manipulate.Contexts, parent manip
 
 // Count count the number of element with the given Identity.
 // Not implemented yet
-func (s *MongoStore) Count(contexts manipulate.Contexts, identity elemental.Identity) (int, elemental.Errors) {
+func (s *MongoStore) Count(contexts manipulate.Contexts, identity elemental.Identity) (int, error) {
 
 	collection := collectionFromIdentity(s.db, identity)
 	context := manipulate.ContextForIndex(contexts, 0)
@@ -173,21 +173,21 @@ func (s *MongoStore) Count(contexts manipulate.Contexts, identity elemental.Iden
 
 	c, err := query.Count()
 	if err != nil {
-		return 0, elemental.NewErrors(elemental.NewError("Error", err.Error(), "", 5000))
+		return 0, elemental.NewError("Error", err.Error(), "", 5000)
 	}
 
 	return c, nil
 }
 
 // Assign assigns the list of given child Identifiables to the given Identifiable parent in the server.
-func (s *MongoStore) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) elemental.Errors {
+func (s *MongoStore) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) error {
 
 	panic("Not Implemented")
 }
 
 // Commit will execute the batch of the given transaction
 // The method will return an error if the batch does not succeed
-func (s *MongoStore) Commit(id manipulate.TransactionID) elemental.Errors {
+func (s *MongoStore) Commit(id manipulate.TransactionID) error {
 
 	defer func() { s.unregisterBulk(id) }()
 
@@ -197,11 +197,11 @@ func (s *MongoStore) Commit(id manipulate.TransactionID) elemental.Errors {
 			"transactionID": id,
 		}).Error("No batch found for the given transaction.")
 
-		return elemental.NewErrors(elemental.NewError("Manipulation Error", "No batch found for the given transaction.", "", 5001))
+		return elemental.NewError("Manipulation Error", "No batch found for the given transaction.", "", 5001)
 	}
 
 	if err := s.commitBulk(s.registeredBulkWithID(id)); err != nil {
-		return elemental.NewErrors(elemental.NewError("Manipulation Error", "Unable to commit.", "", 5001))
+		return elemental.NewError("Manipulation Error", "Unable to commit.", "", 5001)
 	}
 
 	return nil

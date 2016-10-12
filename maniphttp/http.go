@@ -52,7 +52,7 @@ func (s *HTTPStore) makeAuthorizationHeaders() string {
 	return s.username + " " + s.password
 }
 
-func (s *HTTPStore) prepareHeaders(request *http.Request, context *manipulate.Context) *elemental.Error {
+func (s *HTTPStore) prepareHeaders(request *http.Request, context *manipulate.Context) error {
 
 	if s.namespace != "" {
 		request.Header.Set("X-Namespace", s.namespace)
@@ -105,7 +105,7 @@ func (s *HTTPStore) getGeneralURL(o manipulate.Manipulable) string {
 	return s.url + "/" + o.Identity().Category
 }
 
-func (s *HTTPStore) getPersonalURL(o manipulate.Manipulable) (string, *elemental.Error) {
+func (s *HTTPStore) getPersonalURL(o manipulate.Manipulable) (string, error) {
 
 	if o.Identifier() == "" {
 		return "", elemental.NewError("URL Computing Error", "Cannot GetPersonalURL of an object with no ID set", "manipulate", 2)
@@ -114,7 +114,7 @@ func (s *HTTPStore) getPersonalURL(o manipulate.Manipulable) (string, *elemental
 	return s.getGeneralURL(o) + "/" + o.Identifier(), nil
 }
 
-func (s *HTTPStore) getURLForChildrenIdentity(parent manipulate.Manipulable, childrenIdentity elemental.Identity) (string, *elemental.Error) {
+func (s *HTTPStore) getURLForChildrenIdentity(parent manipulate.Manipulable, childrenIdentity elemental.Identity) (string, error) {
 
 	if parent == nil {
 		return s.url + "/" + childrenIdentity.Category, nil
@@ -128,7 +128,7 @@ func (s *HTTPStore) getURLForChildrenIdentity(parent manipulate.Manipulable, chi
 	return url + "/" + childrenIdentity.Category, nil
 }
 
-func (s *HTTPStore) send(request *http.Request, context *manipulate.Context) (*http.Response, elemental.Errors) {
+func (s *HTTPStore) send(request *http.Request, context *manipulate.Context) (*http.Response, error) {
 
 	s.prepareHeaders(request, context)
 
@@ -143,7 +143,7 @@ func (s *HTTPStore) send(request *http.Request, context *manipulate.Context) (*h
 			"response": response,
 			"error":    err,
 		}).Debug("Unable to send the request.")
-		return response, elemental.NewErrors(elemental.NewError("Error while sending the request", err.Error(), "manipulate", 0))
+		return response, elemental.NewError("Error while sending the request", err.Error(), "manipulate", 0)
 	}
 
 	log.WithFields(log.Fields{
@@ -156,23 +156,24 @@ func (s *HTTPStore) send(request *http.Request, context *manipulate.Context) (*h
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 
-		var errs elemental.Errors
+		errs := elemental.Errors{}
 
 		if err := json.NewDecoder(response.Body).Decode(&errs); err != nil {
-			errs = elemental.NewErrors(elemental.NewError("No data", "gen", "manipulate", 1))
+			return nil, elemental.NewError("No data", "gen", "manipulate", 1)
 		}
 
 		return response, errs
 	}
 
 	s.readHeaders(response, context)
+
 	return response, nil
 }
 
 // Create creates a new child Identifiable under the given parent Identifiable in the server.
-func (s *HTTPStore) Create(contexts manipulate.Contexts, parent manipulate.Manipulable, children ...manipulate.Manipulable) elemental.Errors {
+func (s *HTTPStore) Create(contexts manipulate.Contexts, parent manipulate.Manipulable, children ...manipulate.Manipulable) error {
 
-	errs := elemental.Errors{}
+	errs := []error{}
 
 	// very stupid implementation for now
 	for index, child := range children {
@@ -198,7 +199,7 @@ func (s *HTTPStore) Create(contexts manipulate.Contexts, parent manipulate.Manip
 		response, berrs := s.send(request, manipulate.ContextForIndex(contexts, index))
 
 		if berrs != nil {
-			errs = append(errs, berrs...)
+			errs = append(errs, berrs)
 			continue
 		}
 
@@ -210,16 +211,16 @@ func (s *HTTPStore) Create(contexts manipulate.Contexts, parent manipulate.Manip
 	}
 
 	if len(errs) > 0 {
-		return errs
+		return elemental.NewErrors(errs...)
 	}
 
 	return nil
 }
 
 // Retrieve fetchs the given Identifiable from the server.
-func (s *HTTPStore) Retrieve(contexts manipulate.Contexts, objects ...manipulate.Manipulable) elemental.Errors {
+func (s *HTTPStore) Retrieve(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
-	errs := elemental.Errors{}
+	errs := []error{}
 
 	// very stupid implementation for now
 	for index, object := range objects {
@@ -239,7 +240,7 @@ func (s *HTTPStore) Retrieve(contexts manipulate.Contexts, objects ...manipulate
 		response, berrs := s.send(request, manipulate.ContextForIndex(contexts, index))
 
 		if berrs != nil {
-			errs = append(errs, berrs...)
+			errs = append(errs, berrs)
 			continue
 		}
 
@@ -251,16 +252,16 @@ func (s *HTTPStore) Retrieve(contexts manipulate.Contexts, objects ...manipulate
 	}
 
 	if len(errs) > 0 {
-		return errs
+		return elemental.NewErrors(errs...)
 	}
 
 	return nil
 }
 
 // Update saves the given Identifiable into the server.
-func (s *HTTPStore) Update(contexts manipulate.Contexts, objects ...manipulate.Manipulable) elemental.Errors {
+func (s *HTTPStore) Update(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
-	errs := elemental.Errors{}
+	errs := []error{}
 
 	// very stupid implementation for now
 	for index, object := range objects {
@@ -286,7 +287,7 @@ func (s *HTTPStore) Update(contexts manipulate.Contexts, objects ...manipulate.M
 		response, berrs := s.send(request, manipulate.ContextForIndex(contexts, index))
 
 		if berrs != nil {
-			errs = append(errs, berrs...)
+			errs = append(errs, berrs)
 			continue
 		}
 
@@ -298,16 +299,16 @@ func (s *HTTPStore) Update(contexts manipulate.Contexts, objects ...manipulate.M
 	}
 
 	if len(errs) > 0 {
-		return errs
+		return elemental.NewErrors(errs...)
 	}
 
 	return nil
 }
 
 // Delete deletes the given Identifiable from the server.
-func (s *HTTPStore) Delete(contexts manipulate.Contexts, objects ...manipulate.Manipulable) elemental.Errors {
+func (s *HTTPStore) Delete(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
-	errs := elemental.Errors{}
+	errs := []error{}
 
 	// very stupid implementation for now
 	for index, object := range objects {
@@ -326,29 +327,29 @@ func (s *HTTPStore) Delete(contexts manipulate.Contexts, objects ...manipulate.M
 
 		_, berrs := s.send(request, manipulate.ContextForIndex(contexts, index))
 		if berrs != nil {
-			errs = append(errs, berrs...)
+			errs = append(errs, berrs)
 			continue
 		}
 	}
 
 	if len(errs) > 0 {
-		return errs
+		return elemental.NewErrors(errs...)
 	}
 
 	return nil
 }
 
 // RetrieveChildren fetches the children with of given parent identified by the given Identity.
-func (s *HTTPStore) RetrieveChildren(contexts manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) elemental.Errors {
+func (s *HTTPStore) RetrieveChildren(contexts manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) error {
 
-	url, berr := s.getURLForChildrenIdentity(parent, identity)
-	if berr != nil {
-		return elemental.NewErrors(berr)
+	url, err := s.getURLForChildrenIdentity(parent, identity)
+	if err != nil {
+		return err
 	}
 
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		elemental.NewErrors(elemental.NewError("Bad Request", err.Error(), "manipulate", http.StatusBadRequest))
+		return elemental.NewError("Bad Request", err.Error(), "manipulate", http.StatusBadRequest)
 	}
 
 	response, berrs := s.send(request, manipulate.ContextForIndex(contexts, 0))
@@ -363,7 +364,7 @@ func (s *HTTPStore) RetrieveChildren(contexts manipulate.Contexts, parent manipu
 
 	defer response.Body.Close()
 	if err := json.NewDecoder(response.Body).Decode(&dest); err != nil {
-		return elemental.NewErrors(elemental.NewError("Cannot Decode JSON", err.Error(), "manipulate", 0))
+		return elemental.NewError("Cannot Decode JSON", err.Error(), "manipulate", 0)
 	}
 
 	return nil
@@ -371,26 +372,26 @@ func (s *HTTPStore) RetrieveChildren(contexts manipulate.Contexts, parent manipu
 
 // Count count the number of element with the given Identity.
 // Not implemented yet
-func (s *HTTPStore) Count(manipulate.Contexts, elemental.Identity) (int, elemental.Errors) {
+func (s *HTTPStore) Count(manipulate.Contexts, elemental.Identity) (int, error) {
 	return 0, nil
 }
 
 // Assign assigns the list of given child Identifiables to the given Identifiable parent in the server.
-func (s *HTTPStore) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) elemental.Errors {
+func (s *HTTPStore) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) error {
 
 	url, berr := s.getURLForChildrenIdentity(parent, assignation.MembersIdentity)
 	if berr != nil {
-		return elemental.NewErrors(berr)
+		return berr
 	}
 
 	buffer := &bytes.Buffer{}
 	if err := json.NewEncoder(buffer).Encode(assignation); err != nil {
-		return elemental.NewErrors(elemental.NewError("Unable Encode", err.Error(), "manipulate", 0))
+		return elemental.NewError("Unable Encode", err.Error(), "manipulate", 0)
 	}
 
 	request, err := http.NewRequest("PATCH", url, buffer)
 	if err != nil {
-		return elemental.NewErrors(elemental.NewError("Bad Request", err.Error(), "manipulate", http.StatusBadRequest))
+		return elemental.NewError("Bad Request", err.Error(), "manipulate", http.StatusBadRequest)
 	}
 
 	_, berrs := s.send(request, nil)
@@ -401,35 +402,3 @@ func (s *HTTPStore) Assign(contexts manipulate.Contexts, parent manipulate.Manip
 
 	return nil
 }
-
-//
-// // NextEvent will return the next notification from the backend as it occurs and will
-// // send it to the correct channel.
-// func (s *HTTPSeal) NextEvent(channel NotificationsChannel, lastEventID string) *Error {
-//
-// 	currentURL := s.URL + "/events"
-// 	if lastEventID != "" {
-// 		currentURL += "?uuid=" + lastEventID
-// 	}
-//
-// 	request, err := http.NewRequest("GET", currentURL, nil)
-// 	if err != nil {
-// 		return NewError(http.StatusBadRequest, err.Error())
-// 	}
-//
-// 	response, berr := s.send(request, nil)
-// 	if berr != nil {
-// 		return berr
-// 	}
-//
-// 	notification := NewNotification()
-// 	if err := json.NewDecoder(response.Body).Decode(notification); err != nil {
-// 		return NewError(ErrorCodeJSONCannotDecode, err.Error())
-// 	}
-//
-// 	if len(notification.Events) > 0 {
-// 		channel <- notification
-// 	}
-//
-// 	return nil
-// }

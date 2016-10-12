@@ -39,13 +39,11 @@ func getValues(v []interface{}) []interface{} {
 	return values
 }
 
-func makeError(err string, code int) elemental.Errors {
-	return elemental.NewErrors(
-		elemental.NewError(
-			errorTitles[code],
-			err,
-			"manipulate",
-			code,
-		),
+func makeError(err string, code int) error {
+	return elemental.NewError(
+		errorTitles[code],
+		err,
+		"manipulate",
+		code,
 	)
 }
