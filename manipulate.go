@@ -4,11 +4,7 @@
 
 package manipulate
 
-import (
-	"reflect"
-
-	"github.com/aporeto-inc/elemental"
-)
+import "github.com/aporeto-inc/elemental"
 
 // ManipulablesList is a list of objects implementing the Manipulable interface.
 type ManipulablesList []Manipulable
@@ -21,31 +17,38 @@ type Manipulable interface {
 
 // Manipulator is the interface of a storage backend.
 type Manipulator interface {
+	// RetrieveChildren is cool.
 	RetrieveChildren(contexts Contexts, parent Manipulable, identity elemental.Identity, dest interface{}) error
+
+	// Retrieve is cool.
 	Retrieve(contexts Contexts, objects ...Manipulable) error
+
+	// Create is cool.
 	Create(contexts Contexts, parent Manipulable, objects ...Manipulable) error
+
+	// Update is cool.
 	Update(contexts Contexts, objects ...Manipulable) error
+
+	// Delete is cool.
 	Delete(contexts Contexts, objects ...Manipulable) error
+
+	// Count is cool.
 	Count(contexts Contexts, identity elemental.Identity) (int, error)
+
+	// Assign is cool.
 	Assign(contexts Contexts, parent Manipulable, assignation *elemental.Assignation) error
+
+	// Increment is cool
+	Increment(contexts Contexts, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error
 }
 
-// ConvertArrayToManipulables convert the given array of interface into an array of Manipulable
-func ConvertArrayToManipulables(i interface{}) []Manipulable {
+// A TransactionalManipulator is a Manipulator that handles transactions.
+type TransactionalManipulator interface {
+	Manipulator
 
-	var manipulables []Manipulable
-	val := reflect.ValueOf(i)
+	// Commit is cool.
+	Commit(id TransactionID) error
 
-	if val.Kind() == reflect.Array || val.Kind() == reflect.Slice {
-		for i := 0; i < val.Len(); i++ {
-			manipulables = append(manipulables, val.Index(i).Interface().(Manipulable))
-		}
-	}
-
-	return manipulables
+	// Abort is cool.
+	Abort(id TransactionID) bool
 }
-
-// // EventListener is the interface
-// type EventListener interface {
-// 	NextEvent(elemental.NotificationsChannel) elemental.Errors
-// }

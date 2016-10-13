@@ -104,7 +104,7 @@ func TestCassandra_NewCassandraStore(t *testing.T) {
 
 			var i interface{} = store
 			var ok bool
-			_, ok = i.(manipulate.Manipulator)
+			_, ok = i.(manipulate.TransactionalManipulator)
 			So(ok, ShouldBeTrue)
 		})
 	})

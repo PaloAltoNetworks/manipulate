@@ -1,6 +1,7 @@
 package manipmongo
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/aporeto-inc/elemental"
@@ -28,37 +29,27 @@ type MongoStore struct {
 // NewMongoStore returns a new *MongoStore
 func NewMongoStore(url string, dbName string) *MongoStore {
 
+	session, err := mgo.Dial(url)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"package": "manipmongo",
+			"url":     url,
+			"db":      dbName,
+			"error":   err.Error(),
+		}).Fatal("Cannot connect to mongo.")
+	}
+
 	return &MongoStore{
 		url:               url,
 		dbName:            dbName,
 		bulksRegistry:     bulksRegistry{},
 		bulksRegistryLock: &sync.Mutex{},
+		session:           session,
+		db:                session.DB(dbName),
 	}
 }
 
-// Start starts the session.
-func (s *MongoStore) Start() error {
-
-	session, err := mgo.Dial(s.url)
-	if err != nil {
-		return err
-	}
-
-	s.session = session
-	s.db = session.DB(s.dbName)
-
-	return nil
-}
-
-// Stop stops the session.
-func (s *MongoStore) Stop() {
-
-	if s.session != nil {
-		s.session.Close()
-	}
-}
-
-// Create creates a new child Identifiable under the given parent Identifiable in the server.
+// Create is part of the implementation of the Manipulator interface.
 func (s *MongoStore) Create(contexts manipulate.Contexts, parent manipulate.Manipulable, children ...manipulate.Manipulable) error {
 
 	collection := collectionFromIdentity(s.db, children[0].Identity())
@@ -80,7 +71,7 @@ func (s *MongoStore) Create(contexts manipulate.Contexts, parent manipulate.Mani
 	return nil
 }
 
-// Retrieve fetchs the given Identifiable from the server.
+// Retrieve is part of the implementation of the Manipulator interface.
 func (s *MongoStore) Retrieve(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	collection := collectionFromIdentity(s.db, objects[0].Identity())
@@ -95,7 +86,7 @@ func (s *MongoStore) Retrieve(contexts manipulate.Contexts, objects ...manipulat
 	return nil
 }
 
-// Update saves the given Identifiable into the server.
+// Update is part of the implementation of the Manipulator interface.
 func (s *MongoStore) Update(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	collection := collectionFromIdentity(s.db, objects[0].Identity())
@@ -116,7 +107,7 @@ func (s *MongoStore) Update(contexts manipulate.Contexts, objects ...manipulate.
 	return nil
 }
 
-// Delete deletes the given Identifiable from the server.
+// Delete is part of the implementation of the Manipulator interface.
 func (s *MongoStore) Delete(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	collection := collectionFromIdentity(s.db, objects[0].Identity())
@@ -137,7 +128,7 @@ func (s *MongoStore) Delete(contexts manipulate.Contexts, objects ...manipulate.
 	return nil
 }
 
-// RetrieveChildren fetches the children with of given parent identified by the given Identity.
+// RetrieveChildren is part of the implementation of the Manipulator interface.
 func (s *MongoStore) RetrieveChildren(contexts manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) error {
 
 	collection := collectionFromIdentity(s.db, identity)
@@ -157,8 +148,7 @@ func (s *MongoStore) RetrieveChildren(contexts manipulate.Contexts, parent manip
 	return nil
 }
 
-// Count count the number of element with the given Identity.
-// Not implemented yet
+// Count is part of the implementation of the Manipulator interface.
 func (s *MongoStore) Count(contexts manipulate.Contexts, identity elemental.Identity) (int, error) {
 
 	collection := collectionFromIdentity(s.db, identity)
@@ -179,14 +169,18 @@ func (s *MongoStore) Count(contexts manipulate.Contexts, identity elemental.Iden
 	return c, nil
 }
 
-// Assign assigns the list of given child Identifiables to the given Identifiable parent in the server.
+// Assign is part of the implementation of the Manipulator interface.
 func (s *MongoStore) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) error {
 
 	panic("Not Implemented")
 }
 
-// Commit will execute the batch of the given transaction
-// The method will return an error if the batch does not succeed
+// Increment is part of the implementation of the Manipulator interface.
+func (s *MongoStore) Increment(contexts manipulate.Contexts, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
+	return fmt.Errorf("Increment is not implemented in mongo")
+}
+
+// Commit is part of the implementation of the TransactionalManipulator interface.
 func (s *MongoStore) Commit(id manipulate.TransactionID) error {
 
 	defer func() { s.unregisterBulk(id) }()
@@ -207,7 +201,7 @@ func (s *MongoStore) Commit(id manipulate.TransactionID) error {
 	return nil
 }
 
-// Abort aborts the given transaction ID.
+// Abort is part of the implementation of the TransactionalManipulator interface.
 func (s *MongoStore) Abort(id manipulate.TransactionID) bool {
 
 	if s.registeredBulkWithID(id) == nil {
@@ -219,7 +213,6 @@ func (s *MongoStore) Abort(id manipulate.TransactionID) bool {
 	return true
 }
 
-// bulkForID return a mgo.Bulk.
 func (s *MongoStore) bulkForID(id manipulate.TransactionID, collection *mgo.Collection) *mgo.Bulk {
 
 	if id == "" {
@@ -236,8 +229,6 @@ func (s *MongoStore) bulkForID(id manipulate.TransactionID, collection *mgo.Coll
 	return bulk
 }
 
-// CommitBulk commit the given bulk
-// The dev can then do whatever he wants with
 func (s *MongoStore) commitBulk(b *mgo.Bulk) error {
 
 	log.WithFields(log.Fields{

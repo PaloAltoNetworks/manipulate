@@ -47,6 +47,243 @@ func NewHTTPStore(username, password, url, namespace string, tlsConfig *TLSConfi
 	}
 }
 
+// Create is part of the implementation of the Manipulator interface.
+func (s *HTTPStore) Create(contexts manipulate.Contexts, parent manipulate.Manipulable, children ...manipulate.Manipulable) error {
+
+	errs := []error{}
+
+	// very stupid implementation for now
+	for index, child := range children {
+
+		url, berr := s.getURLForChildrenIdentity(parent, child.Identity())
+		if berr != nil {
+			errs = append(errs, berr)
+			continue
+		}
+
+		buffer := &bytes.Buffer{}
+		if err := json.NewEncoder(buffer).Encode(&child); err != nil {
+			errs = append(errs, elemental.NewError("Cannot Encode JSON", err.Error(), "manipulate", 0))
+			continue
+		}
+
+		request, err := http.NewRequest("POST", url, buffer)
+		if err != nil {
+			errs = append(errs, elemental.NewError("Bad Request", err.Error(), "manipulate", http.StatusBadRequest))
+			continue
+		}
+
+		response, berrs := s.send(request, manipulate.ContextForIndex(contexts, index))
+
+		if berrs != nil {
+			errs = append(errs, berrs)
+			continue
+		}
+
+		defer response.Body.Close()
+		if err := json.NewDecoder(response.Body).Decode(&child); err != nil {
+			errs = append(errs, elemental.NewError("Cannot Decode JSON", err.Error(), "manipulate", 0))
+			continue
+		}
+	}
+
+	if len(errs) > 0 {
+		return elemental.NewErrors(errs...)
+	}
+
+	return nil
+}
+
+// Retrieve is part of the implementation of the Manipulator interface.
+func (s *HTTPStore) Retrieve(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+
+	errs := []error{}
+
+	// very stupid implementation for now
+	for index, object := range objects {
+
+		url, berr := s.getPersonalURL(object)
+		if berr != nil {
+			errs = append(errs, berr)
+			continue
+		}
+
+		request, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			errs = append(errs, elemental.NewError("Bad Request", err.Error(), "manipulate", http.StatusBadRequest))
+			continue
+		}
+
+		response, berrs := s.send(request, manipulate.ContextForIndex(contexts, index))
+
+		if berrs != nil {
+			errs = append(errs, berrs)
+			continue
+		}
+
+		defer response.Body.Close()
+		if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
+			errs = append(errs, elemental.NewError("Cannot Decode JSON", err.Error(), "manipulate", 0))
+			continue
+		}
+	}
+
+	if len(errs) > 0 {
+		return elemental.NewErrors(errs...)
+	}
+
+	return nil
+}
+
+// Update is part of the implementation of the Manipulator interface.
+func (s *HTTPStore) Update(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+
+	errs := []error{}
+
+	// very stupid implementation for now
+	for index, object := range objects {
+
+		url, berr := s.getPersonalURL(object)
+		if berr != nil {
+			errs = append(errs, berr)
+			continue
+		}
+
+		buffer := &bytes.Buffer{}
+		if err := json.NewEncoder(buffer).Encode(object); err != nil {
+			errs = append(errs, elemental.NewError("Unable Encode", err.Error(), "manipulate", 0))
+			continue
+		}
+
+		request, err := http.NewRequest("PUT", url, buffer)
+		if err != nil {
+			errs = append(errs, elemental.NewError("Bad Request", err.Error(), "manipulate", http.StatusBadRequest))
+			continue
+		}
+
+		response, berrs := s.send(request, manipulate.ContextForIndex(contexts, index))
+
+		if berrs != nil {
+			errs = append(errs, berrs)
+			continue
+		}
+
+		defer response.Body.Close()
+		if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
+			errs = append(errs, elemental.NewError("Cannot Decode JSON", err.Error(), "manipulate", 0))
+			continue
+		}
+	}
+
+	if len(errs) > 0 {
+		return elemental.NewErrors(errs...)
+	}
+
+	return nil
+}
+
+// Delete is part of the implementation of the Manipulator interface.
+func (s *HTTPStore) Delete(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+
+	errs := []error{}
+
+	// very stupid implementation for now
+	for index, object := range objects {
+
+		url, berr := s.getPersonalURL(object)
+		if berr != nil {
+			errs = append(errs, berr)
+			continue
+		}
+
+		request, err := http.NewRequest("DELETE", url, nil)
+		if err != nil {
+			errs = append(errs, elemental.NewError("Bad Request", err.Error(), "manipulate", http.StatusBadRequest))
+			continue
+		}
+
+		_, berrs := s.send(request, manipulate.ContextForIndex(contexts, index))
+		if berrs != nil {
+			errs = append(errs, berrs)
+			continue
+		}
+	}
+
+	if len(errs) > 0 {
+		return elemental.NewErrors(errs...)
+	}
+
+	return nil
+}
+
+// RetrieveChildren is part of the implementation of the Manipulator interface.
+func (s *HTTPStore) RetrieveChildren(contexts manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) error {
+
+	url, err := s.getURLForChildrenIdentity(parent, identity)
+	if err != nil {
+		return err
+	}
+
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return elemental.NewError("Bad Request", err.Error(), "manipulate", http.StatusBadRequest)
+	}
+
+	response, berrs := s.send(request, manipulate.ContextForIndex(contexts, 0))
+
+	if berrs != nil {
+		return berrs
+	}
+
+	if response.StatusCode == http.StatusNoContent || response.ContentLength == 0 {
+		return nil
+	}
+
+	defer response.Body.Close()
+	if err := json.NewDecoder(response.Body).Decode(&dest); err != nil {
+		return elemental.NewError("Cannot Decode JSON", err.Error(), "manipulate", 0)
+	}
+
+	return nil
+}
+
+// Count is part of the implementation of the Manipulator interface.
+func (s *HTTPStore) Count(manipulate.Contexts, elemental.Identity) (int, error) {
+	return 0, nil
+}
+
+// Assign is part of the implementation of the Manipulator interface.
+func (s *HTTPStore) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) error {
+
+	url, berr := s.getURLForChildrenIdentity(parent, assignation.MembersIdentity)
+	if berr != nil {
+		return berr
+	}
+
+	buffer := &bytes.Buffer{}
+	if err := json.NewEncoder(buffer).Encode(assignation); err != nil {
+		return elemental.NewError("Unable Encode", err.Error(), "manipulate", 0)
+	}
+
+	request, err := http.NewRequest("PATCH", url, buffer)
+	if err != nil {
+		return elemental.NewError("Bad Request", err.Error(), "manipulate", http.StatusBadRequest)
+	}
+
+	_, berrs := s.send(request, nil)
+
+	if berrs != nil {
+		return berrs
+	}
+
+	return nil
+}
+
+// Increment is part of the implementation of the Manipulator interface.
+func (s *HTTPStore) Increment(contexts manipulate.Contexts, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
+	return fmt.Errorf("Increment is not implemented in http store")
+}
+
 func (s *HTTPStore) makeAuthorizationHeaders() string {
 
 	return s.username + " " + s.password
@@ -168,237 +405,4 @@ func (s *HTTPStore) send(request *http.Request, context *manipulate.Context) (*h
 	s.readHeaders(response, context)
 
 	return response, nil
-}
-
-// Create creates a new child Identifiable under the given parent Identifiable in the server.
-func (s *HTTPStore) Create(contexts manipulate.Contexts, parent manipulate.Manipulable, children ...manipulate.Manipulable) error {
-
-	errs := []error{}
-
-	// very stupid implementation for now
-	for index, child := range children {
-
-		url, berr := s.getURLForChildrenIdentity(parent, child.Identity())
-		if berr != nil {
-			errs = append(errs, berr)
-			continue
-		}
-
-		buffer := &bytes.Buffer{}
-		if err := json.NewEncoder(buffer).Encode(&child); err != nil {
-			errs = append(errs, elemental.NewError("Cannot Encode JSON", err.Error(), "manipulate", 0))
-			continue
-		}
-
-		request, err := http.NewRequest("POST", url, buffer)
-		if err != nil {
-			errs = append(errs, elemental.NewError("Bad Request", err.Error(), "manipulate", http.StatusBadRequest))
-			continue
-		}
-
-		response, berrs := s.send(request, manipulate.ContextForIndex(contexts, index))
-
-		if berrs != nil {
-			errs = append(errs, berrs)
-			continue
-		}
-
-		defer response.Body.Close()
-		if err := json.NewDecoder(response.Body).Decode(&child); err != nil {
-			errs = append(errs, elemental.NewError("Cannot Decode JSON", err.Error(), "manipulate", 0))
-			continue
-		}
-	}
-
-	if len(errs) > 0 {
-		return elemental.NewErrors(errs...)
-	}
-
-	return nil
-}
-
-// Retrieve fetchs the given Identifiable from the server.
-func (s *HTTPStore) Retrieve(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
-
-	errs := []error{}
-
-	// very stupid implementation for now
-	for index, object := range objects {
-
-		url, berr := s.getPersonalURL(object)
-		if berr != nil {
-			errs = append(errs, berr)
-			continue
-		}
-
-		request, err := http.NewRequest("GET", url, nil)
-		if err != nil {
-			errs = append(errs, elemental.NewError("Bad Request", err.Error(), "manipulate", http.StatusBadRequest))
-			continue
-		}
-
-		response, berrs := s.send(request, manipulate.ContextForIndex(contexts, index))
-
-		if berrs != nil {
-			errs = append(errs, berrs)
-			continue
-		}
-
-		defer response.Body.Close()
-		if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
-			errs = append(errs, elemental.NewError("Cannot Decode JSON", err.Error(), "manipulate", 0))
-			continue
-		}
-	}
-
-	if len(errs) > 0 {
-		return elemental.NewErrors(errs...)
-	}
-
-	return nil
-}
-
-// Update saves the given Identifiable into the server.
-func (s *HTTPStore) Update(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
-
-	errs := []error{}
-
-	// very stupid implementation for now
-	for index, object := range objects {
-
-		url, berr := s.getPersonalURL(object)
-		if berr != nil {
-			errs = append(errs, berr)
-			continue
-		}
-
-		buffer := &bytes.Buffer{}
-		if err := json.NewEncoder(buffer).Encode(object); err != nil {
-			errs = append(errs, elemental.NewError("Unable Encode", err.Error(), "manipulate", 0))
-			continue
-		}
-
-		request, err := http.NewRequest("PUT", url, buffer)
-		if err != nil {
-			errs = append(errs, elemental.NewError("Bad Request", err.Error(), "manipulate", http.StatusBadRequest))
-			continue
-		}
-
-		response, berrs := s.send(request, manipulate.ContextForIndex(contexts, index))
-
-		if berrs != nil {
-			errs = append(errs, berrs)
-			continue
-		}
-
-		defer response.Body.Close()
-		if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
-			errs = append(errs, elemental.NewError("Cannot Decode JSON", err.Error(), "manipulate", 0))
-			continue
-		}
-	}
-
-	if len(errs) > 0 {
-		return elemental.NewErrors(errs...)
-	}
-
-	return nil
-}
-
-// Delete deletes the given Identifiable from the server.
-func (s *HTTPStore) Delete(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
-
-	errs := []error{}
-
-	// very stupid implementation for now
-	for index, object := range objects {
-
-		url, berr := s.getPersonalURL(object)
-		if berr != nil {
-			errs = append(errs, berr)
-			continue
-		}
-
-		request, err := http.NewRequest("DELETE", url, nil)
-		if err != nil {
-			errs = append(errs, elemental.NewError("Bad Request", err.Error(), "manipulate", http.StatusBadRequest))
-			continue
-		}
-
-		_, berrs := s.send(request, manipulate.ContextForIndex(contexts, index))
-		if berrs != nil {
-			errs = append(errs, berrs)
-			continue
-		}
-	}
-
-	if len(errs) > 0 {
-		return elemental.NewErrors(errs...)
-	}
-
-	return nil
-}
-
-// RetrieveChildren fetches the children with of given parent identified by the given Identity.
-func (s *HTTPStore) RetrieveChildren(contexts manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) error {
-
-	url, err := s.getURLForChildrenIdentity(parent, identity)
-	if err != nil {
-		return err
-	}
-
-	request, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return elemental.NewError("Bad Request", err.Error(), "manipulate", http.StatusBadRequest)
-	}
-
-	response, berrs := s.send(request, manipulate.ContextForIndex(contexts, 0))
-
-	if berrs != nil {
-		return berrs
-	}
-
-	if response.StatusCode == http.StatusNoContent || response.ContentLength == 0 {
-		return nil
-	}
-
-	defer response.Body.Close()
-	if err := json.NewDecoder(response.Body).Decode(&dest); err != nil {
-		return elemental.NewError("Cannot Decode JSON", err.Error(), "manipulate", 0)
-	}
-
-	return nil
-}
-
-// Count count the number of element with the given Identity.
-// Not implemented yet
-func (s *HTTPStore) Count(manipulate.Contexts, elemental.Identity) (int, error) {
-	return 0, nil
-}
-
-// Assign assigns the list of given child Identifiables to the given Identifiable parent in the server.
-func (s *HTTPStore) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) error {
-
-	url, berr := s.getURLForChildrenIdentity(parent, assignation.MembersIdentity)
-	if berr != nil {
-		return berr
-	}
-
-	buffer := &bytes.Buffer{}
-	if err := json.NewEncoder(buffer).Encode(assignation); err != nil {
-		return elemental.NewError("Unable Encode", err.Error(), "manipulate", 0)
-	}
-
-	request, err := http.NewRequest("PATCH", url, buffer)
-	if err != nil {
-		return elemental.NewError("Bad Request", err.Error(), "manipulate", http.StatusBadRequest)
-	}
-
-	_, berrs := s.send(request, nil)
-
-	if berrs != nil {
-		return berrs
-	}
-
-	return nil
 }
