@@ -109,7 +109,7 @@ func (s *MongoStore) Update(contexts manipulate.Contexts, objects ...manipulate.
 
 	if tid == "" {
 		if err := s.commitBulk(bulk); err != nil {
-			return elemental.NewError("Error", err.Error(), "", 5000)
+			return elemental.NewError("Error", err.Error(), "manipulate", 5000)
 		}
 	}
 
@@ -130,7 +130,7 @@ func (s *MongoStore) Delete(contexts manipulate.Contexts, objects ...manipulate.
 
 	if tid == "" {
 		if err := s.commitBulk(bulk); err != nil {
-			return elemental.NewError("Error", err.Error(), "", 5000)
+			return elemental.NewError("Error", err.Error(), "manipulate", 5000)
 		}
 	}
 
@@ -173,7 +173,7 @@ func (s *MongoStore) Count(contexts manipulate.Contexts, identity elemental.Iden
 
 	c, err := query.Count()
 	if err != nil {
-		return 0, elemental.NewError("Error", err.Error(), "", 5000)
+		return 0, elemental.NewError("Error", err.Error(), "manipulate", 5000)
 	}
 
 	return c, nil
@@ -197,11 +197,11 @@ func (s *MongoStore) Commit(id manipulate.TransactionID) error {
 			"transactionID": id,
 		}).Error("No batch found for the given transaction.")
 
-		return elemental.NewError("Manipulation Error", "No batch found for the given transaction.", "", 5001)
+		return elemental.NewError("Manipulation Error", "No batch found for the given transaction.", "manipulate", 5001)
 	}
 
 	if err := s.commitBulk(s.registeredBulkWithID(id)); err != nil {
-		return elemental.NewError("Manipulation Error", "Unable to commit.", "", 5001)
+		return elemental.NewError("Manipulation Error", "Unable to commit.", "manipulate", 5001)
 	}
 
 	return nil
