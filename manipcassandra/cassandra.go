@@ -6,7 +6,6 @@ package manipcassandra
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -45,9 +44,32 @@ type CassandraStore struct {
 	batchRegistryLock *sync.Mutex
 }
 
+func createNativeSession(servers []string, keyspace string, version int, timeout time.Duration) (*gocql.Session, error) {
+
+	cluster := gocql.NewCluster(servers...)
+	cluster.Keyspace = keyspace
+	cluster.Consistency = gocql.Quorum
+	cluster.ProtoVersion = version
+	cluster.Timeout = timeout
+	cluster.RetryPolicy = &gocql.SimpleRetryPolicy{NumRetries: 5}
+
+	return cluster.CreateSession()
+}
+
 // NewCassandraStore returns a new *CassandraStore
 // You can specify the parameters servers, jeyspace and version.
 func NewCassandraStore(servers []string, keyspace string, version int) *CassandraStore {
+
+	session, err := createNativeSession(servers, keyspace, version, GocqlTimeout)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"package":  "manipcassandra",
+			"servers":  servers,
+			"keyspace": keyspace,
+			"version":  version,
+			"error":    err.Error(),
+		}).Fatal("Cannot connect to cassandra.")
+	}
 
 	return &CassandraStore{
 		Servers:           servers,
@@ -55,27 +77,8 @@ func NewCassandraStore(servers []string, keyspace string, version int) *Cassandr
 		ProtoVersion:      version,
 		batchRegistry:     BatchRegistry{},
 		batchRegistryLock: &sync.Mutex{},
+		nativeSession:     session,
 	}
-}
-
-// Stop will close the cassandra session
-func (c *CassandraStore) Stop() {
-	c.nativeSession.Close()
-	c.nativeSession = nil
-}
-
-// Start will start the cassandra session
-func (c *CassandraStore) Start() error {
-
-	session, err := c.createNativeSession(c.Servers, c.KeySpace, c.ProtoVersion, GocqlTimeout)
-
-	if err != nil {
-		return err
-	}
-
-	c.nativeSession = session
-
-	return nil
 }
 
 // Retrieve will launch a set of select to the cassandra session
@@ -469,106 +472,6 @@ func (c *CassandraStore) Increment(contexts manipulate.Contexts, name, counter s
 	}
 
 	return nil
-}
-
-// DoesKeyspaceExist checks if the configured keyspace exists
-func (c *CassandraStore) DoesKeyspaceExist() (bool, error) {
-
-	session, err := c.createNativeSession(c.Servers, "", c.ProtoVersion, GocqlTimeout)
-	if err != nil {
-		return false, err
-	}
-	defer session.Close()
-
-	info, err := session.KeyspaceMetadata(c.KeySpace)
-
-	if err != nil {
-		log.WithFields(log.Fields{
-			"package":  "manipcassandra",
-			"keyspace": c.KeySpace,
-			"error":    err,
-		}).Error("unable to get keyspace metadata")
-
-		return false, err
-	}
-
-	return len(info.Tables) > 0, nil
-}
-
-// CreateKeySpace creates a new keyspace
-func (c *CassandraStore) CreateKeySpace(replicationFactor int) error {
-
-	session, err := c.createNativeSession(c.Servers, "", c.ProtoVersion, ExtendedTimeout)
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	query := session.Query(
-		fmt.Sprintf("CREATE KEYSPACE %s WITH replication = {'class' : 'SimpleStrategy', 'replication_factor': %d}", c.KeySpace, replicationFactor))
-
-	return query.Exec()
-}
-
-// DropKeySpace deletes the given keyspace
-func (c *CassandraStore) DropKeySpace() error {
-
-	session, err := c.createNativeSession(c.Servers, "", c.ProtoVersion, ExtendedTimeout)
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	query := session.Query(fmt.Sprintf("DROP KEYSPACE IF EXISTS %s", c.KeySpace))
-
-	return query.Exec()
-}
-
-// ExecuteScript opens a new session, runs the given script in a mode and close the session.
-func (c *CassandraStore) ExecuteScript(data string) error {
-
-	session, err := c.createNativeSession(c.Servers, c.KeySpace, c.ProtoVersion, ExtendedTimeout)
-
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	for _, statement := range strings.Split(data, ";\n") {
-
-		if len(statement) == 0 {
-			continue
-		}
-
-		if err := session.Query(statement).Exec(); err != nil {
-			log.WithFields(log.Fields{
-				"package": "manipcassandra",
-				"error":   err,
-			}).Error("unable to execute query. aborting script in the middle. be sure to clean up my mess.")
-
-			return err
-		}
-	}
-
-	return nil
-}
-
-// createNativeSession returns a native gocql.Session.
-func (c *CassandraStore) createNativeSession(srvs []string, ks string, v int, timeout time.Duration) (*gocql.Session, error) {
-	cluster := gocql.NewCluster(srvs...)
-	cluster.Keyspace = ks
-	cluster.Consistency = gocql.Quorum
-	cluster.ProtoVersion = v
-	cluster.Timeout = timeout
-	cluster.RetryPolicy = &gocql.SimpleRetryPolicy{NumRetries: 5}
-
-	session, err := cluster.CreateSession()
-
-	if err != nil {
-		return nil, err
-	}
-
-	return session, nil
 }
 
 // batchForID return a gocql.Batch,
