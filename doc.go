@@ -1,4 +1,4 @@
-// Package manipulate is a provides everything needed to perform CRUD operations
+// Package manipulate provides everything needed to perform CRUD operations
 // on an https://github.com/aporeto-inc/elemental based data model.
 //
 // The main interface is Manipulator. This interface provides various
@@ -20,7 +20,7 @@
 //
 //      // Create a User from a generated Elemental model.
 //      user := models.NewUser()
-//      user.FullName, user.Login := Antoine Mercadal", "primalmotion"
+//      user.FullName, user.Login := "Antoine Mercadal", "primalmotion"
 //
 //      // Create Mongo Manipulator.
 //      m := manipmongo.NewMongoManipulator("127.0.0.1", "test")

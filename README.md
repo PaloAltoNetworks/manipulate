@@ -1,47 +1,44 @@
-## Manipulate
+# Manipulate
 
-Manipulate is a library which allows you to manipulate Manipulate with a set of store.
-The current store available are a http store and a cassandra store.
+Package manipulate provides everything needed to perform CRUD operations
+on an https://github.com/aporeto-inc/elemental based data model.
 
-They come with the the following interface :
+The main interface is Manipulator. This interface provides various
+methods for creation, modification, retrieval and so on. TransactionalManipulator,
+which is an extension of the Manipulator add methods to manage transactions, like
+Commit and Abort.
+
+A Manipulator works with a Manipulable which is a combination of the interfaces
+elemental.Identifiable and elemental.Validatable.
+
+The storage engine used by a Manipulator is abstracted. By default manipulate
+provides implementations for Cassandra, Mongo, ReST API. You can of course implement
+Your own storage implementation.
+
+Each method of a Manipulator is taking a Context as argument. The context is used
+to pass additional informations like a Filter, or some Parameters.
+
+### Example for creating an object
 
 ```go
-// Manipulator is the interface of a storage backend.
-type Manipulator interface {
-	RetrieveChildren(contexts Contexts, parent Manipulable, identity elemental.Identity, dest interface{}) elemental.Errors
-	Retrieve(contexts Contexts, objects ...Manipulable) elemental.Errors
-	Create(contexts Contexts, parent Manipulable, objects ...Manipulable) elemental.Errors
-	Update(contexts Contexts, objects ...Manipulable) elemental.Errors
-	Delete(contexts Contexts, objects ...Manipulable) elemental.Errors
-	Count(contexts Contexts, identity elemental.Identity) (int, elemental.Errors)
-	Assign(contexts Contexts, parent Manipulable, assignation *elemental.Assignation) elemental.Errors
-}
+// Create a User from a generated Elemental model.
+user := models.NewUser()
+user.FullName, user.Login := "Antoine Mercadal", "primalmotion"
+
+// Create Mongo Manipulator.
+m := manipmongo.NewMongoManipulator("127.0.0.1", "test")
+
+// Then create the User.
+m.Create(nil, nil, user)
 ```
 
-## Launch the test on your system
+### Example for retreving an object
 
-First install the testing dependencies with the command
+```go
+// Create a Context with a filter.
+ctx := manipulate.NewContextWithFilter(manipulate.NewFilterComposer().WithKey("login").Equals("primalmotion"))
 
-```bash
-make apoinit
-pushd manipcassandra; make apomock; popd
-```
-
-Then simply do :
-
-```bash
-make test
-```
-
-or
-
-```bash
-make convey
-```
-
-## Launch the test with docker
-
-```bash
-docker build --build-arg GITHUB_TOKEN=${GITHUB_TOKEN} -t manipulabletest .
-docker run -t manipulabletest
+// Retrieve the users matching the filter.
+var users models.UserLists
+m.RetrieveChildren(ctx, nil, models.UserIdentity, &users)
 ```
