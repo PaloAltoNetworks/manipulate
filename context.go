@@ -37,6 +37,24 @@ func NewContext() *Context {
 	}
 }
 
+// NewContextWithFilter returns a new *Context with the given filter.
+func NewContextWithFilter(filter *Filter) *Context {
+
+	ctx := NewContext()
+	ctx.Filter = filter
+
+	return ctx
+}
+
+// NewContextWithTransactionID returns a new *Context with the given transactionID.
+func NewContextWithTransactionID(tid TransactionID) *Context {
+
+	ctx := NewContext()
+	ctx.TransactionID = tid
+
+	return ctx
+}
+
 // String returns the string representation of the Context.
 func (c *Context) String() string {
 
@@ -50,7 +68,7 @@ func (c *Context) String() string {
 func ContextForIndex(c Contexts, index int) *Context {
 
 	if c == nil {
-		return nil
+		return NewContext()
 	}
 
 	castContextFunction := func(i interface{}) *Context {
