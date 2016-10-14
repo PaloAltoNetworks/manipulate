@@ -1,6 +1,9 @@
 package manipulate
 
-import "fmt"
+import (
+	"bytes"
+	"fmt"
+)
 
 // Comparators represent various comparison operations.
 const (
@@ -274,5 +277,56 @@ func (f *Filter) Done() *Filter {
 }
 
 func (f *Filter) String() string {
-	return fmt.Sprintf("%v", *f)
+
+	var buffer bytes.Buffer
+
+	for i, operator := range f.operators {
+		buffer.WriteString(translateOperator(operator))
+		if i > 0 {
+			buffer.WriteString(" ")
+		}
+		buffer.WriteString(fmt.Sprintf("%v", f.keys[i]))
+		buffer.WriteString(" ")
+		buffer.WriteString(translateComparator(f.comparators[i]))
+		buffer.WriteString(" ")
+		buffer.WriteString(fmt.Sprintf("%v", f.values[i]))
+
+		if i+1 < len(f.operators) {
+			buffer.WriteString(" ")
+		}
+	}
+
+	return buffer.String()
+}
+
+func translateComparator(comparator FilterComparator) string {
+
+	switch comparator {
+	case EqualComparator:
+		return "="
+	case GreaterComparator:
+		return ">="
+	case LesserComparator:
+		return "<="
+	case InComparator:
+		return "in"
+	case ContainComparator:
+		return "contains"
+	}
+
+	return ""
+}
+
+func translateOperator(operator FilterOperator) string {
+
+	switch operator {
+	case InitialOperator:
+		return ""
+	case AndOperator:
+		return "and"
+	case OrOperator:
+		return "or"
+	}
+
+	return ""
 }

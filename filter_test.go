@@ -244,6 +244,10 @@ func TestFilter_NewComposer(t *testing.T) {
 								LesserComparator,
 							})
 						})
+
+						Convey("Then the string representation should be correct", func() {
+							So(f.String(), ShouldEqual, "[hello world] = [1 2] and [gt] >= [12] or [lt] <= [13]")
+						})
 					})
 				})
 			})
@@ -294,6 +298,10 @@ func TestFilter_NewComposer(t *testing.T) {
 								EqualComparator,
 								InComparator,
 								ContainComparator,
+							})
+
+							Convey("Then the string representation should be correct", func() {
+								So(f.String(), ShouldEqual, "[hello world] = [1 2] and [in] in [a b c] or [ctn] contains [false]")
 							})
 						})
 					})
