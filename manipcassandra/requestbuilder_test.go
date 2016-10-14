@@ -71,7 +71,7 @@ func TestMethodAddOptionsFromContextWithParameter(t *testing.T) {
 	Convey("Given I call the method addOptionsFromContext", t, func() {
 		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		context := manipulate.NewContext()
-		context.Parameter = &Parameter{IfNotExists: true}
+		context.Parameters = &manipulate.Parameters{IfNotExists: true}
 		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{})
 
 		So(command, ShouldEqual, `SELECT * FROM policy LIMIT 100 IF NOT EXISTS `)
@@ -85,10 +85,10 @@ func TestMethodAddOptionsFromContextWithFilter(t *testing.T) {
 		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		context := manipulate.NewContext()
 
-		filter := &Filter{}
-		filter.Keys = [][]string{[]string{"ID"}}
-		filter.Separators = []string{CassandraFilterEqualSeparator}
-		filter.Values = [][]interface{}{[]interface{}{"12345"}}
+		filter := &manipulate.Filter{}
+		filter.Keys = manipulate.NewFilterKeys("ID")
+		filter.Operators = manipulate.NewFilterOperators(manipulate.EqualOperator)
+		filter.Values = manipulate.NewFilterValues("12345")
 
 		context.Filter = filter
 		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{})
@@ -104,15 +104,15 @@ func TestMethodAddOptionsFromContextWithEverything(t *testing.T) {
 		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		context := manipulate.NewContext()
 
-		filter := &Filter{}
-		filter.Keys = [][]string{[]string{"ID"}}
-		filter.Separators = []string{CassandraFilterEqualSeparator}
-		filter.Values = [][]interface{}{[]interface{}{"12345"}}
+		filter := &manipulate.Filter{}
+		filter.Keys = manipulate.NewFilterKeys("ID")
+		filter.Operators = manipulate.NewFilterOperators(manipulate.EqualOperator)
+		filter.Values = manipulate.NewFilterValues("12345")
 
 		context.Filter = filter
 		context.PageSize = 20
 
-		context.Parameter = &Parameter{IfNotExists: true}
+		context.Parameters = &manipulate.Parameters{IfNotExists: true}
 
 		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{"name", "age"})
 
@@ -127,10 +127,15 @@ func TestMethodAddOptionsFromContextWithMultiColumnAndValues(t *testing.T) {
 		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		context := manipulate.NewContext()
 
-		filter := &Filter{}
-		filter.Keys = [][]string{[]string{"ID", "name"}}
-		filter.Separators = []string{CassandraFilterEqualSeparator}
-		filter.Values = [][]interface{}{[]interface{}{[]interface{}{"20", 0}, []interface{}{"60", 122}}}
+		filter := &manipulate.Filter{}
+		filter.Keys = manipulate.NewFilterKeys("ID", "name")
+		filter.Operators = manipulate.NewFilterOperators(manipulate.EqualOperator)
+		filter.Values = manipulate.FilterValues{
+			[]interface{}{
+				[]interface{}{"20", 0},
+				[]interface{}{"60", 122},
+			},
+		} // yeah, this is convoluted....
 
 		context.Filter = filter
 
@@ -168,10 +173,15 @@ func TestMethodBuildDeleteCommandWithPrimaryKeysAnsValuesAndFilter(t *testing.T)
 	Convey("Given I call the method buildDeleteCommand", t, func() {
 
 		context := manipulate.NewContext()
-		filter := &Filter{}
-		filter.Keys = [][]string{[]string{"ID", "name"}}
-		filter.Separators = []string{CassandraFilterEqualSeparator}
-		filter.Values = [][]interface{}{[]interface{}{[]interface{}{"20", 0}, []interface{}{"60", 122}}}
+		filter := &manipulate.Filter{}
+		filter.Keys = manipulate.NewFilterKeys("ID", "name")
+		filter.Operators = manipulate.NewFilterOperators(manipulate.EqualOperator)
+		filter.Values = manipulate.FilterValues{
+			[]interface{}{
+				[]interface{}{"20", 0},
+				[]interface{}{"60", 122},
+			},
+		}
 		context.Filter = filter
 		context.PageSize = -1
 
@@ -186,7 +196,7 @@ func TestMethodBuildUpdateCollectionCommandOperationAdditive(t *testing.T) {
 
 	Convey("Given I call the method buildUpdateCollectionCommand", t, func() {
 
-		a := &AttributeUpdater{}
+		a := &attributeUpdater{}
 		a.Key = "NAME"
 		a.AssignationType = elemental.AssignationTypeAdd
 		a.Values = "coucou"
@@ -201,7 +211,7 @@ func TestMethodBuildUpdateCollectionCommandOperationDefault(t *testing.T) {
 
 	Convey("Given I call the method buildUpdateCollectionCommand", t, func() {
 
-		a := &AttributeUpdater{}
+		a := &attributeUpdater{}
 		a.Key = "NAME"
 		a.Values = "coucou"
 
@@ -215,7 +225,7 @@ func TestMethodBuildUpdateCollectionCommandOperationSubstractive(t *testing.T) {
 
 	Convey("Given I call the method buildUpdateCollectionCommand", t, func() {
 
-		a := &AttributeUpdater{}
+		a := &attributeUpdater{}
 		a.Key = "NAME"
 		a.AssignationType = elemental.AssignationTypeSubstract
 		a.Values = "coucou"
@@ -230,7 +240,7 @@ func TestMethodBuildUpdateCollectionCommandOperationSet(t *testing.T) {
 
 	Convey("Given I call the method buildUpdateCollectionCommand", t, func() {
 
-		a := &AttributeUpdater{}
+		a := &attributeUpdater{}
 		a.Key = "NAME"
 		a.AssignationType = elemental.AssignationTypeSet
 		a.Values = "coucou"
@@ -245,7 +255,7 @@ func TestMethodBuildUpdateCollectionCommandOperationSubstractiveWithPrimaryKeys(
 
 	Convey("Given I call the method buildUpdateCollectionCommand", t, func() {
 
-		a := &AttributeUpdater{}
+		a := &attributeUpdater{}
 		a.Key = "NAME"
 		a.AssignationType = elemental.AssignationTypeSubstract
 		a.Values = "coucou"
@@ -260,7 +270,7 @@ func TestMethodBuildUpdateCollectionCommandOperationSubstractiveWithPrimaryKeysA
 
 	Convey("Given I call the method buildUpdateCollectionCommand", t, func() {
 
-		a := &AttributeUpdater{}
+		a := &attributeUpdater{}
 		a.Key = "NAME"
 		a.AssignationType = elemental.AssignationTypeSubstract
 		a.Values = "coucou"
@@ -269,10 +279,16 @@ func TestMethodBuildUpdateCollectionCommandOperationSubstractiveWithPrimaryKeysA
 		context.Attributes = []string{"CITY"}
 		context.PageSize = 0
 
-		filter := &Filter{}
-		filter.Keys = [][]string{[]string{"ID", "name"}}
-		filter.Separators = []string{CassandraFilterEqualSeparator}
-		filter.Values = [][]interface{}{[]interface{}{[]interface{}{"20", 0}, []interface{}{"60", 122}}}
+		filter := &manipulate.Filter{}
+		filter.Keys = manipulate.NewFilterKeys("ID", "name")
+		filter.Operators = manipulate.NewFilterOperators(manipulate.EqualOperator)
+		filter.Values = manipulate.FilterValues{
+			[]interface{}{
+				[]interface{}{"20", 0},
+				[]interface{}{"60", 122},
+			},
+		}
+
 		context.Filter = filter
 
 		command, values := buildUpdateCollectionCommand(context, "policy", a, []string{"ID"}, []interface{}{"123"})
@@ -336,10 +352,15 @@ func TestMethodBuildUpdateCommandWithAttributesWithPrimaryKeysAndValuesAndFilter
 		context := manipulate.NewContext()
 		context.Attributes = []string{"CITY", "ID"}
 		context.PageSize = 0
-		filter := &Filter{}
-		filter.Keys = [][]string{[]string{"ID", "name"}}
-		filter.Separators = []string{CassandraFilterEqualSeparator}
-		filter.Values = [][]interface{}{[]interface{}{[]interface{}{"20", 0}, []interface{}{"60", 122}}}
+		filter := &manipulate.Filter{}
+		filter.Keys = manipulate.NewFilterKeys("ID", "name")
+		filter.Operators = manipulate.NewFilterOperators(manipulate.EqualOperator)
+		filter.Values = manipulate.FilterValues{
+			[]interface{}{
+				[]interface{}{"20", 0},
+				[]interface{}{"60", 122},
+			},
+		}
 		context.Filter = filter
 		context.PageSize = -1
 

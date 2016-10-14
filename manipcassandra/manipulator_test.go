@@ -7,6 +7,7 @@ package manipcassandra
 import (
 	"errors"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/aporeto-inc/elemental"
@@ -90,35 +91,21 @@ func TestCassandra_NewCassandraStore(t *testing.T) {
 
 	Convey("When I create a new CassandraStore", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		Convey("Then the it should implement Manipulator interface", func() {
 
 			var i interface{} = store
 			var ok bool
-			_, ok = i.(manipulate.Manipulator)
+			_, ok = i.(manipulate.TransactionalManipulator)
 			So(ok, ShouldBeTrue)
-		})
-	})
-}
-
-func TestCassandra_Stop(t *testing.T) {
-	Convey("When I create a new CassandraStore and call the method stop", t, func() {
-
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
-
-		var closeHasBeenCalled bool
-
-		apomock.T(t).Override("gocql.Session.Close", func(session *gocql.Session) {
-			closeHasBeenCalled = true
-		})
-
-		store.Stop()
-
-		Convey("Then the native session should be close", func() {
-			So(store.nativeSession, ShouldBeNil)
-			So(closeHasBeenCalled, ShouldBeTrue)
 		})
 	})
 }
@@ -126,8 +113,14 @@ func TestCassandra_Stop(t *testing.T) {
 func TestCassandre_BatchForID(t *testing.T) {
 	Convey("When I create a new CassandraStore and call the method batch with no id", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		var expectedBatchType gocql.BatchType
 		expectedBatch := &gocql.Batch{}
@@ -149,8 +142,14 @@ func TestCassandre_BatchForID(t *testing.T) {
 func TestCassandre_BatchForIDWithAnID(t *testing.T) {
 	Convey("When I create a new CassandraStore and call the method BatchForID, NewBatch should be called once", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		var expectedBatchType gocql.BatchType
 		expectedBatch := &gocql.Batch{}
@@ -175,8 +174,14 @@ func TestCassandre_BatchForIDWithAnID(t *testing.T) {
 func TestCassandre_CommitTransaction(t *testing.T) {
 	Convey("When I create a new CassandraStore and call the method CommitTransaction", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
@@ -204,13 +209,19 @@ func TestCassandre_CommitTransaction(t *testing.T) {
 func TestCassandre_CommitTransaction_ErrorBadID(t *testing.T) {
 	Convey("When I create a new CassandraStore and call the method Commit", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		errs := store.Commit("123").(elemental.Error)
 
 		Convey("Then we should get the good batch", func() {
-			So(errs.Code, ShouldEqual, ErrCannotCommit)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotCommit)
 		})
 	})
 }
@@ -218,8 +229,14 @@ func TestCassandre_CommitTransaction_ErrorBadID(t *testing.T) {
 func TestCassandre_CommitTransaction_Error(t *testing.T) {
 	Convey("When I create a new CassandraStore and call the method Commit", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
@@ -238,7 +255,7 @@ func TestCassandre_CommitTransaction_Error(t *testing.T) {
 
 		Convey("Then we should get the good batch", func() {
 			So(expectedBatch, ShouldEqual, batch)
-			So(errs.Code, ShouldEqual, ErrCannotExecuteBatch)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExecuteBatch)
 			So(store.batchRegistry["123"], ShouldBeNil)
 		})
 	})
@@ -247,8 +264,14 @@ func TestCassandre_CommitTransaction_Error(t *testing.T) {
 func TestCassandra_ExecuteBatch(t *testing.T) {
 	Convey("When I create a new CassandraStore and call the method executeBash", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		batch := &gocql.Batch{}
 
@@ -362,24 +385,29 @@ func TestCassandra_sliceMaps(t *testing.T) {
 func TestCassandra_Start(t *testing.T) {
 	Convey("When I call the method start, the session should be init with the cassandre store", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
 
+		session := &gocql.Session{}
 		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
 			expectedServers = servers
 			return cluster
 		})
 
-		session := &gocql.Session{}
+		createNativeSession([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1, GocqlTimeout)
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     session,
+		}
 
-		apomock.T(t).Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
-
-			return session, nil
+		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
+			expectedServers = servers
+			return cluster
 		})
-
-		store.Start()
 
 		Convey("Then I should have a native session", func() {
 			So(store.Servers, ShouldResemble, expectedServers)
@@ -389,28 +417,6 @@ func TestCassandra_Start(t *testing.T) {
 			So(cluster.ProtoVersion, ShouldEqual, 1)
 		})
 
-	})
-}
-
-func TestCassandra_StartWithError(t *testing.T) {
-	Convey("When I call the method start, the session should be init with the cassandre store", t, func() {
-
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-
-		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
-			return &gocql.ClusterConfig{}
-		})
-
-		apomock.T(t).Override("gocql.ClusterConfig.CreateSession", func(c *gocql.ClusterConfig) (*gocql.Session, error) {
-
-			return nil, errors.New("should panic session")
-		})
-
-		err := store.Start()
-
-		Convey("Then error should not be nil", func() {
-			So(err, ShouldNotBeNil)
-		})
 	})
 }
 
@@ -650,8 +656,14 @@ func TestCassandra_Count(t *testing.T) {
 
 	Convey("When I call the method Count", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		var expectedCommand string
 		var expectedValues []interface{}
@@ -691,8 +703,14 @@ func TestCassandra_CountErrorScan(t *testing.T) {
 
 	Convey("When I call the method Count", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		var expectedCommand string
 		var expectedValues []interface{}
@@ -720,7 +738,7 @@ func TestCassandra_CountErrorScan(t *testing.T) {
 		errs := err.(elemental.Error)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, ErrCannotScan)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotScan)
 			So(expectedCommand, ShouldEqual, "SELECT COUNT(*) FROM tag LIMIT 10")
 			So(expectedValues, ShouldResemble, []interface{}{})
 			So(count, ShouldEqual, -1)
@@ -732,8 +750,14 @@ func TestCassandra_CountErrorCloseIter(t *testing.T) {
 
 	Convey("When I call the method Count", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		var expectedCommand string
 		var expectedValues []interface{}
@@ -765,7 +789,7 @@ func TestCassandra_CountErrorCloseIter(t *testing.T) {
 		errs := err.(elemental.Error)
 
 		Convey("Then I should get no error", func() {
-			So(errs.Code, ShouldEqual, ErrCannotCloseIterator)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotCloseIterator)
 			So(expectedCommand, ShouldEqual, "SELECT COUNT(*) FROM tag LIMIT 10")
 			So(expectedValues, ShouldResemble, []interface{}{})
 			So(count, ShouldEqual, -1)
@@ -777,8 +801,14 @@ func TestCassandra_RetrieveChildren(t *testing.T) {
 
 	Convey("When I call the method RetrieveChildren", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		var expectedCommand string
 		var expectedValues []interface{}
@@ -830,7 +860,7 @@ func TestCassandra_RetrieveChildren(t *testing.T) {
 		err := store.RetrieveChildren(context, nil, TagIdentity, &tags).(elemental.Error)
 
 		Convey("Then I should get an error", func() {
-			So(err.Code, ShouldEqual, ErrCannotUnmarshal)
+			So(err.Code, ShouldEqual, manipulate.ErrCannotUnmarshal)
 			So(expectedCommand, ShouldEqual, "SELECT * FROM tag LIMIT 10")
 			So(expectedValues, ShouldResemble, []interface{}{})
 			So(expectedV, ShouldEqual, &tags)
@@ -842,8 +872,14 @@ func TestCassandra_RetrieveWithError(t *testing.T) {
 
 	Convey("When I call the method Retrieve", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		var expectedCommand string
 		var expectedValues []interface{}
@@ -879,7 +915,7 @@ func TestCassandra_RetrieveWithError(t *testing.T) {
 		errs := store.Retrieve(context, tag).(elemental.Error)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, ErrObjectNotFound)
+			So(errs.Code, ShouldEqual, manipulate.ErrObjectNotFound)
 			So(expectedCommand, ShouldEqual, "SELECT * FROM tag LIMIT 10")
 			So(expectedValues, ShouldResemble, []interface{}{})
 		})
@@ -890,8 +926,14 @@ func TestCassandra_UpdateCollection(t *testing.T) {
 
 	Convey("When I call the method UpdateCollection", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		apomock.T(t).Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{"ID"}, []interface{}{"123"}, nil
@@ -900,7 +942,7 @@ func TestCassandra_UpdateCollection(t *testing.T) {
 		tag := &Tag{}
 		tag.ID = "1234"
 
-		a := &AttributeUpdater{}
+		a := &attributeUpdater{}
 		a.Key = "NAME"
 		a.AssignationType = elemental.AssignationTypeSubstract
 		a.Values = "coucou"
@@ -936,8 +978,14 @@ func TestCassandra_UpdateCollectionWithErrorQuery(t *testing.T) {
 
 	Convey("When I call the method UpdateCollection", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		apomock.T(t).Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{"ID"}, []interface{}{"123"}, nil
@@ -946,7 +994,7 @@ func TestCassandra_UpdateCollectionWithErrorQuery(t *testing.T) {
 		tag := &Tag{}
 		tag.ID = "1234"
 
-		a := &AttributeUpdater{}
+		a := &attributeUpdater{}
 		a.Key = "NAME"
 		a.AssignationType = elemental.AssignationTypeSubstract
 		a.Values = "coucou"
@@ -971,7 +1019,7 @@ func TestCassandra_UpdateCollectionWithErrorQuery(t *testing.T) {
 		errs := store.UpdateCollection(context, a, tag).(elemental.Error)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExecuteQuery)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExecuteQuery)
 			So(tag, ShouldResemble, &Tag{ID: "1234"})
 			So(expectedCommand, ShouldResemble, "UPDATE tag SET NAME = NAME - ? WHERE ID = ?")
 			So(expectedValues, ShouldResemble, []interface{}{"coucou", "123"})
@@ -983,8 +1031,14 @@ func TestCassandra_UpdateCollectionWithErrorPrimaryFields(t *testing.T) {
 
 	Convey("When I call the method UpdateCollection", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		apomock.T(t).Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{}, []interface{}{}, errors.New("CassandraStore PrimaryFieldsAndValues error")
@@ -998,7 +1052,7 @@ func TestCassandra_UpdateCollectionWithErrorPrimaryFields(t *testing.T) {
 		errs := store.UpdateCollection(context, nil, tag).(elemental.Error)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExractPrimaryFieldsAndValues)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExractPrimaryFieldsAndValues)
 			So(tag, ShouldResemble, &Tag{ID: "1234"})
 		})
 	})
@@ -1008,8 +1062,14 @@ func TestCassandra_RetrieveWithErrorPrimaryFields(t *testing.T) {
 
 	Convey("When I call the method Retrieve", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		apomock.T(t).Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{}, []interface{}{}, errors.New("CassandraStore PrimaryFieldsAndValues error")
@@ -1024,7 +1084,7 @@ func TestCassandra_RetrieveWithErrorPrimaryFields(t *testing.T) {
 		errs := store.Retrieve(context, tag).(elemental.Error)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExractPrimaryFieldsAndValues)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExractPrimaryFieldsAndValues)
 			So(tag, ShouldResemble, &Tag{ID: "1234"})
 		})
 	})
@@ -1034,8 +1094,14 @@ func TestCassandra_Retrieve(t *testing.T) {
 
 	Convey("When I call the method Retrieve", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		var expectedCommand string
 		var expectedValues []interface{}
@@ -1096,8 +1162,14 @@ func TestCassandra_Delete(t *testing.T) {
 
 	Convey("When I call the method Delete", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		var expectedBatchType gocql.BatchType
 		expectedBatch := &gocql.Batch{}
@@ -1166,8 +1238,14 @@ func TestCassandra_Delete_WithTransactionID(t *testing.T) {
 
 	Convey("When I call the method Delete", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		apomock.T(t).Override("cassandra.PrimaryFieldsAndValues", func(val interface{}) ([]string, []interface{}, error) {
 			return []string{"ID"}, []interface{}{"123"}, nil
@@ -1228,8 +1306,14 @@ func TestCassandra_DeleteError(t *testing.T) {
 
 	Convey("When I call the method Delete", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
@@ -1251,7 +1335,7 @@ func TestCassandra_DeleteError(t *testing.T) {
 		errs := store.Delete(context, tag1, tag2).(elemental.Error)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExecuteBatch)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExecuteBatch)
 		})
 	})
 }
@@ -1260,8 +1344,14 @@ func TestCassandra_DeleteWithErrorPrimaryFields(t *testing.T) {
 
 	Convey("When I call the method Retrieve", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
@@ -1280,7 +1370,7 @@ func TestCassandra_DeleteWithErrorPrimaryFields(t *testing.T) {
 		errs := store.Delete(context, tag).(elemental.Error)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExractPrimaryFieldsAndValues)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExractPrimaryFieldsAndValues)
 			So(tag, ShouldResemble, &Tag{ID: "1234"})
 		})
 	})
@@ -1290,8 +1380,14 @@ func TestCassandra_Update(t *testing.T) {
 
 	Convey("When I call the method Update", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		var expectedBatchType gocql.BatchType
 		expectedBatch := &gocql.Batch{}
@@ -1379,8 +1475,14 @@ func TestCassandra_Update_WithTransactionID(t *testing.T) {
 
 	Convey("When I call the method Update", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		var expectedQuery1 string
 		var expectedValues1 interface{}
@@ -1460,8 +1562,14 @@ func TestCassandra_Update_ErrorFieldsAndValues(t *testing.T) {
 
 	Convey("When I call the method Update", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
@@ -1489,7 +1597,7 @@ func TestCassandra_Update_ErrorFieldsAndValues(t *testing.T) {
 		errs := store.Update(context, tag1, tag2).(elemental.Error)
 
 		Convey("Then everything should have been well called", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExtractFieldsAndValues)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExtractFieldsAndValues)
 		})
 	})
 }
@@ -1498,8 +1606,14 @@ func TestCassandra_Update_ErrorPrimaryFieldsAndValues(t *testing.T) {
 
 	Convey("When I call the method Update", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
@@ -1523,7 +1637,7 @@ func TestCassandra_Update_ErrorPrimaryFieldsAndValues(t *testing.T) {
 		errs := store.Update(context, tag1, tag2).(elemental.Error)
 
 		Convey("Then everything should have been well called", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExractPrimaryFieldsAndValues)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExractPrimaryFieldsAndValues)
 		})
 	})
 }
@@ -1532,8 +1646,14 @@ func TestCassandra_Update_ErrorExecuteBatch(t *testing.T) {
 
 	Convey("When I call the method Update", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
@@ -1569,7 +1689,7 @@ func TestCassandra_Update_ErrorExecuteBatch(t *testing.T) {
 		errs := store.Update(context, tag1, tag2).(elemental.Error)
 
 		Convey("Then everything should have been well called", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExecuteBatch)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExecuteBatch)
 		})
 	})
 }
@@ -1578,8 +1698,14 @@ func TestCassandra_Create(t *testing.T) {
 
 	Convey("When I call the method Create", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		var expectedBatchType gocql.BatchType
 		expectedBatch := &gocql.Batch{}
@@ -1672,8 +1798,14 @@ func TestCassandra_Create_WithTransacationID(t *testing.T) {
 
 	Convey("When I call the method Create", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		apomock.T(t).Override("gocql.TimeUUID", func() gocql.UUID {
 			return ParseUUID("7c469413-12ed-11e6-ac73-f45c89941b79")
@@ -1758,8 +1890,14 @@ func TestCassandra_Create_ErrorFieldsAndValues(t *testing.T) {
 
 	Convey("When I call the method Create", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
@@ -1795,7 +1933,7 @@ func TestCassandra_Create_ErrorFieldsAndValues(t *testing.T) {
 		errs := store.Create(context, nil, tag1, tag2).(elemental.Error)
 
 		Convey("Then everything should have been well called", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExtractFieldsAndValues)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExtractFieldsAndValues)
 			So(len(tag2.ID), ShouldEqual, 0)
 			So(len(tag2.ID), ShouldEqual, 0)
 		})
@@ -1806,8 +1944,14 @@ func TestCassandra_Create_ErrorExecuteBatch(t *testing.T) {
 
 	Convey("When I call the method Create", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-		store.nativeSession = &gocql.Session{}
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
 
 		apomock.T(t).Override("gocql.Session.NewBatch", func(session *gocql.Session, t gocql.BatchType) *gocql.Batch {
 			return &gocql.Batch{}
@@ -1847,7 +1991,7 @@ func TestCassandra_Create_ErrorExecuteBatch(t *testing.T) {
 		errs := store.Create(context, nil, tag1, tag2).(elemental.Error)
 
 		Convey("Then everything should have been well called", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExecuteBatch)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExecuteBatch)
 			So(len(tag2.ID), ShouldEqual, 0)
 			So(len(tag2.ID), ShouldEqual, 0)
 		})
@@ -1856,8 +2000,6 @@ func TestCassandra_Create_ErrorExecuteBatch(t *testing.T) {
 
 func TestCassandraCreateKeySpace(t *testing.T) {
 	Convey("When I call the method createKeySpace, a new key sapce should be created", t, func() {
-
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
@@ -1893,10 +2035,10 @@ func TestCassandraCreateKeySpace(t *testing.T) {
 			sessionCloseCalled = true
 		})
 
-		err := store.CreateKeySpace(5)
+		err := CreateKeySpace([]string{"1.2.3.4", "1.2.3.5"}, 1, "keyspace", 5)
 
 		Convey("Then I should have a native session", func() {
-			So(store.Servers, ShouldResemble, expectedServers)
+			So(expectedServers, ShouldResemble, []string{"1.2.3.4", "1.2.3.5"})
 			So(cluster.Keyspace, ShouldEqual, "")
 			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
 			So(cluster.ProtoVersion, ShouldEqual, 1)
@@ -1911,7 +2053,6 @@ func TestCassandraCreateKeySpace(t *testing.T) {
 func TestCassandraCreateKeySpaceWithErrorFromSession(t *testing.T) {
 	Convey("When I call the method createKeySpace and got an error from the creation of the session", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		cluster := &gocql.ClusterConfig{}
 
 		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
@@ -1924,7 +2065,7 @@ func TestCassandraCreateKeySpaceWithErrorFromSession(t *testing.T) {
 			return session, errors.New("should panic session")
 		})
 
-		err := store.CreateKeySpace(5)
+		err := CreateKeySpace([]string{"1.2.3.4", "1.2.3.5"}, 1, "keyspace", 5)
 
 		Convey("Then I should have get a session", func() {
 			So(err, ShouldResemble, errors.New("should panic session"))
@@ -1934,8 +2075,6 @@ func TestCassandraCreateKeySpaceWithErrorFromSession(t *testing.T) {
 
 func TestCassandraCreateKeySpaceErrorQuery(t *testing.T) {
 	Convey("When I call the method createKeySpace, with an error from the query", t, func() {
-
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
@@ -1971,10 +2110,10 @@ func TestCassandraCreateKeySpaceErrorQuery(t *testing.T) {
 			sessionCloseCalled = true
 		})
 
-		err := store.CreateKeySpace(5)
+		err := CreateKeySpace([]string{"1.2.3.4", "1.2.3.5"}, 1, "keyspace", 5)
 
 		Convey("Then I should have a native session", func() {
-			So(store.Servers, ShouldResemble, expectedServers)
+			So(expectedServers, ShouldResemble, []string{"1.2.3.4", "1.2.3.5"})
 			So(cluster.Keyspace, ShouldEqual, "")
 			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
 			So(cluster.ProtoVersion, ShouldEqual, 1)
@@ -1988,8 +2127,6 @@ func TestCassandraCreateKeySpaceErrorQuery(t *testing.T) {
 
 func TestCassandraDropKeySpace(t *testing.T) {
 	Convey("When I call the method DropKeySpace, a new key sapce should be created", t, func() {
-
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
@@ -2025,10 +2162,10 @@ func TestCassandraDropKeySpace(t *testing.T) {
 			sessionCloseCalled = true
 		})
 
-		err := store.DropKeySpace()
+		err := DropKeySpace([]string{"1.2.3.4", "1.2.3.5"}, 1, "keyspace")
 
 		Convey("Then I should have a native session", func() {
-			So(store.Servers, ShouldResemble, expectedServers)
+			So(expectedServers, ShouldResemble, []string{"1.2.3.4", "1.2.3.5"})
 			So(cluster.Keyspace, ShouldEqual, "")
 			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
 			So(cluster.ProtoVersion, ShouldEqual, 1)
@@ -2043,7 +2180,6 @@ func TestCassandraDropKeySpace(t *testing.T) {
 func TestCassandraDropKeySpaceWithErrorFromSession(t *testing.T) {
 	Convey("When I call the method DropKeySpace and got an error from the creation of the session", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 		cluster := &gocql.ClusterConfig{}
 
 		apomock.T(t).Override("gocql.NewCluster", func(servers ...string) *gocql.ClusterConfig {
@@ -2056,7 +2192,7 @@ func TestCassandraDropKeySpaceWithErrorFromSession(t *testing.T) {
 			return session, errors.New("should panic session")
 		})
 
-		err := store.DropKeySpace()
+		err := DropKeySpace([]string{"1.2.3.4", "1.2.3.5"}, 1, "keyspace")
 
 		Convey("Then I should have get a session", func() {
 			So(err, ShouldResemble, errors.New("should panic session"))
@@ -2066,8 +2202,6 @@ func TestCassandraDropKeySpaceWithErrorFromSession(t *testing.T) {
 
 func TestCassandraDropKeySpaceErrorQuery(t *testing.T) {
 	Convey("When I call the method DropKeySpace, with an error from the query", t, func() {
-
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
@@ -2103,10 +2237,10 @@ func TestCassandraDropKeySpaceErrorQuery(t *testing.T) {
 			sessionCloseCalled = true
 		})
 
-		err := store.DropKeySpace()
+		err := DropKeySpace([]string{"1.2.3.4", "1.2.3.5"}, 1, "keyspace")
 
 		Convey("Then I should have a native session", func() {
-			So(store.Servers, ShouldResemble, expectedServers)
+			So(expectedServers, ShouldResemble, []string{"1.2.3.4", "1.2.3.5"})
 			So(cluster.Keyspace, ShouldEqual, "")
 			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
 			So(cluster.ProtoVersion, ShouldEqual, 1)
@@ -2120,8 +2254,6 @@ func TestCassandraDropKeySpaceErrorQuery(t *testing.T) {
 
 func TestCassandraDoesKeyspaceExist(t *testing.T) {
 	Convey("When I call the method DoesKeyspaceExist, with a keyspace which is exist", t, func() {
-
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
@@ -2151,10 +2283,10 @@ func TestCassandraDoesKeyspaceExist(t *testing.T) {
 			return keyspaceMetadata, nil
 		})
 
-		ok, err := store.DoesKeyspaceExist()
+		ok, err := DoesKeyspaceExist([]string{"1.2.3.4", "1.2.3.5"}, 1, "keyspace")
 
 		Convey("Then I should have a native session", func() {
-			So(store.Servers, ShouldResemble, expectedServers)
+			So(expectedServers, ShouldResemble, []string{"1.2.3.4", "1.2.3.5"})
 			So(cluster.Keyspace, ShouldEqual, "")
 			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
 			So(cluster.ProtoVersion, ShouldEqual, 1)
@@ -2167,8 +2299,6 @@ func TestCassandraDoesKeyspaceExist(t *testing.T) {
 
 func TestCassandraDoesKeyspaceExistWithNoKeyspace(t *testing.T) {
 	Convey("When I call the method DoesKeyspaceExist, with a keyspace which is not exist", t, func() {
-
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
@@ -2196,10 +2326,10 @@ func TestCassandraDoesKeyspaceExistWithNoKeyspace(t *testing.T) {
 			return keyspaceMetadata, nil
 		})
 
-		ok, err := store.DoesKeyspaceExist()
+		ok, err := DoesKeyspaceExist([]string{"1.2.3.4", "1.2.3.5"}, 1, "keyspace")
 
 		Convey("Then I should have a native session", func() {
-			So(store.Servers, ShouldResemble, expectedServers)
+			So(expectedServers, ShouldResemble, []string{"1.2.3.4", "1.2.3.5"})
 			So(cluster.Keyspace, ShouldEqual, "")
 			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
 			So(cluster.ProtoVersion, ShouldEqual, 1)
@@ -2212,8 +2342,6 @@ func TestCassandraDoesKeyspaceExistWithNoKeyspace(t *testing.T) {
 
 func TestCassandraDoesKeyspaceExistWithErrorFromKeySpace(t *testing.T) {
 	Convey("When I call the method DoesKeyspaceExist, with a keyspace which an error", t, func() {
-
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
@@ -2239,10 +2367,10 @@ func TestCassandraDoesKeyspaceExistWithErrorFromKeySpace(t *testing.T) {
 			return nil, errors.New("error from KeyspaceMetadata")
 		})
 
-		ok, err := store.DoesKeyspaceExist()
+		ok, err := DoesKeyspaceExist([]string{"1.2.3.4", "1.2.3.5"}, 1, "keyspace")
 
 		Convey("Then I should have a native session", func() {
-			So(store.Servers, ShouldResemble, expectedServers)
+			So(expectedServers, ShouldResemble, []string{"1.2.3.4", "1.2.3.5"})
 			So(cluster.Keyspace, ShouldEqual, "")
 			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
 			So(cluster.ProtoVersion, ShouldEqual, 1)
@@ -2256,8 +2384,6 @@ func TestCassandraDoesKeyspaceExistWithErrorFromKeySpace(t *testing.T) {
 func TestCassandraDoesKeyspaceExistWithErrorFromSessio(t *testing.T) {
 	Convey("When I call the method DoesKeyspaceExist, with an error from the session", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
 
@@ -2270,10 +2396,10 @@ func TestCassandraDoesKeyspaceExistWithErrorFromSessio(t *testing.T) {
 			return nil, errors.New("should panic session")
 		})
 
-		ok, err := store.DoesKeyspaceExist()
+		ok, err := DoesKeyspaceExist([]string{"1.2.3.4", "1.2.3.5"}, 1, "keyspace")
 
 		Convey("Then I should have a native session", func() {
-			So(store.Servers, ShouldResemble, expectedServers)
+			So(expectedServers, ShouldResemble, []string{"1.2.3.4", "1.2.3.5"})
 			So(cluster.Keyspace, ShouldEqual, "")
 			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
 			So(cluster.ProtoVersion, ShouldEqual, 1)
@@ -2285,8 +2411,6 @@ func TestCassandraDoesKeyspaceExistWithErrorFromSessio(t *testing.T) {
 
 func TestCassandraExecuteScript(t *testing.T) {
 	Convey("When I call the method ExecuteScript, with a good script", t, func() {
-
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
@@ -2329,10 +2453,10 @@ func TestCassandraExecuteScript(t *testing.T) {
 			sessionCloseCalled = true
 		})
 
-		err := store.ExecuteScript("Alexandre;\nAntoine")
+		err := ExecuteScript([]string{"1.2.3.4", "1.2.3.5"}, 1, "keyspace", "Alexandre;\nAntoine")
 
 		Convey("Then I should have a native session", func() {
-			So(store.Servers, ShouldResemble, expectedServers)
+			So(expectedServers, ShouldResemble, []string{"1.2.3.4", "1.2.3.5"})
 			So(cluster.Keyspace, ShouldEqual, "keyspace")
 			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
 			So(cluster.ProtoVersion, ShouldEqual, 1)
@@ -2347,8 +2471,6 @@ func TestCassandraExecuteScript(t *testing.T) {
 
 func TestCassandraExecuteScriptWithError(t *testing.T) {
 	Convey("When I call the method ExecuteScript, with a error", t, func() {
-
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
@@ -2391,10 +2513,10 @@ func TestCassandraExecuteScriptWithError(t *testing.T) {
 			sessionCloseCalled = true
 		})
 
-		err := store.ExecuteScript("Alexandre;\nAntoine")
+		err := ExecuteScript([]string{"1.2.3.4", "1.2.3.5"}, 1, "keyspace", "Alexandre;\nAntoine")
 
 		Convey("Then I should have a native session", func() {
-			So(store.Servers, ShouldResemble, expectedServers)
+			So(expectedServers, ShouldResemble, []string{"1.2.3.4", "1.2.3.5"})
 			So(cluster.Keyspace, ShouldEqual, "keyspace")
 			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
 			So(cluster.ProtoVersion, ShouldEqual, 1)
@@ -2410,8 +2532,6 @@ func TestCassandraExecuteScriptWithError(t *testing.T) {
 func TestCassandraExecuteScriptWithErrorSession(t *testing.T) {
 	Convey("When I call the method ExecuteScript, with a error session", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
-
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
 
@@ -2426,10 +2546,10 @@ func TestCassandraExecuteScriptWithErrorSession(t *testing.T) {
 			return session, errors.New("should error panic")
 		})
 
-		err := store.ExecuteScript("Alexandre;\nAntoine")
+		err := ExecuteScript([]string{"1.2.3.4", "1.2.3.5"}, 1, "keyspace", "Alexandre;\nAntoine")
 
 		Convey("Then I should have a native session", func() {
-			So(store.Servers, ShouldResemble, expectedServers)
+			So(expectedServers, ShouldResemble, []string{"1.2.3.4", "1.2.3.5"})
 			So(cluster.Keyspace, ShouldEqual, "keyspace")
 			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
 			So(cluster.ProtoVersion, ShouldEqual, 1)
@@ -2440,8 +2560,6 @@ func TestCassandraExecuteScriptWithErrorSession(t *testing.T) {
 
 func TestCassandraExecuteScriptWithEmptyLine(t *testing.T) {
 	Convey("When I call the method ExecuteScript, with a good script", t, func() {
-
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
 
 		var expectedServers []string
 		cluster := &gocql.ClusterConfig{}
@@ -2484,10 +2602,9 @@ func TestCassandraExecuteScriptWithEmptyLine(t *testing.T) {
 			sessionCloseCalled = true
 		})
 
-		err := store.ExecuteScript("Alexandre;\n;\nAntoine")
-
+		err := ExecuteScript([]string{"1.2.3.4", "1.2.3.5"}, 1, "keyspace", "Alexandre;\n;\nAntoine")
 		Convey("Then I should have a native session", func() {
-			So(store.Servers, ShouldResemble, expectedServers)
+			So(expectedServers, ShouldResemble, []string{"1.2.3.4", "1.2.3.5"})
 			So(cluster.Keyspace, ShouldEqual, "keyspace")
 			So(cluster.Consistency, ShouldEqual, gocql.Quorum)
 			So(cluster.ProtoVersion, ShouldEqual, 1)
@@ -2504,7 +2621,15 @@ func TestCassandraAbort(t *testing.T) {
 
 	Convey("Given I have a store with a transaction", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
+
 		tid := manipulate.TransactionID("tid")
 
 		store.batchRegistry[tid] = &gocql.Batch{}
@@ -2525,7 +2650,15 @@ func TestCassandraAbort(t *testing.T) {
 
 	Convey("Given I have a store with no transaction", t, func() {
 
-		store := NewCassandraStore([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1)
+		store := &cassandraManipulator{
+			Servers:           []string{"1.2.3.4", "1.2.3.5"},
+			KeySpace:          "keyspace",
+			ProtoVersion:      1,
+			batchRegistry:     batchRegistry{},
+			batchRegistryLock: &sync.Mutex{},
+			nativeSession:     &gocql.Session{},
+		}
+
 		tid := manipulate.TransactionID("tid")
 
 		Convey("When I use Abort", func() {

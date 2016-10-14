@@ -17,8 +17,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-// HTTPStore represents a user session.
-type HTTPStore struct {
+type httpManipulator struct {
 	username  string
 	password  string
 	url       string
@@ -26,8 +25,8 @@ type HTTPStore struct {
 	client    *http.Client
 }
 
-// NewHTTPStore returns a new *HTTPStore
-func NewHTTPStore(username, password, url, namespace string, tlsConfig *TLSConfiguration) *HTTPStore {
+// NewHTTPManipulator returns a Manipulator backed by an ReST API.
+func NewHTTPManipulator(username, password, url, namespace string, tlsConfig *TLSConfiguration) manipulate.Manipulator {
 
 	if tlsConfig == nil {
 		tlsConfig = NewTLSConfiguration("", "", "", false)
@@ -38,7 +37,7 @@ func NewHTTPStore(username, password, url, namespace string, tlsConfig *TLSConfi
 		panic(fmt.Sprintf("Invalid TLSConfiguration: %s", err))
 	}
 
-	return &HTTPStore{
+	return &httpManipulator{
 		username:  username,
 		password:  password,
 		url:       url,
@@ -47,131 +46,7 @@ func NewHTTPStore(username, password, url, namespace string, tlsConfig *TLSConfi
 	}
 }
 
-func (s *HTTPStore) makeAuthorizationHeaders() string {
-
-	return s.username + " " + s.password
-}
-
-func (s *HTTPStore) prepareHeaders(request *http.Request, context *manipulate.Context) error {
-
-	if s.namespace != "" {
-		request.Header.Set("X-Namespace", s.namespace)
-	}
-
-	if s.username != "" && s.password != "" {
-		request.Header.Set("Authorization", s.makeAuthorizationHeaders())
-	}
-
-	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
-
-	if context == nil {
-		return nil
-	}
-
-	if context.PageSize != -1 {
-		request.Header.Set("X-Page-Size", strconv.Itoa(context.PageSize))
-	}
-
-	if context.PageCurrent != -1 {
-		request.Header.Set("X-Page-Current", strconv.Itoa(context.PageCurrent))
-	}
-
-	if context.PageSize > 0 {
-		request.Header.Set("X-Page-Size", strconv.Itoa(context.PageSize))
-	}
-
-	return nil
-}
-
-func (s *HTTPStore) readHeaders(response *http.Response, context *manipulate.Context) {
-
-	if context == nil {
-		return
-	}
-
-	context.PageCurrent, _ = strconv.Atoi(response.Header.Get("X-Page-Current"))
-	context.PageSize, _ = strconv.Atoi(response.Header.Get("X-Page-Size"))
-	context.PageFirst = response.Header.Get("X-Page-First")
-	context.PagePrev = response.Header.Get("X-Page-Prev")
-	context.PageNext = response.Header.Get("X-Page-Next")
-	context.PageLast = response.Header.Get("X-Page-Last")
-
-	context.CountLocal, _ = strconv.Atoi(response.Header.Get("X-Count-Local"))
-	context.CountTotal, _ = strconv.Atoi(response.Header.Get("X-Count-Total"))
-}
-
-func (s *HTTPStore) getGeneralURL(o manipulate.Manipulable) string {
-
-	return s.url + "/" + o.Identity().Category
-}
-
-func (s *HTTPStore) getPersonalURL(o manipulate.Manipulable) (string, error) {
-
-	if o.Identifier() == "" {
-		return "", elemental.NewError("URL Computing Error", "Cannot GetPersonalURL of an object with no ID set", "manipulate", 2)
-	}
-
-	return s.getGeneralURL(o) + "/" + o.Identifier(), nil
-}
-
-func (s *HTTPStore) getURLForChildrenIdentity(parent manipulate.Manipulable, childrenIdentity elemental.Identity) (string, error) {
-
-	if parent == nil {
-		return s.url + "/" + childrenIdentity.Category, nil
-	}
-
-	url, err := s.getPersonalURL(parent)
-	if err != nil {
-		return "", err
-	}
-
-	return url + "/" + childrenIdentity.Category, nil
-}
-
-func (s *HTTPStore) send(request *http.Request, context *manipulate.Context) (*http.Response, error) {
-
-	s.prepareHeaders(request, context)
-
-	response, err := s.client.Do(request)
-
-	if err != nil {
-		log.WithFields(log.Fields{
-			"package":  "maniphttp",
-			"method":   request.Method,
-			"url":      request.URL,
-			"request":  request,
-			"response": response,
-			"error":    err,
-		}).Debug("Unable to send the request.")
-		return response, elemental.NewError("Error while sending the request", err.Error(), "manipulate", 0)
-	}
-
-	log.WithFields(log.Fields{
-		"package":  "maniphttp",
-		"method":   request.Method,
-		"url":      request.URL,
-		"request":  request,
-		"response": response,
-	}).Debug("Request sent.")
-
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-
-		errs := elemental.Errors{}
-
-		if err := json.NewDecoder(response.Body).Decode(&errs); err != nil {
-			return nil, elemental.NewError("No data", "gen", "manipulate", 1)
-		}
-
-		return response, errs
-	}
-
-	s.readHeaders(response, context)
-
-	return response, nil
-}
-
-// Create creates a new child Identifiable under the given parent Identifiable in the server.
-func (s *HTTPStore) Create(contexts manipulate.Contexts, parent manipulate.Manipulable, children ...manipulate.Manipulable) error {
+func (s *httpManipulator) Create(contexts manipulate.Contexts, parent manipulate.Manipulable, children ...manipulate.Manipulable) error {
 
 	errs := []error{}
 
@@ -217,8 +92,7 @@ func (s *HTTPStore) Create(contexts manipulate.Contexts, parent manipulate.Manip
 	return nil
 }
 
-// Retrieve fetchs the given Identifiable from the server.
-func (s *HTTPStore) Retrieve(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (s *httpManipulator) Retrieve(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	errs := []error{}
 
@@ -258,8 +132,7 @@ func (s *HTTPStore) Retrieve(contexts manipulate.Contexts, objects ...manipulate
 	return nil
 }
 
-// Update saves the given Identifiable into the server.
-func (s *HTTPStore) Update(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (s *httpManipulator) Update(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	errs := []error{}
 
@@ -305,8 +178,7 @@ func (s *HTTPStore) Update(contexts manipulate.Contexts, objects ...manipulate.M
 	return nil
 }
 
-// Delete deletes the given Identifiable from the server.
-func (s *HTTPStore) Delete(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (s *httpManipulator) Delete(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	errs := []error{}
 
@@ -339,8 +211,7 @@ func (s *HTTPStore) Delete(contexts manipulate.Contexts, objects ...manipulate.M
 	return nil
 }
 
-// RetrieveChildren fetches the children with of given parent identified by the given Identity.
-func (s *HTTPStore) RetrieveChildren(contexts manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) error {
+func (s *httpManipulator) RetrieveChildren(contexts manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) error {
 
 	url, err := s.getURLForChildrenIdentity(parent, identity)
 	if err != nil {
@@ -370,14 +241,11 @@ func (s *HTTPStore) RetrieveChildren(contexts manipulate.Contexts, parent manipu
 	return nil
 }
 
-// Count count the number of element with the given Identity.
-// Not implemented yet
-func (s *HTTPStore) Count(manipulate.Contexts, elemental.Identity) (int, error) {
+func (s *httpManipulator) Count(manipulate.Contexts, elemental.Identity) (int, error) {
 	return 0, nil
 }
 
-// Assign assigns the list of given child Identifiables to the given Identifiable parent in the server.
-func (s *HTTPStore) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) error {
+func (s *httpManipulator) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) error {
 
 	url, berr := s.getURLForChildrenIdentity(parent, assignation.MembersIdentity)
 	if berr != nil {
@@ -401,4 +269,131 @@ func (s *HTTPStore) Assign(contexts manipulate.Contexts, parent manipulate.Manip
 	}
 
 	return nil
+}
+
+func (s *httpManipulator) Increment(contexts manipulate.Contexts, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
+	return fmt.Errorf("Increment is not implemented in http store")
+}
+
+func (s *httpManipulator) makeAuthorizationHeaders() string {
+
+	return s.username + " " + s.password
+}
+
+func (s *httpManipulator) prepareHeaders(request *http.Request, context *manipulate.Context) error {
+
+	if s.namespace != "" {
+		request.Header.Set("X-Namespace", s.namespace)
+	}
+
+	if s.username != "" && s.password != "" {
+		request.Header.Set("Authorization", s.makeAuthorizationHeaders())
+	}
+
+	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
+
+	if context == nil {
+		return nil
+	}
+
+	if context.PageSize != -1 {
+		request.Header.Set("X-Page-Size", strconv.Itoa(context.PageSize))
+	}
+
+	if context.PageCurrent != -1 {
+		request.Header.Set("X-Page-Current", strconv.Itoa(context.PageCurrent))
+	}
+
+	if context.PageSize > 0 {
+		request.Header.Set("X-Page-Size", strconv.Itoa(context.PageSize))
+	}
+
+	return nil
+}
+
+func (s *httpManipulator) readHeaders(response *http.Response, context *manipulate.Context) {
+
+	if context == nil {
+		return
+	}
+
+	context.PageCurrent, _ = strconv.Atoi(response.Header.Get("X-Page-Current"))
+	context.PageSize, _ = strconv.Atoi(response.Header.Get("X-Page-Size"))
+	context.PageFirst = response.Header.Get("X-Page-First")
+	context.PagePrev = response.Header.Get("X-Page-Prev")
+	context.PageNext = response.Header.Get("X-Page-Next")
+	context.PageLast = response.Header.Get("X-Page-Last")
+
+	context.CountLocal, _ = strconv.Atoi(response.Header.Get("X-Count-Local"))
+	context.CountTotal, _ = strconv.Atoi(response.Header.Get("X-Count-Total"))
+}
+
+func (s *httpManipulator) getGeneralURL(o manipulate.Manipulable) string {
+
+	return s.url + "/" + o.Identity().Category
+}
+
+func (s *httpManipulator) getPersonalURL(o manipulate.Manipulable) (string, error) {
+
+	if o.Identifier() == "" {
+		return "", elemental.NewError("URL Computing Error", "Cannot GetPersonalURL of an object with no ID set", "manipulate", 2)
+	}
+
+	return s.getGeneralURL(o) + "/" + o.Identifier(), nil
+}
+
+func (s *httpManipulator) getURLForChildrenIdentity(parent manipulate.Manipulable, childrenIdentity elemental.Identity) (string, error) {
+
+	if parent == nil {
+		return s.url + "/" + childrenIdentity.Category, nil
+	}
+
+	url, err := s.getPersonalURL(parent)
+	if err != nil {
+		return "", err
+	}
+
+	return url + "/" + childrenIdentity.Category, nil
+}
+
+func (s *httpManipulator) send(request *http.Request, context *manipulate.Context) (*http.Response, error) {
+
+	s.prepareHeaders(request, context)
+
+	response, err := s.client.Do(request)
+
+	if err != nil {
+		log.WithFields(log.Fields{
+			"package":  "maniphttp",
+			"method":   request.Method,
+			"url":      request.URL,
+			"request":  request,
+			"response": response,
+			"error":    err,
+		}).Debug("Unable to send the request.")
+		return response, elemental.NewError("Error while sending the request", err.Error(), "manipulate", 0)
+	}
+
+	log.WithFields(log.Fields{
+		"package":  "maniphttp",
+		"method":   request.Method,
+		"url":      request.URL,
+		"request":  request,
+		"response": response,
+	}).Debug("Request sent.")
+
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+
+		errs := elemental.Errors{}
+
+		if err := json.NewDecoder(response.Body).Decode(&errs); err != nil {
+			return nil, elemental.NewError("No data", "gen", "manipulate", 1)
+		}
+
+		return response, errs
+	}
+
+	s.readHeaders(response, context)
+
+	return response, nil
 }

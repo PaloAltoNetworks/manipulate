@@ -1,14 +1,9 @@
-// Author: Antoine Mercadal
-// See LICENSE file for full LICENSE
-// Copyright 2016 Aporeto.
-
-package manipulate_test
+package manipulate
 
 import (
 	"testing"
 
 	"github.com/aporeto-inc/elemental"
-	"github.com/aporeto-inc/manipulate"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -54,8 +49,8 @@ func TestMethodConvertPointerArrayToManipulables(t *testing.T) {
 
 		Convey("Then I call the method ConvertArrayToManipulables", func() {
 
-			m := manipulate.ConvertArrayToManipulables(listTags)
-			So(m, ShouldHaveSameTypeAs, []manipulate.Manipulable{})
+			m := ConvertArrayToManipulables(listTags)
+			So(m, ShouldHaveSameTypeAs, []Manipulable{})
 			So(m[0], ShouldEqual, tag)
 			So(m[1], ShouldEqual, tag2)
 		})

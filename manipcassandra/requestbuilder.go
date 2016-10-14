@@ -11,6 +11,7 @@ import (
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
+	"github.com/aporeto-inc/manipulate/manipcassandra/compilers"
 )
 
 const sep = ", "
@@ -44,7 +45,7 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 	if c.Filter != nil {
 		buffer.WriteString(` `)
 
-		filterString := c.Filter.Compile().(string)
+		filterString := compilers.CompileFilter(c.Filter)
 
 		if hasPrimaryKey {
 			filterString = strings.Replace(filterString, "WHERE", "AND", 1)
@@ -52,7 +53,7 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 
 		buffer.WriteString(filterString)
 
-		filter := c.Filter.(*Filter)
+		filter := c.Filter
 
 		for i := 0; i < len(filter.Values); i++ {
 
@@ -66,9 +67,9 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 		buffer.WriteString(strconv.Itoa(c.PageSize))
 	}
 
-	if c.Parameter != nil {
+	if c.Parameters != nil {
 		buffer.WriteString(` `)
-		buffer.WriteString(c.Parameter.Compile().(string))
+		buffer.WriteString(compilers.CompileParameters(c.Parameters))
 	}
 
 	if c.Filter != nil {
@@ -82,7 +83,7 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 // example : UPDATE policy SET NAME = NAME - ?  WHERE ID = ?
 // every values will be replace by a ?
 // then it will apply the given context on the query
-func buildUpdateCollectionCommand(c *manipulate.Context, tableName string, attributeUpdate *AttributeUpdater, primaryKeys []string, primaryValues []interface{}) (string, []interface{}) {
+func buildUpdateCollectionCommand(c *manipulate.Context, tableName string, attributeUpdate *attributeUpdater, primaryKeys []string, primaryValues []interface{}) (string, []interface{}) {
 
 	buffer := bytes.NewBuffer([]byte{})
 	buffer.WriteString("UPDATE ")

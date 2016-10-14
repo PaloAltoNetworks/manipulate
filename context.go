@@ -7,12 +7,7 @@ package manipulate
 import (
 	"fmt"
 	"reflect"
-
-	"github.com/aporeto-inc/gocql"
 )
-
-// TransactionID is the type used to define a transcation ID of a store
-type TransactionID string
 
 // Contexts is a type, this type will be checked and can be only a Context or []*Context
 type Contexts interface{}
@@ -27,20 +22,10 @@ type Context struct {
 	PageLast      string
 	CountLocal    int
 	CountTotal    int
-	Filter        FilterCompiler
-	Parameter     ParameterCompiler
+	Filter        *Filter
+	Parameters    *Parameters
 	Attributes    []string
 	TransactionID TransactionID
-}
-
-// FilterCompiler is a interface which allows to create a filter
-type FilterCompiler interface {
-	Compile() interface{}
-}
-
-// ParameterCompiler is a interface which allows to add more parameters
-type ParameterCompiler interface {
-	Compile() interface{}
 }
 
 // NewContext returns a new *Context
@@ -77,10 +62,4 @@ func ContextForIndex(c Contexts, index int) *Context {
 	}
 
 	return castContextFunction(c)
-}
-
-// NewTransactionID returns a new transaction ID
-// TransactionID is in the format of a uuid
-func NewTransactionID() TransactionID {
-	return TransactionID(gocql.TimeUUID().String())
 }
