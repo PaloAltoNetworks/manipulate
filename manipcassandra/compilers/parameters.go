@@ -1,22 +1,13 @@
-// Author: Alexandre Wilhelm
-// See LICENSE file for full LICENSE
-// Copyright 2016 Aporeto.
+package compilers
 
-package manipcassandra
+import (
+	"bytes"
 
-import "bytes"
+	"github.com/aporeto-inc/manipulate"
+)
 
-// Parameter is a parameter struct which can be used with Cassandra
-type Parameter struct {
-	IfNotExists bool
-	IfExists    bool
-	UsingTTL    bool
-	OrderByDesc string
-	OrderByAsc  string
-}
-
-// Compile returns the string of the current parameter
-func (p *Parameter) Compile() interface{} {
+// CompileParameters returns the string of the current parameter
+func CompileParameters(p *manipulate.Parameters) string {
 
 	var buffer bytes.Buffer
 

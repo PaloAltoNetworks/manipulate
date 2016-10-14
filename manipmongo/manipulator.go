@@ -6,6 +6,7 @@ import (
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
+	"github.com/aporeto-inc/manipulate/manipmongo/compilers"
 	"gopkg.in/mgo.v2/bson"
 
 	log "github.com/Sirupsen/logrus"
@@ -136,7 +137,7 @@ func (s *MongoStore) RetrieveChildren(contexts manipulate.Contexts, parent manip
 
 	var query *mgo.Query
 	if context.Filter != nil {
-		query = collection.Find(context.Filter.Compile())
+		query = collection.Find(compilers.CompileFilter(context.Filter))
 	} else {
 		query = collection.Find(nil)
 	}
@@ -156,7 +157,7 @@ func (s *MongoStore) Count(contexts manipulate.Contexts, identity elemental.Iden
 
 	var query *mgo.Query
 	if context.Filter != nil {
-		query = collection.Find(context.Filter.Compile())
+		query = collection.Find(compilers.CompileFilter(context.Filter))
 	} else {
 		query = collection.Find(nil)
 	}

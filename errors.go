@@ -1,8 +1,6 @@
-// Author: Alexandre Wilhelm
-// See LICENSE file for full LICENSE
-// Copyright 2016 Aporeto.
+package manipulate
 
-package manipcassandra
+import "github.com/aporeto-inc/elemental"
 
 const (
 	// ErrCannotUnmarshal represents unmarshaling error.
@@ -47,4 +45,14 @@ var errorTitles = map[int]string{
 	ErrCannotExtractFieldsAndValues:       "Unable to extract fields or values.",
 	ErrCannotExractPrimaryFieldsAndValues: "Unable to extract primary keys or values.",
 	ErrCannotCommit:                       "Unable to commit transaction.",
+}
+
+// NewError returns a new manipulation error.
+func NewError(err string, code int) error {
+	return elemental.NewError(
+		errorTitles[code],
+		err,
+		"manipulate",
+		code,
+	)
 }

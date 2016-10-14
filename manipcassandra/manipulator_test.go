@@ -221,7 +221,7 @@ func TestCassandre_CommitTransaction_ErrorBadID(t *testing.T) {
 		errs := store.Commit("123").(elemental.Error)
 
 		Convey("Then we should get the good batch", func() {
-			So(errs.Code, ShouldEqual, ErrCannotCommit)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotCommit)
 		})
 	})
 }
@@ -255,7 +255,7 @@ func TestCassandre_CommitTransaction_Error(t *testing.T) {
 
 		Convey("Then we should get the good batch", func() {
 			So(expectedBatch, ShouldEqual, batch)
-			So(errs.Code, ShouldEqual, ErrCannotExecuteBatch)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExecuteBatch)
 			So(store.batchRegistry["123"], ShouldBeNil)
 		})
 	})
@@ -738,7 +738,7 @@ func TestCassandra_CountErrorScan(t *testing.T) {
 		errs := err.(elemental.Error)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, ErrCannotScan)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotScan)
 			So(expectedCommand, ShouldEqual, "SELECT COUNT(*) FROM tag LIMIT 10")
 			So(expectedValues, ShouldResemble, []interface{}{})
 			So(count, ShouldEqual, -1)
@@ -789,7 +789,7 @@ func TestCassandra_CountErrorCloseIter(t *testing.T) {
 		errs := err.(elemental.Error)
 
 		Convey("Then I should get no error", func() {
-			So(errs.Code, ShouldEqual, ErrCannotCloseIterator)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotCloseIterator)
 			So(expectedCommand, ShouldEqual, "SELECT COUNT(*) FROM tag LIMIT 10")
 			So(expectedValues, ShouldResemble, []interface{}{})
 			So(count, ShouldEqual, -1)
@@ -860,7 +860,7 @@ func TestCassandra_RetrieveChildren(t *testing.T) {
 		err := store.RetrieveChildren(context, nil, TagIdentity, &tags).(elemental.Error)
 
 		Convey("Then I should get an error", func() {
-			So(err.Code, ShouldEqual, ErrCannotUnmarshal)
+			So(err.Code, ShouldEqual, manipulate.ErrCannotUnmarshal)
 			So(expectedCommand, ShouldEqual, "SELECT * FROM tag LIMIT 10")
 			So(expectedValues, ShouldResemble, []interface{}{})
 			So(expectedV, ShouldEqual, &tags)
@@ -915,7 +915,7 @@ func TestCassandra_RetrieveWithError(t *testing.T) {
 		errs := store.Retrieve(context, tag).(elemental.Error)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, ErrObjectNotFound)
+			So(errs.Code, ShouldEqual, manipulate.ErrObjectNotFound)
 			So(expectedCommand, ShouldEqual, "SELECT * FROM tag LIMIT 10")
 			So(expectedValues, ShouldResemble, []interface{}{})
 		})
@@ -1019,7 +1019,7 @@ func TestCassandra_UpdateCollectionWithErrorQuery(t *testing.T) {
 		errs := store.UpdateCollection(context, a, tag).(elemental.Error)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExecuteQuery)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExecuteQuery)
 			So(tag, ShouldResemble, &Tag{ID: "1234"})
 			So(expectedCommand, ShouldResemble, "UPDATE tag SET NAME = NAME - ? WHERE ID = ?")
 			So(expectedValues, ShouldResemble, []interface{}{"coucou", "123"})
@@ -1052,7 +1052,7 @@ func TestCassandra_UpdateCollectionWithErrorPrimaryFields(t *testing.T) {
 		errs := store.UpdateCollection(context, nil, tag).(elemental.Error)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExractPrimaryFieldsAndValues)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExractPrimaryFieldsAndValues)
 			So(tag, ShouldResemble, &Tag{ID: "1234"})
 		})
 	})
@@ -1084,7 +1084,7 @@ func TestCassandra_RetrieveWithErrorPrimaryFields(t *testing.T) {
 		errs := store.Retrieve(context, tag).(elemental.Error)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExractPrimaryFieldsAndValues)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExractPrimaryFieldsAndValues)
 			So(tag, ShouldResemble, &Tag{ID: "1234"})
 		})
 	})
@@ -1335,7 +1335,7 @@ func TestCassandra_DeleteError(t *testing.T) {
 		errs := store.Delete(context, tag1, tag2).(elemental.Error)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExecuteBatch)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExecuteBatch)
 		})
 	})
 }
@@ -1370,7 +1370,7 @@ func TestCassandra_DeleteWithErrorPrimaryFields(t *testing.T) {
 		errs := store.Delete(context, tag).(elemental.Error)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExractPrimaryFieldsAndValues)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExractPrimaryFieldsAndValues)
 			So(tag, ShouldResemble, &Tag{ID: "1234"})
 		})
 	})
@@ -1597,7 +1597,7 @@ func TestCassandra_Update_ErrorFieldsAndValues(t *testing.T) {
 		errs := store.Update(context, tag1, tag2).(elemental.Error)
 
 		Convey("Then everything should have been well called", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExtractFieldsAndValues)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExtractFieldsAndValues)
 		})
 	})
 }
@@ -1637,7 +1637,7 @@ func TestCassandra_Update_ErrorPrimaryFieldsAndValues(t *testing.T) {
 		errs := store.Update(context, tag1, tag2).(elemental.Error)
 
 		Convey("Then everything should have been well called", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExractPrimaryFieldsAndValues)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExractPrimaryFieldsAndValues)
 		})
 	})
 }
@@ -1689,7 +1689,7 @@ func TestCassandra_Update_ErrorExecuteBatch(t *testing.T) {
 		errs := store.Update(context, tag1, tag2).(elemental.Error)
 
 		Convey("Then everything should have been well called", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExecuteBatch)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExecuteBatch)
 		})
 	})
 }
@@ -1933,7 +1933,7 @@ func TestCassandra_Create_ErrorFieldsAndValues(t *testing.T) {
 		errs := store.Create(context, nil, tag1, tag2).(elemental.Error)
 
 		Convey("Then everything should have been well called", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExtractFieldsAndValues)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExtractFieldsAndValues)
 			So(len(tag2.ID), ShouldEqual, 0)
 			So(len(tag2.ID), ShouldEqual, 0)
 		})
@@ -1991,7 +1991,7 @@ func TestCassandra_Create_ErrorExecuteBatch(t *testing.T) {
 		errs := store.Create(context, nil, tag1, tag2).(elemental.Error)
 
 		Convey("Then everything should have been well called", func() {
-			So(errs.Code, ShouldEqual, ErrCannotExecuteBatch)
+			So(errs.Code, ShouldEqual, manipulate.ErrCannotExecuteBatch)
 			So(len(tag2.ID), ShouldEqual, 0)
 			So(len(tag2.ID), ShouldEqual, 0)
 		})

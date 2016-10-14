@@ -88,7 +88,7 @@ func (c *CassandraStore) Retrieve(context manipulate.Contexts, objects ...manipu
 				"context": context,
 				"error":   err,
 			}).Error("Unable to extract primary keys and values.")
-			return makeError(err.Error(), ErrCannotExractPrimaryFieldsAndValues)
+			return manipulate.NewError(err.Error(), manipulate.ErrCannotExractPrimaryFieldsAndValues)
 		}
 
 		command, values := buildGetCommand(context, object.Identity().Name, primaryKeys, primaryValues)
@@ -126,7 +126,7 @@ func (c *CassandraStore) Delete(context manipulate.Contexts, objects ...manipula
 				"error":   err,
 			}).Error("Unable to extract primary keys and values.")
 
-			return makeError(err.Error(), ErrCannotExractPrimaryFieldsAndValues)
+			return manipulate.NewError(err.Error(), manipulate.ErrCannotExractPrimaryFieldsAndValues)
 		}
 
 		context := manipulate.ContextForIndex(context, index)
@@ -145,7 +145,7 @@ func (c *CassandraStore) Delete(context manipulate.Contexts, objects ...manipula
 	}
 
 	if err := c.commitBatch(batch); err != nil {
-		return makeError(err.Error(), ErrCannotExecuteBatch)
+		return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteBatch)
 	}
 
 	return nil
@@ -195,7 +195,7 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 				"error":   err,
 			}).Error("Unable to extract fields and values.")
 
-			return makeError(err.Error(), ErrCannotExtractFieldsAndValues)
+			return manipulate.NewError(err.Error(), manipulate.ErrCannotExtractFieldsAndValues)
 		}
 
 		context := manipulate.ContextForIndex(context, index)
@@ -232,7 +232,7 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 			object.SetIdentifier("")
 		}
 
-		return makeError(err.Error(), ErrCannotExecuteBatch)
+		return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteBatch)
 	}
 
 	log.WithFields(log.Fields{
@@ -262,7 +262,7 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 				"error":   err,
 			}).Error("Unable to extract primary fields and values.")
 
-			return makeError(err.Error(), ErrCannotExractPrimaryFieldsAndValues)
+			return manipulate.NewError(err.Error(), manipulate.ErrCannotExractPrimaryFieldsAndValues)
 		}
 
 		list, values, err := cassandra.FieldsAndValues(object)
@@ -275,7 +275,7 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 				"error":   err,
 			}).Debug("Unable to extract fields and values.")
 
-			return makeError(err.Error(), ErrCannotExtractFieldsAndValues)
+			return manipulate.NewError(err.Error(), manipulate.ErrCannotExtractFieldsAndValues)
 		}
 
 		context := manipulate.ContextForIndex(context, index)
@@ -295,7 +295,7 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 	}
 
 	if err := c.commitBatch(batch); err != nil {
-		return makeError(err.Error(), ErrCannotExecuteBatch)
+		return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteBatch)
 	}
 
 	return nil
@@ -319,11 +319,11 @@ func (c *CassandraStore) Count(context manipulate.Contexts, identity elemental.I
 	success := iter.Scan(&count)
 
 	if !success {
-		return -1, makeError("Unable to scan collection", ErrCannotScan)
+		return -1, manipulate.NewError("Unable to scan collection", manipulate.ErrCannotScan)
 	}
 
 	if err := iter.Close(); err != nil {
-		return -1, makeError(err.Error(), ErrCannotCloseIterator)
+		return -1, manipulate.NewError(err.Error(), manipulate.ErrCannotCloseIterator)
 	}
 
 	log.WithFields(log.Fields{
@@ -362,7 +362,7 @@ func (c *CassandraStore) Increment(contexts manipulate.Contexts, name, counter s
 	}
 
 	if err := c.commitBatch(batch); err != nil {
-		return makeError(err.Error(), ErrCannotExecuteBatch)
+		return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteBatch)
 	}
 
 	return nil
@@ -380,12 +380,12 @@ func (c *CassandraStore) Commit(id manipulate.TransactionID) error {
 			"transactionID": id,
 		}).Error("No batch found for the given transaction.")
 
-		return makeError("No batch found for the given transaction.", ErrCannotCommit)
+		return manipulate.NewError("No batch found for the given transaction.", manipulate.ErrCannotCommit)
 		// return nil
 	}
 
 	if err := c.commitBatch(c.registeredBatchWithID(id)); err != nil {
-		return makeError(err.Error(), ErrCannotExecuteBatch)
+		return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteBatch)
 	}
 
 	return nil
@@ -416,7 +416,7 @@ func (c *CassandraStore) UpdateCollection(context manipulate.Contexts, attribute
 			"error":   err,
 		}).Error("Unable to extract primary fields and values.")
 
-		return makeError(err.Error(), ErrCannotExractPrimaryFieldsAndValues)
+		return manipulate.NewError(err.Error(), manipulate.ErrCannotExractPrimaryFieldsAndValues)
 	}
 
 	command, values := buildUpdateCollectionCommand(manipulate.ContextForIndex(context, 0), object.Identity().Name, attributeUpdate, primaryKeys, primaryValues)
@@ -428,7 +428,7 @@ func (c *CassandraStore) UpdateCollection(context manipulate.Contexts, attribute
 			"error":   err,
 		}).Error("Unable to send update collection command to cassandra.")
 
-		return makeError(err.Error(), ErrCannotExecuteQuery)
+		return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
 	}
 
 	return nil
@@ -509,11 +509,11 @@ func unmarshalManipulable(iter *gocql.Iter, object manipulate.Manipulable) error
 	}
 
 	if len(maps) != 1 {
-		return makeError(fmt.Sprintf("Could not find object %s.", object), ErrObjectNotFound)
+		return manipulate.NewError(fmt.Sprintf("Could not find object %s.", object), manipulate.ErrObjectNotFound)
 	}
 
 	if err := cassandra.Unmarshal(maps[0], object); err != nil {
-		return makeError(err.Error(), ErrCannotUnmarshal)
+		return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
 	}
 
 	return nil
@@ -536,7 +536,7 @@ func unmarshalManipulables(iter *gocql.Iter, objects interface{}) error {
 	}
 
 	if err := cassandra.Unmarshal(maps, objects); err != nil {
-		return makeError(err.Error(), ErrCannotUnmarshal)
+		return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
 	}
 
 	return nil
@@ -548,11 +548,11 @@ func sliceMaps(iter *gocql.Iter) ([]map[string]interface{}, error) {
 
 	maps, err := iter.SliceMap()
 	if err != nil {
-		return nil, makeError(err.Error(), ErrCannotSlice)
+		return nil, manipulate.NewError(err.Error(), manipulate.ErrCannotSlice)
 	}
 
 	if err = iter.Close(); err != nil {
-		return nil, makeError(err.Error(), ErrCannotCloseIterator)
+		return nil, manipulate.NewError(err.Error(), manipulate.ErrCannotCloseIterator)
 	}
 
 	return maps, nil

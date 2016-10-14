@@ -4,11 +4,7 @@
 
 package manipcassandra
 
-import (
-	"reflect"
-
-	"github.com/aporeto-inc/elemental"
-)
+import "reflect"
 
 // stringInSlice returns true or false if the given string is in the given list
 func stringInSlice(a string, list []string) bool {
@@ -37,13 +33,4 @@ func getValues(v []interface{}) []interface{} {
 	}
 
 	return values
-}
-
-func makeError(err string, code int) error {
-	return elemental.NewError(
-		errorTitles[code],
-		err,
-		"manipulate",
-		code,
-	)
 }
