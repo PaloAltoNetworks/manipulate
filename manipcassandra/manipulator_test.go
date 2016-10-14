@@ -91,11 +91,11 @@ func TestCassandra_NewCassandraStore(t *testing.T) {
 
 	Convey("When I create a new CassandraStore", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -113,11 +113,11 @@ func TestCassandra_NewCassandraStore(t *testing.T) {
 func TestCassandre_BatchForID(t *testing.T) {
 	Convey("When I create a new CassandraStore and call the method batch with no id", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -142,11 +142,11 @@ func TestCassandre_BatchForID(t *testing.T) {
 func TestCassandre_BatchForIDWithAnID(t *testing.T) {
 	Convey("When I create a new CassandraStore and call the method BatchForID, NewBatch should be called once", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -174,11 +174,11 @@ func TestCassandre_BatchForIDWithAnID(t *testing.T) {
 func TestCassandre_CommitTransaction(t *testing.T) {
 	Convey("When I create a new CassandraStore and call the method CommitTransaction", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -209,11 +209,11 @@ func TestCassandre_CommitTransaction(t *testing.T) {
 func TestCassandre_CommitTransaction_ErrorBadID(t *testing.T) {
 	Convey("When I create a new CassandraStore and call the method Commit", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -229,11 +229,11 @@ func TestCassandre_CommitTransaction_ErrorBadID(t *testing.T) {
 func TestCassandre_CommitTransaction_Error(t *testing.T) {
 	Convey("When I create a new CassandraStore and call the method Commit", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -264,11 +264,11 @@ func TestCassandre_CommitTransaction_Error(t *testing.T) {
 func TestCassandra_ExecuteBatch(t *testing.T) {
 	Convey("When I create a new CassandraStore and call the method executeBash", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -395,11 +395,11 @@ func TestCassandra_Start(t *testing.T) {
 		})
 
 		createNativeSession([]string{"1.2.3.4", "1.2.3.5"}, "keyspace", 1, GocqlTimeout)
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     session,
 		}
@@ -656,11 +656,11 @@ func TestCassandra_Count(t *testing.T) {
 
 	Convey("When I call the method Count", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -703,11 +703,11 @@ func TestCassandra_CountErrorScan(t *testing.T) {
 
 	Convey("When I call the method Count", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -750,11 +750,11 @@ func TestCassandra_CountErrorCloseIter(t *testing.T) {
 
 	Convey("When I call the method Count", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -801,11 +801,11 @@ func TestCassandra_RetrieveChildren(t *testing.T) {
 
 	Convey("When I call the method RetrieveChildren", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -872,11 +872,11 @@ func TestCassandra_RetrieveWithError(t *testing.T) {
 
 	Convey("When I call the method Retrieve", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -926,11 +926,11 @@ func TestCassandra_UpdateCollection(t *testing.T) {
 
 	Convey("When I call the method UpdateCollection", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -942,7 +942,7 @@ func TestCassandra_UpdateCollection(t *testing.T) {
 		tag := &Tag{}
 		tag.ID = "1234"
 
-		a := &AttributeUpdater{}
+		a := &attributeUpdater{}
 		a.Key = "NAME"
 		a.AssignationType = elemental.AssignationTypeSubstract
 		a.Values = "coucou"
@@ -978,11 +978,11 @@ func TestCassandra_UpdateCollectionWithErrorQuery(t *testing.T) {
 
 	Convey("When I call the method UpdateCollection", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -994,7 +994,7 @@ func TestCassandra_UpdateCollectionWithErrorQuery(t *testing.T) {
 		tag := &Tag{}
 		tag.ID = "1234"
 
-		a := &AttributeUpdater{}
+		a := &attributeUpdater{}
 		a.Key = "NAME"
 		a.AssignationType = elemental.AssignationTypeSubstract
 		a.Values = "coucou"
@@ -1031,11 +1031,11 @@ func TestCassandra_UpdateCollectionWithErrorPrimaryFields(t *testing.T) {
 
 	Convey("When I call the method UpdateCollection", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -1062,11 +1062,11 @@ func TestCassandra_RetrieveWithErrorPrimaryFields(t *testing.T) {
 
 	Convey("When I call the method Retrieve", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -1094,11 +1094,11 @@ func TestCassandra_Retrieve(t *testing.T) {
 
 	Convey("When I call the method Retrieve", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -1162,11 +1162,11 @@ func TestCassandra_Delete(t *testing.T) {
 
 	Convey("When I call the method Delete", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -1238,11 +1238,11 @@ func TestCassandra_Delete_WithTransactionID(t *testing.T) {
 
 	Convey("When I call the method Delete", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -1306,11 +1306,11 @@ func TestCassandra_DeleteError(t *testing.T) {
 
 	Convey("When I call the method Delete", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -1344,11 +1344,11 @@ func TestCassandra_DeleteWithErrorPrimaryFields(t *testing.T) {
 
 	Convey("When I call the method Retrieve", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -1380,11 +1380,11 @@ func TestCassandra_Update(t *testing.T) {
 
 	Convey("When I call the method Update", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -1475,11 +1475,11 @@ func TestCassandra_Update_WithTransactionID(t *testing.T) {
 
 	Convey("When I call the method Update", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -1562,11 +1562,11 @@ func TestCassandra_Update_ErrorFieldsAndValues(t *testing.T) {
 
 	Convey("When I call the method Update", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -1606,11 +1606,11 @@ func TestCassandra_Update_ErrorPrimaryFieldsAndValues(t *testing.T) {
 
 	Convey("When I call the method Update", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -1646,11 +1646,11 @@ func TestCassandra_Update_ErrorExecuteBatch(t *testing.T) {
 
 	Convey("When I call the method Update", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -1698,11 +1698,11 @@ func TestCassandra_Create(t *testing.T) {
 
 	Convey("When I call the method Create", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -1798,11 +1798,11 @@ func TestCassandra_Create_WithTransacationID(t *testing.T) {
 
 	Convey("When I call the method Create", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -1890,11 +1890,11 @@ func TestCassandra_Create_ErrorFieldsAndValues(t *testing.T) {
 
 	Convey("When I call the method Create", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -1944,11 +1944,11 @@ func TestCassandra_Create_ErrorExecuteBatch(t *testing.T) {
 
 	Convey("When I call the method Create", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -2621,11 +2621,11 @@ func TestCassandraAbort(t *testing.T) {
 
 	Convey("Given I have a store with a transaction", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}
@@ -2650,11 +2650,11 @@ func TestCassandraAbort(t *testing.T) {
 
 	Convey("Given I have a store with no transaction", t, func() {
 
-		store := &CassandraStore{
+		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
 			KeySpace:          "keyspace",
 			ProtoVersion:      1,
-			batchRegistry:     BatchRegistry{},
+			batchRegistry:     batchRegistry{},
 			batchRegistryLock: &sync.Mutex{},
 			nativeSession:     &gocql.Session{},
 		}

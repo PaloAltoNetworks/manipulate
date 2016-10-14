@@ -17,7 +17,7 @@ import (
 type bulksRegistry map[manipulate.TransactionID]*mgo.Bulk
 
 // MongoStore represents a MongoDB session.
-type MongoStore struct {
+type mongoManipulator struct {
 	session *mgo.Session
 	db      *mgo.Database
 	dbName  string
@@ -27,8 +27,8 @@ type MongoStore struct {
 	bulksRegistryLock *sync.Mutex
 }
 
-// NewMongoStore returns a new *MongoStore
-func NewMongoStore(url string, dbName string) *MongoStore {
+// NewMongoManipulator returns a new TransactionalManipulator backed by MongoDB
+func NewMongoManipulator(url string, dbName string) manipulate.TransactionalManipulator {
 
 	session, err := mgo.Dial(url)
 	if err != nil {
@@ -40,7 +40,7 @@ func NewMongoStore(url string, dbName string) *MongoStore {
 		}).Fatal("Cannot connect to mongo.")
 	}
 
-	return &MongoStore{
+	return &mongoManipulator{
 		url:               url,
 		dbName:            dbName,
 		bulksRegistry:     bulksRegistry{},
@@ -50,8 +50,7 @@ func NewMongoStore(url string, dbName string) *MongoStore {
 	}
 }
 
-// Create is part of the implementation of the Manipulator interface.
-func (s *MongoStore) Create(contexts manipulate.Contexts, parent manipulate.Manipulable, children ...manipulate.Manipulable) error {
+func (s *mongoManipulator) Create(contexts manipulate.Contexts, parent manipulate.Manipulable, children ...manipulate.Manipulable) error {
 
 	collection := collectionFromIdentity(s.db, children[0].Identity())
 	context := manipulate.ContextForIndex(contexts, 0)
@@ -72,8 +71,7 @@ func (s *MongoStore) Create(contexts manipulate.Contexts, parent manipulate.Mani
 	return nil
 }
 
-// Retrieve is part of the implementation of the Manipulator interface.
-func (s *MongoStore) Retrieve(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (s *mongoManipulator) Retrieve(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	collection := collectionFromIdentity(s.db, objects[0].Identity())
 
@@ -87,8 +85,7 @@ func (s *MongoStore) Retrieve(contexts manipulate.Contexts, objects ...manipulat
 	return nil
 }
 
-// Update is part of the implementation of the Manipulator interface.
-func (s *MongoStore) Update(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (s *mongoManipulator) Update(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	collection := collectionFromIdentity(s.db, objects[0].Identity())
 	context := manipulate.ContextForIndex(contexts, 0)
@@ -108,8 +105,7 @@ func (s *MongoStore) Update(contexts manipulate.Contexts, objects ...manipulate.
 	return nil
 }
 
-// Delete is part of the implementation of the Manipulator interface.
-func (s *MongoStore) Delete(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (s *mongoManipulator) Delete(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	collection := collectionFromIdentity(s.db, objects[0].Identity())
 	context := manipulate.ContextForIndex(contexts, 0)
@@ -129,8 +125,7 @@ func (s *MongoStore) Delete(contexts manipulate.Contexts, objects ...manipulate.
 	return nil
 }
 
-// RetrieveChildren is part of the implementation of the Manipulator interface.
-func (s *MongoStore) RetrieveChildren(contexts manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) error {
+func (s *mongoManipulator) RetrieveChildren(contexts manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) error {
 
 	collection := collectionFromIdentity(s.db, identity)
 	context := manipulate.ContextForIndex(contexts, 0)
@@ -149,8 +144,7 @@ func (s *MongoStore) RetrieveChildren(contexts manipulate.Contexts, parent manip
 	return nil
 }
 
-// Count is part of the implementation of the Manipulator interface.
-func (s *MongoStore) Count(contexts manipulate.Contexts, identity elemental.Identity) (int, error) {
+func (s *mongoManipulator) Count(contexts manipulate.Contexts, identity elemental.Identity) (int, error) {
 
 	collection := collectionFromIdentity(s.db, identity)
 	context := manipulate.ContextForIndex(contexts, 0)
@@ -170,19 +164,16 @@ func (s *MongoStore) Count(contexts manipulate.Contexts, identity elemental.Iden
 	return c, nil
 }
 
-// Assign is part of the implementation of the Manipulator interface.
-func (s *MongoStore) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) error {
+func (s *mongoManipulator) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) error {
 
 	panic("Not Implemented")
 }
 
-// Increment is part of the implementation of the Manipulator interface.
-func (s *MongoStore) Increment(contexts manipulate.Contexts, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
+func (s *mongoManipulator) Increment(contexts manipulate.Contexts, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
 	return fmt.Errorf("Increment is not implemented in mongo")
 }
 
-// Commit is part of the implementation of the TransactionalManipulator interface.
-func (s *MongoStore) Commit(id manipulate.TransactionID) error {
+func (s *mongoManipulator) Commit(id manipulate.TransactionID) error {
 
 	defer func() { s.unregisterBulk(id) }()
 
@@ -202,8 +193,7 @@ func (s *MongoStore) Commit(id manipulate.TransactionID) error {
 	return nil
 }
 
-// Abort is part of the implementation of the TransactionalManipulator interface.
-func (s *MongoStore) Abort(id manipulate.TransactionID) bool {
+func (s *mongoManipulator) Abort(id manipulate.TransactionID) bool {
 
 	if s.registeredBulkWithID(id) == nil {
 		return false
@@ -214,7 +204,7 @@ func (s *MongoStore) Abort(id manipulate.TransactionID) bool {
 	return true
 }
 
-func (s *MongoStore) bulkForID(id manipulate.TransactionID, collection *mgo.Collection) *mgo.Bulk {
+func (s *mongoManipulator) bulkForID(id manipulate.TransactionID, collection *mgo.Collection) *mgo.Bulk {
 
 	if id == "" {
 		return collection.Bulk()
@@ -230,7 +220,7 @@ func (s *MongoStore) bulkForID(id manipulate.TransactionID, collection *mgo.Coll
 	return bulk
 }
 
-func (s *MongoStore) commitBulk(b *mgo.Bulk) error {
+func (s *mongoManipulator) commitBulk(b *mgo.Bulk) error {
 
 	log.WithFields(log.Fields{
 		"bulk": b,
@@ -249,21 +239,21 @@ func (s *MongoStore) commitBulk(b *mgo.Bulk) error {
 	return nil
 }
 
-func (s *MongoStore) registerBulk(id manipulate.TransactionID, bulk *mgo.Bulk) {
+func (s *mongoManipulator) registerBulk(id manipulate.TransactionID, bulk *mgo.Bulk) {
 
 	s.bulksRegistryLock.Lock()
 	s.bulksRegistry[id] = bulk
 	s.bulksRegistryLock.Unlock()
 }
 
-func (s *MongoStore) unregisterBulk(id manipulate.TransactionID) {
+func (s *mongoManipulator) unregisterBulk(id manipulate.TransactionID) {
 
 	s.bulksRegistryLock.Lock()
 	delete(s.bulksRegistry, id)
 	s.bulksRegistryLock.Unlock()
 }
 
-func (s *MongoStore) registeredBulkWithID(id manipulate.TransactionID) *mgo.Bulk {
+func (s *mongoManipulator) registeredBulkWithID(id manipulate.TransactionID) *mgo.Bulk {
 
 	s.bulksRegistryLock.Lock()
 	b := s.bulksRegistry[id]

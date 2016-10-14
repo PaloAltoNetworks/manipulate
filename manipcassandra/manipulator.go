@@ -24,29 +24,28 @@ var GocqlTimeout = 600 * time.Millisecond
 var ExtendedTimeout = 2000 * time.Millisecond
 
 // BatchRegistry is used to store the batches used in the store
-type BatchRegistry map[manipulate.TransactionID]*gocql.Batch
+type batchRegistry map[manipulate.TransactionID]*gocql.Batch
 
 // AttributeUpdater structu used to make request as UPDATE policy SET NAME = NAME - ?
-type AttributeUpdater struct {
+type attributeUpdater struct {
 	Key             string
 	Values          interface{}
 	AssignationType elemental.AssignationType
 }
 
 // CassandraStore needs doc
-type CassandraStore struct {
+type cassandraManipulator struct {
 	Servers      []string
 	KeySpace     string
 	ProtoVersion int
 
 	nativeSession     *gocql.Session
-	batchRegistry     BatchRegistry
+	batchRegistry     batchRegistry
 	batchRegistryLock *sync.Mutex
 }
 
-// NewCassandraStore returns a new *CassandraStore
-// You can specify the parameters servers, jeyspace and version.
-func NewCassandraStore(servers []string, keyspace string, version int) *CassandraStore {
+// NewCassandraManipulator returns a new TransactionalManipulator backed by Cassandra.
+func NewCassandraManipulator(servers []string, keyspace string, version int) manipulate.TransactionalManipulator {
 
 	session, err := createNativeSession(servers, keyspace, version, GocqlTimeout)
 	if err != nil {
@@ -59,23 +58,17 @@ func NewCassandraStore(servers []string, keyspace string, version int) *Cassandr
 		}).Fatal("Cannot connect to cassandra.")
 	}
 
-	return &CassandraStore{
+	return &cassandraManipulator{
 		Servers:           servers,
 		KeySpace:          keyspace,
 		ProtoVersion:      version,
-		batchRegistry:     BatchRegistry{},
+		batchRegistry:     batchRegistry{},
 		batchRegistryLock: &sync.Mutex{},
 		nativeSession:     session,
 	}
 }
 
-// NewCassandraManipulator returns a new TransactionalManipulator backed by Cassandra.
-func NewCassandraManipulator(servers []string, keyspace string, version int) manipulate.TransactionalManipulator {
-	return NewCassandraStore(servers, keyspace, version)
-}
-
-// Retrieve is part of the implementation of the Manipulator interface.
-func (c *CassandraStore) Retrieve(context manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (c *cassandraManipulator) Retrieve(context manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	for index, object := range objects {
 
@@ -108,8 +101,7 @@ func (c *CassandraStore) Retrieve(context manipulate.Contexts, objects ...manipu
 	return nil
 }
 
-// Delete is part of the implementation of the Manipulator interface.
-func (c *CassandraStore) Delete(context manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (c *cassandraManipulator) Delete(context manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	var transactionID manipulate.TransactionID
 	var batch *gocql.Batch
@@ -151,8 +143,7 @@ func (c *CassandraStore) Delete(context manipulate.Contexts, objects ...manipula
 	return nil
 }
 
-// RetrieveChildren is part of the implementation of the Manipulator interface.
-func (c *CassandraStore) RetrieveChildren(context manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) error {
+func (c *cassandraManipulator) RetrieveChildren(context manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) error {
 
 	ctx := manipulate.ContextForIndex(context, 0)
 	command, values := buildGetCommand(ctx, identity.Name, []string{}, []interface{}{})
@@ -173,8 +164,7 @@ func (c *CassandraStore) RetrieveChildren(context manipulate.Contexts, parent ma
 	return nil
 }
 
-// Create is part of the implementation of the Manipulator interface.
-func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.Manipulable, objects ...manipulate.Manipulable) error {
+func (c *cassandraManipulator) Create(context manipulate.Contexts, parent manipulate.Manipulable, objects ...manipulate.Manipulable) error {
 
 	var transactionID manipulate.TransactionID
 	var batch *gocql.Batch
@@ -244,8 +234,7 @@ func (c *CassandraStore) Create(context manipulate.Contexts, parent manipulate.M
 	return nil
 }
 
-// Update is part of the implementation of the Manipulator interface.
-func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (c *cassandraManipulator) Update(context manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	var transactionID manipulate.TransactionID
 	var batch *gocql.Batch
@@ -301,8 +290,7 @@ func (c *CassandraStore) Update(context manipulate.Contexts, objects ...manipula
 	return nil
 }
 
-// Count is part of the implementation of the Manipulator interface.
-func (c *CassandraStore) Count(context manipulate.Contexts, identity elemental.Identity) (int, error) {
+func (c *cassandraManipulator) Count(context manipulate.Contexts, identity elemental.Identity) (int, error) {
 
 	ctx := manipulate.ContextForIndex(context, 0)
 	command, values := buildCountCommand(ctx, identity.Name)
@@ -335,13 +323,11 @@ func (c *CassandraStore) Count(context manipulate.Contexts, identity elemental.I
 	return count, nil
 }
 
-// Assign is part of the implementation of the Manipulator interface.
-func (c *CassandraStore) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) error {
+func (c *cassandraManipulator) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) error {
 	panic("Not implemented")
 }
 
-// Increment is part of the implementation of the Manipulator interface.
-func (c *CassandraStore) Increment(contexts manipulate.Contexts, name, counter string, inc int, primaryKeys []string, primaryValues []interface{}) error {
+func (c *cassandraManipulator) Increment(contexts manipulate.Contexts, name, counter string, inc int, primaryKeys []string, primaryValues []interface{}) error {
 
 	var transactionID manipulate.TransactionID
 	var batch *gocql.Batch
@@ -368,8 +354,7 @@ func (c *CassandraStore) Increment(contexts manipulate.Contexts, name, counter s
 	return nil
 }
 
-// Commit is part of the implementation of the TransactionalManipulator interface.
-func (c *CassandraStore) Commit(id manipulate.TransactionID) error {
+func (c *cassandraManipulator) Commit(id manipulate.TransactionID) error {
 
 	defer func() { c.unregisterBatch(id) }()
 
@@ -391,8 +376,7 @@ func (c *CassandraStore) Commit(id manipulate.TransactionID) error {
 	return nil
 }
 
-// Abort is part of the implementation of the TransactionalManipulator interface
-func (c *CassandraStore) Abort(id manipulate.TransactionID) bool {
+func (c *cassandraManipulator) Abort(id manipulate.TransactionID) bool {
 
 	if c.registeredBatchWithID(id) == nil {
 		return false
@@ -404,7 +388,7 @@ func (c *CassandraStore) Abort(id manipulate.TransactionID) bool {
 }
 
 // UpdateCollection seems to be useless.
-func (c *CassandraStore) UpdateCollection(context manipulate.Contexts, attributeUpdate *AttributeUpdater, object manipulate.Manipulable) error {
+func (c *cassandraManipulator) UpdateCollection(context manipulate.Contexts, attributeUpdate *attributeUpdater, object manipulate.Manipulable) error {
 
 	primaryKeys, primaryValues, err := cassandra.PrimaryFieldsAndValues(object)
 
@@ -434,11 +418,7 @@ func (c *CassandraStore) UpdateCollection(context manipulate.Contexts, attribute
 	return nil
 }
 
-// batchForID return a gocql.Batch,
-// The dev can then do whatever he wants with
-// If id is emptyn it will return a new batch
-// If id does not match with a batch, it will create a new batch
-func (c *CassandraStore) batchForID(id manipulate.TransactionID) *gocql.Batch {
+func (c *cassandraManipulator) batchForID(id manipulate.TransactionID) *gocql.Batch {
 
 	if id == "" {
 		return c.nativeSession.NewBatch(gocql.UnloggedBatch)
@@ -454,9 +434,7 @@ func (c *CassandraStore) batchForID(id manipulate.TransactionID) *gocql.Batch {
 	return batch
 }
 
-// CommitBatch commit the given batch
-// The dev can then do whatever he wants with
-func (c *CassandraStore) commitBatch(b *gocql.Batch) error {
+func (c *cassandraManipulator) commitBatch(b *gocql.Batch) error {
 
 	log.WithFields(log.Fields{
 		"package": "manipcassandra",
@@ -477,21 +455,21 @@ func (c *CassandraStore) commitBatch(b *gocql.Batch) error {
 	return nil
 }
 
-func (c *CassandraStore) registerBatch(id manipulate.TransactionID, batch *gocql.Batch) {
+func (c *cassandraManipulator) registerBatch(id manipulate.TransactionID, batch *gocql.Batch) {
 
 	c.batchRegistryLock.Lock()
 	c.batchRegistry[id] = batch
 	c.batchRegistryLock.Unlock()
 }
 
-func (c *CassandraStore) unregisterBatch(id manipulate.TransactionID) {
+func (c *cassandraManipulator) unregisterBatch(id manipulate.TransactionID) {
 
 	c.batchRegistryLock.Lock()
 	delete(c.batchRegistry, id)
 	c.batchRegistryLock.Unlock()
 }
 
-func (c *CassandraStore) registeredBatchWithID(id manipulate.TransactionID) *gocql.Batch {
+func (c *cassandraManipulator) registeredBatchWithID(id manipulate.TransactionID) *gocql.Batch {
 
 	c.batchRegistryLock.Lock()
 	b := c.batchRegistry[id]
@@ -500,7 +478,6 @@ func (c *CassandraStore) registeredBatchWithID(id manipulate.TransactionID) *goc
 	return b
 }
 
-// unmarshalManipulable this will be called by the method retrieve as we know in which object we will store the retrieved data
 func unmarshalManipulable(iter *gocql.Iter, object manipulate.Manipulable) error {
 
 	maps, errs := sliceMaps(iter)
@@ -519,7 +496,6 @@ func unmarshalManipulable(iter *gocql.Iter, object manipulate.Manipulable) error
 	return nil
 }
 
-// unmarshalManipulables this will be called by the method retrieveChildren, we will store the objects in the empty given array/interface
 func unmarshalManipulables(iter *gocql.Iter, objects interface{}) error {
 
 	if iter.NumRows() == 0 {
@@ -542,8 +518,6 @@ func unmarshalManipulables(iter *gocql.Iter, objects interface{}) error {
 	return nil
 }
 
-// sliceMaps will try to call the method SliceMap on the given iterator
-// It will return an array of map ot an array of errors
 func sliceMaps(iter *gocql.Iter) ([]map[string]interface{}, error) {
 
 	maps, err := iter.SliceMap()

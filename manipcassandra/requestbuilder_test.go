@@ -196,7 +196,7 @@ func TestMethodBuildUpdateCollectionCommandOperationAdditive(t *testing.T) {
 
 	Convey("Given I call the method buildUpdateCollectionCommand", t, func() {
 
-		a := &AttributeUpdater{}
+		a := &attributeUpdater{}
 		a.Key = "NAME"
 		a.AssignationType = elemental.AssignationTypeAdd
 		a.Values = "coucou"
@@ -211,7 +211,7 @@ func TestMethodBuildUpdateCollectionCommandOperationDefault(t *testing.T) {
 
 	Convey("Given I call the method buildUpdateCollectionCommand", t, func() {
 
-		a := &AttributeUpdater{}
+		a := &attributeUpdater{}
 		a.Key = "NAME"
 		a.Values = "coucou"
 
@@ -225,7 +225,7 @@ func TestMethodBuildUpdateCollectionCommandOperationSubstractive(t *testing.T) {
 
 	Convey("Given I call the method buildUpdateCollectionCommand", t, func() {
 
-		a := &AttributeUpdater{}
+		a := &attributeUpdater{}
 		a.Key = "NAME"
 		a.AssignationType = elemental.AssignationTypeSubstract
 		a.Values = "coucou"
@@ -240,7 +240,7 @@ func TestMethodBuildUpdateCollectionCommandOperationSet(t *testing.T) {
 
 	Convey("Given I call the method buildUpdateCollectionCommand", t, func() {
 
-		a := &AttributeUpdater{}
+		a := &attributeUpdater{}
 		a.Key = "NAME"
 		a.AssignationType = elemental.AssignationTypeSet
 		a.Values = "coucou"
@@ -255,7 +255,7 @@ func TestMethodBuildUpdateCollectionCommandOperationSubstractiveWithPrimaryKeys(
 
 	Convey("Given I call the method buildUpdateCollectionCommand", t, func() {
 
-		a := &AttributeUpdater{}
+		a := &attributeUpdater{}
 		a.Key = "NAME"
 		a.AssignationType = elemental.AssignationTypeSubstract
 		a.Values = "coucou"
@@ -270,7 +270,7 @@ func TestMethodBuildUpdateCollectionCommandOperationSubstractiveWithPrimaryKeysA
 
 	Convey("Given I call the method buildUpdateCollectionCommand", t, func() {
 
-		a := &AttributeUpdater{}
+		a := &attributeUpdater{}
 		a.Key = "NAME"
 		a.AssignationType = elemental.AssignationTypeSubstract
 		a.Values = "coucou"

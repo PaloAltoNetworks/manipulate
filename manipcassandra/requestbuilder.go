@@ -83,7 +83,7 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 // example : UPDATE policy SET NAME = NAME - ?  WHERE ID = ?
 // every values will be replace by a ?
 // then it will apply the given context on the query
-func buildUpdateCollectionCommand(c *manipulate.Context, tableName string, attributeUpdate *AttributeUpdater, primaryKeys []string, primaryValues []interface{}) (string, []interface{}) {
+func buildUpdateCollectionCommand(c *manipulate.Context, tableName string, attributeUpdate *attributeUpdater, primaryKeys []string, primaryValues []interface{}) (string, []interface{}) {
 
 	buffer := bytes.NewBuffer([]byte{})
 	buffer.WriteString("UPDATE ")

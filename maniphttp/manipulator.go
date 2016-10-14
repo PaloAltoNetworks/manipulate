@@ -17,8 +17,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-// HTTPStore represents a user session.
-type HTTPStore struct {
+type httpManipulator struct {
 	username  string
 	password  string
 	url       string
@@ -26,8 +25,8 @@ type HTTPStore struct {
 	client    *http.Client
 }
 
-// NewHTTPStore returns a new *HTTPStore
-func NewHTTPStore(username, password, url, namespace string, tlsConfig *TLSConfiguration) *HTTPStore {
+// NewHTTPManipulator returns a Manipulator backed by an ReST API.
+func NewHTTPManipulator(username, password, url, namespace string, tlsConfig *TLSConfiguration) manipulate.Manipulator {
 
 	if tlsConfig == nil {
 		tlsConfig = NewTLSConfiguration("", "", "", false)
@@ -38,7 +37,7 @@ func NewHTTPStore(username, password, url, namespace string, tlsConfig *TLSConfi
 		panic(fmt.Sprintf("Invalid TLSConfiguration: %s", err))
 	}
 
-	return &HTTPStore{
+	return &httpManipulator{
 		username:  username,
 		password:  password,
 		url:       url,
@@ -47,8 +46,7 @@ func NewHTTPStore(username, password, url, namespace string, tlsConfig *TLSConfi
 	}
 }
 
-// Create is part of the implementation of the Manipulator interface.
-func (s *HTTPStore) Create(contexts manipulate.Contexts, parent manipulate.Manipulable, children ...manipulate.Manipulable) error {
+func (s *httpManipulator) Create(contexts manipulate.Contexts, parent manipulate.Manipulable, children ...manipulate.Manipulable) error {
 
 	errs := []error{}
 
@@ -94,8 +92,7 @@ func (s *HTTPStore) Create(contexts manipulate.Contexts, parent manipulate.Manip
 	return nil
 }
 
-// Retrieve is part of the implementation of the Manipulator interface.
-func (s *HTTPStore) Retrieve(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (s *httpManipulator) Retrieve(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	errs := []error{}
 
@@ -135,8 +132,7 @@ func (s *HTTPStore) Retrieve(contexts manipulate.Contexts, objects ...manipulate
 	return nil
 }
 
-// Update is part of the implementation of the Manipulator interface.
-func (s *HTTPStore) Update(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (s *httpManipulator) Update(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	errs := []error{}
 
@@ -182,8 +178,7 @@ func (s *HTTPStore) Update(contexts manipulate.Contexts, objects ...manipulate.M
 	return nil
 }
 
-// Delete is part of the implementation of the Manipulator interface.
-func (s *HTTPStore) Delete(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (s *httpManipulator) Delete(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	errs := []error{}
 
@@ -216,8 +211,7 @@ func (s *HTTPStore) Delete(contexts manipulate.Contexts, objects ...manipulate.M
 	return nil
 }
 
-// RetrieveChildren is part of the implementation of the Manipulator interface.
-func (s *HTTPStore) RetrieveChildren(contexts manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) error {
+func (s *httpManipulator) RetrieveChildren(contexts manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) error {
 
 	url, err := s.getURLForChildrenIdentity(parent, identity)
 	if err != nil {
@@ -247,13 +241,11 @@ func (s *HTTPStore) RetrieveChildren(contexts manipulate.Contexts, parent manipu
 	return nil
 }
 
-// Count is part of the implementation of the Manipulator interface.
-func (s *HTTPStore) Count(manipulate.Contexts, elemental.Identity) (int, error) {
+func (s *httpManipulator) Count(manipulate.Contexts, elemental.Identity) (int, error) {
 	return 0, nil
 }
 
-// Assign is part of the implementation of the Manipulator interface.
-func (s *HTTPStore) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) error {
+func (s *httpManipulator) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) error {
 
 	url, berr := s.getURLForChildrenIdentity(parent, assignation.MembersIdentity)
 	if berr != nil {
@@ -279,17 +271,16 @@ func (s *HTTPStore) Assign(contexts manipulate.Contexts, parent manipulate.Manip
 	return nil
 }
 
-// Increment is part of the implementation of the Manipulator interface.
-func (s *HTTPStore) Increment(contexts manipulate.Contexts, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
+func (s *httpManipulator) Increment(contexts manipulate.Contexts, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
 	return fmt.Errorf("Increment is not implemented in http store")
 }
 
-func (s *HTTPStore) makeAuthorizationHeaders() string {
+func (s *httpManipulator) makeAuthorizationHeaders() string {
 
 	return s.username + " " + s.password
 }
 
-func (s *HTTPStore) prepareHeaders(request *http.Request, context *manipulate.Context) error {
+func (s *httpManipulator) prepareHeaders(request *http.Request, context *manipulate.Context) error {
 
 	if s.namespace != "" {
 		request.Header.Set("X-Namespace", s.namespace)
@@ -320,7 +311,7 @@ func (s *HTTPStore) prepareHeaders(request *http.Request, context *manipulate.Co
 	return nil
 }
 
-func (s *HTTPStore) readHeaders(response *http.Response, context *manipulate.Context) {
+func (s *httpManipulator) readHeaders(response *http.Response, context *manipulate.Context) {
 
 	if context == nil {
 		return
@@ -337,12 +328,12 @@ func (s *HTTPStore) readHeaders(response *http.Response, context *manipulate.Con
 	context.CountTotal, _ = strconv.Atoi(response.Header.Get("X-Count-Total"))
 }
 
-func (s *HTTPStore) getGeneralURL(o manipulate.Manipulable) string {
+func (s *httpManipulator) getGeneralURL(o manipulate.Manipulable) string {
 
 	return s.url + "/" + o.Identity().Category
 }
 
-func (s *HTTPStore) getPersonalURL(o manipulate.Manipulable) (string, error) {
+func (s *httpManipulator) getPersonalURL(o manipulate.Manipulable) (string, error) {
 
 	if o.Identifier() == "" {
 		return "", elemental.NewError("URL Computing Error", "Cannot GetPersonalURL of an object with no ID set", "manipulate", 2)
@@ -351,7 +342,7 @@ func (s *HTTPStore) getPersonalURL(o manipulate.Manipulable) (string, error) {
 	return s.getGeneralURL(o) + "/" + o.Identifier(), nil
 }
 
-func (s *HTTPStore) getURLForChildrenIdentity(parent manipulate.Manipulable, childrenIdentity elemental.Identity) (string, error) {
+func (s *httpManipulator) getURLForChildrenIdentity(parent manipulate.Manipulable, childrenIdentity elemental.Identity) (string, error) {
 
 	if parent == nil {
 		return s.url + "/" + childrenIdentity.Category, nil
@@ -365,7 +356,7 @@ func (s *HTTPStore) getURLForChildrenIdentity(parent manipulate.Manipulable, chi
 	return url + "/" + childrenIdentity.Category, nil
 }
 
-func (s *HTTPStore) send(request *http.Request, context *manipulate.Context) (*http.Response, error) {
+func (s *httpManipulator) send(request *http.Request, context *manipulate.Context) (*http.Response, error) {
 
 	s.prepareHeaders(request, context)
 
