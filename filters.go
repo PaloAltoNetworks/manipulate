@@ -201,14 +201,14 @@ func (f *Filter) Equals(values ...interface{}) FilterKeyComposer {
 // GreaterThan adds a greater than comparator to the FilterComposer.
 func (f *Filter) GreaterThan(values ...interface{}) FilterKeyComposer {
 	f.Values = f.Values.Then(values...)
-	f.Comparators = f.Comparators.Then(LesserComparator)
+	f.Comparators = f.Comparators.Then(GreaterComparator)
 	return f
 }
 
 // LesserThan adds a lesser than comparator to the FilterComposer.
 func (f *Filter) LesserThan(values ...interface{}) FilterKeyComposer {
 	f.Values = f.Values.Then(values...)
-	f.Comparators = f.Comparators.Then(GreaterComparator)
+	f.Comparators = f.Comparators.Then(LesserComparator)
 	return f
 }
 
