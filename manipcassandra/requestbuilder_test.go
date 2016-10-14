@@ -85,11 +85,7 @@ func TestMethodAddOptionsFromContextWithFilter(t *testing.T) {
 		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		context := manipulate.NewContext()
 
-		filter := &manipulate.Filter{}
-		filter.Keys = manipulate.NewFilterKeys("ID")
-		filter.Operators = manipulate.NewFilterOperators(manipulate.EqualOperator)
-		filter.Values = manipulate.NewFilterValues("12345")
-
+		filter := manipulate.NewFilterComposer().WithKey("ID").Equals("12345").Done()
 		context.Filter = filter
 		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{})
 
@@ -104,10 +100,7 @@ func TestMethodAddOptionsFromContextWithEverything(t *testing.T) {
 		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		context := manipulate.NewContext()
 
-		filter := &manipulate.Filter{}
-		filter.Keys = manipulate.NewFilterKeys("ID")
-		filter.Operators = manipulate.NewFilterOperators(manipulate.EqualOperator)
-		filter.Values = manipulate.NewFilterValues("12345")
+		filter := manipulate.NewFilterComposer().WithKey("ID").Equals("12345").Done()
 
 		context.Filter = filter
 		context.PageSize = 20
@@ -127,16 +120,7 @@ func TestMethodAddOptionsFromContextWithMultiColumnAndValues(t *testing.T) {
 		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		context := manipulate.NewContext()
 
-		filter := &manipulate.Filter{}
-		filter.Keys = manipulate.NewFilterKeys("ID", "name")
-		filter.Operators = manipulate.NewFilterOperators(manipulate.EqualOperator)
-		filter.Values = manipulate.FilterValues{
-			[]interface{}{
-				[]interface{}{"20", 0},
-				[]interface{}{"60", 122},
-			},
-		} // yeah, this is convoluted....
-
+		filter := manipulate.NewFilterComposer().WithKey("ID", "name").Equals([]interface{}{"20", 0}, []interface{}{"60", 122}).Done()
 		context.Filter = filter
 
 		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{})
@@ -173,15 +157,7 @@ func TestMethodBuildDeleteCommandWithPrimaryKeysAnsValuesAndFilter(t *testing.T)
 	Convey("Given I call the method buildDeleteCommand", t, func() {
 
 		context := manipulate.NewContext()
-		filter := &manipulate.Filter{}
-		filter.Keys = manipulate.NewFilterKeys("ID", "name")
-		filter.Operators = manipulate.NewFilterOperators(manipulate.EqualOperator)
-		filter.Values = manipulate.FilterValues{
-			[]interface{}{
-				[]interface{}{"20", 0},
-				[]interface{}{"60", 122},
-			},
-		}
+		filter := manipulate.NewFilterComposer().WithKey("ID", "name").Equals([]interface{}{"20", 0}, []interface{}{"60", 122}).Done()
 		context.Filter = filter
 		context.PageSize = -1
 
@@ -279,16 +255,7 @@ func TestMethodBuildUpdateCollectionCommandOperationSubstractiveWithPrimaryKeysA
 		context.Attributes = []string{"CITY"}
 		context.PageSize = 0
 
-		filter := &manipulate.Filter{}
-		filter.Keys = manipulate.NewFilterKeys("ID", "name")
-		filter.Operators = manipulate.NewFilterOperators(manipulate.EqualOperator)
-		filter.Values = manipulate.FilterValues{
-			[]interface{}{
-				[]interface{}{"20", 0},
-				[]interface{}{"60", 122},
-			},
-		}
-
+		filter := manipulate.NewFilterComposer().WithKey("ID", "name").Equals([]interface{}{"20", 0}, []interface{}{"60", 122}).Done()
 		context.Filter = filter
 
 		command, values := buildUpdateCollectionCommand(context, "policy", a, []string{"ID"}, []interface{}{"123"})
@@ -352,15 +319,8 @@ func TestMethodBuildUpdateCommandWithAttributesWithPrimaryKeysAndValuesAndFilter
 		context := manipulate.NewContext()
 		context.Attributes = []string{"CITY", "ID"}
 		context.PageSize = 0
-		filter := &manipulate.Filter{}
-		filter.Keys = manipulate.NewFilterKeys("ID", "name")
-		filter.Operators = manipulate.NewFilterOperators(manipulate.EqualOperator)
-		filter.Values = manipulate.FilterValues{
-			[]interface{}{
-				[]interface{}{"20", 0},
-				[]interface{}{"60", 122},
-			},
-		}
+
+		filter := manipulate.NewFilterComposer().WithKey("ID", "name").Equals([]interface{}{"20", 0}, []interface{}{"60", 122}).Done()
 		context.Filter = filter
 		context.PageSize = -1
 

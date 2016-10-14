@@ -33,14 +33,14 @@ func CompileFilter(f *manipulate.Filter) string {
 
 		var param string
 
-		if len(f.Values[index]) > 1 || f.Operators[index] == manipulate.InOperator {
+		if len(f.Values[index]) > 1 || f.Comparators[index] == manipulate.InComparator {
 			param = paramForValues(f.Values[index])
 		}
 
 		buffer.WriteString(" ")
 		buffer.WriteString(keyValue)
 		buffer.WriteString(" ")
-		buffer.WriteString(translateOperator(f.Operators[index]))
+		buffer.WriteString(translateOperator(f.Comparators[index]))
 
 		if param == "" {
 			buffer.WriteString(" ?")
@@ -53,18 +53,18 @@ func CompileFilter(f *manipulate.Filter) string {
 	return buffer.String()
 }
 
-func translateOperator(operator manipulate.FilterOperator) string {
+func translateOperator(operator manipulate.FilterComparator) string {
 
 	switch operator {
-	case manipulate.EqualOperator:
+	case manipulate.EqualComparator:
 		return "="
-	case manipulate.EqualOrSuperiorOperator:
+	case manipulate.GreaterComparator:
 		return ">="
-	case manipulate.EqualOrInferiorOperator:
+	case manipulate.LesserComparator:
 		return "<="
-	case manipulate.InOperator:
+	case manipulate.InComparator:
 		return "IN"
-	case manipulate.ContainsOperator:
+	case manipulate.ContainComparator:
 		return "CONTAINS"
 	}
 
