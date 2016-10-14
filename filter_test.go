@@ -170,10 +170,10 @@ func TestFilter_NewFilter(t *testing.T) {
 		})
 
 		Convey("Then all values should be initialized", func() {
-			So(f.Keys, ShouldResemble, NewFilterKeys())
-			So(f.Values, ShouldResemble, NewFilterValues())
-			So(f.Operators, ShouldResemble, NewFilterOperators())
-			So(f.Comparators, ShouldResemble, NewFilterComparators())
+			So(f.keys, ShouldResemble, NewFilterKeys())
+			So(f.values, ShouldResemble, NewFilterValues())
+			So(f.operators, ShouldResemble, NewFilterOperators())
+			So(f.comparators, ShouldResemble, NewFilterComparators())
 		})
 	})
 }
@@ -189,10 +189,10 @@ func TestFilter_NewComposer(t *testing.T) {
 			f.WithKey("hello", "world").Equals(1, 2)
 
 			Convey("Then the filter should be correctly populated", func() {
-				So(f.Keys, ShouldResemble, FilterKeys{FilterKey{"hello", "world"}})
-				So(f.Values, ShouldResemble, FilterValues{FilterValue{1, 2}})
-				So(f.Operators, ShouldResemble, FilterOperators{})
-				So(f.Comparators, ShouldResemble, FilterComparators{EqualComparator})
+				So(f.keys, ShouldResemble, FilterKeys{FilterKey{"hello", "world"}})
+				So(f.values, ShouldResemble, FilterValues{FilterValue{1, 2}})
+				So(f.operators, ShouldResemble, FilterOperators{InitialOperator})
+				So(f.comparators, ShouldResemble, FilterComparators{EqualComparator})
 			})
 
 			Convey("When I add a new GreaterThan statement", func() {
@@ -201,18 +201,19 @@ func TestFilter_NewComposer(t *testing.T) {
 
 				Convey("Then the filter should be correctly populated", func() {
 
-					So(f.Keys, ShouldResemble, FilterKeys{
+					So(f.keys, ShouldResemble, FilterKeys{
 						FilterKey{"hello", "world"},
 						FilterKey{"gt"},
 					})
-					So(f.Values, ShouldResemble, FilterValues{
+					So(f.values, ShouldResemble, FilterValues{
 						FilterValue{1, 2},
 						FilterValue{12},
 					})
-					So(f.Operators, ShouldResemble, FilterOperators{
+					So(f.operators, ShouldResemble, FilterOperators{
+						InitialOperator,
 						AndOperator,
 					})
-					So(f.Comparators, ShouldResemble, FilterComparators{
+					So(f.comparators, ShouldResemble, FilterComparators{
 						EqualComparator,
 						GreaterComparator,
 					})
@@ -222,21 +223,22 @@ func TestFilter_NewComposer(t *testing.T) {
 						f.OrKey("lt").LesserThan(13)
 
 						Convey("Then the filter should be correctly populated", func() {
-							So(f.Keys, ShouldResemble, FilterKeys{
+							So(f.keys, ShouldResemble, FilterKeys{
 								FilterKey{"hello", "world"},
 								FilterKey{"gt"},
 								FilterKey{"lt"},
 							})
-							So(f.Values, ShouldResemble, FilterValues{
+							So(f.values, ShouldResemble, FilterValues{
 								FilterValue{1, 2},
 								FilterValue{12},
 								FilterValue{13},
 							})
-							So(f.Operators, ShouldResemble, FilterOperators{
+							So(f.operators, ShouldResemble, FilterOperators{
+								InitialOperator,
 								AndOperator,
 								OrOperator,
 							})
-							So(f.Comparators, ShouldResemble, FilterComparators{
+							So(f.comparators, ShouldResemble, FilterComparators{
 								EqualComparator,
 								GreaterComparator,
 								LesserComparator,
@@ -251,18 +253,19 @@ func TestFilter_NewComposer(t *testing.T) {
 				f.AndKey("in").In("a", "b", "c")
 
 				Convey("Then the filter should be correctly populated", func() {
-					So(f.Keys, ShouldResemble, FilterKeys{
+					So(f.keys, ShouldResemble, FilterKeys{
 						FilterKey{"hello", "world"},
 						FilterKey{"in"},
 					})
-					So(f.Values, ShouldResemble, FilterValues{
+					So(f.values, ShouldResemble, FilterValues{
 						FilterValue{1, 2},
 						FilterValue{"a", "b", "c"},
 					})
-					So(f.Operators, ShouldResemble, FilterOperators{
+					So(f.operators, ShouldResemble, FilterOperators{
+						InitialOperator,
 						AndOperator,
 					})
-					So(f.Comparators, ShouldResemble, FilterComparators{
+					So(f.comparators, ShouldResemble, FilterComparators{
 						EqualComparator,
 						InComparator,
 					})
@@ -272,21 +275,22 @@ func TestFilter_NewComposer(t *testing.T) {
 						f.OrKey("ctn").Contains(false)
 
 						Convey("Then the filter should be correctly populated", func() {
-							So(f.Keys, ShouldResemble, FilterKeys{
+							So(f.keys, ShouldResemble, FilterKeys{
 								FilterKey{"hello", "world"},
 								FilterKey{"in"},
 								FilterKey{"ctn"},
 							})
-							So(f.Values, ShouldResemble, FilterValues{
+							So(f.values, ShouldResemble, FilterValues{
 								FilterValue{1, 2},
 								FilterValue{"a", "b", "c"},
 								FilterValue{false},
 							})
-							So(f.Operators, ShouldResemble, FilterOperators{
+							So(f.operators, ShouldResemble, FilterOperators{
+								InitialOperator,
 								AndOperator,
 								OrOperator,
 							})
-							So(f.Comparators, ShouldResemble, FilterComparators{
+							So(f.comparators, ShouldResemble, FilterComparators{
 								EqualComparator,
 								InComparator,
 								ContainComparator,

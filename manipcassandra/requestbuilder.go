@@ -55,9 +55,9 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 
 		filter := c.Filter
 
-		for i := 0; i < len(filter.Values); i++ {
+		for i := 0; i < len(filter.Values()); i++ {
 
-			v := getValues(filter.Values[i])
+			v := getValues(filter.Values()[i])
 			values = append(values, v...)
 		}
 	}

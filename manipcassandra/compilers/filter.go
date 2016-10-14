@@ -13,15 +13,9 @@ func CompileFilter(f *manipulate.Filter) string {
 
 	var buffer bytes.Buffer
 
-	for index, key := range f.Keys {
+	for index, key := range f.Keys() {
 
-		if index == 0 {
-			buffer.WriteString("WHERE")
-		}
-
-		if index > 0 {
-			buffer.WriteString(" AND")
-		}
+		buffer.WriteString(translateOperator(f.Operators()[index]))
 
 		var keyValue string
 
@@ -33,14 +27,14 @@ func CompileFilter(f *manipulate.Filter) string {
 
 		var param string
 
-		if len(f.Values[index]) > 1 || f.Comparators[index] == manipulate.InComparator {
-			param = paramForValues(f.Values[index])
+		if len(f.Values()[index]) > 1 || f.Comparators()[index] == manipulate.InComparator {
+			param = paramForValues(f.Values()[index])
 		}
 
 		buffer.WriteString(" ")
 		buffer.WriteString(keyValue)
 		buffer.WriteString(" ")
-		buffer.WriteString(translateOperator(f.Comparators[index]))
+		buffer.WriteString(translateComparator(f.Comparators()[index]))
 
 		if param == "" {
 			buffer.WriteString(" ?")
@@ -53,9 +47,9 @@ func CompileFilter(f *manipulate.Filter) string {
 	return buffer.String()
 }
 
-func translateOperator(operator manipulate.FilterComparator) string {
+func translateComparator(comparator manipulate.FilterComparator) string {
 
-	switch operator {
+	switch comparator {
 	case manipulate.EqualComparator:
 		return "="
 	case manipulate.GreaterComparator:
@@ -66,6 +60,20 @@ func translateOperator(operator manipulate.FilterComparator) string {
 		return "IN"
 	case manipulate.ContainComparator:
 		return "CONTAINS"
+	}
+
+	return ""
+}
+
+func translateOperator(operator manipulate.FilterOperator) string {
+
+	switch operator {
+	case manipulate.InitialOperator:
+		return "WHERE"
+	case manipulate.AndOperator:
+		return " AND"
+	case manipulate.OrOperator:
+		return " OR"
 	}
 
 	return ""

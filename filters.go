@@ -18,25 +18,25 @@ type FilterComparator int
 type FilterComparators []FilterComparator
 
 // NewFilterComparators returns a new FilterKeys
-func NewFilterComparators(operators ...FilterComparator) FilterComparators {
+func NewFilterComparators(comparators ...FilterComparator) FilterComparators {
 
-	fos := FilterComparators{}
+	fcs := FilterComparators{}
 
-	if len(operators) == 0 {
-		return fos
+	if len(comparators) == 0 {
+		return fcs
 	}
 
-	for _, o := range operators {
-		fos = append(fos, o)
+	for _, o := range comparators {
+		fcs = append(fcs, o)
 	}
 
-	return fos
+	return fcs
 }
 
 // Then adds a new filter key to te receiver and returns it.
-func (f FilterComparators) Then(operators ...FilterComparator) FilterComparators {
+func (f FilterComparators) Then(comparators ...FilterComparator) FilterComparators {
 
-	for _, o := range operators {
+	for _, o := range comparators {
 		f = append(f, o)
 	}
 
@@ -45,7 +45,8 @@ func (f FilterComparators) Then(operators ...FilterComparator) FilterComparators
 
 // Operators represent various operators.
 const (
-	OrOperator FilterOperator = iota + 1
+	InitialOperator FilterOperator = iota + 1
+	OrOperator
 	AndOperator
 )
 
@@ -168,20 +169,20 @@ type FilterKeyComposer interface {
 
 // Filter is a filter struct which can be used with Cassandra
 type Filter struct {
-	Keys        FilterKeys
-	Values      FilterValues
-	Comparators FilterComparators
-	Operators   FilterOperators
+	keys        FilterKeys
+	values      FilterValues
+	comparators FilterComparators
+	operators   FilterOperators
 }
 
 // NewFilter returns a new filter.
 func NewFilter() *Filter {
 
 	return &Filter{
-		Keys:        NewFilterKeys(),
-		Values:      NewFilterValues(),
-		Comparators: NewFilterComparators(),
-		Operators:   NewFilterOperators(),
+		keys:        NewFilterKeys(),
+		values:      NewFilterValues(),
+		comparators: NewFilterComparators(),
+		operators:   NewFilterOperators(),
 	}
 }
 
@@ -191,58 +192,79 @@ func NewFilterComposer() FilterKeyComposer {
 	return NewFilter()
 }
 
+// Keys returns the current keys.
+func (f *Filter) Keys() FilterKeys {
+	return f.keys
+}
+
+// Values returns the current values.
+func (f *Filter) Values() FilterValues {
+	return f.values
+}
+
+// Operators returns the current operators.
+func (f *Filter) Operators() FilterOperators {
+	return f.operators
+}
+
+// Comparators returns the current comparators.
+func (f *Filter) Comparators() FilterComparators {
+	return f.comparators
+}
+
 // Equals adds a an equality comparator to the FilterComposer.
 func (f *Filter) Equals(values ...interface{}) FilterKeyComposer {
-	f.Values = f.Values.Then(values...)
-	f.Comparators = f.Comparators.Then(EqualComparator)
+	f.values = f.values.Then(values...)
+	f.comparators = f.comparators.Then(EqualComparator)
 	return f
 }
 
 // GreaterThan adds a greater than comparator to the FilterComposer.
 func (f *Filter) GreaterThan(values ...interface{}) FilterKeyComposer {
-	f.Values = f.Values.Then(values...)
-	f.Comparators = f.Comparators.Then(GreaterComparator)
+	f.values = f.values.Then(values...)
+	f.comparators = f.comparators.Then(GreaterComparator)
 	return f
 }
 
 // LesserThan adds a lesser than comparator to the FilterComposer.
 func (f *Filter) LesserThan(values ...interface{}) FilterKeyComposer {
-	f.Values = f.Values.Then(values...)
-	f.Comparators = f.Comparators.Then(LesserComparator)
+	f.values = f.values.Then(values...)
+	f.comparators = f.comparators.Then(LesserComparator)
 	return f
 }
 
 // In adds a in comparator to the FilterComposer.
 func (f *Filter) In(values ...interface{}) FilterKeyComposer {
-	f.Values = f.Values.Then(values...)
-	f.Comparators = f.Comparators.Then(InComparator)
+	f.values = f.values.Then(values...)
+	f.comparators = f.comparators.Then(InComparator)
 	return f
 }
 
 // Contains adds a contains comparator to the FilterComposer.
 func (f *Filter) Contains(values ...interface{}) FilterKeyComposer {
-	f.Values = f.Values.Then(values...)
-	f.Comparators = f.Comparators.Then(ContainComparator)
+	f.values = f.values.Then(values...)
+	f.comparators = f.comparators.Then(ContainComparator)
 	return f
 }
 
 // AndKey adds a and operator to the FilterComposer.
 func (f *Filter) AndKey(keys ...string) FilterValueComposer {
-	f.Operators = f.Operators.Then(AndOperator)
-	f.Keys = f.Keys.Then(keys...)
+	f.operators = f.operators.Then(AndOperator)
+	f.keys = f.keys.Then(keys...)
 	return f
 }
 
 // OrKey adds a or operator to the FilterComposer.
 func (f *Filter) OrKey(keys ...string) FilterValueComposer {
-	f.Operators = f.Operators.Then(OrOperator)
-	f.Keys = f.Keys.Then(keys...)
+	f.operators = f.operators.Then(OrOperator)
+	f.keys = f.keys.Then(keys...)
 	return f
 }
 
 // WithKey adds a key to FilterComposer.
 func (f *Filter) WithKey(keys ...string) FilterValueComposer {
-	f.Keys = f.Keys.Then(keys...)
+	f.operators = f.operators.Then(InitialOperator)
+	f.keys = f.keys.Then(keys...)
 	return f
 }
 
