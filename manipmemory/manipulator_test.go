@@ -153,10 +153,28 @@ func TestMemManipulator_Delete(t *testing.T) {
 					So(err, ShouldBeNil)
 				})
 
-				Convey("When I retrieve the persons", func() {
+				Convey("When I retrieve the persons using a wrapper", func() {
 
 					ps := []*Person{}
 
+					var err error
+
+					func(zob interface{}) {
+						err = m.RetrieveMany(nil, PersonIdentity, zob)
+					}(&ps)
+
+					Convey("Then err should be nil", func() {
+						So(err, ShouldBeNil)
+					})
+
+					Convey("Then I the result should be empty", func() {
+						So(len(ps), ShouldEqual, 0)
+					})
+				})
+
+				Convey("When I retrieve the persons ", func() {
+
+					ps := []*Person{}
 					err := m.RetrieveMany(nil, PersonIdentity, &ps)
 
 					Convey("Then err should be nil", func() {
