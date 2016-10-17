@@ -40,5 +40,5 @@ ctx := manipulate.NewContextWithFilter(manipulate.NewFilterComposer().WithKey("l
 
 // Retrieve the users matching the filter.
 var users models.UserLists
-m.RetrieveMany(ctx, nil, models.UserIdentity, &users)
+m.RetrieveMany(ctx, models.UserIdentity, &users)
 ```
