@@ -46,10 +46,13 @@ func NewHTTPManipulator(username, password, url, namespace string, tlsConfig *TL
 	}
 }
 
-func (s *httpManipulator) Create(contexts manipulate.Contexts, children ...manipulate.Manipulable) error {
+func (s *httpManipulator) Create(context *manipulate.Context, children ...manipulate.Manipulable) error {
+
+	if context == nil {
+		context = manipulate.NewContext()
+	}
 
 	errs := []error{}
-	context := manipulate.ContextForIndex(contexts, 0)
 
 	for _, child := range children {
 
@@ -92,12 +95,15 @@ func (s *httpManipulator) Create(contexts manipulate.Contexts, children ...manip
 	return nil
 }
 
-func (s *httpManipulator) Retrieve(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (s *httpManipulator) Retrieve(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+
+	if context == nil {
+		context = manipulate.NewContext()
+	}
 
 	errs := []error{}
 
-	// very stupid implementation for now
-	for index, object := range objects {
+	for _, object := range objects {
 
 		url, berr := s.getPersonalURL(object)
 		if berr != nil {
@@ -111,7 +117,7 @@ func (s *httpManipulator) Retrieve(contexts manipulate.Contexts, objects ...mani
 			continue
 		}
 
-		response, berrs := s.send(request, manipulate.ContextForIndex(contexts, index))
+		response, berrs := s.send(request, context)
 
 		if berrs != nil {
 			errs = append(errs, berrs)
@@ -132,12 +138,15 @@ func (s *httpManipulator) Retrieve(contexts manipulate.Contexts, objects ...mani
 	return nil
 }
 
-func (s *httpManipulator) Update(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (s *httpManipulator) Update(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+
+	if context == nil {
+		context = manipulate.NewContext()
+	}
 
 	errs := []error{}
 
-	// very stupid implementation for now
-	for index, object := range objects {
+	for _, object := range objects {
 
 		url, berr := s.getPersonalURL(object)
 		if berr != nil {
@@ -157,7 +166,7 @@ func (s *httpManipulator) Update(contexts manipulate.Contexts, objects ...manipu
 			continue
 		}
 
-		response, berrs := s.send(request, manipulate.ContextForIndex(contexts, index))
+		response, berrs := s.send(request, context)
 
 		if berrs != nil {
 			errs = append(errs, berrs)
@@ -178,12 +187,15 @@ func (s *httpManipulator) Update(contexts manipulate.Contexts, objects ...manipu
 	return nil
 }
 
-func (s *httpManipulator) Delete(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (s *httpManipulator) Delete(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+
+	if context == nil {
+		context = manipulate.NewContext()
+	}
 
 	errs := []error{}
 
-	// very stupid implementation for now
-	for index, object := range objects {
+	for _, object := range objects {
 
 		url, berr := s.getPersonalURL(object)
 		if berr != nil {
@@ -197,7 +209,7 @@ func (s *httpManipulator) Delete(contexts manipulate.Contexts, objects ...manipu
 			continue
 		}
 
-		_, berrs := s.send(request, manipulate.ContextForIndex(contexts, index))
+		_, berrs := s.send(request, context)
 		if berrs != nil {
 			errs = append(errs, berrs)
 			continue
@@ -211,9 +223,11 @@ func (s *httpManipulator) Delete(contexts manipulate.Contexts, objects ...manipu
 	return nil
 }
 
-func (s *httpManipulator) RetrieveMany(contexts manipulate.Contexts, identity elemental.Identity, dest interface{}) error {
+func (s *httpManipulator) RetrieveMany(context *manipulate.Context, identity elemental.Identity, dest interface{}) error {
 
-	context := manipulate.ContextForIndex(contexts, 0)
+	if context == nil {
+		context = manipulate.NewContext()
+	}
 
 	url, err := s.getURLForChildrenIdentity(context.Parent, identity)
 	if err != nil {
@@ -243,13 +257,15 @@ func (s *httpManipulator) RetrieveMany(contexts manipulate.Contexts, identity el
 	return nil
 }
 
-func (s *httpManipulator) Count(manipulate.Contexts, elemental.Identity) (int, error) {
+func (s *httpManipulator) Count(*manipulate.Context, elemental.Identity) (int, error) {
 	return 0, nil
 }
 
-func (s *httpManipulator) Assign(contexts manipulate.Contexts, assignation *elemental.Assignation) error {
+func (s *httpManipulator) Assign(context *manipulate.Context, assignation *elemental.Assignation) error {
 
-	context := manipulate.ContextForIndex(contexts, 0)
+	if context == nil {
+		context = manipulate.NewContext()
+	}
 
 	url, berr := s.getURLForChildrenIdentity(context.Parent, assignation.MembersIdentity)
 	if berr != nil {
@@ -275,7 +291,7 @@ func (s *httpManipulator) Assign(contexts manipulate.Contexts, assignation *elem
 	return nil
 }
 
-func (s *httpManipulator) Increment(contexts manipulate.Contexts, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
+func (s *httpManipulator) Increment(context *manipulate.Context, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
 	return fmt.Errorf("Increment is not implemented in http store")
 }
 

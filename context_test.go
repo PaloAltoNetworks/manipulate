@@ -60,17 +60,3 @@ func TestMethodString(t *testing.T) {
 		})
 	})
 }
-
-func TestMethodContextForIndex(t *testing.T) {
-
-	Convey("Given I create a new context and calle the method ContextForIndex", t, func() {
-
-		context := NewContext()
-
-		Convey("Then I should get the good context", func() {
-			So(ContextForIndex(context, -1), ShouldEqual, context)
-			So(ContextForIndex(nil, -1), ShouldResemble, NewContext())
-			So(ContextForIndex([]*Context{context}, 0), ShouldEqual, context)
-		})
-	})
-}

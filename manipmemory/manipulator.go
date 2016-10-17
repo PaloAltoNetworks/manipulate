@@ -38,9 +38,12 @@ func NewMemoryManipulator(schema *memdb.DBSchema) manipulate.TransactionalManipu
 }
 
 // RetrieveMany is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) RetrieveMany(contexts manipulate.Contexts, identity elemental.Identity, dest interface{}) error {
+func (s *memdbManipulator) RetrieveMany(context *manipulate.Context, identity elemental.Identity, dest interface{}) error {
 
-	context := manipulate.ContextForIndex(contexts, 0)
+	if context == nil {
+		context = manipulate.NewContext()
+	}
+
 	txn := s.db.Txn(false)
 
 	index := "id"
@@ -68,7 +71,7 @@ func (s *memdbManipulator) RetrieveMany(contexts manipulate.Contexts, identity e
 }
 
 // Retrieve is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Retrieve(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (s *memdbManipulator) Retrieve(context *manipulate.Context, objects ...manipulate.Manipulable) error {
 
 	txn := s.db.Txn(false)
 
@@ -91,9 +94,12 @@ func (s *memdbManipulator) Retrieve(contexts manipulate.Contexts, objects ...man
 }
 
 // Create is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Create(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (s *memdbManipulator) Create(context *manipulate.Context, objects ...manipulate.Manipulable) error {
 
-	context := manipulate.ContextForIndex(contexts, 0)
+	if context == nil {
+		context = manipulate.NewContext()
+	}
+
 	tid := context.TransactionID
 	txn := s.txnForID(tid)
 	defer txn.Abort()
@@ -116,9 +122,12 @@ func (s *memdbManipulator) Create(contexts manipulate.Contexts, objects ...manip
 }
 
 // Update is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Update(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (s *memdbManipulator) Update(context *manipulate.Context, objects ...manipulate.Manipulable) error {
 
-	context := manipulate.ContextForIndex(contexts, 0)
+	if context == nil {
+		context = manipulate.NewContext()
+	}
+
 	tid := context.TransactionID
 	txn := s.txnForID(tid)
 	defer txn.Abort()
@@ -139,9 +148,12 @@ func (s *memdbManipulator) Update(contexts manipulate.Contexts, objects ...manip
 }
 
 // Delete is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Delete(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (s *memdbManipulator) Delete(context *manipulate.Context, objects ...manipulate.Manipulable) error {
 
-	context := manipulate.ContextForIndex(contexts, 0)
+	if context == nil {
+		context = manipulate.NewContext()
+	}
+
 	tid := context.TransactionID
 	txn := s.txnForID(tid)
 	defer txn.Abort()
@@ -162,20 +174,20 @@ func (s *memdbManipulator) Delete(contexts manipulate.Contexts, objects ...manip
 }
 
 // Count is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Count(contexts manipulate.Contexts, identity elemental.Identity) (int, error) {
+func (s *memdbManipulator) Count(context *manipulate.Context, identity elemental.Identity) (int, error) {
 
 	out := manipulate.ManipulablesList{}
-	s.RetrieveMany(contexts, identity, &out)
+	s.RetrieveMany(context, identity, &out)
 	return len(out), nil
 }
 
 // Assign is part of the implementation of the Manipulator interface.
-func (*memdbManipulator) Assign(contexts manipulate.Contexts, assignation *elemental.Assignation) error {
+func (*memdbManipulator) Assign(context *manipulate.Context, assignation *elemental.Assignation) error {
 	return nil
 }
 
 // Increment is part of the implementation of the Manipulator interface.
-func (*memdbManipulator) Increment(contexts manipulate.Contexts, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
+func (*memdbManipulator) Increment(context *manipulate.Context, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
 	return nil
 }
 

@@ -4,13 +4,7 @@
 
 package manipulate
 
-import (
-	"fmt"
-	"reflect"
-)
-
-// Contexts is a type, this type will be checked and can be only a Context or []*Context
-type Contexts interface{}
+import "fmt"
 
 // Context is a structure
 type Context struct {
@@ -60,25 +54,4 @@ func NewContextWithTransactionID(tid TransactionID) *Context {
 func (c *Context) String() string {
 
 	return fmt.Sprintf("<Context page: %d, pagesize: %d> <Filter : %v>", c.PageCurrent, c.PageSize, c.Filter)
-}
-
-// ContextForIndex return the Context from the given Contexts
-// If you give an array of *Context, the function will return the context of the given index
-// Otherwise it will only cast the given Contexts to a *Context
-// This method will crash if the given Contexts is not a *Context or a []*Context
-func ContextForIndex(c Contexts, index int) *Context {
-
-	if c == nil {
-		return NewContext()
-	}
-
-	castContextFunction := func(i interface{}) *Context {
-		return i.(*Context)
-	}
-
-	if reflect.TypeOf(c).Kind() == reflect.Slice || reflect.TypeOf(c).Kind() == reflect.Array {
-		return castContextFunction(c.([]*Context)[index])
-	}
-
-	return castContextFunction(c)
 }

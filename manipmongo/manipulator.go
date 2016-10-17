@@ -50,10 +50,13 @@ func NewMongoManipulator(url string, dbName string) manipulate.TransactionalMani
 	}
 }
 
-func (s *mongoManipulator) Create(contexts manipulate.Contexts, children ...manipulate.Manipulable) error {
+func (s *mongoManipulator) Create(context *manipulate.Context, children ...manipulate.Manipulable) error {
+
+	if context == nil {
+		context = manipulate.NewContext()
+	}
 
 	collection := collectionFromIdentity(s.db, children[0].Identity())
-	context := manipulate.ContextForIndex(contexts, 0)
 	tid := context.TransactionID
 	bulk := s.bulkForID(tid, collection)
 
@@ -71,7 +74,7 @@ func (s *mongoManipulator) Create(contexts manipulate.Contexts, children ...mani
 	return nil
 }
 
-func (s *mongoManipulator) Retrieve(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (s *mongoManipulator) Retrieve(context *manipulate.Context, objects ...manipulate.Manipulable) error {
 
 	collection := collectionFromIdentity(s.db, objects[0].Identity())
 
@@ -85,10 +88,13 @@ func (s *mongoManipulator) Retrieve(contexts manipulate.Contexts, objects ...man
 	return nil
 }
 
-func (s *mongoManipulator) Update(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (s *mongoManipulator) Update(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+
+	if context == nil {
+		context = manipulate.NewContext()
+	}
 
 	collection := collectionFromIdentity(s.db, objects[0].Identity())
-	context := manipulate.ContextForIndex(contexts, 0)
 	tid := context.TransactionID
 	bulk := s.bulkForID(tid, collection)
 
@@ -105,10 +111,13 @@ func (s *mongoManipulator) Update(contexts manipulate.Contexts, objects ...manip
 	return nil
 }
 
-func (s *mongoManipulator) Delete(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (s *mongoManipulator) Delete(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+
+	if context == nil {
+		context = manipulate.NewContext()
+	}
 
 	collection := collectionFromIdentity(s.db, objects[0].Identity())
-	context := manipulate.ContextForIndex(contexts, 0)
 	tid := context.TransactionID
 	bulk := s.bulkForID(tid, collection)
 
@@ -125,10 +134,13 @@ func (s *mongoManipulator) Delete(contexts manipulate.Contexts, objects ...manip
 	return nil
 }
 
-func (s *mongoManipulator) RetrieveMany(contexts manipulate.Contexts, identity elemental.Identity, dest interface{}) error {
+func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, identity elemental.Identity, dest interface{}) error {
+
+	if context == nil {
+		context = manipulate.NewContext()
+	}
 
 	collection := collectionFromIdentity(s.db, identity)
-	context := manipulate.ContextForIndex(contexts, 0)
 
 	var query *mgo.Query
 	if context.Filter != nil {
@@ -144,10 +156,13 @@ func (s *mongoManipulator) RetrieveMany(contexts manipulate.Contexts, identity e
 	return nil
 }
 
-func (s *mongoManipulator) Count(contexts manipulate.Contexts, identity elemental.Identity) (int, error) {
+func (s *mongoManipulator) Count(context *manipulate.Context, identity elemental.Identity) (int, error) {
+
+	if context == nil {
+		context = manipulate.NewContext()
+	}
 
 	collection := collectionFromIdentity(s.db, identity)
-	context := manipulate.ContextForIndex(contexts, 0)
 
 	var query *mgo.Query
 	if context.Filter != nil {
@@ -164,12 +179,11 @@ func (s *mongoManipulator) Count(contexts manipulate.Contexts, identity elementa
 	return c, nil
 }
 
-func (s *mongoManipulator) Assign(contexts manipulate.Contexts, assignation *elemental.Assignation) error {
-
-	panic("Not Implemented")
+func (s *mongoManipulator) Assign(context *manipulate.Context, assignation *elemental.Assignation) error {
+	return fmt.Errorf("Assign is not implemented in mongo")
 }
 
-func (s *mongoManipulator) Increment(contexts manipulate.Contexts, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
+func (s *mongoManipulator) Increment(context *manipulate.Context, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
 	return fmt.Errorf("Increment is not implemented in mongo")
 }
 

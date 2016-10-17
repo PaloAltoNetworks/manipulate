@@ -18,31 +18,31 @@ type Manipulable interface {
 // Manipulator is the interface of a storage backend.
 type Manipulator interface {
 	// RetrieveMany retrieves the a list of objects with the given elemental.Identity and put them in the given dest.
-	RetrieveMany(contexts Contexts, identity elemental.Identity, dest interface{}) error
+	RetrieveMany(context *Context, identity elemental.Identity, dest interface{}) error
 
 	// Retrieve retrieves one or multiple Manipulables. In order to be retrievable,
 	// the Manipulables needs to have their Identifier correctly set.
-	Retrieve(contexts Contexts, objects ...Manipulable) error
+	Retrieve(context *Context, objects ...Manipulable) error
 
 	// Create creates a the given Manipulables in the given parent Manipulable.
-	Create(contexts Contexts, objects ...Manipulable) error
+	Create(context *Context, objects ...Manipulable) error
 
 	// Update updates one or multiple Manipulables. In order to be updatable,
 	// the Manipulables needs to have their Identifier correctly set.
-	Update(contexts Contexts, objects ...Manipulable) error
+	Update(context *Context, objects ...Manipulable) error
 
 	// Delete deletes one or multiple Manipulables. In order to be deletable,
 	// the Manipulables needs to have their Identifier correctly set.
-	Delete(contexts Contexts, objects ...Manipulable) error
+	Delete(context *Context, objects ...Manipulable) error
 
 	// Count returns the number of objects with the given identity.
-	Count(contexts Contexts, identity elemental.Identity) (int, error)
+	Count(context *Context, identity elemental.Identity) (int, error)
 
 	// Assign is not really used yet.
-	Assign(contexts Contexts, assignation *elemental.Assignation) error
+	Assign(context *Context, assignation *elemental.Assignation) error
 
 	// Increment is not very cool.
-	Increment(contexts Contexts, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error
+	Increment(context *Context, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error
 }
 
 // A TransactionalManipulator is a Manipulator that handles transactions.

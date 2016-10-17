@@ -68,11 +68,14 @@ func NewCassandraManipulator(servers []string, keyspace string, version int) man
 	}
 }
 
-func (c *cassandraManipulator) Retrieve(context manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (c *cassandraManipulator) Retrieve(context *manipulate.Context, objects ...manipulate.Manipulable) error {
 
-	for index, object := range objects {
+	if context == nil {
+		context = manipulate.NewContext()
+	}
 
-		context := manipulate.ContextForIndex(context, index)
+	for _, object := range objects {
+
 		primaryKeys, primaryValues, err := cassandra.PrimaryFieldsAndValues(object)
 
 		if err != nil {
@@ -101,12 +104,16 @@ func (c *cassandraManipulator) Retrieve(context manipulate.Contexts, objects ...
 	return nil
 }
 
-func (c *cassandraManipulator) Delete(context manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (c *cassandraManipulator) Delete(context *manipulate.Context, objects ...manipulate.Manipulable) error {
 
-	var transactionID manipulate.TransactionID
-	var batch *gocql.Batch
+	if context == nil {
+		context = manipulate.NewContext()
+	}
 
-	for index, object := range objects {
+	transactionID := context.TransactionID
+	batch := c.batchForID(transactionID)
+
+	for _, object := range objects {
 
 		primaryKeys, primaryValues, err := cassandra.PrimaryFieldsAndValues(object)
 
@@ -119,13 +126,6 @@ func (c *cassandraManipulator) Delete(context manipulate.Contexts, objects ...ma
 			}).Error("Unable to extract primary keys and values.")
 
 			return manipulate.NewError(err.Error(), manipulate.ErrCannotExractPrimaryFieldsAndValues)
-		}
-
-		context := manipulate.ContextForIndex(context, index)
-		transactionID = context.TransactionID
-
-		if transactionID != "" || batch == nil {
-			batch = c.batchForID(transactionID)
 		}
 
 		command, values := buildDeleteCommand(context, object.Identity().Name, primaryKeys, primaryValues)
@@ -143,10 +143,13 @@ func (c *cassandraManipulator) Delete(context manipulate.Contexts, objects ...ma
 	return nil
 }
 
-func (c *cassandraManipulator) RetrieveMany(context manipulate.Contexts, identity elemental.Identity, dest interface{}) error {
+func (c *cassandraManipulator) RetrieveMany(context *manipulate.Context, identity elemental.Identity, dest interface{}) error {
 
-	ctx := manipulate.ContextForIndex(context, 0)
-	command, values := buildGetCommand(ctx, identity.Name, []string{}, []interface{}{})
+	if context == nil {
+		context = manipulate.NewContext()
+	}
+
+	command, values := buildGetCommand(context, identity.Name, []string{}, []interface{}{})
 
 	log.WithFields(log.Fields{
 		"package": "manipcassandra",
@@ -164,12 +167,16 @@ func (c *cassandraManipulator) RetrieveMany(context manipulate.Contexts, identit
 	return nil
 }
 
-func (c *cassandraManipulator) Create(context manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (c *cassandraManipulator) Create(context *manipulate.Context, objects ...manipulate.Manipulable) error {
 
-	var transactionID manipulate.TransactionID
-	var batch *gocql.Batch
+	if context == nil {
+		context = manipulate.NewContext()
+	}
 
-	for index, object := range objects {
+	transactionID := context.TransactionID
+	batch := c.batchForID(transactionID)
+
+	for _, object := range objects {
 		object.SetIdentifier(gocql.TimeUUID().String())
 		list, values, err := cassandra.FieldsAndValues(object)
 
@@ -186,13 +193,6 @@ func (c *cassandraManipulator) Create(context manipulate.Contexts, objects ...ma
 			}).Error("Unable to extract fields and values.")
 
 			return manipulate.NewError(err.Error(), manipulate.ErrCannotExtractFieldsAndValues)
-		}
-
-		context := manipulate.ContextForIndex(context, index)
-		transactionID = context.TransactionID
-
-		if transactionID != "" || batch == nil {
-			batch = c.batchForID(transactionID)
 		}
 
 		command, values := buildInsertCommand(context, object.Identity().Name, list, values)
@@ -234,12 +234,16 @@ func (c *cassandraManipulator) Create(context manipulate.Contexts, objects ...ma
 	return nil
 }
 
-func (c *cassandraManipulator) Update(context manipulate.Contexts, objects ...manipulate.Manipulable) error {
+func (c *cassandraManipulator) Update(context *manipulate.Context, objects ...manipulate.Manipulable) error {
 
-	var transactionID manipulate.TransactionID
-	var batch *gocql.Batch
+	if context == nil {
+		context = manipulate.NewContext()
+	}
 
-	for index, object := range objects {
+	transactionID := context.TransactionID
+	batch := c.batchForID(transactionID)
+
+	for _, object := range objects {
 
 		primaryKeys, primaryValues, err := cassandra.PrimaryFieldsAndValues(object)
 
@@ -267,13 +271,6 @@ func (c *cassandraManipulator) Update(context manipulate.Contexts, objects ...ma
 			return manipulate.NewError(err.Error(), manipulate.ErrCannotExtractFieldsAndValues)
 		}
 
-		context := manipulate.ContextForIndex(context, index)
-		transactionID = context.TransactionID
-
-		if transactionID != "" || batch == nil {
-			batch = c.batchForID(transactionID)
-		}
-
 		command, values := buildUpdateCommand(context, object.Identity().Name, list, values, primaryKeys, primaryValues)
 
 		batch.Query(command, values...)
@@ -290,10 +287,13 @@ func (c *cassandraManipulator) Update(context manipulate.Contexts, objects ...ma
 	return nil
 }
 
-func (c *cassandraManipulator) Count(context manipulate.Contexts, identity elemental.Identity) (int, error) {
+func (c *cassandraManipulator) Count(context *manipulate.Context, identity elemental.Identity) (int, error) {
 
-	ctx := manipulate.ContextForIndex(context, 0)
-	command, values := buildCountCommand(ctx, identity.Name)
+	if context == nil {
+		context = manipulate.NewContext()
+	}
+
+	command, values := buildCountCommand(context, identity.Name)
 
 	log.WithFields(log.Fields{
 		"package": "manipcassandra",
@@ -323,16 +323,19 @@ func (c *cassandraManipulator) Count(context manipulate.Contexts, identity eleme
 	return count, nil
 }
 
-func (c *cassandraManipulator) Assign(contexts manipulate.Contexts, assignation *elemental.Assignation) error {
+func (c *cassandraManipulator) Assign(*manipulate.Context, *elemental.Assignation) error {
 	panic("Not implemented")
 }
 
-func (c *cassandraManipulator) Increment(contexts manipulate.Contexts, name, counter string, inc int, primaryKeys []string, primaryValues []interface{}) error {
+func (c *cassandraManipulator) Increment(context *manipulate.Context, name, counter string, inc int, primaryKeys []string, primaryValues []interface{}) error {
+
+	if context == nil {
+		context = manipulate.NewContext()
+	}
 
 	var transactionID manipulate.TransactionID
 	var batch *gocql.Batch
 
-	context := manipulate.ContextForIndex(contexts, 0)
 	transactionID = context.TransactionID
 
 	if transactionID != "" || batch == nil {
@@ -388,7 +391,11 @@ func (c *cassandraManipulator) Abort(id manipulate.TransactionID) bool {
 }
 
 // UpdateCollection seems to be useless.
-func (c *cassandraManipulator) UpdateCollection(context manipulate.Contexts, attributeUpdate *attributeUpdater, object manipulate.Manipulable) error {
+func (c *cassandraManipulator) UpdateCollection(context *manipulate.Context, attributeUpdate *attributeUpdater, object manipulate.Manipulable) error {
+
+	if context == nil {
+		context = manipulate.NewContext()
+	}
 
 	primaryKeys, primaryValues, err := cassandra.PrimaryFieldsAndValues(object)
 
@@ -403,7 +410,7 @@ func (c *cassandraManipulator) UpdateCollection(context manipulate.Contexts, att
 		return manipulate.NewError(err.Error(), manipulate.ErrCannotExractPrimaryFieldsAndValues)
 	}
 
-	command, values := buildUpdateCollectionCommand(manipulate.ContextForIndex(context, 0), object.Identity().Name, attributeUpdate, primaryKeys, primaryValues)
+	command, values := buildUpdateCollectionCommand(context, object.Identity().Name, attributeUpdate, primaryKeys, primaryValues)
 	if err := c.nativeSession.Query(command, values...).Exec(); err != nil {
 
 		log.WithFields(log.Fields{
