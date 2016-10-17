@@ -588,7 +588,7 @@ func TestHTTP_Delete(t *testing.T) {
 	})
 }
 
-func TestHTTP_RetrieveChildren(t *testing.T) {
+func TestHTTP_RetrieveMany(t *testing.T) {
 
 	Convey("Given I have an existing object", t, func() {
 
@@ -606,7 +606,9 @@ func TestHTTP_RetrieveChildren(t *testing.T) {
 			store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
 
 			var l TasksList
-			errs := store.RetrieveChildren(nil, list, TaskIdentity, &l)
+			ctx := manipulate.NewContext()
+			ctx.Parent = list
+			errs := store.RetrieveMany(ctx, TaskIdentity, &l)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldBeNil)
@@ -638,7 +640,11 @@ func TestHTTP_RetrieveChildren(t *testing.T) {
 
 			list2 := NewList()
 			var l TasksList
-			errs := store.RetrieveChildren(nil, list2, TaskIdentity, &l)
+
+			ctx := manipulate.NewContext()
+			ctx.Parent = list2
+
+			errs := store.RetrieveMany(ctx, TaskIdentity, &l)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -656,7 +662,11 @@ func TestHTTP_RetrieveChildren(t *testing.T) {
 
 			e := NewTask()
 			var l TasksList
-			errs := store.RetrieveChildren(nil, e, TaskIdentity, &l)
+
+			ctx := manipulate.NewContext()
+			ctx.Parent = e
+
+			errs := store.RetrieveMany(ctx, TaskIdentity, &l)
 
 			Convey("Then the lenght of the children list should be 0", func() {
 				So(l, ShouldBeNil)
@@ -678,7 +688,11 @@ func TestHTTP_RetrieveChildren(t *testing.T) {
 			store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
 
 			var l TasksList
-			store.RetrieveChildren(nil, list, TaskIdentity, &l)
+
+			ctx := manipulate.NewContext()
+			ctx.Parent = list
+
+			store.RetrieveMany(ctx, TaskIdentity, &l)
 
 			Convey("Then the lenght of the children list should be 0", func() {
 				So(len(l), ShouldEqual, 0)
@@ -695,8 +709,11 @@ func TestHTTP_RetrieveChildren(t *testing.T) {
 
 			store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
 
+			ctx := manipulate.NewContext()
+			ctx.Parent = list
+
 			var l TasksList
-			errs := store.RetrieveChildren(nil, list, TaskIdentity, &l)
+			errs := store.RetrieveMany(ctx, TaskIdentity, &l)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -713,8 +730,11 @@ func TestHTTP_RetrieveChildren(t *testing.T) {
 
 			store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
 
+			ctx := manipulate.NewContext()
+			ctx.Parent = list
+
 			var l TasksList
-			errs := store.RetrieveChildren(nil, list, TaskIdentity, &l)
+			errs := store.RetrieveMany(ctx, TaskIdentity, &l)
 
 			Convey("Then the error should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -831,8 +851,12 @@ func TestHTTP_Assign(t *testing.T) {
 			t1.ID = "xxx"
 			t2 := NewTask()
 			t2.ID = "yyy"
+
+			ctx := manipulate.NewContext()
+			ctx.Parent = l
+
 			assignation := elemental.NewAssignation(elemental.AssignationTypeAdd, TaskIdentity, t1, t2)
-			errs := session.Assign(nil, l, assignation)
+			errs := session.Assign(ctx, assignation)
 
 			Convey("Then err should be nil", func() {
 				So(errs, ShouldBeNil)
@@ -846,9 +870,12 @@ func TestHTTP_Assign(t *testing.T) {
 			l1 := NewList()
 			t2 := NewTask()
 			t2.ID = "yyy"
-			assignation := elemental.NewAssignation(elemental.AssignationTypeAdd, TaskIdentity, t2)
 
-			errs := session.Assign(nil, l1, assignation)
+			ctx := manipulate.NewContext()
+			ctx.Parent = l1
+
+			assignation := elemental.NewAssignation(elemental.AssignationTypeAdd, TaskIdentity, t2)
+			errs := session.Assign(ctx, assignation)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -868,8 +895,12 @@ func TestHTTP_Assign(t *testing.T) {
 			t1.ID = "xxx"
 			t2 := NewTask()
 			t2.ID = "yyy"
+
+			ctx := manipulate.NewContext()
+			ctx.Parent = l
+
 			assignation := elemental.NewAssignation(elemental.AssignationTypeAdd, TaskIdentity, t1, t2)
-			errs := session.Assign(nil, l, assignation)
+			errs := session.Assign(ctx, assignation)
 
 			Convey("Then errs should not be nil", func() {
 				So(errs, ShouldNotBeNil)

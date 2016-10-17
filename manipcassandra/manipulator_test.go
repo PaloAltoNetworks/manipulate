@@ -797,9 +797,9 @@ func TestCassandra_CountErrorCloseIter(t *testing.T) {
 	})
 }
 
-func TestCassandra_RetrieveChildren(t *testing.T) {
+func TestCassandra_RetrieveMany(t *testing.T) {
 
-	Convey("When I call the method RetrieveChildren", t, func() {
+	Convey("When I call the method RetrieveMany", t, func() {
 
 		store := &cassandraManipulator{
 			Servers:           []string{"1.2.3.4", "1.2.3.5"},
@@ -857,7 +857,7 @@ func TestCassandra_RetrieveChildren(t *testing.T) {
 		context.PageSize = 10
 
 		tags = append(tags, &Tag{})
-		err := store.RetrieveChildren(context, nil, TagIdentity, &tags).(elemental.Error)
+		err := store.RetrieveMany(context, TagIdentity, &tags).(elemental.Error)
 
 		Convey("Then I should get an error", func() {
 			So(err.Code, ShouldEqual, manipulate.ErrCannotUnmarshal)
@@ -1776,7 +1776,7 @@ func TestCassandra_Create(t *testing.T) {
 		context := &manipulate.Context{}
 		context.PageSize = 10
 
-		err := store.Create(context, nil, tag1, tag2)
+		err := store.Create(context, tag1, tag2)
 
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
@@ -1869,7 +1869,7 @@ func TestCassandra_Create_WithTransacationID(t *testing.T) {
 		context.PageSize = 10
 		context.TransactionID = "123"
 
-		err := store.Create(context, nil, tag1, tag2)
+		err := store.Create(context, tag1, tag2)
 
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
@@ -1930,7 +1930,7 @@ func TestCassandra_Create_ErrorFieldsAndValues(t *testing.T) {
 		context := &manipulate.Context{}
 		context.PageSize = 10
 
-		errs := store.Create(context, nil, tag1, tag2).(elemental.Error)
+		errs := store.Create(context, tag1, tag2).(elemental.Error)
 
 		Convey("Then everything should have been well called", func() {
 			So(errs.Code, ShouldEqual, manipulate.ErrCannotExtractFieldsAndValues)
@@ -1988,7 +1988,7 @@ func TestCassandra_Create_ErrorExecuteBatch(t *testing.T) {
 		context := &manipulate.Context{}
 		context.PageSize = 10
 
-		errs := store.Create(context, nil, tag1, tag2).(elemental.Error)
+		errs := store.Create(context, tag1, tag2).(elemental.Error)
 
 		Convey("Then everything should have been well called", func() {
 			So(errs.Code, ShouldEqual, manipulate.ErrCannotExecuteBatch)

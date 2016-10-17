@@ -17,22 +17,21 @@ type Manipulable interface {
 
 // Manipulator is the interface of a storage backend.
 type Manipulator interface {
-	// RetrieveChildren retrieves the children with the given elemental.Identity from the given parent Manipulable
-	// and put them in the given dest.
-	RetrieveChildren(contexts Contexts, parent Manipulable, identity elemental.Identity, dest interface{}) error
+	// RetrieveMany retrieves the a list of objects with the given elemental.Identity and put them in the given dest.
+	RetrieveMany(contexts Contexts, identity elemental.Identity, dest interface{}) error
 
-	// Retrieve retrieves one of multiple Manipulables. In order to be retrievable,
+	// Retrieve retrieves one or multiple Manipulables. In order to be retrievable,
 	// the Manipulables needs to have their Identifier correctly set.
 	Retrieve(contexts Contexts, objects ...Manipulable) error
 
 	// Create creates a the given Manipulables in the given parent Manipulable.
-	Create(contexts Contexts, parent Manipulable, objects ...Manipulable) error
+	Create(contexts Contexts, objects ...Manipulable) error
 
-	// Update updates one of multiple Manipulables. In order to be updatable,
+	// Update updates one or multiple Manipulables. In order to be updatable,
 	// the Manipulables needs to have their Identifier correctly set.
 	Update(contexts Contexts, objects ...Manipulable) error
 
-	// Delete deletes one of multiple Manipulables. In order to be deletable,
+	// Delete deletes one or multiple Manipulables. In order to be deletable,
 	// the Manipulables needs to have their Identifier correctly set.
 	Delete(contexts Contexts, objects ...Manipulable) error
 
@@ -40,7 +39,7 @@ type Manipulator interface {
 	Count(contexts Contexts, identity elemental.Identity) (int, error)
 
 	// Assign is not really used yet.
-	Assign(contexts Contexts, parent Manipulable, assignation *elemental.Assignation) error
+	Assign(contexts Contexts, assignation *elemental.Assignation) error
 
 	// Increment is not very cool.
 	Increment(contexts Contexts, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error

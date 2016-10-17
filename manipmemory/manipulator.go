@@ -37,12 +37,16 @@ func NewMemoryManipulator(schema *memdb.DBSchema) manipulate.TransactionalManipu
 	}
 }
 
-// RetrieveChildren is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) RetrieveChildren(contexts manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) error {
+// RetrieveMany is part of the implementation of the Manipulator interface.
+func (s *memdbManipulator) RetrieveMany(contexts manipulate.Contexts, identity elemental.Identity, dest interface{}) error {
 
 	txn := s.db.Txn(false)
 
-	iterator, err := txn.Get(identity.Category, "id")
+	var iterator memdb.ResultIterator
+	var err error
+
+	iterator, err = txn.Get(identity.Category, "id")
+
 	if err != nil {
 		return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
 	}
@@ -82,11 +86,12 @@ func (s *memdbManipulator) Retrieve(contexts manipulate.Contexts, objects ...man
 }
 
 // Create is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Create(contexts manipulate.Contexts, parent manipulate.Manipulable, objects ...manipulate.Manipulable) error {
+func (s *memdbManipulator) Create(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	context := manipulate.ContextForIndex(contexts, 0)
 	tid := context.TransactionID
 	txn := s.txnForID(tid)
+	defer txn.Abort()
 
 	for _, object := range objects {
 		object.SetIdentifier(uuid.NewV4().String())
@@ -108,7 +113,24 @@ func (s *memdbManipulator) Create(contexts manipulate.Contexts, parent manipulat
 // Update is part of the implementation of the Manipulator interface.
 func (s *memdbManipulator) Update(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
-	return s.Create(contexts, nil, objects...)
+	context := manipulate.ContextForIndex(contexts, 0)
+	tid := context.TransactionID
+	txn := s.txnForID(tid)
+	defer txn.Abort()
+
+	for _, object := range objects {
+		if err := txn.Insert(object.Identity().Category, object); err != nil {
+			return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
+		}
+	}
+
+	if tid == "" {
+		if err := s.commitTxn(txn); err != nil {
+			return manipulate.NewError(err.Error(), manipulate.ErrCannotCommit)
+		}
+	}
+
+	return nil
 }
 
 // Delete is part of the implementation of the Manipulator interface.
@@ -117,6 +139,7 @@ func (s *memdbManipulator) Delete(contexts manipulate.Contexts, objects ...manip
 	context := manipulate.ContextForIndex(contexts, 0)
 	tid := context.TransactionID
 	txn := s.txnForID(tid)
+	defer txn.Abort()
 
 	for _, object := range objects {
 		if err := txn.Delete(object.Identity().Category, object); err != nil {
@@ -137,12 +160,12 @@ func (s *memdbManipulator) Delete(contexts manipulate.Contexts, objects ...manip
 func (s *memdbManipulator) Count(contexts manipulate.Contexts, identity elemental.Identity) (int, error) {
 
 	out := manipulate.ManipulablesList{}
-	s.RetrieveChildren(contexts, nil, identity, &out)
+	s.RetrieveMany(contexts, identity, &out)
 	return len(out), nil
 }
 
 // Assign is part of the implementation of the Manipulator interface.
-func (*memdbManipulator) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) error {
+func (*memdbManipulator) Assign(contexts manipulate.Contexts, assignation *elemental.Assignation) error {
 	return nil
 }
 

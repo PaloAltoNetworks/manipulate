@@ -46,14 +46,14 @@ func NewHTTPManipulator(username, password, url, namespace string, tlsConfig *TL
 	}
 }
 
-func (s *httpManipulator) Create(contexts manipulate.Contexts, parent manipulate.Manipulable, children ...manipulate.Manipulable) error {
+func (s *httpManipulator) Create(contexts manipulate.Contexts, children ...manipulate.Manipulable) error {
 
 	errs := []error{}
+	context := manipulate.ContextForIndex(contexts, 0)
 
-	// very stupid implementation for now
-	for index, child := range children {
+	for _, child := range children {
 
-		url, berr := s.getURLForChildrenIdentity(parent, child.Identity())
+		url, berr := s.getURLForChildrenIdentity(context.Parent, child.Identity())
 		if berr != nil {
 			errs = append(errs, berr)
 			continue
@@ -71,7 +71,7 @@ func (s *httpManipulator) Create(contexts manipulate.Contexts, parent manipulate
 			continue
 		}
 
-		response, berrs := s.send(request, manipulate.ContextForIndex(contexts, index))
+		response, berrs := s.send(request, context)
 
 		if berrs != nil {
 			errs = append(errs, berrs)
@@ -211,9 +211,11 @@ func (s *httpManipulator) Delete(contexts manipulate.Contexts, objects ...manipu
 	return nil
 }
 
-func (s *httpManipulator) RetrieveChildren(contexts manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) error {
+func (s *httpManipulator) RetrieveMany(contexts manipulate.Contexts, identity elemental.Identity, dest interface{}) error {
 
-	url, err := s.getURLForChildrenIdentity(parent, identity)
+	context := manipulate.ContextForIndex(contexts, 0)
+
+	url, err := s.getURLForChildrenIdentity(context.Parent, identity)
 	if err != nil {
 		return err
 	}
@@ -223,7 +225,7 @@ func (s *httpManipulator) RetrieveChildren(contexts manipulate.Contexts, parent 
 		return elemental.NewError("Bad Request", err.Error(), "manipulate", http.StatusBadRequest)
 	}
 
-	response, berrs := s.send(request, manipulate.ContextForIndex(contexts, 0))
+	response, berrs := s.send(request, context)
 
 	if berrs != nil {
 		return berrs
@@ -245,9 +247,11 @@ func (s *httpManipulator) Count(manipulate.Contexts, elemental.Identity) (int, e
 	return 0, nil
 }
 
-func (s *httpManipulator) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) error {
+func (s *httpManipulator) Assign(contexts manipulate.Contexts, assignation *elemental.Assignation) error {
 
-	url, berr := s.getURLForChildrenIdentity(parent, assignation.MembersIdentity)
+	context := manipulate.ContextForIndex(contexts, 0)
+
+	url, berr := s.getURLForChildrenIdentity(context.Parent, assignation.MembersIdentity)
 	if berr != nil {
 		return berr
 	}

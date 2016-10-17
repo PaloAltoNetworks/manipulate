@@ -35,5 +35,5 @@
 //
 //      // Retrieve the users matching the filter.
 //      var users models.UserLists
-//      m.RetrieveChildren(ctx, nil, models.UserIdentity, &users)
+//      m.RetrieveMany(ctx, nil, models.UserIdentity, &users)
 package manipulate

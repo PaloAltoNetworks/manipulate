@@ -20,6 +20,7 @@ type Context struct {
 	PageNext      string
 	PagePrev      string
 	PageLast      string
+	Parent        Manipulable
 	CountLocal    int
 	CountTotal    int
 	Filter        *Filter

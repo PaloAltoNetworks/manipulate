@@ -143,7 +143,7 @@ func (c *cassandraManipulator) Delete(context manipulate.Contexts, objects ...ma
 	return nil
 }
 
-func (c *cassandraManipulator) RetrieveChildren(context manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) error {
+func (c *cassandraManipulator) RetrieveMany(context manipulate.Contexts, identity elemental.Identity, dest interface{}) error {
 
 	ctx := manipulate.ContextForIndex(context, 0)
 	command, values := buildGetCommand(ctx, identity.Name, []string{}, []interface{}{})
@@ -164,7 +164,7 @@ func (c *cassandraManipulator) RetrieveChildren(context manipulate.Contexts, par
 	return nil
 }
 
-func (c *cassandraManipulator) Create(context manipulate.Contexts, parent manipulate.Manipulable, objects ...manipulate.Manipulable) error {
+func (c *cassandraManipulator) Create(context manipulate.Contexts, objects ...manipulate.Manipulable) error {
 
 	var transactionID manipulate.TransactionID
 	var batch *gocql.Batch
@@ -323,7 +323,7 @@ func (c *cassandraManipulator) Count(context manipulate.Contexts, identity eleme
 	return count, nil
 }
 
-func (c *cassandraManipulator) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) error {
+func (c *cassandraManipulator) Assign(contexts manipulate.Contexts, assignation *elemental.Assignation) error {
 	panic("Not implemented")
 }
 

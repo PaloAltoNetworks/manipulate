@@ -50,7 +50,7 @@ func NewMongoManipulator(url string, dbName string) manipulate.TransactionalMani
 	}
 }
 
-func (s *mongoManipulator) Create(contexts manipulate.Contexts, parent manipulate.Manipulable, children ...manipulate.Manipulable) error {
+func (s *mongoManipulator) Create(contexts manipulate.Contexts, children ...manipulate.Manipulable) error {
 
 	collection := collectionFromIdentity(s.db, children[0].Identity())
 	context := manipulate.ContextForIndex(contexts, 0)
@@ -125,7 +125,7 @@ func (s *mongoManipulator) Delete(contexts manipulate.Contexts, objects ...manip
 	return nil
 }
 
-func (s *mongoManipulator) RetrieveChildren(contexts manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) error {
+func (s *mongoManipulator) RetrieveMany(contexts manipulate.Contexts, identity elemental.Identity, dest interface{}) error {
 
 	collection := collectionFromIdentity(s.db, identity)
 	context := manipulate.ContextForIndex(contexts, 0)
@@ -164,7 +164,7 @@ func (s *mongoManipulator) Count(contexts manipulate.Contexts, identity elementa
 	return c, nil
 }
 
-func (s *mongoManipulator) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) error {
+func (s *mongoManipulator) Assign(contexts manipulate.Contexts, assignation *elemental.Assignation) error {
 
 	panic("Not Implemented")
 }

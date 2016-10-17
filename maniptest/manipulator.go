@@ -9,8 +9,8 @@ import (
 type TestManipulator struct {
 }
 
-// RetrieveChildren is part of the implementation of the Manipulator interface.
-func (*TestManipulator) RetrieveChildren(contexts manipulate.Contexts, parent manipulate.Manipulable, identity elemental.Identity, dest interface{}) error {
+// RetrieveMany is part of the implementation of the Manipulator interface.
+func (*TestManipulator) RetrieveMany(contexts manipulate.Contexts, identity elemental.Identity, dest interface{}) error {
 	return nil
 }
 
@@ -20,7 +20,7 @@ func (*TestManipulator) Retrieve(contexts manipulate.Contexts, objects ...manipu
 }
 
 // Create is part of the implementation of the Manipulator interface.
-func (*TestManipulator) Create(contexts manipulate.Contexts, parent manipulate.Manipulable, objects ...manipulate.Manipulable) error {
+func (*TestManipulator) Create(contexts manipulate.Contexts, objects ...manipulate.Manipulable) error {
 	return nil
 }
 
@@ -40,7 +40,7 @@ func (*TestManipulator) Count(contexts manipulate.Contexts, identity elemental.I
 }
 
 // Assign is part of the implementation of the Manipulator interface.
-func (*TestManipulator) Assign(contexts manipulate.Contexts, parent manipulate.Manipulable, assignation *elemental.Assignation) error {
+func (*TestManipulator) Assign(contexts manipulate.Contexts, assignation *elemental.Assignation) error {
 	return nil
 }
 

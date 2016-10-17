@@ -17,7 +17,7 @@ func TestMemManipulator_Create(t *testing.T) {
 
 		Convey("When I create person", func() {
 
-			err := m.Create(nil, nil, p)
+			err := m.Create(nil, p)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
@@ -48,7 +48,7 @@ func TestMemManipulator_Create(t *testing.T) {
 	})
 }
 
-func TestMemManipulator_RetrieveChildren(t *testing.T) {
+func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a person", t, func() {
 
@@ -60,13 +60,13 @@ func TestMemManipulator_RetrieveChildren(t *testing.T) {
 			Name: "Antoine2",
 		}
 
-		m.Create(nil, nil, p1, p2)
+		m.Create(nil, p1, p2)
 
 		Convey("When I retrieve the persons", func() {
 
 			ps := []*Person{}
 
-			err := m.RetrieveChildren(nil, nil, PersonIdentity, &ps)
+			err := m.RetrieveMany(nil, PersonIdentity, &ps)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
@@ -91,7 +91,7 @@ func TestMemManipulator_Update(t *testing.T) {
 
 		Convey("When I create the person", func() {
 
-			err := m.Create(nil, nil, p)
+			err := m.Create(nil, p)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
@@ -139,7 +139,7 @@ func TestMemManipulator_Delete(t *testing.T) {
 
 		Convey("When I create the person", func() {
 
-			err := m.Create(nil, nil, p)
+			err := m.Create(nil, p)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
@@ -157,7 +157,7 @@ func TestMemManipulator_Delete(t *testing.T) {
 
 					ps := []*Person{}
 
-					err := m.RetrieveChildren(nil, nil, PersonIdentity, &ps)
+					err := m.RetrieveMany(nil, PersonIdentity, &ps)
 
 					Convey("Then err should be nil", func() {
 						So(err, ShouldBeNil)
@@ -187,7 +187,7 @@ func TestMemManipulator_Count(t *testing.T) {
 
 		Convey("When I create the person", func() {
 
-			err := m.Create(nil, nil, p1, p2)
+			err := m.Create(nil, p1, p2)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
