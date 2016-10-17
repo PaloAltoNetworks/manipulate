@@ -685,7 +685,7 @@ func TestCassandra_Count(t *testing.T) {
 			return true
 		})
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 
 		count, err := store.Count(context, TagIdentity)
@@ -731,7 +731,7 @@ func TestCassandra_CountErrorScan(t *testing.T) {
 			return false
 		})
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 
 		count, err := store.Count(context, TagIdentity)
@@ -782,7 +782,7 @@ func TestCassandra_CountErrorCloseIter(t *testing.T) {
 			return errors.New("Iter close error")
 		})
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 
 		count, err := store.Count(context, TagIdentity)
@@ -853,7 +853,7 @@ func TestCassandra_RetrieveMany(t *testing.T) {
 		})
 
 		var tags []*Tag
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 
 		tags = append(tags, &Tag{})
@@ -909,7 +909,7 @@ func TestCassandra_RetrieveWithError(t *testing.T) {
 		tag := &Tag{}
 		tag.ID = "1234"
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 
 		errs := store.Retrieve(context, tag).(elemental.Error)
@@ -962,7 +962,7 @@ func TestCassandra_UpdateCollection(t *testing.T) {
 			return nil
 		})
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		err := store.UpdateCollection(context, a, tag)
 
 		Convey("Then I should get an error", func() {
@@ -1014,7 +1014,7 @@ func TestCassandra_UpdateCollectionWithErrorQuery(t *testing.T) {
 			return errors.New("CassandraStore query error")
 		})
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 
 		errs := store.UpdateCollection(context, a, tag).(elemental.Error)
 
@@ -1047,7 +1047,7 @@ func TestCassandra_UpdateCollectionWithErrorPrimaryFields(t *testing.T) {
 		tag := &Tag{}
 		tag.ID = "1234"
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 
 		errs := store.UpdateCollection(context, nil, tag).(elemental.Error)
 
@@ -1078,7 +1078,7 @@ func TestCassandra_RetrieveWithErrorPrimaryFields(t *testing.T) {
 		tag := &Tag{}
 		tag.ID = "1234"
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 
 		errs := store.Retrieve(context, tag).(elemental.Error)
@@ -1145,7 +1145,7 @@ func TestCassandra_Retrieve(t *testing.T) {
 		tag := &Tag{}
 		tag.ID = "1234"
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 
 		err := store.Retrieve(context, tag)
@@ -1217,7 +1217,7 @@ func TestCassandra_Delete(t *testing.T) {
 		tag2 := &Tag{}
 		tag2.ID = "456"
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 
 		err := store.Delete(context, tag1, tag2)
@@ -1285,7 +1285,7 @@ func TestCassandra_Delete_WithTransactionID(t *testing.T) {
 		tag2 := &Tag{}
 		tag2.ID = "456"
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 		context.TransactionID = "123"
 
@@ -1329,7 +1329,7 @@ func TestCassandra_DeleteError(t *testing.T) {
 		tag2 := &Tag{}
 		tag2.ID = "456"
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 
 		errs := store.Delete(context, tag1, tag2).(elemental.Error)
@@ -1364,7 +1364,7 @@ func TestCassandra_DeleteWithErrorPrimaryFields(t *testing.T) {
 		tag := &Tag{}
 		tag.ID = "1234"
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 
 		errs := store.Delete(context, tag).(elemental.Error)
@@ -1451,7 +1451,7 @@ func TestCassandra_Update(t *testing.T) {
 			return []string{"ID", "description"}, []interface{}{"456", "description 2"}, nil
 		})
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 		context.Attributes = []string{"description"}
 
@@ -1538,7 +1538,7 @@ func TestCassandra_Update_WithTransactionID(t *testing.T) {
 
 		})
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 		context.Attributes = []string{"description"}
 		context.TransactionID = "123"
@@ -1591,7 +1591,7 @@ func TestCassandra_Update_ErrorFieldsAndValues(t *testing.T) {
 			return nil, nil, errors.New("Error from FieldsAndValues")
 		})
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 
 		errs := store.Update(context, tag1, tag2).(elemental.Error)
@@ -1631,7 +1631,7 @@ func TestCassandra_Update_ErrorPrimaryFieldsAndValues(t *testing.T) {
 		tag2.ID = "456"
 		tag2.Description = "description 2"
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 
 		errs := store.Update(context, tag1, tag2).(elemental.Error)
@@ -1683,7 +1683,7 @@ func TestCassandra_Update_ErrorExecuteBatch(t *testing.T) {
 			return errors.New("Error batch")
 		})
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 
 		errs := store.Update(context, tag1, tag2).(elemental.Error)
@@ -1773,7 +1773,7 @@ func TestCassandra_Create(t *testing.T) {
 			return []string{"ID", "description"}, []interface{}{"456", "description 2"}, nil
 		})
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 
 		err := store.Create(context, tag1, tag2)
@@ -1865,7 +1865,7 @@ func TestCassandra_Create_WithTransacationID(t *testing.T) {
 
 		})
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 		context.TransactionID = "123"
 
@@ -1927,7 +1927,7 @@ func TestCassandra_Create_ErrorFieldsAndValues(t *testing.T) {
 			return nil, nil, errors.New("Error from FieldsAndValues")
 		})
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 
 		errs := store.Create(context, tag1, tag2).(elemental.Error)
@@ -1985,7 +1985,7 @@ func TestCassandra_Create_ErrorExecuteBatch(t *testing.T) {
 			return errors.New("Error batch")
 		})
 
-		context := &manipulate.Context{}
+		context := manipulate.NewContext()
 		context.PageSize = 10
 
 		errs := store.Create(context, tag1, tag2).(elemental.Error)
