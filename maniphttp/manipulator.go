@@ -284,11 +284,7 @@ func (s *httpManipulator) Assign(context *manipulate.Context, assignation *eleme
 
 	_, berrs := s.send(request, nil)
 
-	if berrs != nil {
-		return berrs
-	}
-
-	return nil
+	return berrs
 }
 
 func (s *httpManipulator) Increment(context *manipulate.Context, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {

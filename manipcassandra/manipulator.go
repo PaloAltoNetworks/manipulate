@@ -160,11 +160,7 @@ func (c *cassandraManipulator) RetrieveMany(context *manipulate.Context, identit
 
 	iter := c.nativeSession.Query(command, values...).Iter()
 
-	if errs := unmarshalManipulables(iter, dest); errs != nil {
-		return errs
-	}
-
-	return nil
+	return unmarshalManipulables(iter, dest)
 }
 
 func (c *cassandraManipulator) Create(context *manipulate.Context, objects ...manipulate.Manipulable) error {
