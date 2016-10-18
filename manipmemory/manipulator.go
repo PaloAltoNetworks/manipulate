@@ -177,7 +177,10 @@ func (s *memdbManipulator) Delete(context *manipulate.Context, objects ...manipu
 func (s *memdbManipulator) Count(context *manipulate.Context, identity elemental.Identity) (int, error) {
 
 	out := manipulate.ManipulablesList{}
-	s.RetrieveMany(context, identity, &out)
+	if err := s.RetrieveMany(context, identity, &out); err != nil {
+		return -1, err
+	}
+
 	return len(out), nil
 }
 
@@ -208,7 +211,9 @@ func (s *memdbManipulator) Commit(id manipulate.TransactionID) error {
 
 	defer func() { s.unregisterTxn(id) }()
 
-	s.commitTxn(txn)
+	if err := s.commitTxn(txn); err != nil {
+		return manipulate.NewError(err.Error(), manipulate.ErrCannotCommit)
+	}
 
 	return nil
 }

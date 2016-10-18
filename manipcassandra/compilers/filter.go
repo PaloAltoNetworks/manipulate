@@ -15,7 +15,7 @@ func CompileFilter(f *manipulate.Filter) string {
 
 	for index, key := range f.Keys() {
 
-		buffer.WriteString(translateOperator(f.Operators()[index]))
+		manipulate.WriteString(&buffer, translateOperator(f.Operators()[index]))
 
 		var keyValue string
 
@@ -31,16 +31,16 @@ func CompileFilter(f *manipulate.Filter) string {
 			param = paramForValues(f.Values()[index])
 		}
 
-		buffer.WriteString(" ")
-		buffer.WriteString(keyValue)
-		buffer.WriteString(" ")
-		buffer.WriteString(translateComparator(f.Comparators()[index]))
+		manipulate.WriteString(&buffer, " ")
+		manipulate.WriteString(&buffer, keyValue)
+		manipulate.WriteString(&buffer, " ")
+		manipulate.WriteString(&buffer, translateComparator(f.Comparators()[index]))
 
 		if param == "" {
-			buffer.WriteString(" ?")
+			manipulate.WriteString(&buffer, " ?")
 		} else {
-			buffer.WriteString(" ")
-			buffer.WriteString(param)
+			manipulate.WriteString(&buffer, " ")
+			manipulate.WriteString(&buffer, param)
 		}
 	}
 
@@ -82,24 +82,24 @@ func translateOperator(operator manipulate.FilterOperator) string {
 func paramForValues(v []interface{}) string {
 
 	var buffer bytes.Buffer
-	buffer.WriteString("(")
+	manipulate.WriteString(&buffer, "(")
 
 	for i := 0; i < len(v); i++ {
 
 		value := v[i]
 
 		if reflect.ValueOf(value).Kind() == reflect.Array || reflect.ValueOf(value).Kind() == reflect.Slice {
-			buffer.WriteString(paramForValues(value.([]interface{})))
+			manipulate.WriteString(&buffer, paramForValues(value.([]interface{})))
 		} else {
-			buffer.WriteString("?")
+			manipulate.WriteString(&buffer, "?")
 		}
 
 		if i < len(v)-1 {
-			buffer.WriteString(",")
+			manipulate.WriteString(&buffer, ",")
 		}
 	}
 
-	buffer.WriteString(")")
+	manipulate.WriteString(&buffer, ")")
 
 	return buffer.String()
 }

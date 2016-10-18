@@ -76,12 +76,16 @@ func unmarshal(val reflect.Value, data map[string]interface{}, fieldsMap map[str
 
 			if structField.Kind() == reflect.Struct && structField.Type() != reflect.TypeOf(defaultTime) {
 				newObject := reflect.New(reflect.TypeOf(structField.Interface())).Interface()
-				Unmarshal(value.(map[string]interface{}), newObject)
+				if err := Unmarshal(value.(map[string]interface{}), newObject); err != nil {
+					panic(err)
+				}
 				structField.Set(reflect.ValueOf(newObject).Elem())
 
 			} else if structField.Kind() == reflect.Ptr {
 				newObject := reflect.New(structField.Type().Elem()).Interface()
-				Unmarshal(value.(map[string]interface{}), newObject)
+				if err := Unmarshal(value.(map[string]interface{}), newObject); err != nil {
+					panic(err)
+				}
 				structField.Set(reflect.ValueOf(newObject))
 
 			} else if (structField.Kind() == reflect.Slice || structField.Kind() == reflect.Array) && (structField.Type().Elem().Kind() == reflect.Struct || (structField.Type().Elem().Kind() == reflect.Ptr && structField.Type().Elem().Elem().Kind() == reflect.Struct)) {
@@ -101,7 +105,9 @@ func unmarshal(val reflect.Value, data map[string]interface{}, fieldsMap map[str
 				for index := 0; index < count; index++ {
 
 					object := reflect.New(objectType).Interface()
-					Unmarshal(listData[index], object)
+					if err := Unmarshal(listData[index], object); err != nil {
+						panic(err)
+					}
 
 					if structFieldElem.Kind() == reflect.Struct {
 						dest.Index(index).Set(reflect.ValueOf(object).Elem())

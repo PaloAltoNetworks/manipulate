@@ -1,6 +1,9 @@
 package manipulate
 
-import "reflect"
+import (
+	"bytes"
+	"reflect"
+)
 
 // ConvertArrayToManipulables convert the given array of interface into an array of Manipulable
 func ConvertArrayToManipulables(i interface{}) []Manipulable {
@@ -15,4 +18,12 @@ func ConvertArrayToManipulables(i interface{}) []Manipulable {
 	}
 
 	return manipulables
+}
+
+// WriteString is a wrapper to buffer.WriteString that panics in
+// case of write error.
+func WriteString(buffer *bytes.Buffer, str string) {
+	if _, err := buffer.WriteString(str); err != nil {
+		panic(err)
+	}
 }

@@ -81,7 +81,12 @@ func (s *httpManipulator) Create(context *manipulate.Context, children ...manipu
 			continue
 		}
 
-		defer response.Body.Close()
+		defer func() {
+			if err := response.Body.Close(); err != nil {
+				panic(err)
+			}
+		}()
+
 		if err := json.NewDecoder(response.Body).Decode(&child); err != nil {
 			errs = append(errs, elemental.NewError("Cannot Decode JSON", err.Error(), "manipulate", 0))
 			continue
@@ -124,7 +129,12 @@ func (s *httpManipulator) Retrieve(context *manipulate.Context, objects ...manip
 			continue
 		}
 
-		defer response.Body.Close()
+		defer func() {
+			if err := response.Body.Close(); err != nil {
+				panic(err)
+			}
+		}()
+
 		if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
 			errs = append(errs, elemental.NewError("Cannot Decode JSON", err.Error(), "manipulate", 0))
 			continue
@@ -173,7 +183,12 @@ func (s *httpManipulator) Update(context *manipulate.Context, objects ...manipul
 			continue
 		}
 
-		defer response.Body.Close()
+		defer func() {
+			if err := response.Body.Close(); err != nil {
+				panic(err)
+			}
+		}()
+
 		if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
 			errs = append(errs, elemental.NewError("Cannot Decode JSON", err.Error(), "manipulate", 0))
 			continue
@@ -249,7 +264,12 @@ func (s *httpManipulator) RetrieveMany(context *manipulate.Context, identity ele
 		return nil
 	}
 
-	defer response.Body.Close()
+	defer func() {
+		if err := response.Body.Close(); err != nil {
+			panic(err)
+		}
+	}()
+
 	if err := json.NewDecoder(response.Body).Decode(&dest); err != nil {
 		return elemental.NewError("Cannot Decode JSON", err.Error(), "manipulate", 0)
 	}
@@ -296,7 +316,7 @@ func (s *httpManipulator) makeAuthorizationHeaders() string {
 	return s.username + " " + s.password
 }
 
-func (s *httpManipulator) prepareHeaders(request *http.Request, context *manipulate.Context) error {
+func (s *httpManipulator) prepareHeaders(request *http.Request, context *manipulate.Context) {
 
 	if s.namespace != "" {
 		request.Header.Set("X-Namespace", s.namespace)
@@ -309,7 +329,7 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, context *manipul
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
 	if context == nil {
-		return nil
+		return
 	}
 
 	if context.PageSize != -1 {
@@ -324,7 +344,7 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, context *manipul
 		request.Header.Set("X-Page-Size", strconv.Itoa(context.PageSize))
 	}
 
-	return nil
+	return
 }
 
 func (s *httpManipulator) readHeaders(response *http.Response, context *manipulate.Context) {

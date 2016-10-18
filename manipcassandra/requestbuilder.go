@@ -27,13 +27,13 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 	for i := 0; i < numberOfPrimaryKeys; i++ {
 
 		if i == 0 {
-			buffer.WriteString(" WHERE ")
+			manipulate.WriteString(buffer, " WHERE ")
 		} else {
-			buffer.WriteString(" AND ")
+			manipulate.WriteString(buffer, " AND ")
 		}
 
-		buffer.WriteString(primaryKeys[i])
-		buffer.WriteString(" = ?")
+		manipulate.WriteString(buffer, primaryKeys[i])
+		manipulate.WriteString(buffer, " = ?")
 
 		hasPrimaryKey = true
 	}
@@ -43,7 +43,7 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 	}
 
 	if c.Filter != nil {
-		buffer.WriteString(` `)
+		manipulate.WriteString(buffer, ` `)
 
 		filterString := compilers.CompileFilter(c.Filter)
 
@@ -51,7 +51,7 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 			filterString = strings.Replace(filterString, "WHERE", "AND", 1)
 		}
 
-		buffer.WriteString(filterString)
+		manipulate.WriteString(buffer, filterString)
 
 		filter := c.Filter
 
@@ -63,17 +63,17 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 	}
 
 	if c.PageSize > 0 && operation == elemental.OperationRetrieveMany || operation == elemental.OperationInfo {
-		buffer.WriteString(` LIMIT `)
-		buffer.WriteString(strconv.Itoa(c.PageSize))
+		manipulate.WriteString(buffer, ` LIMIT `)
+		manipulate.WriteString(buffer, strconv.Itoa(c.PageSize))
 	}
 
 	if c.Parameters != nil {
-		buffer.WriteString(` `)
-		buffer.WriteString(compilers.CompileParameters(c.Parameters))
+		manipulate.WriteString(buffer, ` `)
+		manipulate.WriteString(buffer, compilers.CompileParameters(c.Parameters))
 	}
 
 	if c.Filter != nil {
-		buffer.WriteString(` ALLOW FILTERING`)
+		manipulate.WriteString(buffer, ` ALLOW FILTERING`)
 	}
 
 	return buffer.String(), values
@@ -85,41 +85,41 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 // then it will apply the given context on the query
 func buildUpdateCollectionCommand(c *manipulate.Context, tableName string, attributeUpdate *attributeUpdater, primaryKeys []string, primaryValues []interface{}) (string, []interface{}) {
 
-	buffer := bytes.NewBuffer([]byte{})
-	buffer.WriteString("UPDATE ")
-	buffer.WriteString(tableName)
-	buffer.WriteString(" SET ")
-	buffer.WriteString(attributeUpdate.Key)
+	var buffer bytes.Buffer
+	manipulate.WriteString(&buffer, "UPDATE ")
+	manipulate.WriteString(&buffer, tableName)
+	manipulate.WriteString(&buffer, " SET ")
+	manipulate.WriteString(&buffer, attributeUpdate.Key)
 
 	switch attributeUpdate.AssignationType {
 	case elemental.AssignationTypeSet:
-		buffer.WriteString(" = ")
+		manipulate.WriteString(&buffer, " = ")
 		break
 
 	case elemental.AssignationTypeAdd:
-		buffer.WriteString(" = ")
-		buffer.WriteString(attributeUpdate.Key)
-		buffer.WriteString(" + ")
+		manipulate.WriteString(&buffer, " = ")
+		manipulate.WriteString(&buffer, attributeUpdate.Key)
+		manipulate.WriteString(&buffer, " + ")
 		break
 
 	case elemental.AssignationTypeSubstract:
-		buffer.WriteString(" = ")
-		buffer.WriteString(attributeUpdate.Key)
-		buffer.WriteString(" - ")
+		manipulate.WriteString(&buffer, " = ")
+		manipulate.WriteString(&buffer, attributeUpdate.Key)
+		manipulate.WriteString(&buffer, " - ")
 		break
 
 	default:
-		buffer.WriteString(" = ")
+		manipulate.WriteString(&buffer, " = ")
 		break
 	}
 
-	buffer.WriteString("?")
+	manipulate.WriteString(&buffer, "?")
 
 	var v []interface{}
 
 	v = append(v, attributeUpdate.Values)
 	v = append(v, primaryValues...)
-	command, newValues := commandAndValuesFromContext(buffer, elemental.OperationUpdate, c, primaryKeys)
+	command, newValues := commandAndValuesFromContext(&buffer, elemental.OperationUpdate, c, primaryKeys)
 
 	return command, append(v, newValues...)
 }
@@ -130,10 +130,10 @@ func buildUpdateCollectionCommand(c *manipulate.Context, tableName string, attri
 // then it will apply the given context on the query
 func buildUpdateCommand(c *manipulate.Context, tableName string, p []string, v []interface{}, primaryKeys []string, primaryValues []interface{}) (string, []interface{}) {
 
-	buffer := bytes.NewBuffer([]byte{})
-	buffer.WriteString("UPDATE ")
-	buffer.WriteString(tableName)
-	buffer.WriteString(" SET ")
+	var buffer bytes.Buffer
+	manipulate.WriteString(&buffer, "UPDATE ")
+	manipulate.WriteString(&buffer, tableName)
+	manipulate.WriteString(&buffer, " SET ")
 
 	var attributes []string
 
@@ -155,17 +155,17 @@ func buildUpdateCommand(c *manipulate.Context, tableName string, p []string, v [
 		}
 
 		if valuesInserted > 0 {
-			buffer.WriteString(sep)
+			manipulate.WriteString(&buffer, sep)
 		} else {
 			valuesInserted++
 		}
 
-		buffer.WriteString(k)
-		buffer.WriteString(" = ?")
+		manipulate.WriteString(&buffer, k)
+		manipulate.WriteString(&buffer, " = ?")
 	}
 
 	v = append(v, primaryValues...)
-	command, newValues := commandAndValuesFromContext(buffer, elemental.OperationUpdate, c, primaryKeys)
+	command, newValues := commandAndValuesFromContext(&buffer, elemental.OperationUpdate, c, primaryKeys)
 
 	return command, append(v, newValues...)
 }
@@ -176,10 +176,10 @@ func buildUpdateCommand(c *manipulate.Context, tableName string, p []string, v [
 // then it will apply the given context on the query
 func buildInsertCommand(c *manipulate.Context, tableName string, p []string, v []interface{}) (string, []interface{}) {
 
-	buffer := bytes.NewBuffer([]byte{})
-	buffer.WriteString("INSERT INTO ")
-	buffer.WriteString(tableName)
-	buffer.WriteString(" (")
+	var buffer bytes.Buffer
+	manipulate.WriteString(&buffer, "INSERT INTO ")
+	manipulate.WriteString(&buffer, tableName)
+	manipulate.WriteString(&buffer, " (")
 
 	var attributes []string
 
@@ -201,26 +201,26 @@ func buildInsertCommand(c *manipulate.Context, tableName string, p []string, v [
 		}
 
 		if valuesInserted > 0 {
-			buffer.WriteString(sep)
+			manipulate.WriteString(&buffer, sep)
 		}
 
-		buffer.WriteString(k)
+		manipulate.WriteString(&buffer, k)
 		valuesInserted++
 	}
 
-	buffer.WriteString(") VALUES (")
+	manipulate.WriteString(&buffer, ") VALUES (")
 
 	for index := 0; index < valuesInserted; index++ {
 
 		if index > 0 {
-			buffer.WriteString(sep)
+			manipulate.WriteString(&buffer, sep)
 		}
 
-		buffer.WriteString("?")
+		manipulate.WriteString(&buffer, "?")
 	}
 
-	buffer.WriteString(")")
-	command, newValues := commandAndValuesFromContext(buffer, elemental.OperationCreate, c, []string{})
+	manipulate.WriteString(&buffer, ")")
+	command, newValues := commandAndValuesFromContext(&buffer, elemental.OperationCreate, c, []string{})
 
 	return command, append(v, newValues...)
 }
@@ -231,7 +231,7 @@ func buildInsertCommand(c *manipulate.Context, tableName string, p []string, v [
 // then it will apply the given context on the query
 func buildGetCommand(c *manipulate.Context, tableName string, primaryKeys []string, primaryValues []interface{}) (string, []interface{}) {
 
-	buffer := bytes.NewBuffer([]byte{})
+	var buffer bytes.Buffer
 
 	var attributes []string
 
@@ -240,26 +240,26 @@ func buildGetCommand(c *manipulate.Context, tableName string, primaryKeys []stri
 	}
 
 	if len(attributes) == 0 {
-		buffer.WriteString(`SELECT * FROM `)
+		manipulate.WriteString(&buffer, `SELECT * FROM `)
 	} else {
-		buffer.WriteString(`SELECT `)
+		manipulate.WriteString(&buffer, `SELECT `)
 
 		for i := 0; i < len(attributes); i++ {
 			attribute := attributes[i]
 
 			if i > 0 {
-				buffer.WriteString(sep)
+				manipulate.WriteString(&buffer, sep)
 			}
 
-			buffer.WriteString(attribute)
+			manipulate.WriteString(&buffer, attribute)
 		}
 
-		buffer.WriteString(` FROM `)
+		manipulate.WriteString(&buffer, ` FROM `)
 	}
 
-	buffer.WriteString(tableName)
+	manipulate.WriteString(&buffer, tableName)
 
-	command, values := commandAndValuesFromContext(buffer, elemental.OperationRetrieveMany, c, primaryKeys)
+	command, values := commandAndValuesFromContext(&buffer, elemental.OperationRetrieveMany, c, primaryKeys)
 
 	return command, append(primaryValues, values...)
 }
@@ -270,11 +270,11 @@ func buildGetCommand(c *manipulate.Context, tableName string, primaryKeys []stri
 // then it will apply the given context on the query
 func buildDeleteCommand(c *manipulate.Context, tableName string, primaryKeys []string, primaryValues []interface{}) (string, []interface{}) {
 
-	buffer := bytes.NewBuffer([]byte{})
-	buffer.WriteString(`DELETE FROM `)
-	buffer.WriteString(tableName)
+	var buffer bytes.Buffer
+	manipulate.WriteString(&buffer, `DELETE FROM `)
+	manipulate.WriteString(&buffer, tableName)
 
-	command, values := commandAndValuesFromContext(buffer, elemental.OperationDelete, c, primaryKeys)
+	command, values := commandAndValuesFromContext(&buffer, elemental.OperationDelete, c, primaryKeys)
 
 	return command, append(primaryValues, values...)
 }
@@ -285,11 +285,11 @@ func buildDeleteCommand(c *manipulate.Context, tableName string, primaryKeys []s
 // then it will apply the given context on the query
 func buildCountCommand(c *manipulate.Context, tableName string) (string, []interface{}) {
 
-	buffer := bytes.NewBuffer([]byte{})
-	buffer.WriteString(`SELECT COUNT(*) FROM `)
-	buffer.WriteString(tableName)
+	var buffer bytes.Buffer
+	manipulate.WriteString(&buffer, `SELECT COUNT(*) FROM `)
+	manipulate.WriteString(&buffer, tableName)
 
-	return commandAndValuesFromContext(buffer, elemental.OperationInfo, c, []string{})
+	return commandAndValuesFromContext(&buffer, elemental.OperationInfo, c, []string{})
 }
 
 // buildIncrementCommand build a counter incrementation command for cassandra
@@ -298,17 +298,17 @@ func buildCountCommand(c *manipulate.Context, tableName string) (string, []inter
 // then it will apply the given context on the query
 func buildIncrementCommand(c *manipulate.Context, tableName, counterName string, inc int, primaryKeys []string, primaryValues []interface{}) (string, []interface{}) {
 
-	buffer := bytes.NewBuffer([]byte{})
-	buffer.WriteString(`UPDATE `)
-	buffer.WriteString(tableName)
-	buffer.WriteString(` SET `)
-	buffer.WriteString(counterName)
-	buffer.WriteString(` = `)
-	buffer.WriteString(counterName)
-	buffer.WriteString(` + `)
-	buffer.WriteString(strconv.Itoa(inc))
+	var buffer bytes.Buffer
+	manipulate.WriteString(&buffer, `UPDATE `)
+	manipulate.WriteString(&buffer, tableName)
+	manipulate.WriteString(&buffer, ` SET `)
+	manipulate.WriteString(&buffer, counterName)
+	manipulate.WriteString(&buffer, ` = `)
+	manipulate.WriteString(&buffer, counterName)
+	manipulate.WriteString(&buffer, ` + `)
+	manipulate.WriteString(&buffer, strconv.Itoa(inc))
 
-	command, values := commandAndValuesFromContext(buffer, elemental.OperationUpdate, c, primaryKeys)
+	command, values := commandAndValuesFromContext(&buffer, elemental.OperationUpdate, c, primaryKeys)
 
 	return command, append(primaryValues, values...)
 }
