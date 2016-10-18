@@ -18,7 +18,6 @@ type Person struct {
 	Siblings []string
 	ZipCode  string
 	Country  string
-	language string
 }
 
 func (p *Person) Identifier() string {

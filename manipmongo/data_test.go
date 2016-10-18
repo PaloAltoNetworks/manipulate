@@ -14,7 +14,6 @@ type Person struct {
 	Siblings []string `bson:"siblings"`
 	ZipCode  string   `bson:"zipcode"`
 	Country  string   `bson:"country"`
-	language string   `bson:"language"`
 }
 
 func (p *Person) Identifier() string {
