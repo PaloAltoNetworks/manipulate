@@ -21,73 +21,87 @@ type mockedMethods struct {
 	abortMock        func(id manipulate.TransactionID) bool
 }
 
-// A TestManipulator is an empty TransactionalManipulator that can be easily mocked.
-type TestManipulator struct {
+// A TestManipulator is the interface of mockable test manipulator.
+type TestManipulator interface {
+	manipulate.TransactionalManipulator
+	MockRetrieveMany(*testing.T, func(*manipulate.Context, elemental.Identity, interface{}) error)
+	MockRetrieve(*testing.T, func(*manipulate.Context, ...manipulate.Manipulable) error)
+	MockCreate(*testing.T, func(*manipulate.Context, ...manipulate.Manipulable) error)
+	MockUpdate(*testing.T, func(*manipulate.Context, ...manipulate.Manipulable) error)
+	MockDelete(*testing.T, func(*manipulate.Context, ...manipulate.Manipulable) error)
+	MockCount(*testing.T, func(*manipulate.Context, elemental.Identity) (int, error))
+	MockAssign(*testing.T, func(*manipulate.Context, *elemental.Assignation) error)
+	MockIncrement(*testing.T, func(*manipulate.Context, string, string, int, []string, []interface{}) error)
+	MockCommit(*testing.T, func(manipulate.TransactionID) error)
+	MockAbort(*testing.T, func(manipulate.TransactionID) bool)
+}
+
+// A testManipulator is an empty TransactionalManipulator that can be easily mocked.
+type testManipulator struct {
 	mocks       map[*testing.T]*mockedMethods
 	lock        *sync.Mutex
 	currentTest *testing.T
 }
 
 // NewTestManipulator returns a new TestManipulator.
-func NewTestManipulator() *TestManipulator {
-	return &TestManipulator{
+func NewTestManipulator() TestManipulator {
+	return &testManipulator{
 		lock:  &sync.Mutex{},
 		mocks: map[*testing.T]*mockedMethods{},
 	}
 }
 
-// MockRetrieveMany mocks RetrieveMany.
-func (m *TestManipulator) MockRetrieveMany(t *testing.T, impl func(context *manipulate.Context, identity elemental.Identity, dest interface{}) error) {
+func (m *testManipulator) MockRetrieveMany(t *testing.T, impl func(context *manipulate.Context, identity elemental.Identity, dest interface{}) error) {
+
 	m.currentMocks(t).retrieveManyMock = impl
 }
 
-// MockRetrieve mocks Retrieve.
-func (m *TestManipulator) MockRetrieve(t *testing.T, impl func(context *manipulate.Context, objects ...manipulate.Manipulable) error) {
+func (m *testManipulator) MockRetrieve(t *testing.T, impl func(context *manipulate.Context, objects ...manipulate.Manipulable) error) {
+
 	m.currentMocks(t).retrieveMock = impl
 }
 
-// MockCreate mocks Create.
-func (m *TestManipulator) MockCreate(t *testing.T, impl func(context *manipulate.Context, objects ...manipulate.Manipulable) error) {
+func (m *testManipulator) MockCreate(t *testing.T, impl func(context *manipulate.Context, objects ...manipulate.Manipulable) error) {
+
 	m.currentMocks(t).createMock = impl
 }
 
-// MockUpdate mocks Update.
-func (m *TestManipulator) MockUpdate(t *testing.T, impl func(context *manipulate.Context, objects ...manipulate.Manipulable) error) {
+func (m *testManipulator) MockUpdate(t *testing.T, impl func(context *manipulate.Context, objects ...manipulate.Manipulable) error) {
+
 	m.currentMocks(t).updateMock = impl
 }
 
-// MockDelete mocks Delete.
-func (m *TestManipulator) MockDelete(t *testing.T, impl func(context *manipulate.Context, objects ...manipulate.Manipulable) error) {
+func (m *testManipulator) MockDelete(t *testing.T, impl func(context *manipulate.Context, objects ...manipulate.Manipulable) error) {
+
 	m.currentMocks(t).deleteMock = impl
 }
 
-// MockCount mocks Count.
-func (m *TestManipulator) MockCount(t *testing.T, impl func(context *manipulate.Context, identity elemental.Identity) (int, error)) {
+func (m *testManipulator) MockCount(t *testing.T, impl func(context *manipulate.Context, identity elemental.Identity) (int, error)) {
+
 	m.currentMocks(t).countMock = impl
 }
 
-// MockAssign mocks Assign.
-func (m *TestManipulator) MockAssign(t *testing.T, impl func(context *manipulate.Context, assignation *elemental.Assignation) error) {
+func (m *testManipulator) MockAssign(t *testing.T, impl func(context *manipulate.Context, assignation *elemental.Assignation) error) {
+
 	m.currentMocks(t).assignMock = impl
 }
 
-// MockIncrement mocks Increment.
-func (m *TestManipulator) MockIncrement(t *testing.T, impl func(context *manipulate.Context, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error) {
+func (m *testManipulator) MockIncrement(t *testing.T, impl func(context *manipulate.Context, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error) {
+
 	m.currentMocks(t).incrementMock = impl
 }
 
-// MockCommit mocks Commit.
-func (m *TestManipulator) MockCommit(t *testing.T, impl func(id manipulate.TransactionID) error) {
+func (m *testManipulator) MockCommit(t *testing.T, impl func(id manipulate.TransactionID) error) {
+
 	m.currentMocks(t).commitMock = impl
 }
 
-// MockAbort mocks Abort.
-func (m *TestManipulator) MockAbort(t *testing.T, impl func(id manipulate.TransactionID) bool) {
+func (m *testManipulator) MockAbort(t *testing.T, impl func(id manipulate.TransactionID) bool) {
+
 	m.currentMocks(t).abortMock = impl
 }
 
-// RetrieveMany is part of the implementation of the Manipulator interface.
-func (m *TestManipulator) RetrieveMany(context *manipulate.Context, identity elemental.Identity, dest interface{}) error {
+func (m *testManipulator) RetrieveMany(context *manipulate.Context, identity elemental.Identity, dest interface{}) error {
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.retrieveManyMock != nil {
 		return mock.retrieveManyMock(context, identity, dest)
@@ -96,8 +110,7 @@ func (m *TestManipulator) RetrieveMany(context *manipulate.Context, identity ele
 	return nil
 }
 
-// Retrieve is part of the implementation of the Manipulator interface.
-func (m *TestManipulator) Retrieve(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (m *testManipulator) Retrieve(context *manipulate.Context, objects ...manipulate.Manipulable) error {
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.retrieveMock != nil {
 		return mock.retrieveMock(context, objects...)
@@ -106,8 +119,7 @@ func (m *TestManipulator) Retrieve(context *manipulate.Context, objects ...manip
 	return nil
 }
 
-// Create is part of the implementation of the Manipulator interface.
-func (m *TestManipulator) Create(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (m *testManipulator) Create(context *manipulate.Context, objects ...manipulate.Manipulable) error {
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.createMock != nil {
 		return mock.createMock(context, objects...)
@@ -116,8 +128,7 @@ func (m *TestManipulator) Create(context *manipulate.Context, objects ...manipul
 	return nil
 }
 
-// Update is part of the implementation of the Manipulator interface.
-func (m *TestManipulator) Update(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (m *testManipulator) Update(context *manipulate.Context, objects ...manipulate.Manipulable) error {
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.updateMock != nil {
 		return mock.updateMock(context, objects...)
@@ -126,8 +137,7 @@ func (m *TestManipulator) Update(context *manipulate.Context, objects ...manipul
 	return nil
 }
 
-// Delete is part of the implementation of the Manipulator interface.
-func (m *TestManipulator) Delete(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (m *testManipulator) Delete(context *manipulate.Context, objects ...manipulate.Manipulable) error {
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.updateMock != nil {
 		return mock.updateMock(context, objects...)
@@ -136,8 +146,7 @@ func (m *TestManipulator) Delete(context *manipulate.Context, objects ...manipul
 	return nil
 }
 
-// Count is part of the implementation of the Manipulator interface.
-func (m *TestManipulator) Count(context *manipulate.Context, identity elemental.Identity) (int, error) {
+func (m *testManipulator) Count(context *manipulate.Context, identity elemental.Identity) (int, error) {
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.countMock != nil {
 		return mock.countMock(context, identity)
@@ -146,8 +155,7 @@ func (m *TestManipulator) Count(context *manipulate.Context, identity elemental.
 	return 0, nil
 }
 
-// Assign is part of the implementation of the Manipulator interface.
-func (m *TestManipulator) Assign(context *manipulate.Context, assignation *elemental.Assignation) error {
+func (m *testManipulator) Assign(context *manipulate.Context, assignation *elemental.Assignation) error {
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.assignMock != nil {
 		return mock.assignMock(context, assignation)
@@ -156,8 +164,7 @@ func (m *TestManipulator) Assign(context *manipulate.Context, assignation *eleme
 	return nil
 }
 
-// Increment is part of the implementation of the Manipulator interface.
-func (m *TestManipulator) Increment(context *manipulate.Context, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
+func (m *testManipulator) Increment(context *manipulate.Context, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.incrementMock != nil {
 		return mock.incrementMock(context, name, counter, inc, filterKeys, filterValues)
@@ -166,8 +173,7 @@ func (m *TestManipulator) Increment(context *manipulate.Context, name string, co
 	return nil
 }
 
-// Commit is part of the implementation of the TransactionalManipulator interface.
-func (m *TestManipulator) Commit(id manipulate.TransactionID) error {
+func (m *testManipulator) Commit(id manipulate.TransactionID) error {
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.commitMock != nil {
 		return mock.commitMock(id)
@@ -176,8 +182,7 @@ func (m *TestManipulator) Commit(id manipulate.TransactionID) error {
 	return nil
 }
 
-// Abort is part of the implementation of the TransactionalManipulator interface.
-func (m *TestManipulator) Abort(id manipulate.TransactionID) bool {
+func (m *testManipulator) Abort(id manipulate.TransactionID) bool {
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.abortMock != nil {
 		return mock.abortMock(id)
@@ -186,7 +191,7 @@ func (m *TestManipulator) Abort(id manipulate.TransactionID) bool {
 	return true
 }
 
-func (m *TestManipulator) currentMocks(t *testing.T) *mockedMethods {
+func (m *testManipulator) currentMocks(t *testing.T) *mockedMethods {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
