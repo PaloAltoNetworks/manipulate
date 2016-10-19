@@ -21,7 +21,7 @@ type mockedMethods struct {
 	abortMock        func(id manipulate.TransactionID) bool
 }
 
-// A TestManipulator is an empty manipulator that can be used with ApoMock.
+// A TestManipulator is an empty TransactionalManipulator that can be easily mocked.
 type TestManipulator struct {
 	mocks       map[*testing.T]*mockedMethods
 	lock        *sync.Mutex
@@ -34,21 +34,6 @@ func NewTestManipulator() *TestManipulator {
 		lock:  &sync.Mutex{},
 		mocks: map[*testing.T]*mockedMethods{},
 	}
-}
-
-func (m *TestManipulator) currentMocks(t *testing.T) *mockedMethods {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
-	mocks := m.mocks[t]
-
-	if mocks == nil {
-		mocks = &mockedMethods{}
-		m.mocks[t] = mocks
-	}
-
-	m.currentTest = t
-	return mocks
 }
 
 // MockRetrieveMany mocks RetrieveMany.
@@ -199,4 +184,19 @@ func (m *TestManipulator) Abort(id manipulate.TransactionID) bool {
 	}
 
 	return true
+}
+
+func (m *TestManipulator) currentMocks(t *testing.T) *mockedMethods {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	mocks := m.mocks[t]
+
+	if mocks == nil {
+		mocks = &mockedMethods{}
+		m.mocks[t] = mocks
+	}
+
+	m.currentTest = t
+	return mocks
 }
