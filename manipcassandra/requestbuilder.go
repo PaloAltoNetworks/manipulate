@@ -11,7 +11,7 @@ import (
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
-	"github.com/aporeto-inc/manipulate/manipcassandra/compilers"
+	"github.com/aporeto-inc/manipulate/manipcassandra/compiler"
 )
 
 const sep = ", "
@@ -45,7 +45,7 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 	if c.Filter != nil {
 		manipulate.WriteString(buffer, ` `)
 
-		filterString := compilers.CompileFilter(c.Filter)
+		filterString := compiler.CompileFilter(c.Filter)
 
 		if hasPrimaryKey {
 			filterString = strings.Replace(filterString, "WHERE", "AND", 1)
@@ -69,7 +69,7 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 
 	if c.Parameters != nil {
 		manipulate.WriteString(buffer, ` `)
-		manipulate.WriteString(buffer, compilers.CompileParameters(c.Parameters))
+		manipulate.WriteString(buffer, compiler.CompileParameters(c.Parameters))
 	}
 
 	if c.Filter != nil {

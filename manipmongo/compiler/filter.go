@@ -1,4 +1,4 @@
-package compilers
+package compiler
 
 import (
 	"github.com/aporeto-inc/manipulate"

@@ -6,7 +6,7 @@ import (
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
-	"github.com/aporeto-inc/manipulate/manipmongo/compilers"
+	"github.com/aporeto-inc/manipulate/manipmongo/compiler"
 	"gopkg.in/mgo.v2/bson"
 
 	log "github.com/Sirupsen/logrus"
@@ -144,7 +144,7 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, identity el
 
 	var query *mgo.Query
 	if context.Filter != nil {
-		query = collection.Find(compilers.CompileFilter(context.Filter))
+		query = collection.Find(compiler.CompileFilter(context.Filter))
 	} else {
 		query = collection.Find(nil)
 	}
@@ -166,7 +166,7 @@ func (s *mongoManipulator) Count(context *manipulate.Context, identity elemental
 
 	var query *mgo.Query
 	if context.Filter != nil {
-		query = collection.Find(compilers.CompileFilter(context.Filter))
+		query = collection.Find(compiler.CompileFilter(context.Filter))
 	} else {
 		query = collection.Find(nil)
 	}
