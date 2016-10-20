@@ -24,16 +24,16 @@ type mockedMethods struct {
 // A TestManipulator is the interface of mockable test manipulator.
 type TestManipulator interface {
 	manipulate.TransactionalManipulator
-	MockRetrieveMany(*testing.T, func(*manipulate.Context, elemental.Identity, interface{}) error)
-	MockRetrieve(*testing.T, func(*manipulate.Context, ...manipulate.Manipulable) error)
-	MockCreate(*testing.T, func(*manipulate.Context, ...manipulate.Manipulable) error)
-	MockUpdate(*testing.T, func(*manipulate.Context, ...manipulate.Manipulable) error)
-	MockDelete(*testing.T, func(*manipulate.Context, ...manipulate.Manipulable) error)
-	MockCount(*testing.T, func(*manipulate.Context, elemental.Identity) (int, error))
-	MockAssign(*testing.T, func(*manipulate.Context, *elemental.Assignation) error)
-	MockIncrement(*testing.T, func(*manipulate.Context, string, string, int, []string, []interface{}) error)
-	MockCommit(*testing.T, func(manipulate.TransactionID) error)
-	MockAbort(*testing.T, func(manipulate.TransactionID) bool)
+	MockRetrieveMany(t *testing.T, impl func(ctx *manipulate.Context, identity elemental.Identity, dest interface{}) error)
+	MockRetrieve(t *testing.T, impl func(ctx *manipulate.Context, objects ...manipulate.Manipulable) error)
+	MockCreate(t *testing.T, impl func(ctx *manipulate.Context, objects ...manipulate.Manipulable) error)
+	MockUpdate(t *testing.T, impl func(ctx *manipulate.Context, objects ...manipulate.Manipulable) error)
+	MockDelete(t *testing.T, impl func(ctx *manipulate.Context, objects ...manipulate.Manipulable) error)
+	MockCount(t *testing.T, impl func(ctx *manipulate.Context, identity elemental.Identity) (int, error))
+	MockAssign(t *testing.T, impl func(ctx *manipulate.Context, assignation *elemental.Assignation) error)
+	MockIncrement(t *testing.T, impl func(ctx *manipulate.Context, name string, counter string, inc int, keys []string, values []interface{}) error)
+	MockCommit(t *testing.T, impl func(tid manipulate.TransactionID) error)
+	MockAbort(t *testing.T, impl func(tid manipulate.TransactionID) bool)
 }
 
 // A testManipulator is an empty TransactionalManipulator that can be easily mocked.
@@ -139,8 +139,8 @@ func (m *testManipulator) Update(context *manipulate.Context, objects ...manipul
 
 func (m *testManipulator) Delete(context *manipulate.Context, objects ...manipulate.Manipulable) error {
 
-	if mock := m.currentMocks(m.currentTest); mock != nil && mock.updateMock != nil {
-		return mock.updateMock(context, objects...)
+	if mock := m.currentMocks(m.currentTest); mock != nil && mock.deleteMock != nil {
+		return mock.deleteMock(context, objects...)
 	}
 
 	return nil

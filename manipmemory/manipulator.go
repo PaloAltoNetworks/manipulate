@@ -26,14 +26,13 @@ func NewMemoryManipulator(schema *memdb.DBSchema) manipulate.TransactionalManipu
 
 	db, err := memdb.NewMemDB(schema)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"package": "manipmemory",
-			"error":   err.Error(),
-		}).Fatal("Cannot initialize MemDB.")
+		panic(err)
 	}
 
 	return &memdbManipulator{
-		db: db,
+		db:              db,
+		txnRegistryLock: &sync.Mutex{},
+		txnRegistry:     txnRegistry{},
 	}
 }
 
@@ -78,13 +77,12 @@ func (s *memdbManipulator) Retrieve(context *manipulate.Context, objects ...mani
 	for _, object := range objects {
 
 		raw, err := txn.First(object.Identity().Category, "id", object.Identifier())
-
 		if err != nil {
 			return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
 		}
 
-		if reflect.ValueOf(object).Kind() != reflect.Ptr {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
+		if raw == nil {
+			return manipulate.NewError("Object Not Found", manipulate.ErrObjectNotFound)
 		}
 
 		reflect.ValueOf(object).Elem().Set(reflect.ValueOf(raw).Elem())
@@ -105,6 +103,7 @@ func (s *memdbManipulator) Create(context *manipulate.Context, objects ...manipu
 	defer txn.Abort()
 
 	for _, object := range objects {
+
 		object.SetIdentifier(uuid.NewV4().String())
 
 		if err := txn.Insert(object.Identity().Category, object); err != nil {
@@ -113,9 +112,7 @@ func (s *memdbManipulator) Create(context *manipulate.Context, objects ...manipu
 	}
 
 	if tid == "" {
-		if err := s.commitTxn(txn); err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotCommit)
-		}
+		s.commitTxn(txn)
 	}
 
 	return nil
@@ -139,9 +136,7 @@ func (s *memdbManipulator) Update(context *manipulate.Context, objects ...manipu
 	}
 
 	if tid == "" {
-		if err := s.commitTxn(txn); err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotCommit)
-		}
+		s.commitTxn(txn)
 	}
 
 	return nil
@@ -165,9 +160,7 @@ func (s *memdbManipulator) Delete(context *manipulate.Context, objects ...manipu
 	}
 
 	if tid == "" {
-		if err := s.commitTxn(txn); err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotCommit)
-		}
+		s.commitTxn(txn)
 	}
 
 	return nil
@@ -186,40 +179,43 @@ func (s *memdbManipulator) Count(context *manipulate.Context, identity elemental
 
 // Assign is part of the implementation of the Manipulator interface.
 func (*memdbManipulator) Assign(context *manipulate.Context, assignation *elemental.Assignation) error {
-	return nil
+
+	return manipulate.NewError("Assign is not implemented in MemoryManipulator", manipulate.ErrNotImplemented)
 }
 
 // Increment is part of the implementation of the Manipulator interface.
 func (*memdbManipulator) Increment(context *manipulate.Context, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
-	return nil
+
+	return manipulate.NewError("Increment is not implemented in MemoryManipulator", manipulate.ErrNotImplemented)
 }
 
 // Commit is part of the implementation of the TransactionalManipulator interface.
 func (s *memdbManipulator) Commit(id manipulate.TransactionID) error {
 
-	txn := s.txnForID(id)
+	txn := s.registeredTxnWithID(id)
 
 	if txn == nil {
-		log.WithFields(log.Fields{
-			"package":       "manipmemory",
-			"store":         s,
-			"transactionID": id,
-		}).Error("No transaction found for the given transaction ID.")
-
 		return manipulate.NewError("No transaction found for the given transaction ID.", manipulate.ErrCannotCommit)
 	}
 
 	defer func() { s.unregisterTxn(id) }()
 
-	if err := s.commitTxn(txn); err != nil {
-		return manipulate.NewError(err.Error(), manipulate.ErrCannotCommit)
-	}
+	s.commitTxn(txn)
 
 	return nil
 }
 
 // Abort is part of the implementation of the TransactionalManipulator interface.
-func (*memdbManipulator) Abort(id manipulate.TransactionID) bool {
+func (s *memdbManipulator) Abort(id manipulate.TransactionID) bool {
+
+	txn := s.registeredTxnWithID(id)
+	if txn == nil {
+		return false
+	}
+
+	txn.Abort()
+	s.unregisterTxn(id)
+
 	return true
 }
 
@@ -239,36 +235,34 @@ func (s *memdbManipulator) txnForID(id manipulate.TransactionID) *memdb.Txn {
 	return txn
 }
 
-func (s *memdbManipulator) commitTxn(t *memdb.Txn) error {
+func (s *memdbManipulator) commitTxn(t *memdb.Txn) {
 
 	log.WithFields(log.Fields{
 		"transaction": t,
 	}).Debug("Commiting transaction to MemDB.")
 
 	t.Commit()
-
-	return nil
 }
 
 func (s *memdbManipulator) registerTxn(id manipulate.TransactionID, txn *memdb.Txn) {
 
 	s.txnRegistryLock.Lock()
+	defer s.txnRegistryLock.Unlock()
 	s.txnRegistry[id] = txn
-	s.txnRegistryLock.Unlock()
 }
 
 func (s *memdbManipulator) unregisterTxn(id manipulate.TransactionID) {
 
 	s.txnRegistryLock.Lock()
+	defer s.txnRegistryLock.Unlock()
 	delete(s.txnRegistry, id)
-	s.txnRegistryLock.Unlock()
 }
 
 func (s *memdbManipulator) registeredTxnWithID(id manipulate.TransactionID) *memdb.Txn {
 
 	s.txnRegistryLock.Lock()
+	defer s.txnRegistryLock.Unlock()
 	b := s.txnRegistry[id]
-	s.txnRegistryLock.Unlock()
 
 	return b
 }

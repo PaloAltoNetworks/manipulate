@@ -3,8 +3,20 @@ package manipmemory
 import (
 	"testing"
 
+	"github.com/aporeto-inc/elemental"
+	"github.com/aporeto-inc/manipulate"
 	. "github.com/smartystreets/goconvey/convey"
 )
+
+func TestMemManipulator_NewMemoryManipulator(t *testing.T) {
+
+	Convey("Given I create a new MemoryManipulator with bad schema", t, func() {
+
+		Convey("Then it should panic", func() {
+			So(func() { NewMemoryManipulator(nil) }, ShouldPanic)
+		})
+	})
+}
 
 func TestMemManipulator_Create(t *testing.T) {
 
@@ -45,6 +57,68 @@ func TestMemManipulator_Create(t *testing.T) {
 				})
 			})
 		})
+
+		Convey("When I create an object that is not part of the schema", func() {
+
+			err := m.Create(nil, &NotPerson{})
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+			})
+		})
+	})
+}
+
+func TestMemManipulator_Retrieve(t *testing.T) {
+
+	Convey("Given I have a memory manipulator and a person", t, func() {
+
+		m := NewMemoryManipulator(Schema)
+		p1 := &Person{
+			Name: "Antoine1",
+		}
+
+		m.Create(nil, p1)
+
+		Convey("When I retrieve the person", func() {
+
+			ps := &Person{
+				ID: p1.ID,
+			}
+
+			err := m.Retrieve(nil, ps)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then I should  have retrieved p1 and p2", func() {
+				So(ps, ShouldResemble, p1)
+			})
+		})
+
+		Convey("When I retrieve a non existing person", func() {
+
+			ps := &Person{
+				ID: "not-good",
+			}
+
+			err := m.Retrieve(nil, ps)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+			})
+		})
+
+		Convey("When I retrieve an object that is not part of the schema", func() {
+
+			err := m.Retrieve(nil, &NotPerson{})
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+			})
+		})
+
 	})
 }
 
@@ -75,6 +149,42 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 			Convey("Then I should  have retrieved p1 and p2", func() {
 				So(ps, ShouldContain, p1)
 				So(ps, ShouldContain, p2)
+			})
+		})
+
+		Convey("When I retrieve the persons with a filter that matches p1", func() {
+
+			ps := []*Person{}
+
+			ctx := manipulate.NewContextWithFilter(
+				manipulate.NewFilterComposer().WithKey("Name").Equals("Antoine1").Done(),
+			)
+
+			err := m.RetrieveMany(ctx, PersonIdentity, &ps)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then I should only have retrieved p1", func() {
+				So(ps, ShouldContain, p1)
+				So(ps, ShouldNotContain, p2)
+			})
+		})
+
+		Convey("When I retrieve the persons with a bad filter", func() {
+
+			ps := []*Person{}
+
+			ctx := manipulate.NewContextWithFilter(
+				manipulate.NewFilterComposer().WithKey("Bad").Equals("Antoine1").Done(),
+			)
+
+			err := m.RetrieveMany(ctx, PersonIdentity, &ps)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrCannotExecuteQuery)
 			})
 		})
 	})
@@ -122,6 +232,19 @@ func TestMemManipulator_Update(t *testing.T) {
 					Convey("Then p2 should contains the updated data", func() {
 						So(p2.Name, ShouldEqual, "New Antoine")
 					})
+				})
+			})
+
+			Convey("When I update the a non existing person", func() {
+
+				pp := &Person{
+					ID: "not-good",
+				}
+
+				err := m.Update(nil, pp)
+
+				Convey("Then err should not be nil", func() {
+					So(err, ShouldNotBeNil)
 				})
 			})
 		})
@@ -186,6 +309,19 @@ func TestMemManipulator_Delete(t *testing.T) {
 					})
 				})
 			})
+
+			Convey("When I delete the a non existing person", func() {
+
+				pp := &Person{
+					ID: "not-good",
+				}
+
+				err := m.Delete(nil, pp)
+
+				Convey("Then err should not be nil", func() {
+					So(err, ShouldNotBeNil)
+				})
+			})
 		})
 	})
 }
@@ -244,6 +380,155 @@ func TestMemManipulator_Count(t *testing.T) {
 						So(n, ShouldEqual, 1)
 					})
 				})
+			})
+
+			Convey("When I count with a bad filter", func() {
+
+				ctx := manipulate.NewContextWithFilter(
+					manipulate.NewFilterComposer().WithKey("Bad").Equals("Antoine1").Done(),
+				)
+
+				c, err := m.Count(ctx, PersonIdentity)
+
+				Convey("Then err should not be nil", func() {
+					So(err, ShouldNotBeNil)
+					So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrCannotExecuteQuery)
+				})
+
+				Convey("Then c should equal -1", func() {
+					So(c, ShouldEqual, -1)
+				})
+			})
+		})
+	})
+}
+
+func TestMemManipulator_Assign(t *testing.T) {
+
+	Convey("Given I have a memory manipulator", t, func() {
+
+		m := NewMemoryManipulator(Schema)
+
+		Convey("When I call Assign", func() {
+
+			err := m.Assign(nil, nil)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrNotImplemented)
+			})
+		})
+	})
+}
+
+func TestMemManipulator_Increment(t *testing.T) {
+
+	Convey("Given I have a memory manipulator", t, func() {
+
+		m := NewMemoryManipulator(Schema)
+
+		Convey("When I call Increment", func() {
+
+			err := m.Increment(nil, "name", "counter", 1, nil, nil)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrNotImplemented)
+			})
+		})
+	})
+}
+
+func TestMemManipulator_Commit(t *testing.T) {
+
+	Convey("Given I have a memory manipulator and a transaction ID", t, func() {
+
+		m := NewMemoryManipulator(Schema)
+		tid := manipulate.NewTransactionID()
+
+		Convey("When I call Commit with a non existing tid", func() {
+
+			err := m.Commit(tid)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrCannotCommit)
+			})
+		})
+
+		Convey("When I call Commit with an existing tid", func() {
+
+			m.(*memdbManipulator).registerTxn(tid, m.(*memdbManipulator).db.Txn(true))
+			err := m.Commit(tid)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+		})
+	})
+}
+
+func TestMemManipulator_Abort(t *testing.T) {
+
+	Convey("Given I have a memory manipulator and a transaction ID", t, func() {
+
+		m := NewMemoryManipulator(Schema)
+		tid := manipulate.NewTransactionID()
+
+		Convey("When I call Abort with a non existing tid", func() {
+
+			ok := m.Abort(tid)
+
+			Convey("Then ok should not false", func() {
+				So(ok, ShouldBeFalse)
+			})
+		})
+
+		Convey("When I call Commit with an existing tid", func() {
+
+			m.(*memdbManipulator).registerTxn(tid, m.(*memdbManipulator).db.Txn(true))
+			ok := m.Abort(tid)
+
+			Convey("Then ok should be true", func() {
+				So(ok, ShouldBeTrue)
+			})
+		})
+	})
+}
+
+func TestMemManipulator_txnForID(t *testing.T) {
+
+	Convey("Given I have a memory manipulator and a transaction ID", t, func() {
+
+		m := NewMemoryManipulator(Schema)
+		tid := manipulate.NewTransactionID()
+
+		Convey("When I call txnForID with an empty ID", func() {
+
+			txn := m.(*memdbManipulator).txnForID("")
+
+			Convey("Then txn should not be nil", func() {
+				So(txn, ShouldNotBeNil)
+			})
+		})
+
+		Convey("When I call txnForID with an existing ID", func() {
+
+			btxn := m.(*memdbManipulator).db.Txn(true)
+			m.(*memdbManipulator).registerTxn(tid, btxn)
+			txn := m.(*memdbManipulator).txnForID(tid)
+
+			Convey("Then txn should not be nil", func() {
+				So(txn, ShouldEqual, btxn)
+			})
+		})
+
+		Convey("When I call txnForID with an non existing ID", func() {
+
+			txn := m.(*memdbManipulator).txnForID(tid)
+
+			Convey("Then txn should not be nil", func() {
+				So(txn, ShouldNotBeNil)
 			})
 		})
 	})

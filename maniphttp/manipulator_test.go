@@ -365,10 +365,11 @@ func TestHTTP_Retrieve(t *testing.T) {
 		Convey("When I fetch an entity with no ID", func() {
 
 			list := NewList()
-			errs := store.Retrieve(nil, list)
+			err := store.Retrieve(nil, list)
 
 			Convey("Then err should not be nil", func() {
-				So(errs, ShouldNotBeNil)
+				So(err, ShouldNotBeNil)
+				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrCannotBuildQuery)
 			})
 		})
 	})
@@ -376,8 +377,7 @@ func TestHTTP_Retrieve(t *testing.T) {
 	Convey("Given I have a session and a and the server will return an error", t, func() {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			http.Error(w, "bad comm", 500)
+			w.WriteHeader(500)
 		}))
 		defer ts.Close()
 
@@ -386,10 +386,11 @@ func TestHTTP_Retrieve(t *testing.T) {
 		Convey("When I fetch an entity", func() {
 
 			list := NewList()
-			errs := store.Retrieve(nil, list)
+			list.ID = "x"
+			err := store.Retrieve(nil, list)
 
 			Convey("Then error should not be nil", func() {
-				So(errs, ShouldNotBeNil)
+				So(err, ShouldNotBeNil)
 			})
 		})
 	})
@@ -407,10 +408,12 @@ func TestHTTP_Retrieve(t *testing.T) {
 		Convey("When I fetch an entity", func() {
 
 			list := NewList()
+			list.ID = "x"
 			errs := store.Retrieve(nil, list)
 
 			Convey("Then error should not be nil", func() {
 				So(errs, ShouldNotBeNil)
+				So(errs.(elemental.Error).Code, ShouldEqual, manipulate.ErrCannotUnmarshal)
 			})
 		})
 	})
@@ -478,6 +481,7 @@ func TestHTTP_Update(t *testing.T) {
 		Convey("When I save an entity", func() {
 
 			list := NewList()
+			list.ID = "ddd"
 			err := store.Update(nil, list)
 
 			Convey("Then error should not be nil", func() {
@@ -499,10 +503,12 @@ func TestHTTP_Update(t *testing.T) {
 		Convey("When I save an entity", func() {
 
 			list := NewList()
+			list.ID = "x"
 			err := store.Update(nil, list)
 
 			Convey("Then the error should not be nil", func() {
 				So(err, ShouldNotBeNil)
+				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrCannotUnmarshal)
 			})
 		})
 	})
@@ -777,7 +783,10 @@ func TestHTTP_Create(t *testing.T) {
 			store := NewHTTPManipulator("username", "password", "url.com", "", nil)
 			list2 := NewList()
 			task := NewTask()
-			errs := store.Create(nil, list2, task)
+			ctx := manipulate.NewContext()
+			ctx.Parent = list2
+
+			errs := store.Create(ctx, task)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -828,6 +837,19 @@ func TestHTTP_Create(t *testing.T) {
 				So(errs, ShouldNotBeNil)
 			})
 		})
+
+		Convey("When I create an unmarshalable entity", func() {
+
+			store := NewHTTPManipulator("username", "password", "", "", nil)
+			list := NewUnmarshalableList()
+			list.ID = "yyy"
+			err := store.Create(nil, list)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrCannotMarshal)
+			})
+		})
 	})
 }
 
@@ -852,11 +874,8 @@ func TestHTTP_Assign(t *testing.T) {
 			t2 := NewTask()
 			t2.ID = "yyy"
 
-			ctx := manipulate.NewContext()
-			ctx.Parent = l
-
 			assignation := elemental.NewAssignation(elemental.AssignationTypeAdd, TaskIdentity, t1, t2)
-			errs := session.Assign(ctx, assignation)
+			errs := session.Assign(nil, assignation)
 
 			Convey("Then err should be nil", func() {
 				So(errs, ShouldBeNil)
@@ -904,6 +923,63 @@ func TestHTTP_Assign(t *testing.T) {
 
 			Convey("Then errs should not be nil", func() {
 				So(errs, ShouldNotBeNil)
+			})
+		})
+	})
+}
+
+func TestHTTP_Count(t *testing.T) {
+
+	Convey("Given I have a store", t, func() {
+
+		store := NewHTTPManipulator("username", "password", "", "", nil)
+
+		Convey("When I call Count", func() {
+			c, err := store.Count(nil, elemental.EmptyIdentity)
+
+			Convey("Then err should should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrNotImplemented)
+			})
+
+			Convey("Then c should equal -1", func() {
+				So(c, ShouldEqual, -1)
+			})
+		})
+	})
+}
+
+func TestHTTP_Increment(t *testing.T) {
+
+	Convey("Given I have a store", t, func() {
+
+		store := NewHTTPManipulator("username", "password", "", "", nil)
+
+		Convey("When I call Count", func() {
+			err := store.Increment(nil, "name", "counter", 1, nil, nil)
+
+			Convey("Then err should should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrNotImplemented)
+			})
+		})
+	})
+}
+
+func TestHTTP_send(t *testing.T) {
+
+	Convey("Given I have a store with bad url", t, func() {
+
+		store := NewHTTPManipulator("username", "password", "", "", nil)
+
+		Convey("When I call send ", func() {
+
+			req, _ := http.NewRequest(http.MethodPost, "nop", nil)
+			_, err := store.(*httpManipulator).send(req, manipulate.NewContext())
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrCannotCommunicate)
 			})
 		})
 	})

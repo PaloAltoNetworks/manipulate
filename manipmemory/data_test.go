@@ -40,6 +40,16 @@ func (p *Person) Validate() error {
 	return nil
 }
 
+type NotPerson struct {
+	Person
+}
+
+// Identity returns the Identity of the object.
+func (p *NotPerson) Identity() elemental.Identity {
+
+	return elemental.EmptyIdentity
+}
+
 var Schema = &memdb.DBSchema{
 	Tables: map[string]*memdb.TableSchema{
 		"persons": &memdb.TableSchema{
@@ -49,6 +59,10 @@ var Schema = &memdb.DBSchema{
 					Name:    "id",
 					Unique:  true,
 					Indexer: &memdb.StringFieldIndex{Field: "ID"},
+				},
+				"Name": &memdb.IndexSchema{
+					Name:    "Name",
+					Indexer: &memdb.StringFieldIndex{Field: "Name"},
 				},
 			},
 		},
