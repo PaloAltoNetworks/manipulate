@@ -29,14 +29,18 @@ user.FullName, user.Login := "Antoine Mercadal", "primalmotion"
 m := manipmongo.NewMongoManipulator("127.0.0.1", "test")
 
 // Then create the User.
-m.Create(nil, nil, user)
+m.Create(nil, user)
 ```
 
 ### Example for retreving an object
 
 ```go
 // Create a Context with a filter.
-ctx := manipulate.NewContextWithFilter(manipulate.NewFilterComposer().WithKey("login").Equals("primalmotion"))
+ctx := manipulate.NewContextWithFilter(manipulate.NewFilterComposer().
+    WithKey("login").
+    Equals("primalmotion").
+    Done(),
+)
 
 // Retrieve the users matching the filter.
 var users models.UserLists
