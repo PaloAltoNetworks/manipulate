@@ -68,6 +68,26 @@ func NewCassandraManipulator(servers []string, keyspace string, version int) man
 	}
 }
 
+func (c *cassandraManipulator) RetrieveMany(context *manipulate.Context, identity elemental.Identity, dest interface{}) error {
+
+	if context == nil {
+		context = manipulate.NewContext()
+	}
+
+	command, values := buildGetCommand(context, identity.Name, []string{}, []interface{}{})
+
+	log.WithFields(log.Fields{
+		"package": "manipcassandra",
+		"command": command,
+		"values":  values,
+		"context": context,
+	}).Debug("sending select all command to cassandra")
+
+	iter := c.nativeSession.Query(command, values...).Iter()
+
+	return unmarshalManipulables(iter, dest)
+}
+
 func (c *cassandraManipulator) Retrieve(context *manipulate.Context, objects ...manipulate.Manipulable) error {
 
 	if context == nil {
@@ -102,65 +122,6 @@ func (c *cassandraManipulator) Retrieve(context *manipulate.Context, objects ...
 	}
 
 	return nil
-}
-
-func (c *cassandraManipulator) Delete(context *manipulate.Context, objects ...manipulate.Manipulable) error {
-
-	if context == nil {
-		context = manipulate.NewContext()
-	}
-
-	transactionID := context.TransactionID
-	batch := c.batchForID(transactionID)
-
-	for _, object := range objects {
-
-		primaryKeys, primaryValues, err := cassandra.PrimaryFieldsAndValues(object)
-
-		if err != nil {
-
-			log.WithFields(log.Fields{
-				"package": "manipcassandra",
-				"context": context,
-				"error":   err,
-			}).Error("Unable to extract primary keys and values.")
-
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotExractPrimaryFieldsAndValues)
-		}
-
-		command, values := buildDeleteCommand(context, object.Identity().Name, primaryKeys, primaryValues)
-		batch.Query(command, values...)
-	}
-
-	if transactionID != "" {
-		return nil
-	}
-
-	if err := c.commitBatch(batch); err != nil {
-		return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteBatch)
-	}
-
-	return nil
-}
-
-func (c *cassandraManipulator) RetrieveMany(context *manipulate.Context, identity elemental.Identity, dest interface{}) error {
-
-	if context == nil {
-		context = manipulate.NewContext()
-	}
-
-	command, values := buildGetCommand(context, identity.Name, []string{}, []interface{}{})
-
-	log.WithFields(log.Fields{
-		"package": "manipcassandra",
-		"command": command,
-		"values":  values,
-		"context": context,
-	}).Debug("sending select all command to cassandra")
-
-	iter := c.nativeSession.Query(command, values...).Iter()
-
-	return unmarshalManipulables(iter, dest)
 }
 
 func (c *cassandraManipulator) Create(context *manipulate.Context, objects ...manipulate.Manipulable) error {
@@ -269,6 +230,45 @@ func (c *cassandraManipulator) Update(context *manipulate.Context, objects ...ma
 
 		command, values := buildUpdateCommand(context, object.Identity().Name, list, values, primaryKeys, primaryValues)
 
+		batch.Query(command, values...)
+	}
+
+	if transactionID != "" {
+		return nil
+	}
+
+	if err := c.commitBatch(batch); err != nil {
+		return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteBatch)
+	}
+
+	return nil
+}
+
+func (c *cassandraManipulator) Delete(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+
+	if context == nil {
+		context = manipulate.NewContext()
+	}
+
+	transactionID := context.TransactionID
+	batch := c.batchForID(transactionID)
+
+	for _, object := range objects {
+
+		primaryKeys, primaryValues, err := cassandra.PrimaryFieldsAndValues(object)
+
+		if err != nil {
+
+			log.WithFields(log.Fields{
+				"package": "manipcassandra",
+				"context": context,
+				"error":   err,
+			}).Error("Unable to extract primary keys and values.")
+
+			return manipulate.NewError(err.Error(), manipulate.ErrCannotExractPrimaryFieldsAndValues)
+		}
+
+		command, values := buildDeleteCommand(context, object.Identity().Name, primaryKeys, primaryValues)
 		batch.Query(command, values...)
 	}
 

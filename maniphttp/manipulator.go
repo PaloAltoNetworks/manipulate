@@ -46,43 +46,39 @@ func NewHTTPManipulator(username, password, url, namespace string, tlsConfig *TL
 	}
 }
 
-func (s *httpManipulator) Create(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (s *httpManipulator) RetrieveMany(context *manipulate.Context, identity elemental.Identity, dest interface{}) error {
 
 	if context == nil {
 		context = manipulate.NewContext()
 	}
 
-	for _, child := range objects {
+	url, err := s.getURLForChildrenIdentity(context.Parent, identity)
+	if err != nil {
+		return manipulate.NewError(err.Error(), manipulate.ErrCannotBuildQuery)
+	}
 
-		url, err := s.getURLForChildrenIdentity(context.Parent, child.Identity())
-		if err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotBuildQuery)
+	request, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
+	}
+
+	response, err := s.send(request, context)
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode == http.StatusNoContent || response.ContentLength == 0 {
+		return nil
+	}
+
+	defer func() {
+		if err := response.Body.Close(); err != nil {
+			panic(err)
 		}
+	}()
 
-		buffer := &bytes.Buffer{}
-		if err1 := json.NewEncoder(buffer).Encode(&child); err1 != nil {
-			return manipulate.NewError(err1.Error(), manipulate.ErrCannotMarshal)
-		}
-
-		request, err := http.NewRequest(http.MethodPost, url, buffer)
-		if err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
-		}
-
-		response, err := s.send(request, context)
-		if err != nil {
-			return err
-		}
-
-		defer func() {
-			if err := response.Body.Close(); err != nil {
-				panic(err)
-			}
-		}()
-
-		if err := json.NewDecoder(response.Body).Decode(&child); err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
-		}
+	if err := json.NewDecoder(response.Body).Decode(&dest); err != nil {
+		return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
 	}
 
 	return nil
@@ -118,6 +114,48 @@ func (s *httpManipulator) Retrieve(context *manipulate.Context, objects ...manip
 		}()
 
 		if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
+			return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
+		}
+	}
+
+	return nil
+}
+
+func (s *httpManipulator) Create(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+
+	if context == nil {
+		context = manipulate.NewContext()
+	}
+
+	for _, child := range objects {
+
+		url, err := s.getURLForChildrenIdentity(context.Parent, child.Identity())
+		if err != nil {
+			return manipulate.NewError(err.Error(), manipulate.ErrCannotBuildQuery)
+		}
+
+		buffer := &bytes.Buffer{}
+		if err1 := json.NewEncoder(buffer).Encode(&child); err1 != nil {
+			return manipulate.NewError(err1.Error(), manipulate.ErrCannotMarshal)
+		}
+
+		request, err := http.NewRequest(http.MethodPost, url, buffer)
+		if err != nil {
+			return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
+		}
+
+		response, err := s.send(request, context)
+		if err != nil {
+			return err
+		}
+
+		defer func() {
+			if err := response.Body.Close(); err != nil {
+				panic(err)
+			}
+		}()
+
+		if err := json.NewDecoder(response.Body).Decode(&child); err != nil {
 			return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
 		}
 	}
@@ -189,44 +227,6 @@ func (s *httpManipulator) Delete(context *manipulate.Context, objects ...manipul
 		if err != nil {
 			return err
 		}
-	}
-
-	return nil
-}
-
-func (s *httpManipulator) RetrieveMany(context *manipulate.Context, identity elemental.Identity, dest interface{}) error {
-
-	if context == nil {
-		context = manipulate.NewContext()
-	}
-
-	url, err := s.getURLForChildrenIdentity(context.Parent, identity)
-	if err != nil {
-		return manipulate.NewError(err.Error(), manipulate.ErrCannotBuildQuery)
-	}
-
-	request, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
-	}
-
-	response, err := s.send(request, context)
-	if err != nil {
-		return err
-	}
-
-	if response.StatusCode == http.StatusNoContent || response.ContentLength == 0 {
-		return nil
-	}
-
-	defer func() {
-		if err := response.Body.Close(); err != nil {
-			panic(err)
-		}
-	}()
-
-	if err := json.NewDecoder(response.Body).Decode(&dest); err != nil {
-		return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
 	}
 
 	return nil

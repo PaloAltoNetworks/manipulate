@@ -50,6 +50,42 @@ func NewMongoManipulator(url string, dbName string) manipulate.TransactionalMani
 	}
 }
 
+func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, identity elemental.Identity, dest interface{}) error {
+
+	if context == nil {
+		context = manipulate.NewContext()
+	}
+
+	collection := collectionFromIdentity(s.db, identity)
+
+	var query *mgo.Query
+	if context.Filter != nil {
+		query = collection.Find(compiler.CompileFilter(context.Filter))
+	} else {
+		query = collection.Find(nil)
+	}
+
+	if err := query.All(dest); err != nil {
+		return elemental.NewError("Error", err.Error(), "", 5000)
+	}
+
+	return nil
+}
+
+func (s *mongoManipulator) Retrieve(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+
+	collection := collectionFromIdentity(s.db, objects[0].Identity())
+
+	for i := 0; i < len(objects); i++ {
+		query := collection.Find(bson.M{"_id": objects[i].Identifier()})
+		if err := query.One(objects[i]); err != nil {
+			return elemental.NewError("Error", err.Error(), "", 5000)
+		}
+	}
+
+	return nil
+}
+
 func (s *mongoManipulator) Create(context *manipulate.Context, children ...manipulate.Manipulable) error {
 
 	if context == nil {
@@ -67,20 +103,6 @@ func (s *mongoManipulator) Create(context *manipulate.Context, children ...manip
 
 	if tid == "" {
 		if err := s.commitBulk(bulk); err != nil {
-			return elemental.NewError("Error", err.Error(), "", 5000)
-		}
-	}
-
-	return nil
-}
-
-func (s *mongoManipulator) Retrieve(context *manipulate.Context, objects ...manipulate.Manipulable) error {
-
-	collection := collectionFromIdentity(s.db, objects[0].Identity())
-
-	for i := 0; i < len(objects); i++ {
-		query := collection.Find(bson.M{"_id": objects[i].Identifier()})
-		if err := query.One(objects[i]); err != nil {
 			return elemental.NewError("Error", err.Error(), "", 5000)
 		}
 	}
@@ -129,28 +151,6 @@ func (s *mongoManipulator) Delete(context *manipulate.Context, objects ...manipu
 		if err := s.commitBulk(bulk); err != nil {
 			return elemental.NewError("Error", err.Error(), "manipulate", 5000)
 		}
-	}
-
-	return nil
-}
-
-func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, identity elemental.Identity, dest interface{}) error {
-
-	if context == nil {
-		context = manipulate.NewContext()
-	}
-
-	collection := collectionFromIdentity(s.db, identity)
-
-	var query *mgo.Query
-	if context.Filter != nil {
-		query = collection.Find(compiler.CompileFilter(context.Filter))
-	} else {
-		query = collection.Find(nil)
-	}
-
-	if err := query.All(dest); err != nil {
-		return elemental.NewError("Error", err.Error(), "", 5000)
 	}
 
 	return nil
