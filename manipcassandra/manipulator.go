@@ -340,13 +340,22 @@ func (c *cassandraManipulator) Increment(context *manipulate.Context, identity e
 
 	var primaryKeys manipulate.FilterKey
 	var primaryValues manipulate.FilterValue
+	filter := context.Filter
 
-	if filter := context.Filter; filter != nil {
-		primaryKeys = filter.Keys()[0]
-		primaryValues = filter.Values()[0]
+	if filter != nil {
+		for i := range filter.Keys() {
+			primaryKeys = append(primaryKeys, filter.Keys()[i][0])
+			primaryValues = append(primaryValues, filter.Values()[i][0])
+		}
 	}
 
+	// we need to remove the filter now that we've parsed correctly the increment query.
+	context.Filter = nil
+
 	command, values := buildIncrementCommand(context, identity.Name, counter, inc, primaryKeys, primaryValues)
+
+	// Then we put it back as the use may use it again.
+	context.Filter = filter
 
 	batch.Query(command, values...)
 
