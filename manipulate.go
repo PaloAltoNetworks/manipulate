@@ -41,7 +41,8 @@ type Manipulator interface {
 	// Assign is not really used yet.
 	Assign(context *Context, assignation *elemental.Assignation) error
 
-	// Increment is not very cool.
+	// Increment increments the given counter filter by the given increment for the given identity.
+	// Filter should be given into the context to decide which element to increment.
 	Increment(context *Context, identity elemental.Identity, counter string, inc int) error
 }
 
