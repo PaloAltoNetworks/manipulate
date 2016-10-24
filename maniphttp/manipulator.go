@@ -46,13 +46,13 @@ func NewHTTPManipulator(username, password, url, namespace string, tlsConfig *TL
 	}
 }
 
-func (s *httpManipulator) Create(context *manipulate.Context, children ...manipulate.Manipulable) error {
+func (s *httpManipulator) Create(context *manipulate.Context, objects ...manipulate.Manipulable) error {
 
 	if context == nil {
 		context = manipulate.NewContext()
 	}
 
-	for _, child := range children {
+	for _, child := range objects {
 
 		url, err := s.getURLForChildrenIdentity(context.Parent, child.Identity())
 		if err != nil {
@@ -262,7 +262,7 @@ func (s *httpManipulator) Assign(context *manipulate.Context, assignation *eleme
 	return err
 }
 
-func (s *httpManipulator) Increment(context *manipulate.Context, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
+func (s *httpManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
 
 	return manipulate.NewError("Increment is not implemented in HTTPStore", manipulate.ErrNotImplemented)
 }

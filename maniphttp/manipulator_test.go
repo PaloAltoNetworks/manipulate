@@ -956,7 +956,7 @@ func TestHTTP_Increment(t *testing.T) {
 		store := NewHTTPManipulator("username", "password", "", "", nil)
 
 		Convey("When I call Count", func() {
-			err := store.Increment(nil, "name", "counter", 1, nil, nil)
+			err := store.Increment(nil, ListIdentity, "counter", 1)
 
 			Convey("Then err should should not be nil", func() {
 				So(err, ShouldNotBeNil)

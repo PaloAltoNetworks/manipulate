@@ -183,7 +183,7 @@ func (s *mongoManipulator) Assign(context *manipulate.Context, assignation *elem
 	return fmt.Errorf("Assign is not implemented in mongo")
 }
 
-func (s *mongoManipulator) Increment(context *manipulate.Context, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
+func (s *mongoManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
 	return fmt.Errorf("Increment is not implemented in mongo")
 }
 

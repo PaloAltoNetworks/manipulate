@@ -323,7 +323,7 @@ func (c *cassandraManipulator) Assign(*manipulate.Context, *elemental.Assignatio
 	panic("Not implemented")
 }
 
-func (c *cassandraManipulator) Increment(context *manipulate.Context, name, counter string, inc int, primaryKeys []string, primaryValues []interface{}) error {
+func (c *cassandraManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
 
 	if context == nil {
 		context = manipulate.NewContext()
@@ -338,7 +338,15 @@ func (c *cassandraManipulator) Increment(context *manipulate.Context, name, coun
 		batch = c.batchForID(transactionID)
 	}
 
-	command, values := buildIncrementCommand(context, name, counter, inc, primaryKeys, primaryValues)
+	var primaryKeys manipulate.FilterKey
+	var primaryValues manipulate.FilterValue
+
+	if filter := context.Filter; filter != nil {
+		primaryKeys = filter.Keys()[0]
+		primaryValues = filter.Values()[0]
+	}
+
+	command, values := buildIncrementCommand(context, identity.Name, counter, inc, primaryKeys, primaryValues)
 
 	batch.Query(command, values...)
 

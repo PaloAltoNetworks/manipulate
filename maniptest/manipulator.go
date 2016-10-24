@@ -16,7 +16,7 @@ type mockedMethods struct {
 	deleteMock       func(context *manipulate.Context, objects ...manipulate.Manipulable) error
 	countMock        func(context *manipulate.Context, identity elemental.Identity) (int, error)
 	assignMock       func(context *manipulate.Context, assignation *elemental.Assignation) error
-	incrementMock    func(context *manipulate.Context, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error
+	incrementMock    func(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error
 	commitMock       func(id manipulate.TransactionID) error
 	abortMock        func(id manipulate.TransactionID) bool
 }
@@ -31,7 +31,7 @@ type TestManipulator interface {
 	MockDelete(t *testing.T, impl func(ctx *manipulate.Context, objects ...manipulate.Manipulable) error)
 	MockCount(t *testing.T, impl func(ctx *manipulate.Context, identity elemental.Identity) (int, error))
 	MockAssign(t *testing.T, impl func(ctx *manipulate.Context, assignation *elemental.Assignation) error)
-	MockIncrement(t *testing.T, impl func(ctx *manipulate.Context, name string, counter string, inc int, keys []string, values []interface{}) error)
+	MockIncrement(t *testing.T, impl func(ctx *manipulate.Context, identity elemental.Identity, counter string, inc int) error)
 	MockCommit(t *testing.T, impl func(tid manipulate.TransactionID) error)
 	MockAbort(t *testing.T, impl func(tid manipulate.TransactionID) bool)
 }
@@ -86,7 +86,7 @@ func (m *testManipulator) MockAssign(t *testing.T, impl func(context *manipulate
 	m.currentMocks(t).assignMock = impl
 }
 
-func (m *testManipulator) MockIncrement(t *testing.T, impl func(context *manipulate.Context, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error) {
+func (m *testManipulator) MockIncrement(t *testing.T, impl func(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error) {
 
 	m.currentMocks(t).incrementMock = impl
 }
@@ -164,10 +164,10 @@ func (m *testManipulator) Assign(context *manipulate.Context, assignation *eleme
 	return nil
 }
 
-func (m *testManipulator) Increment(context *manipulate.Context, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
+func (m *testManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.incrementMock != nil {
-		return mock.incrementMock(context, name, counter, inc, filterKeys, filterValues)
+		return mock.incrementMock(context, identity, counter, inc)
 	}
 
 	return nil

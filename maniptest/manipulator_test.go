@@ -302,7 +302,7 @@ func TestTestManipulator_MockIncrement(t *testing.T) {
 
 		Convey("When I call Retrieve without mock", func() {
 
-			err := m.Increment(nil, "name", "counter", 1, nil, nil)
+			err := m.Increment(nil, PersonIdentity, "counter", 1)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
@@ -310,11 +310,11 @@ func TestTestManipulator_MockIncrement(t *testing.T) {
 
 			Convey("When I mock it to return an error", func() {
 
-				m.MockIncrement(t, func(ctx *manipulate.Context, name string, counter string, inc int, keys []string, values []interface{}) error {
+				m.MockIncrement(t, func(ctx *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
 					return fmt.Errorf("wow such error")
 				})
 
-				err := m.Increment(nil, "name", "counter", 1, nil, nil)
+				err := m.Increment(nil, PersonIdentity, "counter", 1)
 
 				Convey("Then err should not be nil", func() {
 					So(err, ShouldNotBeNil)
@@ -323,7 +323,7 @@ func TestTestManipulator_MockIncrement(t *testing.T) {
 
 			Convey("When I don't mock it", func() {
 
-				err := m.Increment(nil, "name", "counter", 1, nil, nil)
+				err := m.Increment(nil, PersonIdentity, "counter", 1)
 
 				Convey("Then err should be nil", func() {
 					So(err, ShouldBeNil)

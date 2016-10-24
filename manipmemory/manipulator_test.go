@@ -429,7 +429,7 @@ func TestMemManipulator_Increment(t *testing.T) {
 
 		Convey("When I call Increment", func() {
 
-			err := m.Increment(nil, "name", "counter", 1, nil, nil)
+			err := m.Increment(nil, PersonIdentity, "counter", 1)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)

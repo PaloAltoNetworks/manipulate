@@ -42,7 +42,7 @@ type Manipulator interface {
 	Assign(context *Context, assignation *elemental.Assignation) error
 
 	// Increment is not very cool.
-	Increment(context *Context, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error
+	Increment(context *Context, identity elemental.Identity, counter string, inc int) error
 }
 
 // A TransactionalManipulator is a Manipulator that handles transactions.

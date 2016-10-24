@@ -184,7 +184,7 @@ func (*memdbManipulator) Assign(context *manipulate.Context, assignation *elemen
 }
 
 // Increment is part of the implementation of the Manipulator interface.
-func (*memdbManipulator) Increment(context *manipulate.Context, name string, counter string, inc int, filterKeys []string, filterValues []interface{}) error {
+func (*memdbManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
 
 	return manipulate.NewError("Increment is not implemented in MemoryManipulator", manipulate.ErrNotImplemented)
 }
