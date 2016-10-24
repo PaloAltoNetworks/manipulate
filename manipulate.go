@@ -42,7 +42,7 @@ type Manipulator interface {
 	Assign(context *Context, assignation *elemental.Assignation) error
 
 	// Increment increments the given counter filter by the given increment for the given identity.
-	// Filter should be given into the context to decide which element to increment.
+	// Filter should be set in the context to decide which element to increment.
 	Increment(context *Context, identity elemental.Identity, counter string, inc int) error
 }
 
