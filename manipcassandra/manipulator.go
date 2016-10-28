@@ -21,7 +21,7 @@ import (
 var GocqlTimeout = 600 * time.Millisecond
 
 // ExtendedTimeout is used  for creating/dropping tables since gocql gives timeouts
-var ExtendedTimeout = 2000 * time.Millisecond
+var ExtendedTimeout = 2 * time.Second
 
 // BatchRegistry is used to store the batches used in the store
 type batchRegistry map[manipulate.TransactionID]*gocql.Batch
@@ -559,7 +559,7 @@ func createNativeSession(servers []string, keyspace string, version int, timeout
 	cluster.Consistency = gocql.Quorum
 	cluster.ProtoVersion = version
 	cluster.Timeout = timeout
-	cluster.RetryPolicy = &gocql.SimpleRetryPolicy{NumRetries: 5}
+	cluster.RetryPolicy = &gocql.SimpleRetryPolicy{NumRetries: 10}
 
 	return cluster.CreateSession()
 }

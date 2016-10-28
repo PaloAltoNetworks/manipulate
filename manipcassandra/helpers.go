@@ -10,7 +10,7 @@ import (
 // DoesKeyspaceExist checks if the configured keyspace exists
 func DoesKeyspaceExist(servers []string, version int, keyspace string) (bool, error) {
 
-	session, err := createNativeSession(servers, "", version, GocqlTimeout)
+	session, err := createNativeSession(servers, "", version, ExtendedTimeout)
 	if err != nil {
 		return false, err
 	}
