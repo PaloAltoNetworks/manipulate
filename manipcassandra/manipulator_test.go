@@ -692,7 +692,7 @@ func TestCassandra_Count(t *testing.T) {
 
 		Convey("Then I should get no error", func() {
 			So(err, ShouldBeNil)
-			So(expectedCommand, ShouldEqual, "SELECT COUNT(*) FROM tag LIMIT 10")
+			So(expectedCommand, ShouldEqual, "SELECT COUNT(*) FROM tag LIMIT 10 ALLOW FILTERING")
 			So(expectedValues, ShouldResemble, []interface{}{})
 			So(count, ShouldEqual, 100)
 		})
@@ -739,7 +739,7 @@ func TestCassandra_CountErrorScan(t *testing.T) {
 
 		Convey("Then I should get an error", func() {
 			So(errs.Code, ShouldEqual, manipulate.ErrCannotScan)
-			So(expectedCommand, ShouldEqual, "SELECT COUNT(*) FROM tag LIMIT 10")
+			So(expectedCommand, ShouldEqual, "SELECT COUNT(*) FROM tag LIMIT 10 ALLOW FILTERING")
 			So(expectedValues, ShouldResemble, []interface{}{})
 			So(count, ShouldEqual, -1)
 		})
@@ -790,7 +790,7 @@ func TestCassandra_CountErrorCloseIter(t *testing.T) {
 
 		Convey("Then I should get no error", func() {
 			So(errs.Code, ShouldEqual, manipulate.ErrCannotCloseIterator)
-			So(expectedCommand, ShouldEqual, "SELECT COUNT(*) FROM tag LIMIT 10")
+			So(expectedCommand, ShouldEqual, "SELECT COUNT(*) FROM tag LIMIT 10 ALLOW FILTERING")
 			So(expectedValues, ShouldResemble, []interface{}{})
 			So(count, ShouldEqual, -1)
 		})
@@ -861,7 +861,7 @@ func TestCassandra_RetrieveMany(t *testing.T) {
 
 		Convey("Then I should get an error", func() {
 			So(err.Code, ShouldEqual, manipulate.ErrCannotUnmarshal)
-			So(expectedCommand, ShouldEqual, "SELECT * FROM tag LIMIT 10")
+			So(expectedCommand, ShouldEqual, "SELECT * FROM tag LIMIT 10 ALLOW FILTERING")
 			So(expectedValues, ShouldResemble, []interface{}{})
 			So(expectedV, ShouldEqual, &tags)
 		})
@@ -916,7 +916,7 @@ func TestCassandra_RetrieveWithError(t *testing.T) {
 
 		Convey("Then I should get an error", func() {
 			So(errs.Code, ShouldEqual, manipulate.ErrObjectNotFound)
-			So(expectedCommand, ShouldEqual, "SELECT * FROM tag LIMIT 10")
+			So(expectedCommand, ShouldEqual, "SELECT * FROM tag LIMIT 10 ALLOW FILTERING")
 			So(expectedValues, ShouldResemble, []interface{}{})
 		})
 	})
@@ -968,7 +968,7 @@ func TestCassandra_UpdateCollection(t *testing.T) {
 		Convey("Then I should get an error", func() {
 			So(err, ShouldBeNil)
 			So(tag, ShouldResemble, &Tag{ID: "1234"})
-			So(expectedCommand, ShouldResemble, "UPDATE tag SET NAME = NAME - ? WHERE ID = ?")
+			So(expectedCommand, ShouldResemble, "UPDATE tag SET NAME = NAME - ? WHERE ID = ? ALLOW FILTERING")
 			So(expectedValues, ShouldResemble, []interface{}{"coucou", "123"})
 		})
 	})
@@ -1021,7 +1021,7 @@ func TestCassandra_UpdateCollectionWithErrorQuery(t *testing.T) {
 		Convey("Then I should get an error", func() {
 			So(errs.Code, ShouldEqual, manipulate.ErrCannotExecuteQuery)
 			So(tag, ShouldResemble, &Tag{ID: "1234"})
-			So(expectedCommand, ShouldResemble, "UPDATE tag SET NAME = NAME - ? WHERE ID = ?")
+			So(expectedCommand, ShouldResemble, "UPDATE tag SET NAME = NAME - ? WHERE ID = ? ALLOW FILTERING")
 			So(expectedValues, ShouldResemble, []interface{}{"coucou", "123"})
 		})
 	})
@@ -1152,7 +1152,7 @@ func TestCassandra_Retrieve(t *testing.T) {
 
 		Convey("Then I should get an error", func() {
 			So(err, ShouldBeNil)
-			So(expectedCommand, ShouldEqual, "SELECT * FROM tag WHERE ID = ? LIMIT 10")
+			So(expectedCommand, ShouldEqual, "SELECT * FROM tag WHERE ID = ? LIMIT 10 ALLOW FILTERING")
 			So(expectedValues, ShouldResemble, []interface{}{"678"})
 		})
 	})
@@ -1225,8 +1225,8 @@ func TestCassandra_Delete(t *testing.T) {
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
 			So(expectedBatchType, ShouldEqual, gocql.UnloggedBatch)
-			So(expectedQuery1, ShouldEqual, "DELETE FROM tag WHERE ID = ?")
-			So(expectedQuery2, ShouldEqual, "DELETE FROM tag WHERE ID = ?")
+			So(expectedQuery1, ShouldEqual, "DELETE FROM tag WHERE ID = ? ALLOW FILTERING")
+			So(expectedQuery2, ShouldEqual, "DELETE FROM tag WHERE ID = ? ALLOW FILTERING")
 			So(expectedValues1, ShouldResemble, []interface{}{"123"})
 			So(expectedValues2, ShouldResemble, []interface{}{"123"})
 			So(expectedBatch, ShouldEqual, expectedExecutedBatch)
@@ -1293,8 +1293,8 @@ func TestCassandra_Delete_WithTransactionID(t *testing.T) {
 
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
-			So(expectedQuery1, ShouldEqual, "DELETE FROM tag WHERE ID = ?")
-			So(expectedQuery2, ShouldEqual, "DELETE FROM tag WHERE ID = ?")
+			So(expectedQuery1, ShouldEqual, "DELETE FROM tag WHERE ID = ? ALLOW FILTERING")
+			So(expectedQuery2, ShouldEqual, "DELETE FROM tag WHERE ID = ? ALLOW FILTERING")
 			So(expectedValues1, ShouldResemble, []interface{}{"123"})
 			So(expectedValues2, ShouldResemble, []interface{}{"123"})
 			So(numberOfCallOfExecuteBatch, ShouldEqual, 0)
@@ -1460,8 +1460,8 @@ func TestCassandra_Update(t *testing.T) {
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
 			So(expectedBatchType, ShouldEqual, gocql.UnloggedBatch)
-			So(expectedQuery1, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ?")
-			So(expectedQuery2, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ?")
+			So(expectedQuery1, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? ALLOW FILTERING")
+			So(expectedQuery2, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? ALLOW FILTERING")
 			So(expectedValues1, ShouldResemble, []interface{}{"description 1", "456"})
 			So(expectedValues2, ShouldResemble, []interface{}{"description 2", "456"})
 			So(expectedBatch, ShouldEqual, expectedExecutedBatch)
@@ -1547,8 +1547,8 @@ func TestCassandra_Update_WithTransactionID(t *testing.T) {
 
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
-			So(expectedQuery1, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ?")
-			So(expectedQuery2, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ?")
+			So(expectedQuery1, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? ALLOW FILTERING")
+			So(expectedQuery2, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? ALLOW FILTERING")
 			So(expectedValues1, ShouldResemble, []interface{}{"description 1", "456"})
 			So(expectedValues2, ShouldResemble, []interface{}{"description 2", "456"})
 			So(expectedValue1, ShouldEqual, tag1)

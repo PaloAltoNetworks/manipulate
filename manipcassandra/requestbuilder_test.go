@@ -89,7 +89,7 @@ func TestMethodAddOptionsFromContextWithFilter(t *testing.T) {
 		context.Filter = filter
 		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{})
 
-		So(command, ShouldEqual, `SELECT * FROM policy WHERE ID = ? LIMIT 100 ALLOW FILTERING`)
+		So(command, ShouldEqual, `SELECT * FROM policy WHERE ID = ? LIMIT 100`)
 		So(values, ShouldResemble, []interface{}{"12345"})
 	})
 }
@@ -109,7 +109,7 @@ func TestMethodAddOptionsFromContextWithEverything(t *testing.T) {
 
 		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{"name", "age"})
 
-		So(command, ShouldEqual, `SELECT * FROM policy WHERE name = ? AND age = ? AND ID = ? LIMIT 20 IF NOT EXISTS  ALLOW FILTERING`)
+		So(command, ShouldEqual, `SELECT * FROM policy WHERE name = ? AND age = ? AND ID = ? LIMIT 20 IF NOT EXISTS `)
 		So(values, ShouldResemble, []interface{}{"12345"})
 	})
 }
@@ -125,7 +125,7 @@ func TestMethodAddOptionsFromContextWithMultiColumnAndValues(t *testing.T) {
 
 		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{})
 
-		So(command, ShouldEqual, `SELECT * FROM policy WHERE (ID,name) = ((?,?),(?,?)) LIMIT 100 ALLOW FILTERING`)
+		So(command, ShouldEqual, `SELECT * FROM policy WHERE (ID,name) = ((?,?),(?,?)) LIMIT 100`)
 		So(values, ShouldResemble, []interface{}{"20", 0, "60", 122})
 	})
 }
@@ -136,7 +136,7 @@ func TestMethodBuildDeleteCommand(t *testing.T) {
 
 		command, values := buildDeleteCommand(nil, "policy", []string{}, []interface{}{})
 
-		So(command, ShouldEqual, `DELETE FROM policy`)
+		So(command, ShouldEqual, `DELETE FROM policy ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{})
 	})
 }
@@ -147,7 +147,7 @@ func TestMethodBuildDeleteCommandWithPrimaryKeysAnsValues(t *testing.T) {
 
 		command, values := buildDeleteCommand(nil, "policy", []string{"ID", "name"}, []interface{}{"123", "Alexandre"})
 
-		So(command, ShouldEqual, `DELETE FROM policy WHERE ID = ? AND name = ?`)
+		So(command, ShouldEqual, `DELETE FROM policy WHERE ID = ? AND name = ? ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{"123", "Alexandre"})
 	})
 }
@@ -178,7 +178,7 @@ func TestMethodBuildUpdateCollectionCommandOperationAdditive(t *testing.T) {
 		a.Values = "coucou"
 
 		command, values := buildUpdateCollectionCommand(nil, "policy", a, []string{}, []interface{}{})
-		So(command, ShouldEqual, `UPDATE policy SET NAME = NAME + ?`)
+		So(command, ShouldEqual, `UPDATE policy SET NAME = NAME + ? ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{"coucou"})
 	})
 }
@@ -192,7 +192,7 @@ func TestMethodBuildUpdateCollectionCommandOperationDefault(t *testing.T) {
 		a.Values = "coucou"
 
 		command, values := buildUpdateCollectionCommand(nil, "policy", a, []string{}, []interface{}{})
-		So(command, ShouldEqual, `UPDATE policy SET NAME = ?`)
+		So(command, ShouldEqual, `UPDATE policy SET NAME = ? ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{"coucou"})
 	})
 }
@@ -207,7 +207,7 @@ func TestMethodBuildUpdateCollectionCommandOperationSubstractive(t *testing.T) {
 		a.Values = "coucou"
 
 		command, values := buildUpdateCollectionCommand(nil, "policy", a, []string{}, []interface{}{})
-		So(command, ShouldEqual, `UPDATE policy SET NAME = NAME - ?`)
+		So(command, ShouldEqual, `UPDATE policy SET NAME = NAME - ? ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{"coucou"})
 	})
 }
@@ -222,7 +222,7 @@ func TestMethodBuildUpdateCollectionCommandOperationSet(t *testing.T) {
 		a.Values = "coucou"
 
 		command, values := buildUpdateCollectionCommand(nil, "policy", a, []string{}, []interface{}{})
-		So(command, ShouldEqual, `UPDATE policy SET NAME = ?`)
+		So(command, ShouldEqual, `UPDATE policy SET NAME = ? ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{"coucou"})
 	})
 }
@@ -237,7 +237,7 @@ func TestMethodBuildUpdateCollectionCommandOperationSubstractiveWithPrimaryKeys(
 		a.Values = "coucou"
 
 		command, values := buildUpdateCollectionCommand(nil, "policy", a, []string{"ID"}, []interface{}{"123"})
-		So(command, ShouldEqual, `UPDATE policy SET NAME = NAME - ? WHERE ID = ?`)
+		So(command, ShouldEqual, `UPDATE policy SET NAME = NAME - ? WHERE ID = ? ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{"coucou", "123"})
 	})
 }
@@ -269,7 +269,7 @@ func TestMethodBuildUpdateCommand(t *testing.T) {
 	Convey("Given I call the method buildUpdateCommand", t, func() {
 
 		command, values := buildUpdateCommand(nil, "policy", []string{"NAME", "CITY"}, []interface{}{}, []string{}, []interface{}{})
-		So(command, ShouldEqual, `UPDATE policy SET NAME = ?, CITY = ?`)
+		So(command, ShouldEqual, `UPDATE policy SET NAME = ?, CITY = ? ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{})
 	})
 }
@@ -279,7 +279,7 @@ func TestMethodBuildUpdateCommandWithPrimaryKeysAndValues(t *testing.T) {
 	Convey("Given I call the method buildUpdateCommand", t, func() {
 
 		command, values := buildUpdateCommand(nil, "policy", []string{"NAME", "CITY"}, []interface{}{}, []string{"ID"}, []interface{}{"123"})
-		So(command, ShouldEqual, `UPDATE policy SET NAME = ?, CITY = ? WHERE ID = ?`)
+		So(command, ShouldEqual, `UPDATE policy SET NAME = ?, CITY = ? WHERE ID = ? ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{"123"})
 	})
 }
@@ -293,7 +293,7 @@ func TestMethodBuildUpdateCommandWithAttributes(t *testing.T) {
 		context.PageSize = 0
 
 		command, values := buildUpdateCommand(context, "policy", []string{"NAME", "CITY", "DESCRIPTION"}, []interface{}{"Alexandre", "Sarralbe", "God"}, []string{}, []interface{}{})
-		So(command, ShouldEqual, `UPDATE policy SET CITY = ?`)
+		So(command, ShouldEqual, `UPDATE policy SET CITY = ? ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{"Sarralbe"})
 	})
 }
@@ -307,7 +307,7 @@ func TestMethodBuildUpdateCommandWithAttributesWithPrimaryKeysAndValues(t *testi
 		context.PageSize = 0
 
 		command, values := buildUpdateCommand(context, "policy", []string{"NAME", "CITY", "DESCRIPTION", "ID"}, []interface{}{"Alexandre", "Sarralbe", "God", "567"}, []string{"ID"}, []interface{}{"123"})
-		So(command, ShouldEqual, `UPDATE policy SET CITY = ? WHERE ID = ?`)
+		So(command, ShouldEqual, `UPDATE policy SET CITY = ? WHERE ID = ? ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{"Sarralbe", "123"})
 	})
 }
@@ -360,7 +360,7 @@ func TestMethodBuildGetCommand(t *testing.T) {
 
 	Convey("Given I call the method buildGetCommand", t, func() {
 		command, values := buildGetCommand(nil, "policy", []string{}, []interface{}{})
-		So(command, ShouldEqual, `SELECT * FROM policy`)
+		So(command, ShouldEqual, `SELECT * FROM policy ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{})
 	})
 }
@@ -374,7 +374,7 @@ func TestMethodBuildGetCommandWithAttributes(t *testing.T) {
 		context.PageSize = 0
 
 		command, values := buildGetCommand(context, "policy", []string{}, []interface{}{})
-		So(command, ShouldEqual, `SELECT CITY, DESCRIPTION FROM policy`)
+		So(command, ShouldEqual, `SELECT CITY, DESCRIPTION FROM policy ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{})
 	})
 }
@@ -388,7 +388,7 @@ func TestMethodBuildGetCommandWithAttributesAndPrimaryKeysAndValues(t *testing.T
 		context.PageSize = 0
 
 		command, values := buildGetCommand(context, "policy", []string{"ID", "Name"}, []interface{}{"123", "Alexandre"})
-		So(command, ShouldEqual, `SELECT CITY, DESCRIPTION FROM policy WHERE ID = ? AND Name = ?`)
+		So(command, ShouldEqual, `SELECT CITY, DESCRIPTION FROM policy WHERE ID = ? AND Name = ? ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{"123", "Alexandre"})
 	})
 }
@@ -397,7 +397,7 @@ func TestMethodBuildCountCommand(t *testing.T) {
 
 	Convey("Given I call the method buildCountCommand", t, func() {
 		command, values := buildCountCommand(nil, "policy")
-		So(command, ShouldEqual, `SELECT COUNT(*) FROM policy`)
+		So(command, ShouldEqual, `SELECT COUNT(*) FROM policy ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{})
 	})
 }
@@ -407,7 +407,7 @@ func TestMethodBuildIncrementCommand(t *testing.T) {
 	Convey("Given I call the method buildIncrementCommand with two primary keys", t, func() {
 
 		command, values := buildIncrementCommand(nil, "thecounter", "count", 2, []string{"id", "name"}, []interface{}{"12", "toto"})
-		So(command, ShouldEqual, `UPDATE thecounter SET count = count + 2 WHERE id = ? AND name = ?`)
+		So(command, ShouldEqual, `UPDATE thecounter SET count = count + 2 WHERE id = ? AND name = ? ALLOW FILTERING`)
 		So(values, ShouldResemble, []interface{}{"12", "toto"})
 	})
 }

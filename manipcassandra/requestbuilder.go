@@ -72,10 +72,6 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 		manipulate.WriteString(buffer, compiler.CompileParameters(c.Parameters))
 	}
 
-	if c.Filter != nil {
-		manipulate.WriteString(buffer, ` ALLOW FILTERING`)
-	}
-
 	return buffer.String(), values
 }
 
@@ -121,7 +117,7 @@ func buildUpdateCollectionCommand(c *manipulate.Context, tableName string, attri
 	v = append(v, primaryValues...)
 	command, newValues := commandAndValuesFromContext(&buffer, elemental.OperationUpdate, c, primaryKeys)
 
-	return command, append(v, newValues...)
+	return command + " ALLOW FILTERING", append(v, newValues...)
 }
 
 // buildUpdateCommand build a update command for cassandra
@@ -167,7 +163,7 @@ func buildUpdateCommand(c *manipulate.Context, tableName string, p []string, v [
 	v = append(v, primaryValues...)
 	command, newValues := commandAndValuesFromContext(&buffer, elemental.OperationUpdate, c, primaryKeys)
 
-	return command, append(v, newValues...)
+	return command + " ALLOW FILTERING", append(v, newValues...)
 }
 
 // buildInsertCommand build an insert command for cassandra
@@ -261,7 +257,7 @@ func buildGetCommand(c *manipulate.Context, tableName string, primaryKeys []stri
 
 	command, values := commandAndValuesFromContext(&buffer, elemental.OperationRetrieveMany, c, primaryKeys)
 
-	return command, append(primaryValues, values...)
+	return command + " ALLOW FILTERING", append(primaryValues, values...)
 }
 
 // buildDeleteCommand build a delete command for cassandra
@@ -276,7 +272,7 @@ func buildDeleteCommand(c *manipulate.Context, tableName string, primaryKeys []s
 
 	command, values := commandAndValuesFromContext(&buffer, elemental.OperationDelete, c, primaryKeys)
 
-	return command, append(primaryValues, values...)
+	return command + " ALLOW FILTERING", append(primaryValues, values...)
 }
 
 // buildCountCommand build a count command for cassandra
@@ -289,7 +285,9 @@ func buildCountCommand(c *manipulate.Context, tableName string) (string, []inter
 	manipulate.WriteString(&buffer, `SELECT COUNT(*) FROM `)
 	manipulate.WriteString(&buffer, tableName)
 
-	return commandAndValuesFromContext(&buffer, elemental.OperationInfo, c, []string{})
+	command, values := commandAndValuesFromContext(&buffer, elemental.OperationInfo, c, []string{})
+
+	return command + " ALLOW FILTERING", values
 }
 
 // buildIncrementCommand build a counter incrementation command for cassandra
@@ -310,5 +308,5 @@ func buildIncrementCommand(c *manipulate.Context, tableName, counterName string,
 
 	command, values := commandAndValuesFromContext(&buffer, elemental.OperationUpdate, c, primaryKeys)
 
-	return command, append(primaryValues, values...)
+	return command + " ALLOW FILTERING", append(primaryValues, values...)
 }
