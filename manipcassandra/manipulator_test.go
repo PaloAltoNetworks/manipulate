@@ -1460,8 +1460,8 @@ func TestCassandra_Update(t *testing.T) {
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
 			So(expectedBatchType, ShouldEqual, gocql.UnloggedBatch)
-			So(expectedQuery1, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? ALLOW FILTERING")
-			So(expectedQuery2, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? ALLOW FILTERING")
+			So(expectedQuery1, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ?")
+			So(expectedQuery2, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ?")
 			So(expectedValues1, ShouldResemble, []interface{}{"description 1", "456"})
 			So(expectedValues2, ShouldResemble, []interface{}{"description 2", "456"})
 			So(expectedBatch, ShouldEqual, expectedExecutedBatch)
@@ -1547,8 +1547,8 @@ func TestCassandra_Update_WithTransactionID(t *testing.T) {
 
 		Convey("Then everything should have been well called", func() {
 			So(err, ShouldBeNil)
-			So(expectedQuery1, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? ALLOW FILTERING")
-			So(expectedQuery2, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ? ALLOW FILTERING")
+			So(expectedQuery1, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ?")
+			So(expectedQuery2, ShouldEqual, "UPDATE tag SET description = ? WHERE ID = ?")
 			So(expectedValues1, ShouldResemble, []interface{}{"description 1", "456"})
 			So(expectedValues2, ShouldResemble, []interface{}{"description 2", "456"})
 			So(expectedValue1, ShouldEqual, tag1)

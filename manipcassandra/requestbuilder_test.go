@@ -269,7 +269,7 @@ func TestMethodBuildUpdateCommand(t *testing.T) {
 	Convey("Given I call the method buildUpdateCommand", t, func() {
 
 		command, values := buildUpdateCommand(nil, "policy", []string{"NAME", "CITY"}, []interface{}{}, []string{}, []interface{}{})
-		So(command, ShouldEqual, `UPDATE policy SET NAME = ?, CITY = ? ALLOW FILTERING`)
+		So(command, ShouldEqual, `UPDATE policy SET NAME = ?, CITY = ?`)
 		So(values, ShouldResemble, []interface{}{})
 	})
 }
@@ -279,7 +279,7 @@ func TestMethodBuildUpdateCommandWithPrimaryKeysAndValues(t *testing.T) {
 	Convey("Given I call the method buildUpdateCommand", t, func() {
 
 		command, values := buildUpdateCommand(nil, "policy", []string{"NAME", "CITY"}, []interface{}{}, []string{"ID"}, []interface{}{"123"})
-		So(command, ShouldEqual, `UPDATE policy SET NAME = ?, CITY = ? WHERE ID = ? ALLOW FILTERING`)
+		So(command, ShouldEqual, `UPDATE policy SET NAME = ?, CITY = ? WHERE ID = ?`)
 		So(values, ShouldResemble, []interface{}{"123"})
 	})
 }
@@ -293,7 +293,7 @@ func TestMethodBuildUpdateCommandWithAttributes(t *testing.T) {
 		context.PageSize = 0
 
 		command, values := buildUpdateCommand(context, "policy", []string{"NAME", "CITY", "DESCRIPTION"}, []interface{}{"Alexandre", "Sarralbe", "God"}, []string{}, []interface{}{})
-		So(command, ShouldEqual, `UPDATE policy SET CITY = ? ALLOW FILTERING`)
+		So(command, ShouldEqual, `UPDATE policy SET CITY = ?`)
 		So(values, ShouldResemble, []interface{}{"Sarralbe"})
 	})
 }
@@ -307,7 +307,7 @@ func TestMethodBuildUpdateCommandWithAttributesWithPrimaryKeysAndValues(t *testi
 		context.PageSize = 0
 
 		command, values := buildUpdateCommand(context, "policy", []string{"NAME", "CITY", "DESCRIPTION", "ID"}, []interface{}{"Alexandre", "Sarralbe", "God", "567"}, []string{"ID"}, []interface{}{"123"})
-		So(command, ShouldEqual, `UPDATE policy SET CITY = ? WHERE ID = ? ALLOW FILTERING`)
+		So(command, ShouldEqual, `UPDATE policy SET CITY = ? WHERE ID = ?`)
 		So(values, ShouldResemble, []interface{}{"Sarralbe", "123"})
 	})
 }
@@ -325,7 +325,7 @@ func TestMethodBuildUpdateCommandWithAttributesWithPrimaryKeysAndValuesAndFilter
 		context.PageSize = -1
 
 		command, values := buildUpdateCommand(context, "policy", []string{"NAME", "CITY", "DESCRIPTION", "ID"}, []interface{}{"Alexandre", "Sarralbe", "God", "567"}, []string{"ID"}, []interface{}{"123"})
-		So(command, ShouldEqual, `UPDATE policy SET CITY = ? WHERE ID = ? AND (ID,name) = ((?,?),(?,?)) ALLOW FILTERING`)
+		So(command, ShouldEqual, `UPDATE policy SET CITY = ? WHERE ID = ? AND (ID,name) = ((?,?),(?,?))`)
 		So(values, ShouldResemble, []interface{}{"Sarralbe", "123", "20", 0, "60", 122})
 	})
 }

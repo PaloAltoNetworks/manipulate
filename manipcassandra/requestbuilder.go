@@ -163,7 +163,7 @@ func buildUpdateCommand(c *manipulate.Context, tableName string, p []string, v [
 	v = append(v, primaryValues...)
 	command, newValues := commandAndValuesFromContext(&buffer, elemental.OperationUpdate, c, primaryKeys)
 
-	return command + " ALLOW FILTERING", append(v, newValues...)
+	return command, append(v, newValues...)
 }
 
 // buildInsertCommand build an insert command for cassandra
