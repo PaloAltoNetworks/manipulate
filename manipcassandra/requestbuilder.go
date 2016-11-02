@@ -308,5 +308,5 @@ func buildIncrementCommand(c *manipulate.Context, tableName, counterName string,
 
 	command, values := commandAndValuesFromContext(&buffer, elemental.OperationUpdate, c, primaryKeys)
 
-	return command + " ALLOW FILTERING", append(primaryValues, values...)
+	return command, append(primaryValues, values...)
 }

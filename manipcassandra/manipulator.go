@@ -21,7 +21,7 @@ import (
 var GocqlTimeout = 600 * time.Millisecond
 
 // ExtendedTimeout is used  for creating/dropping tables since gocql gives timeouts
-var ExtendedTimeout = 2 * time.Second
+var ExtendedTimeout = 20 * time.Second
 
 // BatchRegistry is used to store the batches used in the store
 type batchRegistry map[manipulate.TransactionID]*gocql.Batch

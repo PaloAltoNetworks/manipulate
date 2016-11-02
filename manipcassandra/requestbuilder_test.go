@@ -407,7 +407,7 @@ func TestMethodBuildIncrementCommand(t *testing.T) {
 	Convey("Given I call the method buildIncrementCommand with two primary keys", t, func() {
 
 		command, values := buildIncrementCommand(nil, "thecounter", "count", 2, []string{"id", "name"}, []interface{}{"12", "toto"})
-		So(command, ShouldEqual, `UPDATE thecounter SET count = count + 2 WHERE id = ? AND name = ? ALLOW FILTERING`)
+		So(command, ShouldEqual, `UPDATE thecounter SET count = count + 2 WHERE id = ? AND name = ?`)
 		So(values, ShouldResemble, []interface{}{"12", "toto"})
 	})
 }
