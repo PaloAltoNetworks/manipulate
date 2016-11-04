@@ -6,15 +6,19 @@ package maniphttp
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 
 	log "github.com/Sirupsen/logrus"
+	midgardclient "github.com/aporeto-inc/midgard/client"
 )
 
 type httpManipulator struct {
@@ -26,24 +30,70 @@ type httpManipulator struct {
 }
 
 // NewHTTPManipulator returns a Manipulator backed by an ReST API.
-func NewHTTPManipulator(username, password, url, namespace string, tlsConfig *TLSConfiguration) manipulate.Manipulator {
+func NewHTTPManipulator(username, password, url, namespace string) manipulate.Manipulator {
 
-	if tlsConfig == nil {
-		tlsConfig = NewTLSConfiguration("", "", "", false)
-	}
-
-	client, err := tlsConfig.makeHTTPClient()
+	skip := false
+	CAPool, err := x509.SystemCertPool()
 	if err != nil {
-		panic(fmt.Sprintf("Invalid TLSConfiguration: %s", err))
+		log.Error("Unable to load system root cert pool. tls fallback to unsecure.")
+		skip = true
 	}
 
 	return &httpManipulator{
-		username:  username,
-		password:  password,
-		url:       url,
-		client:    client,
+		username: username,
+		password: password,
+		url:      url,
+		client: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: skip,
+					RootCAs:            CAPool,
+				},
+			},
+		},
 		namespace: namespace,
 	}
+}
+
+// NewHTTPManipulatorWithMidgardCertAuthentication returns a http backed manipulate.Manipulator
+// using a certificates to authenticate against a Midgard server.
+func NewHTTPManipulatorWithMidgardCertAuthentication(
+	url string,
+	midgardurl string,
+	CAPool *x509.CertPool,
+	certificates []tls.Certificate,
+	namespace string,
+	refreshInterval time.Duration,
+	skipInsecure bool,
+) (manipulate.Manipulator, func(), error) {
+
+	mclient := midgardclient.NewClientWithCAPool(midgardurl, CAPool, skipInsecure)
+	token, err := mclient.IssueFromCertificate(certificates, CAPool)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	m := &httpManipulator{
+		username: "Bearer",
+		password: token,
+		url:      url,
+		client: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					Certificates:       certificates,
+					InsecureSkipVerify: skipInsecure,
+					RootCAs:            CAPool,
+				},
+			},
+		},
+		namespace: namespace,
+	}
+
+	stopCh := make(chan bool)
+
+	go renewMidgardToken(mclient, m, CAPool, certificates, refreshInterval, stopCh)
+
+	return m, func() { stopCh <- true }, nil
 }
 
 func (s *httpManipulator) RetrieveMany(context *manipulate.Context, identity elemental.Identity, dest interface{}) error {

@@ -19,7 +19,7 @@ func TestHTTP_NewSHTTPStore(t *testing.T) {
 
 	Convey("When I create a new HTTPStore", t, func() {
 
-		store := NewHTTPManipulator("username", "password", "http://url.com", "myns", nil).(*httpManipulator)
+		store := NewHTTPManipulator("username", "password", "http://url.com", "myns").(*httpManipulator)
 
 		Convey("Then the property Username should be 'username'", func() {
 			So(store.username, ShouldEqual, "username")
@@ -45,24 +45,6 @@ func TestHTTP_NewSHTTPStore(t *testing.T) {
 			So(ok, ShouldBeTrue)
 		})
 	})
-
-	Convey("When I create a new HTTPStore with a good TLS config", t, func() {
-
-		config := NewTLSConfiguration("fixtures/cert.p12", "password", "fixtures/ca.pem", true)
-
-		Convey("Then the it should should not panic", func() {
-			So(func() { NewHTTPManipulator("username", "password", "http://url.com", "", config) }, ShouldNotPanic)
-		})
-	})
-
-	Convey("When I create a new HTTPStore with a bad TLS config", t, func() {
-
-		config := NewTLSConfiguration("fixtures/cerbadt.p12", "password", "", true)
-
-		Convey("Then the it should should panic", func() {
-			So(func() { NewHTTPManipulator("username", "password", "http://url.com", "", config) }, ShouldPanic)
-		})
-	})
 }
 
 /*
@@ -74,7 +56,7 @@ func TestHTTP_makeAuthorizationHeaders(t *testing.T) {
 
 		Convey("When I prepare the Authorization", func() {
 
-			store := NewHTTPManipulator("username", "password", "http://url.com", "", nil).(*httpManipulator)
+			store := NewHTTPManipulator("username", "password", "http://url.com", "").(*httpManipulator)
 			h := store.makeAuthorizationHeaders()
 
 			Convey("Then the header should be correct", func() {
@@ -88,7 +70,7 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 
 	Convey("Given I create an authenticated session", t, func() {
 
-		store := NewHTTPManipulator("username", "password", "http://fake.com", "myns", nil).(*httpManipulator)
+		store := NewHTTPManipulator("username", "password", "http://fake.com", "myns").(*httpManipulator)
 
 		Convey("Given I create a Request", func() {
 
@@ -187,7 +169,7 @@ func TestHTTP_readHeaders(t *testing.T) {
 
 	Convey("Given I create a new HTTPStore an a Context", t, func() {
 
-		store := NewHTTPManipulator("username", "password", "http://fake.com", "", nil).(*httpManipulator)
+		store := NewHTTPManipulator("username", "password", "http://fake.com", "").(*httpManipulator)
 		ctx := manipulate.NewContext()
 		req := &http.Response{Header: http.Header{}}
 
@@ -253,7 +235,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 		list := NewList()
 
-		store := NewHTTPManipulator("username", "password", "http://url.com", "", nil).(*httpManipulator)
+		store := NewHTTPManipulator("username", "password", "http://url.com", "").(*httpManipulator)
 
 		Convey("When I check personal URI of a standard object with an ID", func() {
 
@@ -345,7 +327,7 @@ func TestHTTP_Retrieve(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
+		store := NewHTTPManipulator("username", "password", ts.URL, "")
 
 		Convey("When I fetch an entity", func() {
 
@@ -381,7 +363,7 @@ func TestHTTP_Retrieve(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
+		store := NewHTTPManipulator("username", "password", ts.URL, "")
 
 		Convey("When I fetch an entity", func() {
 
@@ -403,7 +385,7 @@ func TestHTTP_Retrieve(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
+		store := NewHTTPManipulator("username", "password", ts.URL, "")
 
 		Convey("When I fetch an entity", func() {
 
@@ -429,7 +411,7 @@ func TestHTTP_Update(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
+		store := NewHTTPManipulator("username", "password", ts.URL, "")
 
 		Convey("When I save an entity", func() {
 
@@ -476,7 +458,7 @@ func TestHTTP_Update(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
+		store := NewHTTPManipulator("username", "password", ts.URL, "")
 
 		Convey("When I save an entity", func() {
 
@@ -498,7 +480,7 @@ func TestHTTP_Update(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
+		store := NewHTTPManipulator("username", "password", ts.URL, "")
 
 		Convey("When I save an entity", func() {
 
@@ -520,7 +502,7 @@ func TestHTTP_Update(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
+		store := NewHTTPManipulator("username", "password", ts.URL, "")
 
 		Convey("When I save an entity", func() {
 
@@ -543,7 +525,7 @@ func TestHTTP_Delete(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
+		store := NewHTTPManipulator("username", "password", ts.URL, "")
 
 		Convey("When I delete an entity", func() {
 
@@ -559,7 +541,7 @@ func TestHTTP_Delete(t *testing.T) {
 
 		Convey("When I delete an entity with no ID", func() {
 
-			store := NewHTTPManipulator("username", "password", "http://fake.com", "", nil)
+			store := NewHTTPManipulator("username", "password", "http://fake.com", "")
 
 			list := NewList()
 			err := store.Delete(nil, list)
@@ -578,7 +560,7 @@ func TestHTTP_Delete(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
+		store := NewHTTPManipulator("username", "password", ts.URL, "")
 
 		Convey("When I delete an entity", func() {
 
@@ -609,7 +591,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
+			store := NewHTTPManipulator("username", "password", ts.URL, "")
 
 			var l TasksList
 			ctx := manipulate.NewContext()
@@ -642,7 +624,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 
 		Convey("When I fetch its children but the parent has no ID", func() {
 
-			store := NewHTTPManipulator("username", "password", "http://fake.com", "", nil)
+			store := NewHTTPManipulator("username", "password", "http://fake.com", "")
 
 			list2 := NewList()
 			var l TasksList
@@ -664,7 +646,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
+			store := NewHTTPManipulator("username", "password", ts.URL, "")
 
 			e := NewTask()
 			var l TasksList
@@ -691,7 +673,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 				fmt.Fprint(w, `[]`)
 			}))
 			defer ts.Close()
-			store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
+			store := NewHTTPManipulator("username", "password", ts.URL, "")
 
 			var l TasksList
 
@@ -713,7 +695,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
+			store := NewHTTPManipulator("username", "password", ts.URL, "")
 
 			ctx := manipulate.NewContext()
 			ctx.Parent = list
@@ -734,7 +716,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
+			store := NewHTTPManipulator("username", "password", ts.URL, "")
 
 			ctx := manipulate.NewContext()
 			ctx.Parent = list
@@ -765,7 +747,7 @@ func TestHTTP_Create(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
+			store := NewHTTPManipulator("username", "password", ts.URL, "")
 			task := NewTask()
 			errs := store.Create(nil, list, task)
 
@@ -780,7 +762,7 @@ func TestHTTP_Create(t *testing.T) {
 
 		Convey("When I create a child for a parent that has no ID", func() {
 
-			store := NewHTTPManipulator("username", "password", "url.com", "", nil)
+			store := NewHTTPManipulator("username", "password", "url.com", "")
 			list2 := NewList()
 			task := NewTask()
 			ctx := manipulate.NewContext()
@@ -795,7 +777,7 @@ func TestHTTP_Create(t *testing.T) {
 
 		Convey("When I create a child that is nil", func() {
 
-			store := NewHTTPManipulator("username", "password", "http://fake.com", "", nil)
+			store := NewHTTPManipulator("username", "password", "http://fake.com", "")
 			task := NewUnmarshalableList() // c'mon, that's fine..
 			errs := store.Create(nil, list, task)
 
@@ -811,7 +793,7 @@ func TestHTTP_Create(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
+			store := NewHTTPManipulator("username", "password", ts.URL, "")
 			task := NewTask()
 			errs := store.Create(nil, list, task)
 
@@ -829,7 +811,7 @@ func TestHTTP_Create(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPManipulator("username", "password", ts.URL, "", nil)
+			store := NewHTTPManipulator("username", "password", ts.URL, "")
 			task := NewTask()
 			errs := store.Create(nil, list, task)
 
@@ -840,7 +822,7 @@ func TestHTTP_Create(t *testing.T) {
 
 		Convey("When I create an unmarshalable entity", func() {
 
-			store := NewHTTPManipulator("username", "password", "", "", nil)
+			store := NewHTTPManipulator("username", "password", "", "")
 			list := NewUnmarshalableList()
 			list.ID = "yyy"
 			err := store.Create(nil, list)
@@ -867,7 +849,7 @@ func TestHTTP_Assign(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			session := NewHTTPManipulator("username", "password", ts.URL, "", nil)
+			session := NewHTTPManipulator("username", "password", ts.URL, "")
 
 			t1 := NewTask()
 			t1.ID = "xxx"
@@ -884,7 +866,7 @@ func TestHTTP_Assign(t *testing.T) {
 
 		Convey("When I assign objects to a parent that has no ID", func() {
 
-			session := NewHTTPManipulator("username", "password", "http://fake.com", "", nil)
+			session := NewHTTPManipulator("username", "password", "http://fake.com", "")
 
 			l1 := NewList()
 			t2 := NewTask()
@@ -908,7 +890,7 @@ func TestHTTP_Assign(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			session := NewHTTPManipulator("username", "password", ts.URL, "", nil)
+			session := NewHTTPManipulator("username", "password", ts.URL, "")
 
 			t1 := NewTask()
 			t1.ID = "xxx"
@@ -932,7 +914,7 @@ func TestHTTP_Count(t *testing.T) {
 
 	Convey("Given I have a store", t, func() {
 
-		store := NewHTTPManipulator("username", "password", "", "", nil)
+		store := NewHTTPManipulator("username", "password", "", "")
 
 		Convey("When I call Count", func() {
 			c, err := store.Count(nil, elemental.EmptyIdentity)
@@ -953,7 +935,7 @@ func TestHTTP_Increment(t *testing.T) {
 
 	Convey("Given I have a store", t, func() {
 
-		store := NewHTTPManipulator("username", "password", "", "", nil)
+		store := NewHTTPManipulator("username", "password", "", "")
 
 		Convey("When I call Count", func() {
 			err := store.Increment(nil, ListIdentity, "counter", 1)
@@ -970,7 +952,7 @@ func TestHTTP_send(t *testing.T) {
 
 	Convey("Given I have a store with bad url", t, func() {
 
-		store := NewHTTPManipulator("username", "password", "", "", nil)
+		store := NewHTTPManipulator("username", "password", "", "")
 
 		Convey("When I call send ", func() {
 
