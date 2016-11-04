@@ -3,7 +3,6 @@ package maniphttp
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -21,7 +20,7 @@ func renewMidgardToken(
 	for {
 		select {
 		case <-time.Tick(refreshInterval):
-			fmt.Println("Refreshing token...")
+			log.Info("Refreshing Midgard token...")
 			token, err := midgardClient.IssueFromCertificate(certificates, CAPool)
 			if err != nil {
 				log.WithFields(log.Fields{
