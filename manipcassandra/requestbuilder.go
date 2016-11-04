@@ -62,7 +62,7 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 		}
 	}
 
-	if c.PageSize > 0 && operation == elemental.OperationRetrieveMany || operation == elemental.OperationInfo {
+	if c.PageSize > 0 && (operation == elemental.OperationRetrieveMany || operation == elemental.OperationInfo) {
 		manipulate.WriteString(buffer, ` LIMIT `)
 		manipulate.WriteString(buffer, strconv.Itoa(c.PageSize))
 	}
