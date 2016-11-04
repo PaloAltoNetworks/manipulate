@@ -27,8 +27,8 @@ type Context struct {
 func NewContext() *Context {
 
 	return &Context{
-		PageCurrent: 1,
-		PageSize:    100,
+		PageCurrent: 0,
+		PageSize:    0,
 	}
 }
 

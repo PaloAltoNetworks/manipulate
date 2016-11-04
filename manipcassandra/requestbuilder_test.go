@@ -19,6 +19,7 @@ func TestMethodAddOptionsFromContextWithPrimaryKeys(t *testing.T) {
 
 		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		context := manipulate.NewContext()
+		context.PageSize = 100
 
 		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{"name", "ID"})
 
@@ -33,6 +34,7 @@ func TestMethodAddOptionsFromContextWithLimitEqualTo0(t *testing.T) {
 
 		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		context := manipulate.NewContext()
+		context.PageSize = 100
 
 		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{})
 
@@ -71,6 +73,7 @@ func TestMethodAddOptionsFromContextWithParameter(t *testing.T) {
 	Convey("Given I call the method addOptionsFromContext", t, func() {
 		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		context := manipulate.NewContext()
+		context.PageSize = 100
 		context.Parameters = &manipulate.Parameters{IfNotExists: true}
 		command, values := commandAndValuesFromContext(query, elemental.OperationRetrieveMany, context, []string{})
 
@@ -84,6 +87,7 @@ func TestMethodAddOptionsFromContextWithFilter(t *testing.T) {
 	Convey("Given I call the method addOptionsFromContext", t, func() {
 		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		context := manipulate.NewContext()
+		context.PageSize = 100
 
 		filter := manipulate.NewFilterComposer().WithKey("ID").Equals("12345").Done()
 		context.Filter = filter
@@ -119,6 +123,7 @@ func TestMethodAddOptionsFromContextWithMultiColumnAndValues(t *testing.T) {
 	Convey("Given I call the method addOptionsFromContext", t, func() {
 		query := bytes.NewBufferString(`SELECT * FROM policy`)
 		context := manipulate.NewContext()
+		context.PageSize = 100
 
 		filter := manipulate.NewFilterComposer().WithKey("ID", "name").Equals([]interface{}{"20", 0}, []interface{}{"60", 122}).Done()
 		context.Filter = filter
