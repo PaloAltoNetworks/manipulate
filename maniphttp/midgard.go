@@ -21,7 +21,7 @@ func renewMidgardToken(
 		select {
 		case <-time.Tick(refreshInterval):
 			log.Info("Refreshing Midgard token...")
-			token, err := midgardClient.IssueFromCertificate(certificates, CAPool)
+			token, err := midgardClient.IssueFromCertificate(certificates)
 			if err != nil {
 				log.WithFields(log.Fields{
 					"error": err,

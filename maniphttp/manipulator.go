@@ -68,7 +68,7 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 ) (manipulate.Manipulator, func(), error) {
 
 	mclient := midgardclient.NewClientWithCAPool(midgardurl, CAPool, skipInsecure)
-	token, err := mclient.IssueFromCertificate(certificates, CAPool)
+	token, err := mclient.IssueFromCertificate(certificates)
 	if err != nil {
 		return nil, nil, err
 	}
