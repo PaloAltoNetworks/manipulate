@@ -60,14 +60,15 @@ func NewHTTPManipulator(username, password, url, namespace string) manipulate.Ma
 func NewHTTPManipulatorWithMidgardCertAuthentication(
 	url string,
 	midgardurl string,
-	CAPool *x509.CertPool,
+	rootCAPool *x509.CertPool,
+	clientCAPool *x509.CertPool,
 	certificates []tls.Certificate,
 	namespace string,
 	refreshInterval time.Duration,
 	skipInsecure bool,
 ) (manipulate.Manipulator, func(), error) {
 
-	mclient := midgardclient.NewClientWithCAPool(midgardurl, CAPool, skipInsecure)
+	mclient := midgardclient.NewClientWithCAPool(midgardurl, rootCAPool, clientCAPool, skipInsecure)
 	token, err := mclient.IssueFromCertificate(certificates)
 	if err != nil {
 		return nil, nil, err
@@ -82,7 +83,8 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 				TLSClientConfig: &tls.Config{
 					Certificates:       certificates,
 					InsecureSkipVerify: skipInsecure,
-					RootCAs:            CAPool,
+					RootCAs:            rootCAPool,
+					ClientCAs:          clientCAPool,
 				},
 			},
 		},
@@ -91,7 +93,7 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 
 	stopCh := make(chan bool)
 
-	go renewMidgardToken(mclient, m, CAPool, certificates, refreshInterval, stopCh)
+	go renewMidgardToken(mclient, m, certificates, refreshInterval, stopCh)
 
 	return m, func() { stopCh <- true }, nil
 }

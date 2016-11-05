@@ -2,7 +2,6 @@ package maniphttp
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -12,7 +11,6 @@ import (
 func renewMidgardToken(
 	midgardClient *midgardclient.Client,
 	manipulator *httpManipulator,
-	CAPool *x509.CertPool,
 	certificates []tls.Certificate,
 	refreshInterval time.Duration,
 	stopCh chan bool,
@@ -27,6 +25,7 @@ func renewMidgardToken(
 					"error": err,
 				}).Error("Unable to renew token.")
 			}
+			// TODO: there is a race condition here. It cannot happen, but it should be fixed.
 			manipulator.password = token
 		case <-stopCh:
 			return
