@@ -428,12 +428,14 @@ func (s *httpManipulator) send(request *http.Request, context *manipulate.Contex
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 
-		errs := elemental.Errors{}
-
-		if err := json.NewDecoder(response.Body).Decode(&errs); err != nil {
-			return nil, err
+		es := []elemental.Error{}
+		if err := json.NewDecoder(response.Body).Decode(&es); err != nil {
+			return nil, manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
 		}
-
+		errs := elemental.NewErrors()
+		for _, e := range es {
+			errs = append(errs, e)
+		}
 		return response, errs
 	}
 

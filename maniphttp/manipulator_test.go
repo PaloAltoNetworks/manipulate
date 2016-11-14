@@ -359,7 +359,8 @@ func TestHTTP_Retrieve(t *testing.T) {
 	Convey("Given I have a session and a and the server will return an error", t, func() {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(500)
+			w.WriteHeader(422)
+			fmt.Fprint(w, `[{"code":422,"description":"nope.","subject":"elemental","title":"Read Only Error","data":null}]`)
 		}))
 		defer ts.Close()
 
@@ -373,6 +374,8 @@ func TestHTTP_Retrieve(t *testing.T) {
 
 			Convey("Then error should not be nil", func() {
 				So(err, ShouldNotBeNil)
+				So(err.(elemental.Errors).Code(), ShouldEqual, 422)
+				So(err.(elemental.Errors)[0].(elemental.Error).Description, ShouldEqual, "nope.")
 			})
 		})
 	})
