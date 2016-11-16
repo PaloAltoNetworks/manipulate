@@ -123,12 +123,7 @@ func (s *httpManipulator) RetrieveMany(context *manipulate.Context, identity ele
 		return nil
 	}
 
-	defer func() {
-		if err := response.Body.Close(); err != nil {
-			panic(err)
-		}
-	}()
-
+	defer response.Body.Close()
 	if err := json.NewDecoder(response.Body).Decode(&dest); err != nil {
 		return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
 	}
@@ -159,12 +154,7 @@ func (s *httpManipulator) Retrieve(context *manipulate.Context, objects ...manip
 			return err
 		}
 
-		defer func() {
-			if err := response.Body.Close(); err != nil {
-				panic(err)
-			}
-		}()
-
+		defer response.Body.Close()
 		if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
 			return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
 		}
@@ -201,12 +191,7 @@ func (s *httpManipulator) Create(context *manipulate.Context, objects ...manipul
 			return err
 		}
 
-		defer func() {
-			if err := response.Body.Close(); err != nil {
-				panic(err)
-			}
-		}()
-
+		defer response.Body.Close()
 		if err := json.NewDecoder(response.Body).Decode(&child); err != nil {
 			return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
 		}
@@ -243,12 +228,7 @@ func (s *httpManipulator) Update(context *manipulate.Context, objects ...manipul
 			return err
 		}
 
-		defer func() {
-			if err := response.Body.Close(); err != nil {
-				panic(err)
-			}
-		}()
-
+		defer response.Body.Close()
 		if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
 			return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
 		}
@@ -429,13 +409,18 @@ func (s *httpManipulator) send(request *http.Request, context *manipulate.Contex
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 
 		es := []elemental.Error{}
+
+		defer response.Body.Close()
 		if err := json.NewDecoder(response.Body).Decode(&es); err != nil {
 			return nil, manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
 		}
+
 		errs := elemental.NewErrors()
+
 		for _, e := range es {
 			errs = append(errs, e)
 		}
+
 		return response, errs
 	}
 
