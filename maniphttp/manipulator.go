@@ -384,6 +384,7 @@ func (s *httpManipulator) send(request *http.Request, context *manipulate.Contex
 
 	s.prepareHeaders(request, context)
 
+	request.Close = true
 	response, err := s.client.Do(request)
 
 	if err != nil {
