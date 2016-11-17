@@ -384,6 +384,9 @@ func (s *httpManipulator) send(request *http.Request, context *manipulate.Contex
 
 	s.prepareHeaders(request, context)
 
+	// TODO: this is a work around a golang bug that messed up with the keep alive
+	// that seems to be fixed in go 1.8: https://github.com/golang/go/issues/13801
+	// remove this once released.
 	request.Close = true
 	response, err := s.client.Do(request)
 
