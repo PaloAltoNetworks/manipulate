@@ -141,7 +141,7 @@ func TestMethodBuildDeleteCommand(t *testing.T) {
 
 		command, values := buildDeleteCommand(nil, "policy", []string{}, []interface{}{})
 
-		So(command, ShouldEqual, `DELETE FROM policy ALLOW FILTERING`)
+		So(command, ShouldEqual, `DELETE FROM policy`)
 		So(values, ShouldResemble, []interface{}{})
 	})
 }
@@ -152,7 +152,7 @@ func TestMethodBuildDeleteCommandWithPrimaryKeysAnsValues(t *testing.T) {
 
 		command, values := buildDeleteCommand(nil, "policy", []string{"ID", "name"}, []interface{}{"123", "Alexandre"})
 
-		So(command, ShouldEqual, `DELETE FROM policy WHERE ID = ? AND name = ? ALLOW FILTERING`)
+		So(command, ShouldEqual, `DELETE FROM policy WHERE ID = ? AND name = ?`)
 		So(values, ShouldResemble, []interface{}{"123", "Alexandre"})
 	})
 }
@@ -168,7 +168,7 @@ func TestMethodBuildDeleteCommandWithPrimaryKeysAnsValuesAndFilter(t *testing.T)
 
 		command, values := buildDeleteCommand(context, "policy", []string{"ID", "name"}, []interface{}{"123", "Alexandre"})
 
-		So(command, ShouldEqual, `DELETE FROM policy WHERE ID = ? AND name = ? AND (ID,name) = ((?,?),(?,?)) ALLOW FILTERING`)
+		So(command, ShouldEqual, `DELETE FROM policy WHERE ID = ? AND name = ? AND (ID,name) = ((?,?),(?,?))`)
 		So(values, ShouldResemble, []interface{}{"123", "Alexandre", "20", 0, "60", 122})
 	})
 }
