@@ -272,7 +272,7 @@ func buildDeleteCommand(c *manipulate.Context, tableName string, primaryKeys []s
 
 	command, values := commandAndValuesFromContext(&buffer, elemental.OperationDelete, c, primaryKeys)
 
-	return command + " ALLOW FILTERING", append(primaryValues, values...)
+	return command, append(primaryValues, values...)
 }
 
 // buildCountCommand build a count command for cassandra
