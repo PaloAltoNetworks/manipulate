@@ -284,12 +284,10 @@ func (s *httpManipulator) Count(context *manipulate.Context, identity elemental.
 		return 0, manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
 	}
 
-	response, err := s.send(request, context)
+	_, err = s.send(request, context)
 	if err != nil {
 		return 0, err
 	}
-
-	defer response.Body.Close()
 
 	return context.CountTotal, nil
 }
