@@ -915,20 +915,66 @@ func TestHTTP_Assign(t *testing.T) {
 
 func TestHTTP_Count(t *testing.T) {
 
-	Convey("Given I have a store", t, func() {
+	Convey("Given I have an existing object", t, func() {
 
-		store := NewHTTPManipulator("username", "password", "", "")
+		list := NewList()
+		list.ID = "xxx"
 
-		Convey("When I call Count", func() {
-			c, err := store.Count(nil, elemental.EmptyIdentity)
+		Convey("When I fetch the count of its children with success", func() {
 
-			Convey("Then err should should not be nil", func() {
-				So(err, ShouldNotBeNil)
-				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrNotImplemented)
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("X-Count-Total", "10")
+			}))
+			defer ts.Close()
+
+			store := NewHTTPManipulator("username", "password", ts.URL, "")
+
+			ctx := manipulate.NewContext()
+			ctx.Parent = list
+			num, errs := store.Count(ctx, TaskIdentity)
+
+			Convey("Then err should not be nil", func() {
+				So(errs, ShouldBeNil)
 			})
 
-			Convey("Then c should equal -1", func() {
-				So(c, ShouldEqual, -1)
+			Convey("Then count should be 10", func() {
+				So(num, ShouldEqual, 10)
+			})
+		})
+
+		Convey("When I fetch its children but the parent has no ID", func() {
+
+			store := NewHTTPManipulator("username", "password", "http://fake.com", "")
+
+			list2 := NewList()
+
+			ctx := manipulate.NewContext()
+			ctx.Parent = list2
+
+			_, errs := store.Count(ctx, TaskIdentity)
+
+			Convey("Then err should not be nil", func() {
+				So(errs, ShouldNotBeNil)
+			})
+		})
+
+		Convey("When I fetch the children and I got a communication error", func() {
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				http.Error(w, "woops", 500)
+			}))
+			defer ts.Close()
+
+			store := NewHTTPManipulator("username", "password", ts.URL, "")
+
+			ctx := manipulate.NewContext()
+			ctx.Parent = list
+
+			_, errs := store.Count(ctx, TaskIdentity)
+
+			Convey("Then err should not be nil", func() {
+				So(errs, ShouldNotBeNil)
 			})
 		})
 	})
