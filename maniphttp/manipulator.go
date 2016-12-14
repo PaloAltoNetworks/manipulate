@@ -268,8 +268,30 @@ func (s *httpManipulator) Delete(context *manipulate.Context, objects ...manipul
 	return nil
 }
 
-func (s *httpManipulator) Count(*manipulate.Context, elemental.Identity) (int, error) {
-	return -1, manipulate.NewError("Count is not implemented in HTTPStore", manipulate.ErrNotImplemented)
+func (s *httpManipulator) Count(context *manipulate.Context, identity elemental.Identity) (int, error) {
+
+	if context == nil {
+		context = manipulate.NewContext()
+	}
+
+	url, err := s.getURLForChildrenIdentity(context.Parent, identity)
+	if err != nil {
+		return 0, manipulate.NewError(err.Error(), manipulate.ErrCannotBuildQuery)
+	}
+
+	request, err := http.NewRequest(http.MethodHead, url, nil)
+	if err != nil {
+		return 0, manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
+	}
+
+	response, err := s.send(request, context)
+	if err != nil {
+		return 0, err
+	}
+
+	defer response.Body.Close()
+
+	return context.CountTotal, nil
 }
 
 func (s *httpManipulator) Assign(context *manipulate.Context, assignation *elemental.Assignation) error {
