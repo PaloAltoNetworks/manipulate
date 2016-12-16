@@ -67,9 +67,9 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 		manipulate.WriteString(buffer, strconv.Itoa(c.PageSize))
 	}
 
-	if c.Parameters != nil {
-		manipulate.WriteString(buffer, ` `)
-		manipulate.WriteString(buffer, compiler.CompileParameters(c.Parameters))
+	parameterString := compiler.CompileParameters(c.Parameters)
+	if len(parameterString) != 0 {
+		manipulate.WriteString(buffer, ` `+parameterString)
 	}
 
 	return buffer.String(), values
