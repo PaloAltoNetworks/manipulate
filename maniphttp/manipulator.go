@@ -117,7 +117,7 @@ func (s *httpManipulator) RetrieveMany(context *manipulate.Context, identity ele
 	if err != nil {
 		return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
 	}
-	manipulate.AddQueryParameters(request, context.Parameters.KeyValues)
+	addQueryParameters(request, context)
 
 	response, err := s.send(request, context)
 	if err != nil {
@@ -153,7 +153,7 @@ func (s *httpManipulator) Retrieve(context *manipulate.Context, objects ...manip
 		if err != nil {
 			return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
 		}
-		manipulate.AddQueryParameters(request, context.Parameters.KeyValues)
+		addQueryParameters(request, context)
 
 		response, err := s.send(request, context)
 		if err != nil {
@@ -191,7 +191,7 @@ func (s *httpManipulator) Create(context *manipulate.Context, objects ...manipul
 		if err != nil {
 			return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
 		}
-		manipulate.AddQueryParameters(request, context.Parameters.KeyValues)
+		addQueryParameters(request, context)
 
 		response, err := s.send(request, context)
 		if err != nil {
@@ -229,7 +229,7 @@ func (s *httpManipulator) Update(context *manipulate.Context, objects ...manipul
 		if err != nil {
 			return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
 		}
-		manipulate.AddQueryParameters(request, context.Parameters.KeyValues)
+		addQueryParameters(request, context)
 
 		response, err := s.send(request, context)
 		if err != nil {
@@ -262,7 +262,7 @@ func (s *httpManipulator) Delete(context *manipulate.Context, objects ...manipul
 		if err != nil {
 			return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
 		}
-		manipulate.AddQueryParameters(request, context.Parameters.KeyValues)
+		addQueryParameters(request, context)
 
 		_, err = s.send(request, context)
 		if err != nil {
@@ -288,7 +288,7 @@ func (s *httpManipulator) Count(context *manipulate.Context, identity elemental.
 	if err != nil {
 		return 0, manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
 	}
-	manipulate.AddQueryParameters(request, context.Parameters.KeyValues)
+	addQueryParameters(request, context)
 
 	_, err = s.send(request, context)
 	if err != nil {
@@ -318,7 +318,7 @@ func (s *httpManipulator) Assign(context *manipulate.Context, assignation *eleme
 	if err != nil {
 		return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
 	}
-	manipulate.AddQueryParameters(request, context.Parameters.KeyValues)
+	addQueryParameters(request, context)
 
 	_, err = s.send(request, nil)
 

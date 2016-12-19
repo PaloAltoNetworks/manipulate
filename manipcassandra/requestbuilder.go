@@ -68,7 +68,7 @@ func commandAndValuesFromContext(buffer *bytes.Buffer, operation elemental.Opera
 	}
 
 	parameterString := compiler.CompileParameters(c.Parameters)
-	if len(parameterString) != 0 {
+	if len(parameterString) > 0 {
 		manipulate.WriteString(buffer, ` `+parameterString)
 	}
 

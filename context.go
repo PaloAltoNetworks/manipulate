@@ -29,7 +29,6 @@ func NewContext() *Context {
 	return &Context{
 		PageCurrent: 0,
 		PageSize:    0,
-		Parameters:  &Parameters{},
 	}
 }
 

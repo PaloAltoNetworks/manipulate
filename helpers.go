@@ -2,7 +2,6 @@ package manipulate
 
 import (
 	"bytes"
-	"net/http"
 	"reflect"
 )
 
@@ -27,17 +26,4 @@ func WriteString(buffer *bytes.Buffer, str string) {
 	if _, err := buffer.WriteString(str); err != nil {
 		panic(err)
 	}
-}
-
-// AddQueryParameters appends each key-value pair from keyValues to a request
-// as query parameters with proper escaping.
-func AddQueryParameters(req *http.Request, keyValues map[string]string) {
-	if req == nil || keyValues == nil {
-		return
-	}
-	q := req.URL.Query()
-	for k, v := range keyValues {
-		q.Add(k, v)
-	}
-	req.URL.RawQuery = q.Encode()
 }
