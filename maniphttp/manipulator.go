@@ -18,7 +18,7 @@ import (
 	"github.com/aporeto-inc/manipulate"
 
 	log "github.com/Sirupsen/logrus"
-	midgardclient "github.com/aporeto-inc/midgard-client"
+	midgardclient "github.com/aporeto-inc/midgard-lib/client"
 )
 
 type httpManipulator struct {
