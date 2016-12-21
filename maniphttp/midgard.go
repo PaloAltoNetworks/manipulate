@@ -5,7 +5,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	midgardclient "github.com/aporeto-inc/midgard/client"
+	midgardclient "github.com/aporeto-inc/midgard-client"
 )
 
 func renewMidgardToken(
