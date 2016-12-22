@@ -12,8 +12,9 @@ inputs:
 run:
   path: sh
   args:
-    - -ec
+    - -exc
     - |
+      set +x
       export PATH=$PATH:$GOPATH/bin:$PWD/go/bin
       export GOPATH=$PWD/go:$GOPATH
 
