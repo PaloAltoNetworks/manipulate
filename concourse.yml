@@ -12,7 +12,7 @@ inputs:
 run:
   path: sh
   args:
-    - -exc
+    - -ec
     - |
       export PATH=$PATH:$GOPATH/bin:$PWD/go/bin
       export GOPATH=$PWD/go:$GOPATH
