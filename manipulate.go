@@ -6,6 +6,9 @@ package manipulate
 
 import "github.com/aporeto-inc/elemental"
 
+// EventHandler is the type of event an handler.
+type EventHandler func(*elemental.Event)
+
 // ManipulablesList is a list of objects implementing the Manipulable interface.
 type ManipulablesList []Manipulable
 
@@ -56,4 +59,12 @@ type TransactionalManipulator interface {
 	// Abort aborts the give TransactionID. It returns true if
 	// a transaction has been effectively aborted, otherwise it returns false.
 	Abort(id TransactionID) bool
+}
+
+// An EventManipulator is a manipulator with event capabilities.
+type EventManipulator interface {
+	Manipulator
+
+	// Subscribe subscribes the given handler for event on the given identity
+	Subscribe(identities []elemental.Identity, handler EventHandler) error
 }

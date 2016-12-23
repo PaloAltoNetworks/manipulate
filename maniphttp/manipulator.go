@@ -12,7 +12,10 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
+
+	"golang.org/x/net/websocket"
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
@@ -30,7 +33,7 @@ type httpManipulator struct {
 }
 
 // NewHTTPManipulator returns a Manipulator backed by an ReST API.
-func NewHTTPManipulator(username, password, url, namespace string) manipulate.Manipulator {
+func NewHTTPManipulator(username, password, url, namespace string) manipulate.EventManipulator {
 
 	CAPool, err := x509.SystemCertPool()
 	if err != nil {
@@ -41,7 +44,7 @@ func NewHTTPManipulator(username, password, url, namespace string) manipulate.Ma
 }
 
 // NewHTTPManipulatorWithRootCA returns a Manipulator backed by an ReST API using the given CAPool as root CA.
-func NewHTTPManipulatorWithRootCA(username, password, url, namespace string, rootCAPool *x509.CertPool, skipTLSVerify bool) manipulate.Manipulator {
+func NewHTTPManipulatorWithRootCA(username, password, url, namespace string, rootCAPool *x509.CertPool, skipTLSVerify bool) manipulate.EventManipulator {
 
 	return &httpManipulator{
 		username: username,
@@ -70,7 +73,7 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 	namespace string,
 	refreshInterval time.Duration,
 	skipInsecure bool,
-) (manipulate.Manipulator, func(), error) {
+) (manipulate.EventManipulator, func(), error) {
 
 	mclient := midgardclient.NewClientWithCAPool(midgardurl, rootCAPool, clientCAPool, skipInsecure)
 	token, err := mclient.IssueFromCertificate(certificates)
@@ -328,6 +331,32 @@ func (s *httpManipulator) Assign(context *manipulate.Context, assignation *eleme
 func (s *httpManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
 
 	return manipulate.NewError("Increment is not implemented in HTTPStore", manipulate.ErrNotImplemented)
+}
+
+func (s *httpManipulator) Subscribe(identities []elemental.Identity, handler manipulate.EventHandler) error {
+
+	url := strings.Replace(s.url, "http://", "ws://", 1)
+	url = strings.Replace(url, "https://", "wss://", 1)
+	url = url + "/events?token=" + s.password + "&namespace=" + s.namespace
+
+	ws, err := websocket.Dial(url, "", url)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		event := &elemental.Event{}
+		websocket.JSON.Receive(ws, event)
+
+		for _, i := range identities {
+			if i.Name == event.Identity {
+				handler(event)
+				break
+			}
+		}
+	}()
+
+	return nil
 }
 
 func (s *httpManipulator) makeAuthorizationHeaders() string {
