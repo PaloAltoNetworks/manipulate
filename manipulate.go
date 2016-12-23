@@ -7,7 +7,10 @@ package manipulate
 import "github.com/aporeto-inc/elemental"
 
 // EventHandler is the type of event an handler.
-type EventHandler func(*elemental.Event)
+type EventHandler func(*elemental.Event, error)
+
+// EventUnsubsriber is the type of the unsubscribe function.
+type EventUnsubsriber func()
 
 // ManipulablesList is a list of objects implementing the Manipulable interface.
 type ManipulablesList []Manipulable
@@ -66,5 +69,5 @@ type EventManipulator interface {
 	Manipulator
 
 	// Subscribe subscribes the given handler for event on the given identity
-	Subscribe(identities []elemental.Identity, handler EventHandler) error
+	Subscribe(identities []elemental.Identity, handler EventHandler) (EventUnsubsriber, error)
 }

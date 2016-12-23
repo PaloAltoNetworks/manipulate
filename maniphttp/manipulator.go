@@ -333,7 +333,7 @@ func (s *httpManipulator) Increment(context *manipulate.Context, identity elemen
 	return manipulate.NewError("Increment is not implemented in HTTPStore", manipulate.ErrNotImplemented)
 }
 
-func (s *httpManipulator) Subscribe(identities []elemental.Identity, handler manipulate.EventHandler) error {
+func (s *httpManipulator) Subscribe(identities []elemental.Identity, handler manipulate.EventHandler) (manipulate.EventUnsubsriber, error) {
 
 	url := strings.Replace(s.url, "http://", "ws://", 1)
 	url = strings.Replace(url, "https://", "wss://", 1)
@@ -341,22 +341,47 @@ func (s *httpManipulator) Subscribe(identities []elemental.Identity, handler man
 
 	ws, err := websocket.Dial(url, "", url)
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	events := make(chan *elemental.Event)
+	stop := make(chan bool)
+
+	relatedIdentities := map[string]bool{}
+	if identities != nil {
+		for _, i := range identities {
+			relatedIdentities[i.Name] = true
+		}
 	}
 
 	go func() {
-		event := &elemental.Event{}
-		websocket.JSON.Receive(ws, event)
+		for {
+			select {
+			case evt := <-events:
+				if _, ok := relatedIdentities[evt.Identity]; ok || identities == nil {
+					handler(evt, nil)
+				}
 
-		for _, i := range identities {
-			if i.Name == event.Identity {
-				handler(event)
-				break
+			case <-stop:
+				ws.Close()
+				return
 			}
 		}
 	}()
 
-	return nil
+	go func() {
+		for {
+			event := &elemental.Event{}
+			err := websocket.JSON.Receive(ws, event)
+			if err != nil {
+				handler(nil, err)
+				return
+			}
+			events <- event
+		}
+	}()
+
+	return func() { stop <- true }, nil
 }
 
 func (s *httpManipulator) makeAuthorizationHeaders() string {
