@@ -333,7 +333,7 @@ func (s *httpManipulator) Increment(context *manipulate.Context, identity elemen
 	return manipulate.NewError("Increment is not implemented in HTTPStore", manipulate.ErrNotImplemented)
 }
 
-func (s *httpManipulator) Subscribe(identities []elemental.Identity, handler manipulate.EventHandler) (manipulate.EventUnsubsriber, error) {
+func (s *httpManipulator) Subscribe(identities []elemental.Identity, handler manipulate.EventHandler) (manipulate.EventUnsubscriber, error) {
 
 	url := strings.Replace(s.url, "http://", "ws://", 1)
 	url = strings.Replace(url, "https://", "wss://", 1)
