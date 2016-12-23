@@ -30,6 +30,7 @@ type httpManipulator struct {
 	url       string
 	namespace string
 	client    *http.Client
+	tlsConfig *tls.Config
 }
 
 // NewHTTPManipulator returns a Manipulator backed by an ReST API.
@@ -46,19 +47,22 @@ func NewHTTPManipulator(username, password, url, namespace string) manipulate.Ev
 // NewHTTPManipulatorWithRootCA returns a Manipulator backed by an ReST API using the given CAPool as root CA.
 func NewHTTPManipulatorWithRootCA(username, password, url, namespace string, rootCAPool *x509.CertPool, skipTLSVerify bool) manipulate.EventManipulator {
 
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: skipTLSVerify,
+		RootCAs:            rootCAPool,
+	}
+
 	return &httpManipulator{
 		username: username,
 		password: password,
 		url:      url,
 		client: &http.Client{
 			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: skipTLSVerify,
-					RootCAs:            rootCAPool,
-				},
+				TLSClientConfig: tlsConfig,
 			},
 		},
 		namespace: namespace,
+		tlsConfig: tlsConfig,
 	}
 }
 
@@ -81,21 +85,24 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 		return nil, nil, err
 	}
 
+	tlsConfig := &tls.Config{
+		Certificates:       certificates,
+		InsecureSkipVerify: skipInsecure,
+		RootCAs:            rootCAPool,
+		ClientCAs:          clientCAPool,
+	}
+
 	m := &httpManipulator{
 		username: "Bearer",
 		password: token,
 		url:      url,
 		client: &http.Client{
 			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					Certificates:       certificates,
-					InsecureSkipVerify: skipInsecure,
-					RootCAs:            rootCAPool,
-					ClientCAs:          clientCAPool,
-				},
+				TLSClientConfig: tlsConfig,
 			},
 		},
 		namespace: namespace,
+		tlsConfig: tlsConfig,
 	}
 
 	stopCh := make(chan bool)
@@ -333,13 +340,25 @@ func (s *httpManipulator) Increment(context *manipulate.Context, identity elemen
 	return manipulate.NewError("Increment is not implemented in HTTPStore", manipulate.ErrNotImplemented)
 }
 
-func (s *httpManipulator) Subscribe(identities []elemental.Identity, handler manipulate.EventHandler) (manipulate.EventUnsubscriber, error) {
+func (s *httpManipulator) Subscribe(identities []elemental.Identity, allNamespaces bool, handler manipulate.EventHandler) (manipulate.EventUnsubscriber, error) {
 
 	url := strings.Replace(s.url, "http://", "ws://", 1)
 	url = strings.Replace(url, "https://", "wss://", 1)
 	url = url + "/events?token=" + s.password + "&namespace=" + s.namespace
 
-	ws, err := websocket.Dial(url, "", url)
+	if allNamespaces {
+		url = url + "&mode=all"
+	}
+
+	config, err := websocket.NewConfig(url, url)
+	if err != nil {
+		return nil, err
+	}
+
+	config.TlsConfig = s.tlsConfig
+
+	ws, err := websocket.DialConfig(config)
+
 	if err != nil {
 		return nil, err
 	}

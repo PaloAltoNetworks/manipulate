@@ -70,5 +70,5 @@ type EventManipulator interface {
 
 	// Subscribe subscribes the given EventHandler for event on the given identities.
 	// If you pass nil as identities, then you will receive events for everything.
-	Subscribe(identities []elemental.Identity, handler EventHandler) (EventUnsubscriber, error)
+	Subscribe(identities []elemental.Identity, allNamespaces bool, handler EventHandler) (EventUnsubscriber, error)
 }
