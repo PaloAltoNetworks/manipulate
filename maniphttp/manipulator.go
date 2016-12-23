@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/net/websocket"
@@ -350,22 +351,6 @@ func (s *httpManipulator) Subscribe(identities []elemental.Identity, allNamespac
 		url = url + "&mode=all"
 	}
 
-	config, err := websocket.NewConfig(url, url)
-	if err != nil {
-		return nil, err
-	}
-
-	config.TlsConfig = s.tlsConfig
-
-	ws, err := websocket.DialConfig(config)
-
-	if err != nil {
-		return nil, err
-	}
-
-	events := make(chan *elemental.Event)
-	stop := make(chan bool)
-
 	relatedIdentities := map[string]bool{}
 	if identities != nil {
 		for _, i := range identities {
@@ -373,34 +358,56 @@ func (s *httpManipulator) Subscribe(identities []elemental.Identity, allNamespac
 		}
 	}
 
+	config, err := websocket.NewConfig(url, url)
+	if err != nil {
+		return nil, err
+	}
+	config.TlsConfig = s.tlsConfig
+
+	var ws *websocket.Conn
+	var stopped bool
+	lock := &sync.Mutex{}
+
 	go func() {
+
 		for {
-			select {
-			case evt := <-events:
-				if _, ok := relatedIdentities[evt.Identity]; ok || identities == nil {
-					handler(evt, nil)
+
+			lock.Lock()
+			if stopped {
+				return
+			}
+			lock.Unlock()
+
+			ws, err = websocket.DialConfig(config)
+			if err != nil {
+				log.WithField("error", err.Error()).Warn("Could not connect to websocket. retrying in 5s")
+				<-time.After(5 * time.Second)
+				continue
+			}
+
+			for {
+				event := &elemental.Event{}
+				err := websocket.JSON.Receive(ws, event)
+				if err != nil {
+					handler(nil, err)
+					break
 				}
 
-			case <-stop:
-				ws.Close()
-				return
+				if _, ok := relatedIdentities[event.Identity]; ok || identities == nil {
+					handler(event, nil)
+				}
 			}
 		}
 	}()
 
-	go func() {
-		for {
-			event := &elemental.Event{}
-			err := websocket.JSON.Receive(ws, event)
-			if err != nil {
-				handler(nil, err)
-				return
-			}
-			events <- event
+	return func() {
+		lock.Lock()
+		stopped = true
+		lock.Unlock()
+		if ws != nil && ws.IsClientConn() {
+			ws.Close()
 		}
-	}()
-
-	return func() { stop <- true }, nil
+	}, nil
 }
 
 func (s *httpManipulator) makeAuthorizationHeaders() string {
