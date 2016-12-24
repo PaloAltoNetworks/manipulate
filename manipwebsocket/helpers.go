@@ -28,4 +28,9 @@ func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Cont
 			request.Parameters.Add(k, v)
 		}
 	}
+
+	if ctx.Parent != nil {
+		request.ParentIdentity = ctx.Parent.Identity()
+		request.ParentID = ctx.Parent.Identifier()
+	}
 }
