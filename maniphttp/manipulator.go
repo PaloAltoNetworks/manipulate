@@ -12,11 +12,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
-	"sync"
 	"time"
-
-	"golang.org/x/net/websocket"
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
@@ -35,7 +31,7 @@ type httpManipulator struct {
 }
 
 // NewHTTPManipulator returns a Manipulator backed by an ReST API.
-func NewHTTPManipulator(username, password, url, namespace string) manipulate.EventManipulator {
+func NewHTTPManipulator(username, password, url, namespace string) manipulate.Manipulator {
 
 	CAPool, err := x509.SystemCertPool()
 	if err != nil {
@@ -46,7 +42,7 @@ func NewHTTPManipulator(username, password, url, namespace string) manipulate.Ev
 }
 
 // NewHTTPManipulatorWithRootCA returns a Manipulator backed by an ReST API using the given CAPool as root CA.
-func NewHTTPManipulatorWithRootCA(username, password, url, namespace string, rootCAPool *x509.CertPool, skipTLSVerify bool) manipulate.EventManipulator {
+func NewHTTPManipulatorWithRootCA(username, password, url, namespace string, rootCAPool *x509.CertPool, skipTLSVerify bool) manipulate.Manipulator {
 
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: skipTLSVerify,
@@ -78,7 +74,7 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 	namespace string,
 	refreshInterval time.Duration,
 	skipInsecure bool,
-) (manipulate.EventManipulator, func(), error) {
+) (manipulate.Manipulator, func(), error) {
 
 	mclient := midgardclient.NewClientWithCAPool(midgardurl, rootCAPool, clientCAPool, skipInsecure)
 	token, err := mclient.IssueFromCertificate(certificates)
@@ -339,75 +335,6 @@ func (s *httpManipulator) Assign(context *manipulate.Context, assignation *eleme
 func (s *httpManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
 
 	return manipulate.NewError("Increment is not implemented in HTTPStore", manipulate.ErrNotImplemented)
-}
-
-func (s *httpManipulator) Subscribe(identities []elemental.Identity, allNamespaces bool, handler manipulate.EventHandler) (manipulate.EventUnsubscriber, error) {
-
-	url := strings.Replace(s.url, "http://", "ws://", 1)
-	url = strings.Replace(url, "https://", "wss://", 1)
-	url = url + "/events?token=" + s.password + "&namespace=" + s.namespace
-
-	if allNamespaces {
-		url = url + "&mode=all"
-	}
-
-	relatedIdentities := map[string]bool{}
-	if identities != nil {
-		for _, i := range identities {
-			relatedIdentities[i.Name] = true
-		}
-	}
-
-	config, err := websocket.NewConfig(url, url)
-	if err != nil {
-		return nil, err
-	}
-	config.TlsConfig = s.tlsConfig
-
-	var ws *websocket.Conn
-	var stopped bool
-	lock := &sync.Mutex{}
-
-	go func() {
-
-		for {
-
-			lock.Lock()
-			if stopped {
-				return
-			}
-			lock.Unlock()
-
-			ws, err = websocket.DialConfig(config)
-			if err != nil {
-				log.WithField("error", err.Error()).Warn("Could not connect to websocket. retrying in 5s")
-				<-time.After(5 * time.Second)
-				continue
-			}
-
-			for {
-				event := &elemental.Event{}
-				err := websocket.JSON.Receive(ws, event)
-				if err != nil {
-					handler(nil, err)
-					break
-				}
-
-				if _, ok := relatedIdentities[event.Identity]; ok || identities == nil {
-					handler(event, nil)
-				}
-			}
-		}
-	}()
-
-	return func() {
-		lock.Lock()
-		stopped = true
-		lock.Unlock()
-		if ws != nil && ws.IsClientConn() {
-			ws.Close()
-		}
-	}, nil
 }
 
 func (s *httpManipulator) makeAuthorizationHeaders() string {
