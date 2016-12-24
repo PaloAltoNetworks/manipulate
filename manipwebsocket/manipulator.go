@@ -167,6 +167,7 @@ func (s *websocketManipulator) Create(context *manipulate.Context, objects ...ma
 		}
 
 		resp, err := s.send(req)
+
 		if err != nil {
 			return err
 		}
@@ -365,7 +366,8 @@ func (s *websocketManipulator) listen() {
 		response := elemental.NewResponse()
 
 		if err := websocket.JSON.Receive(s.ws, &response); err != nil {
-			break
+			response.StatusCode = http.StatusResetContent
+			response.Encode(manipulate.NewError("communication closed", manipulate.ErrCannotCommunicate))
 		}
 
 		if ch := s.responseChannelForID(response.Request.RequestID); ch != nil {
@@ -376,21 +378,19 @@ func (s *websocketManipulator) listen() {
 
 func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Response, error) {
 
-	ch := s.registerResponseChannel(request.RequestID)
-	defer s.unregisterResponseChannel(request.RequestID)
-
 	if err := websocket.JSON.Send(s.ws, request); err != nil {
 		return nil, manipulate.NewError(err.Error(), manipulate.ErrCannotCommunicate)
 	}
 
-	response := <-ch
+	ch := s.registerResponseChannel(request.RequestID)
+	defer s.unregisterResponseChannel(request.RequestID)
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-
-		return nil, decodeErrors(response)
+	select {
+	case response := <-ch:
+		return response, nil
+	case <-time.After(5 * time.Second):
+		return nil, manipulate.NewError("request timeout", manipulate.ErrCannotCommunicate)
 	}
-
-	return response, nil
 }
 
 func (s *websocketManipulator) registerResponseChannel(rid string) chan *elemental.Response {
