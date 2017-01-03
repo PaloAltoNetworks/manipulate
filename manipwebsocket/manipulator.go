@@ -101,7 +101,10 @@ func (s *websocketManipulator) RetrieveMany(context *manipulate.Context, identit
 		context = manipulate.NewContext()
 	}
 
-	req := elemental.NewRequest(s.namespace, elemental.OperationRetrieveMany, identity)
+	req := elemental.NewRequest()
+	req.Namespace = s.namespace
+	req.Operation = elemental.OperationRetrieveMany
+	req.Identity = identity
 	req.Username = s.username
 	req.Password = s.currentPassword()
 	populateRequestFromContext(req, context)
@@ -126,7 +129,10 @@ func (s *websocketManipulator) Retrieve(context *manipulate.Context, objects ...
 
 	for _, object := range objects {
 
-		req := elemental.NewRequest(s.namespace, elemental.OperationRetrieve, object.Identity())
+		req := elemental.NewRequest()
+		req.Namespace = s.namespace
+		req.Operation = elemental.OperationRetrieve
+		req.Identity = object.Identity()
 		req.Username = s.username
 		req.Password = s.currentPassword()
 		req.ObjectID = object.Identifier()
@@ -157,7 +163,10 @@ func (s *websocketManipulator) Create(context *manipulate.Context, objects ...ma
 
 	for _, object := range objects {
 
-		req := elemental.NewRequest(s.namespace, elemental.OperationCreate, object.Identity())
+		req := elemental.NewRequest()
+		req.Namespace = s.namespace
+		req.Operation = elemental.OperationCreate
+		req.Identity = object.Identity()
 		req.Username = s.username
 		req.Password = s.currentPassword()
 		populateRequestFromContext(req, context)
@@ -188,7 +197,10 @@ func (s *websocketManipulator) Update(context *manipulate.Context, objects ...ma
 
 	for _, object := range objects {
 
-		req := elemental.NewRequest(s.namespace, elemental.OperationUpdate, object.Identity())
+		req := elemental.NewRequest()
+		req.Namespace = s.namespace
+		req.Operation = elemental.OperationUpdate
+		req.Identity = object.Identity()
 		req.Username = s.username
 		req.Password = s.currentPassword()
 		req.ObjectID = object.Identifier()
@@ -219,7 +231,10 @@ func (s *websocketManipulator) Delete(context *manipulate.Context, objects ...ma
 
 	for _, object := range objects {
 
-		req := elemental.NewRequest(s.namespace, elemental.OperationDelete, object.Identity())
+		req := elemental.NewRequest()
+		req.Namespace = s.namespace
+		req.Operation = elemental.OperationDelete
+		req.Identity = object.Identity()
 		req.Username = s.username
 		req.Password = s.currentPassword()
 		req.ObjectID = object.Identifier()
@@ -244,7 +259,7 @@ func (s *websocketManipulator) Delete(context *manipulate.Context, objects ...ma
 
 func (s *websocketManipulator) Count(context *manipulate.Context, identity elemental.Identity) (int, error) {
 
-	return 0, manipulate.NewError("Increment is not implemented in HTTPStore", manipulate.ErrNotImplemented)
+	return 0, manipulate.NewError("Count is not implemented in HTTPStore", manipulate.ErrNotImplemented)
 }
 
 func (s *websocketManipulator) Assign(context *manipulate.Context, assignation *elemental.Assignation) error {
