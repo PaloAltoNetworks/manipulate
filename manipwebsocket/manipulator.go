@@ -259,7 +259,24 @@ func (s *websocketManipulator) Delete(context *manipulate.Context, objects ...ma
 
 func (s *websocketManipulator) Count(context *manipulate.Context, identity elemental.Identity) (int, error) {
 
-	return 0, manipulate.NewError("Count is not implemented in HTTPStore", manipulate.ErrNotImplemented)
+	if context == nil {
+		context = manipulate.NewContext()
+	}
+
+	req := elemental.NewRequest()
+	req.Namespace = s.namespace
+	req.Operation = elemental.OperationInfo
+	req.Identity = identity
+	req.Username = s.username
+	req.Password = s.currentPassword()
+	populateRequestFromContext(req, context)
+
+	resp, err := s.send(req)
+	if err != nil {
+		return 0, err
+	}
+
+	return resp.Total, nil
 }
 
 func (s *websocketManipulator) Assign(context *manipulate.Context, assignation *elemental.Assignation) error {
