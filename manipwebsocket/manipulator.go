@@ -434,7 +434,13 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 
 	select {
 	case response := <-ch:
+
+		if response.StatusCode < 200 || response.StatusCode > 300 {
+			return nil, decodeErrors(response)
+		}
+
 		return response, nil
+
 	case <-time.After(5 * time.Second):
 		return nil, manipulate.NewError("request timeout", manipulate.ErrCannotCommunicate)
 	}
