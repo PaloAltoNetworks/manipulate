@@ -342,6 +342,8 @@ func (s *websocketManipulator) Subscribe(identities []elemental.Identity, allNam
 
 func (s *websocketManipulator) connect() error {
 
+	s.unregisterAllResponseChannels()
+
 	url := strings.Replace(s.url, "http://", "ws://", 1)
 	url = strings.Replace(url, "https://", "wss://", 1)
 	url = url + "/wsapi?token=" + s.currentPassword() + "&namespace=" + s.namespace
@@ -378,15 +380,28 @@ func (s *websocketManipulator) connect() error {
 func (s *websocketManipulator) listen() {
 
 	for {
-		response := elemental.NewResponse()
 
-		if err := websocket.JSON.Receive(s.ws, &response); err != nil {
-			response.StatusCode = http.StatusResetContent
-			response.Encode(manipulate.NewError("communication closed", manipulate.ErrCannotCommunicate))
+		response := elemental.NewResponse()
+		err := websocket.JSON.Receive(s.ws, &response)
+
+		if err == nil {
+			if ch := s.responseChannelForID(response.Request.RequestID); ch != nil {
+				ch <- response
+			}
+			continue
 		}
 
-		if ch := s.responseChannelForID(response.Request.RequestID); ch != nil {
-			ch <- response
+		log.WithField("error", err).Warn("Websocket connnection died. Reconnecting...")
+		for {
+
+			if err := s.connect(); err != nil {
+				log.WithField("error", err).Warn("Websocket not available. Retrying in 5s...")
+				<-time.After(5 * time.Second)
+				continue
+			}
+
+			log.Info("Websocket connection restored.")
+			break
 		}
 	}
 }
@@ -422,6 +437,13 @@ func (s *websocketManipulator) unregisterResponseChannel(rid string) {
 
 	s.responsesChanRegistryLock.Lock()
 	delete(s.responsesChanRegistry, rid)
+	s.responsesChanRegistryLock.Unlock()
+}
+
+func (s *websocketManipulator) unregisterAllResponseChannels() {
+
+	s.responsesChanRegistryLock.Lock()
+	s.responsesChanRegistry = map[string]chan *elemental.Response{}
 	s.responsesChanRegistryLock.Unlock()
 }
 
