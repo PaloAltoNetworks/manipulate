@@ -70,6 +70,8 @@ func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string
 		return nil, nil, err
 	}
 
+	go m.listen()
+
 	return m, func() { m.ws.Close() }, nil
 }
 
@@ -388,8 +390,6 @@ func (s *websocketManipulator) connect() error {
 	if response.StatusCode != http.StatusOK {
 		return decodeErrors(response)
 	}
-
-	go s.listen()
 
 	return nil
 }
