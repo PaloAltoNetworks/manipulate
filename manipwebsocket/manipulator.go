@@ -102,9 +102,12 @@ func (s *websocketManipulator) RetrieveMany(context *manipulate.Context, identit
 	if context == nil {
 		context = manipulate.NewContext()
 	}
+	if context.Namespace == "" {
+		context.Namespace = s.namespace
+	}
 
 	req := elemental.NewRequest()
-	req.Namespace = s.namespace
+	req.Namespace = context.Namespace
 	req.Operation = elemental.OperationRetrieveMany
 	req.Identity = identity
 	req.Username = s.username
@@ -128,11 +131,14 @@ func (s *websocketManipulator) Retrieve(context *manipulate.Context, objects ...
 	if context == nil {
 		context = manipulate.NewContext()
 	}
+	if context.Namespace == "" {
+		context.Namespace = s.namespace
+	}
 
 	for _, object := range objects {
 
 		req := elemental.NewRequest()
-		req.Namespace = s.namespace
+		req.Namespace = context.Namespace
 		req.Operation = elemental.OperationRetrieve
 		req.Identity = object.Identity()
 		req.Username = s.username
@@ -162,11 +168,14 @@ func (s *websocketManipulator) Create(context *manipulate.Context, objects ...ma
 	if context == nil {
 		context = manipulate.NewContext()
 	}
+	if context.Namespace == "" {
+		context.Namespace = s.namespace
+	}
 
 	for _, object := range objects {
 
 		req := elemental.NewRequest()
-		req.Namespace = s.namespace
+		req.Namespace = context.Namespace
 		req.Operation = elemental.OperationCreate
 		req.Identity = object.Identity()
 		req.Username = s.username
@@ -196,11 +205,14 @@ func (s *websocketManipulator) Update(context *manipulate.Context, objects ...ma
 	if context == nil {
 		context = manipulate.NewContext()
 	}
+	if context.Namespace == "" {
+		context.Namespace = s.namespace
+	}
 
 	for _, object := range objects {
 
 		req := elemental.NewRequest()
-		req.Namespace = s.namespace
+		req.Namespace = context.Namespace
 		req.Operation = elemental.OperationUpdate
 		req.Identity = object.Identity()
 		req.Username = s.username
@@ -230,11 +242,14 @@ func (s *websocketManipulator) Delete(context *manipulate.Context, objects ...ma
 	if context == nil {
 		context = manipulate.NewContext()
 	}
+	if context.Namespace == "" {
+		context.Namespace = s.namespace
+	}
 
 	for _, object := range objects {
 
 		req := elemental.NewRequest()
-		req.Namespace = s.namespace
+		req.Namespace = context.Namespace
 		req.Operation = elemental.OperationDelete
 		req.Identity = object.Identity()
 		req.Username = s.username
@@ -264,9 +279,12 @@ func (s *websocketManipulator) Count(context *manipulate.Context, identity eleme
 	if context == nil {
 		context = manipulate.NewContext()
 	}
+	if context.Namespace == "" {
+		context.Namespace = s.namespace
+	}
 
 	req := elemental.NewRequest()
-	req.Namespace = s.namespace
+	req.Namespace = context.Namespace
 	req.Operation = elemental.OperationInfo
 	req.Identity = identity
 	req.Username = s.username

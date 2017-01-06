@@ -21,6 +21,7 @@ type Context struct {
 	Parameters    *Parameters
 	Attributes    []string
 	TransactionID TransactionID
+	Namespace     string
 }
 
 // NewContext returns a new *Context
