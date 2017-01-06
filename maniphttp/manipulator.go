@@ -344,8 +344,11 @@ func (s *httpManipulator) makeAuthorizationHeaders() string {
 
 func (s *httpManipulator) prepareHeaders(request *http.Request, context *manipulate.Context) {
 
-	if s.namespace != "" {
-		request.Header.Set("X-Namespace", s.namespace)
+	if context.Namespace == "" {
+		context.Namespace = s.namespace
+	}
+	if context.Namespace != "" {
+		request.Header.Set("X-Namespace", context.Namespace)
 	}
 
 	if s.username != "" && s.password != "" {
