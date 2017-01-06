@@ -33,4 +33,8 @@ func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Cont
 		request.ParentIdentity = ctx.Parent.Identity()
 		request.ParentID = ctx.Parent.Identifier()
 	}
+
+	if ctx.Namespace != "" {
+		request.Namespace = ctx.Namespace
+	}
 }
