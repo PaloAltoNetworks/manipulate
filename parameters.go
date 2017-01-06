@@ -10,3 +10,10 @@ type Parameters struct {
 	OrderByAsc  string
 	KeyValues   map[string]string
 }
+
+// NewParameters returns a new Parameter.
+func NewParameters() *Parameters {
+	return &Parameters{
+		KeyValues: map[string]string{},
+	}
+}
