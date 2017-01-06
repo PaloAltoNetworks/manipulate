@@ -327,7 +327,7 @@ func (s *httpManipulator) Assign(context *manipulate.Context, assignation *eleme
 	}
 	addQueryParameters(request, context)
 
-	_, err = s.send(request, nil)
+	_, err = s.send(request, context)
 
 	return err
 }
@@ -347,6 +347,7 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, context *manipul
 	if context.Namespace == "" {
 		context.Namespace = s.namespace
 	}
+
 	if context.Namespace != "" {
 		request.Header.Set("X-Namespace", context.Namespace)
 	}

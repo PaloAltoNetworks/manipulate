@@ -78,18 +78,18 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 
 			Convey("When I prepareHeaders with a no context", func() {
 
-				store.prepareHeaders(req, nil)
+				store.prepareHeaders(req, manipulate.NewContext())
 
 				Convey("Then I should have a the X-Namespace set to 'myns'", func() {
 					So(req.Header.Get("X-Namespace"), ShouldEqual, "myns")
 				})
 
 				Convey("Then I should not have a value for X-Page-Current", func() {
-					So(req.Header.Get("X-Page-Current"), ShouldEqual, "")
+					So(req.Header.Get("X-Page-Current"), ShouldEqual, "0")
 				})
 
 				Convey("Then I should not have a value for X-Page-Size", func() {
-					So(req.Header.Get("X-Page-Size"), ShouldEqual, "")
+					So(req.Header.Get("X-Page-Size"), ShouldEqual, "0")
 				})
 
 				Convey("Then I should not have a value for X-Page-First", func() {
@@ -852,7 +852,7 @@ func TestHTTP_Assign(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			session := NewHTTPManipulator("username", "password", ts.URL, "")
+			session := NewHTTPManipulator("username", "password", ts.URL, "s")
 
 			t1 := NewTask()
 			t1.ID = "xxx"
