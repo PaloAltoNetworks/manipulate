@@ -72,7 +72,11 @@ func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string
 
 	go m.listen()
 
-	return m, func() { m.ws.Close() }, nil
+	return m, func() {
+		if m.ws != nil {
+			m.ws.Close()
+		}
+	}, nil
 }
 
 // NewWebSocketManipulatorWithMidgardCertAuthentication returns a http backed manipulate.Manipulator
@@ -329,7 +333,7 @@ func (s *websocketManipulator) Subscribe(identities []elemental.Identity, allNam
 
 			ws, err = websocket.DialConfig(config)
 			if err != nil {
-				log.WithField("error", err.Error()).Warn("Could not connect to websocket. retrying in 5s")
+				log.WithField("package", "manipwebsocket").Warn("Could not connect to websocket. Retrying in 5s")
 				<-time.After(5 * time.Second)
 				continue
 			}
@@ -412,7 +416,7 @@ func (s *websocketManipulator) listen() {
 		for {
 
 			if err := s.connect(); err != nil {
-				log.WithField("error", err).Warn("Websocket not available. Retrying in 5s...")
+				log.WithField("package", "manipwebsocket").Warn("Websocket not available. Retrying in 5s...")
 				<-time.After(5 * time.Second)
 				continue
 			}
