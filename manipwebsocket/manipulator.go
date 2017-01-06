@@ -109,6 +109,9 @@ func (s *websocketManipulator) RetrieveMany(context *manipulate.Context, identit
 	req.Identity = identity
 	req.Username = s.username
 	req.Password = s.currentPassword()
+	req.ParentID = context.Parent.Identifier()
+	req.ParentIdentity = context.Parent.Identity()
+
 	populateRequestFromContext(req, context)
 
 	resp, err := s.send(req)
@@ -271,6 +274,8 @@ func (s *websocketManipulator) Count(context *manipulate.Context, identity eleme
 	req.Identity = identity
 	req.Username = s.username
 	req.Password = s.currentPassword()
+	req.ParentID = context.Parent.Identifier()
+	req.ParentIdentity = context.Parent.Identity()
 	populateRequestFromContext(req, context)
 
 	resp, err := s.send(req)
