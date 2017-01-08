@@ -134,7 +134,9 @@ func (c *cassandraManipulator) Create(context *manipulate.Context, objects ...ma
 	batch := c.batchForID(transactionID)
 
 	for _, object := range objects {
-		object.SetIdentifier(gocql.TimeUUID().String())
+		if object.Identifier() == "" {
+			object.SetIdentifier(gocql.TimeUUID().String())
+		}
 		list, values, err := cassandra.FieldsAndValues(object)
 
 		if err != nil {
