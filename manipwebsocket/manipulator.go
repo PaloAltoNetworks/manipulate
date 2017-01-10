@@ -429,6 +429,10 @@ func (s *websocketManipulator) listen() {
 
 func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Response, error) {
 
+	if s.ws == nil {
+		return nil, manipulate.NewError("Not connected. message dropped", manipulate.ErrCannotCommunicate)
+	}
+
 	if err := websocket.JSON.Send(s.ws, request); err != nil {
 		return nil, manipulate.NewError(err.Error(), manipulate.ErrCannotCommunicate)
 	}
