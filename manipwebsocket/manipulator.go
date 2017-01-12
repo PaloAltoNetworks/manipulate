@@ -345,7 +345,7 @@ func (s *websocketManipulator) Subscribe(
 				continue
 			}
 
-			if needsReconnectionHandlerCall {
+			if needsReconnectionHandlerCall && recoHandler != nil {
 				needsReconnectionHandlerCall = false
 				recoHandler()
 			}
