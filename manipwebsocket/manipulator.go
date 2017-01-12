@@ -295,7 +295,12 @@ func (s *websocketManipulator) Increment(context *manipulate.Context, identity e
 	return manipulate.NewError("Increment is not implemented in HTTPStore", manipulate.ErrNotImplemented)
 }
 
-func (s *websocketManipulator) Subscribe(identities []elemental.Identity, allNamespaces bool, handler manipulate.EventHandler) (manipulate.EventUnsubscriber, error) {
+func (s *websocketManipulator) Subscribe(
+	identities []elemental.Identity,
+	allNamespaces bool,
+	handler manipulate.EventHandler,
+	recoHandler manipulate.RecoveryHandler,
+) (manipulate.EventUnsubscriber, error) {
 
 	relatedIdentities := map[string]bool{}
 	if identities != nil {
@@ -309,6 +314,8 @@ func (s *websocketManipulator) Subscribe(identities []elemental.Identity, allNam
 	lock := &sync.Mutex{}
 
 	go func() {
+
+		var needsReconnectionHandlerCall bool
 
 		for {
 			url := strings.Replace(s.url, "http://", "ws://", 1)
@@ -338,11 +345,17 @@ func (s *websocketManipulator) Subscribe(identities []elemental.Identity, allNam
 				continue
 			}
 
+			if needsReconnectionHandlerCall && recoHandler != nil {
+				needsReconnectionHandlerCall = false
+				recoHandler()
+			}
+
 			for {
 				event := &elemental.Event{}
 				err := websocket.JSON.Receive(ws, event)
 				if err != nil {
 					handler(nil, err)
+					needsReconnectionHandlerCall = true
 					break
 				}
 
@@ -428,6 +441,10 @@ func (s *websocketManipulator) listen() {
 }
 
 func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Response, error) {
+
+	if s.ws == nil {
+		return nil, manipulate.NewError("Not connected. message dropped", manipulate.ErrCannotCommunicate)
+	}
 
 	if err := websocket.JSON.Send(s.ws, request); err != nil {
 		return nil, manipulate.NewError(err.Error(), manipulate.ErrCannotCommunicate)
