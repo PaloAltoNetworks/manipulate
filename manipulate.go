@@ -7,7 +7,10 @@ package manipulate
 import "github.com/aporeto-inc/elemental"
 
 // EventHandler is the type of event an handler.
-type EventHandler func(*elemental.Event, error)
+type EventHandler func(event *elemental.Event, err error)
+
+// RecoveryHandler is the type of connection recovery handler.
+type RecoveryHandler func()
 
 // EventUnsubscriber is the type of the unsubscribe function.
 type EventUnsubscriber func()
@@ -70,5 +73,5 @@ type EventManipulator interface {
 
 	// Subscribe subscribes the given EventHandler for event on the given identities.
 	// If you pass nil as identities, then you will receive events for everything.
-	Subscribe(identities []elemental.Identity, allNamespaces bool, handler EventHandler) (EventUnsubscriber, error)
+	Subscribe(identities []elemental.Identity, allNamespaces bool, eventHandler EventHandler, recoHandler RecoveryHandler) (EventUnsubscriber, error)
 }

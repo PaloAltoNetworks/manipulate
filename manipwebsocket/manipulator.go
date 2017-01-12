@@ -295,7 +295,12 @@ func (s *websocketManipulator) Increment(context *manipulate.Context, identity e
 	return manipulate.NewError("Increment is not implemented in HTTPStore", manipulate.ErrNotImplemented)
 }
 
-func (s *websocketManipulator) Subscribe(identities []elemental.Identity, allNamespaces bool, handler manipulate.EventHandler) (manipulate.EventUnsubscriber, error) {
+func (s *websocketManipulator) Subscribe(
+	identities []elemental.Identity,
+	allNamespaces bool,
+	handler manipulate.EventHandler,
+	recoHandler manipulate.RecoveryHandler,
+) (manipulate.EventUnsubscriber, error) {
 
 	relatedIdentities := map[string]bool{}
 	if identities != nil {
@@ -309,6 +314,8 @@ func (s *websocketManipulator) Subscribe(identities []elemental.Identity, allNam
 	lock := &sync.Mutex{}
 
 	go func() {
+
+		var needsReconnectionHandlerCall bool
 
 		for {
 			url := strings.Replace(s.url, "http://", "ws://", 1)
@@ -338,11 +345,17 @@ func (s *websocketManipulator) Subscribe(identities []elemental.Identity, allNam
 				continue
 			}
 
+			if needsReconnectionHandlerCall {
+				needsReconnectionHandlerCall = false
+				recoHandler()
+			}
+
 			for {
 				event := &elemental.Event{}
 				err := websocket.JSON.Receive(ws, event)
 				if err != nil {
 					handler(nil, err)
+					needsReconnectionHandlerCall = true
 					break
 				}
 
