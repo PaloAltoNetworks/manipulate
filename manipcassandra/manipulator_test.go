@@ -218,10 +218,10 @@ func TestCassandre_CommitTransaction_ErrorBadID(t *testing.T) {
 			nativeSession:     &gocql.Session{},
 		}
 
-		errs := store.Commit("123").(elemental.Error)
+		err := store.Commit("123")
 
 		Convey("Then we should get the good batch", func() {
-			So(errs.Code, ShouldEqual, manipulate.ErrCannotCommit)
+			So(err, ShouldHaveSameTypeAs, manipulate.ErrTransactionNotFound{})
 		})
 	})
 }
@@ -251,11 +251,11 @@ func TestCassandre_CommitTransaction_Error(t *testing.T) {
 			return errors.New("error batch")
 		})
 
-		errs := store.Commit("123").(elemental.Error)
+		err := store.Commit("123")
 
 		Convey("Then we should get the good batch", func() {
 			So(expectedBatch, ShouldEqual, batch)
-			So(errs.Code, ShouldEqual, manipulate.ErrCannotExecuteBatch)
+			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommit{})
 			So(store.batchRegistry["123"], ShouldBeNil)
 		})
 	})
@@ -735,10 +735,9 @@ func TestCassandra_CountErrorScan(t *testing.T) {
 		context.PageSize = 10
 
 		count, err := store.Count(context, TagIdentity)
-		errs := err.(elemental.Error)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, manipulate.ErrCannotScan)
+			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotExecuteQuery{})
 			So(expectedCommand, ShouldEqual, "SELECT COUNT(*) FROM tag LIMIT 10 ALLOW FILTERING")
 			So(expectedValues, ShouldResemble, []interface{}{})
 			So(count, ShouldEqual, -1)
@@ -786,10 +785,9 @@ func TestCassandra_CountErrorCloseIter(t *testing.T) {
 		context.PageSize = 10
 
 		count, err := store.Count(context, TagIdentity)
-		errs := err.(elemental.Error)
 
 		Convey("Then I should get no error", func() {
-			So(errs.Code, ShouldEqual, manipulate.ErrCannotCloseIterator)
+			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotExecuteQuery{})
 			So(expectedCommand, ShouldEqual, "SELECT COUNT(*) FROM tag LIMIT 10 ALLOW FILTERING")
 			So(expectedValues, ShouldResemble, []interface{}{})
 			So(count, ShouldEqual, -1)
@@ -857,10 +855,10 @@ func TestCassandra_RetrieveMany(t *testing.T) {
 		context.PageSize = 10
 
 		tags = append(tags, &Tag{})
-		err := store.RetrieveMany(context, TagIdentity, &tags).(elemental.Error)
+		err := store.RetrieveMany(context, TagIdentity, &tags)
 
 		Convey("Then I should get an error", func() {
-			So(err.Code, ShouldEqual, manipulate.ErrCannotUnmarshal)
+			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotUnmarshal{})
 			So(expectedCommand, ShouldEqual, "SELECT * FROM tag LIMIT 10 ALLOW FILTERING")
 			So(expectedValues, ShouldResemble, []interface{}{})
 			So(expectedV, ShouldEqual, &tags)
@@ -912,10 +910,10 @@ func TestCassandra_RetrieveWithError(t *testing.T) {
 		context := manipulate.NewContext()
 		context.PageSize = 10
 
-		errs := store.Retrieve(context, tag).(elemental.Error)
+		err := store.Retrieve(context, tag)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, manipulate.ErrObjectNotFound)
+			So(err, ShouldHaveSameTypeAs, manipulate.ErrObjectNotFound{})
 			So(expectedCommand, ShouldEqual, "SELECT * FROM tag LIMIT 10 ALLOW FILTERING")
 			So(expectedValues, ShouldResemble, []interface{}{})
 		})
@@ -1016,10 +1014,10 @@ func TestCassandra_UpdateCollectionWithErrorQuery(t *testing.T) {
 
 		context := manipulate.NewContext()
 
-		errs := store.UpdateCollection(context, a, tag).(elemental.Error)
+		err := store.UpdateCollection(context, a, tag)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, manipulate.ErrCannotExecuteQuery)
+			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotExecuteQuery{})
 			So(tag, ShouldResemble, &Tag{ID: "1234"})
 			So(expectedCommand, ShouldResemble, "UPDATE tag SET NAME = NAME - ? WHERE ID = ? ALLOW FILTERING")
 			So(expectedValues, ShouldResemble, []interface{}{"coucou", "123"})
@@ -1049,10 +1047,10 @@ func TestCassandra_UpdateCollectionWithErrorPrimaryFields(t *testing.T) {
 
 		context := manipulate.NewContext()
 
-		errs := store.UpdateCollection(context, nil, tag).(elemental.Error)
+		err := store.UpdateCollection(context, nil, tag)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, manipulate.ErrCannotExractPrimaryFieldsAndValues)
+			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotBuildQuery{})
 			So(tag, ShouldResemble, &Tag{ID: "1234"})
 		})
 	})
@@ -1081,10 +1079,10 @@ func TestCassandra_RetrieveWithErrorPrimaryFields(t *testing.T) {
 		context := manipulate.NewContext()
 		context.PageSize = 10
 
-		errs := store.Retrieve(context, tag).(elemental.Error)
+		err := store.Retrieve(context, tag)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, manipulate.ErrCannotExractPrimaryFieldsAndValues)
+			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotBuildQuery{})
 			So(tag, ShouldResemble, &Tag{ID: "1234"})
 		})
 	})
@@ -1332,10 +1330,10 @@ func TestCassandra_DeleteError(t *testing.T) {
 		context := manipulate.NewContext()
 		context.PageSize = 10
 
-		errs := store.Delete(context, tag1, tag2).(elemental.Error)
+		err := store.Delete(context, tag1, tag2)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, manipulate.ErrCannotExecuteBatch)
+			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotExecuteQuery{})
 		})
 	})
 }
@@ -1367,10 +1365,10 @@ func TestCassandra_DeleteWithErrorPrimaryFields(t *testing.T) {
 		context := manipulate.NewContext()
 		context.PageSize = 10
 
-		errs := store.Delete(context, tag).(elemental.Error)
+		err := store.Delete(context, tag)
 
 		Convey("Then I should get an error", func() {
-			So(errs.Code, ShouldEqual, manipulate.ErrCannotExractPrimaryFieldsAndValues)
+			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotBuildQuery{})
 			So(tag, ShouldResemble, &Tag{ID: "1234"})
 		})
 	})
@@ -1594,10 +1592,10 @@ func TestCassandra_Update_ErrorFieldsAndValues(t *testing.T) {
 		context := manipulate.NewContext()
 		context.PageSize = 10
 
-		errs := store.Update(context, tag1, tag2).(elemental.Error)
+		err := store.Update(context, tag1, tag2)
 
 		Convey("Then everything should have been well called", func() {
-			So(errs.Code, ShouldEqual, manipulate.ErrCannotExtractFieldsAndValues)
+			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotBuildQuery{})
 		})
 	})
 }
@@ -1634,10 +1632,10 @@ func TestCassandra_Update_ErrorPrimaryFieldsAndValues(t *testing.T) {
 		context := manipulate.NewContext()
 		context.PageSize = 10
 
-		errs := store.Update(context, tag1, tag2).(elemental.Error)
+		err := store.Update(context, tag1, tag2)
 
 		Convey("Then everything should have been well called", func() {
-			So(errs.Code, ShouldEqual, manipulate.ErrCannotExractPrimaryFieldsAndValues)
+			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotBuildQuery{})
 		})
 	})
 }
@@ -1686,10 +1684,10 @@ func TestCassandra_Update_ErrorExecuteBatch(t *testing.T) {
 		context := manipulate.NewContext()
 		context.PageSize = 10
 
-		errs := store.Update(context, tag1, tag2).(elemental.Error)
+		err := store.Update(context, tag1, tag2)
 
 		Convey("Then everything should have been well called", func() {
-			So(errs.Code, ShouldEqual, manipulate.ErrCannotExecuteBatch)
+			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotExecuteQuery{})
 		})
 	})
 }
@@ -1930,10 +1928,10 @@ func TestCassandra_Create_ErrorFieldsAndValues(t *testing.T) {
 		context := manipulate.NewContext()
 		context.PageSize = 10
 
-		errs := store.Create(context, tag1, tag2).(elemental.Error)
+		err := store.Create(context, tag1, tag2)
 
 		Convey("Then everything should have been well called", func() {
-			So(errs.Code, ShouldEqual, manipulate.ErrCannotExtractFieldsAndValues)
+			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotBuildQuery{})
 			So(len(tag2.ID), ShouldEqual, 0)
 			So(len(tag2.ID), ShouldEqual, 0)
 		})
@@ -1988,10 +1986,10 @@ func TestCassandra_Create_ErrorExecuteBatch(t *testing.T) {
 		context := manipulate.NewContext()
 		context.PageSize = 10
 
-		errs := store.Create(context, tag1, tag2).(elemental.Error)
+		err := store.Create(context, tag1, tag2)
 
 		Convey("Then everything should have been well called", func() {
-			So(errs.Code, ShouldEqual, manipulate.ErrCannotExecuteBatch)
+			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotExecuteQuery{})
 			So(len(tag2.ID), ShouldEqual, 0)
 			So(len(tag2.ID), ShouldEqual, 0)
 		})

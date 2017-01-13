@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"reflect"
 	"time"
-
-	"github.com/aporeto-inc/elemental"
 )
 
 // ConvertArrayToManipulables convert the given array of interface into an array of Manipulable
@@ -50,15 +48,7 @@ func RetryManipulation(manipulation func() error, onRetryFunc func(int), maxTrie
 		}
 
 		// Check the type of the error.
-		e, ok := err.(elemental.Error)
-
-		// If it is not an elemental.Error, return it.
-		if !ok {
-			return err
-		}
-
-		// If it is an elemental.Error but the code is not ErrCannotCommunicate, return it.
-		if e.Code != ErrCannotCommunicate {
+		if _, ok := err.(ErrCannotCommunicate); !ok {
 			return err
 		}
 

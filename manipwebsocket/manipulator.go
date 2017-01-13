@@ -121,7 +121,7 @@ func (s *websocketManipulator) RetrieveMany(context *manipulate.Context, identit
 	}
 
 	if err := resp.Decode(&dest); err != nil {
-		return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
+		return manipulate.NewErrCannotUnmarshal(err.Error())
 	}
 
 	return nil
@@ -145,16 +145,16 @@ func (s *websocketManipulator) Retrieve(context *manipulate.Context, objects ...
 		populateRequestFromContext(req, context)
 
 		if err := req.Encode(object); err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotMarshal)
+			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
 		resp, err := s.send(req)
 		if err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotCommunicate)
+			return manipulate.NewErrCannotCommunicate(err.Error())
 		}
 
 		if err := resp.Decode(&object); err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
+			return manipulate.NewErrCannotUnmarshal(err.Error())
 		}
 	}
 
@@ -178,7 +178,7 @@ func (s *websocketManipulator) Create(context *manipulate.Context, objects ...ma
 		populateRequestFromContext(req, context)
 
 		if err := req.Encode(object); err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotMarshal)
+			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
 		resp, err := s.send(req)
@@ -188,7 +188,7 @@ func (s *websocketManipulator) Create(context *manipulate.Context, objects ...ma
 		}
 
 		if err := resp.Decode(&object); err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
+			return manipulate.NewErrCannotUnmarshal(err.Error())
 		}
 	}
 
@@ -213,7 +213,7 @@ func (s *websocketManipulator) Update(context *manipulate.Context, objects ...ma
 		populateRequestFromContext(req, context)
 
 		if err := req.Encode(object); err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotMarshal)
+			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
 		resp, err := s.send(req)
@@ -222,7 +222,7 @@ func (s *websocketManipulator) Update(context *manipulate.Context, objects ...ma
 		}
 
 		if err := resp.Decode(&object); err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
+			return manipulate.NewErrCannotUnmarshal(err.Error())
 		}
 	}
 
@@ -247,7 +247,7 @@ func (s *websocketManipulator) Delete(context *manipulate.Context, objects ...ma
 		populateRequestFromContext(req, context)
 
 		if err := req.Encode(object); err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotMarshal)
+			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
 		resp, err := s.send(req)
@@ -256,7 +256,7 @@ func (s *websocketManipulator) Delete(context *manipulate.Context, objects ...ma
 		}
 
 		if err := resp.Decode(&object); err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
+			return manipulate.NewErrCannotUnmarshal(err.Error())
 		}
 	}
 
@@ -287,12 +287,12 @@ func (s *websocketManipulator) Count(context *manipulate.Context, identity eleme
 
 func (s *websocketManipulator) Assign(context *manipulate.Context, assignation *elemental.Assignation) error {
 
-	return manipulate.NewError("Increment is not implemented in HTTPStore", manipulate.ErrNotImplemented)
+	return manipulate.NewErrNotImplemented("Assign not implemented in websocket manipulator")
 }
 
 func (s *websocketManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
 
-	return manipulate.NewError("Increment is not implemented in HTTPStore", manipulate.ErrNotImplemented)
+	return manipulate.NewErrNotImplemented("Increment not implemented in websocket manipulator")
 }
 
 func (s *websocketManipulator) Subscribe(
@@ -396,12 +396,12 @@ func (s *websocketManipulator) connect() error {
 
 	s.ws, err = websocket.DialConfig(config)
 	if err != nil {
-		return manipulate.NewError(err.Error(), manipulate.ErrCannotCommunicate)
+		return manipulate.NewErrCannotCommunicate(err.Error())
 	}
 
 	response := elemental.NewResponse()
 	if err := websocket.JSON.Receive(s.ws, &response); err != nil {
-		return manipulate.NewError(err.Error(), manipulate.ErrCannotCommunicate)
+		return manipulate.NewErrCannotCommunicate(err.Error())
 	}
 
 	if response.StatusCode != http.StatusOK {
@@ -443,11 +443,11 @@ func (s *websocketManipulator) listen() {
 func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Response, error) {
 
 	if s.ws == nil {
-		return nil, manipulate.NewError("Not connected. message dropped", manipulate.ErrCannotCommunicate)
+		return nil, manipulate.NewErrCannotCommunicate("Websocket not initialized")
 	}
 
 	if err := websocket.JSON.Send(s.ws, request); err != nil {
-		return nil, manipulate.NewError(err.Error(), manipulate.ErrCannotCommunicate)
+		return nil, manipulate.NewErrCannotCommunicate(err.Error())
 	}
 
 	ch := s.registerResponseChannel(request.RequestID)
@@ -463,7 +463,7 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 		return response, nil
 
 	case <-time.After(5 * time.Second):
-		return nil, manipulate.NewError("request timeout", manipulate.ErrCannotCommunicate)
+		return nil, manipulate.NewErrCannotCommunicate("Request timeout")
 	}
 }
 

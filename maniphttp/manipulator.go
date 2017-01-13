@@ -117,12 +117,12 @@ func (s *httpManipulator) RetrieveMany(context *manipulate.Context, identity ele
 
 	url, err := s.getURLForChildrenIdentity(context.Parent, identity)
 	if err != nil {
-		return manipulate.NewError(err.Error(), manipulate.ErrCannotBuildQuery)
+		return manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
 	request, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
+		return manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
 	addQueryParameters(request, context)
 
@@ -137,7 +137,7 @@ func (s *httpManipulator) RetrieveMany(context *manipulate.Context, identity ele
 
 	defer response.Body.Close()
 	if err := json.NewDecoder(response.Body).Decode(&dest); err != nil {
-		return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
+		return manipulate.NewErrCannotUnmarshal(err.Error())
 	}
 
 	return nil
@@ -153,12 +153,12 @@ func (s *httpManipulator) Retrieve(context *manipulate.Context, objects ...manip
 
 		url, err := s.getPersonalURL(object)
 		if err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotBuildQuery)
+			return manipulate.NewErrCannotBuildQuery(err.Error())
 		}
 
 		request, err := http.NewRequest(http.MethodGet, url, nil)
 		if err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
+			return manipulate.NewErrCannotExecuteQuery(err.Error())
 		}
 		addQueryParameters(request, context)
 
@@ -169,7 +169,7 @@ func (s *httpManipulator) Retrieve(context *manipulate.Context, objects ...manip
 
 		defer response.Body.Close()
 		if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
+			return manipulate.NewErrCannotUnmarshal(err.Error())
 		}
 	}
 
@@ -186,17 +186,17 @@ func (s *httpManipulator) Create(context *manipulate.Context, objects ...manipul
 
 		url, err := s.getURLForChildrenIdentity(context.Parent, child.Identity())
 		if err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotBuildQuery)
+			return manipulate.NewErrCannotBuildQuery(err.Error())
 		}
 
 		buffer := &bytes.Buffer{}
-		if err1 := json.NewEncoder(buffer).Encode(&child); err1 != nil {
-			return manipulate.NewError(err1.Error(), manipulate.ErrCannotMarshal)
+		if err = json.NewEncoder(buffer).Encode(&child); err != nil {
+			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
 		request, err := http.NewRequest(http.MethodPost, url, buffer)
 		if err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
+			return manipulate.NewErrCannotExecuteQuery(err.Error())
 		}
 		addQueryParameters(request, context)
 
@@ -207,7 +207,7 @@ func (s *httpManipulator) Create(context *manipulate.Context, objects ...manipul
 
 		defer response.Body.Close()
 		if err := json.NewDecoder(response.Body).Decode(&child); err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
+			return manipulate.NewErrCannotUnmarshal(err.Error())
 		}
 	}
 
@@ -224,17 +224,17 @@ func (s *httpManipulator) Update(context *manipulate.Context, objects ...manipul
 
 		url, err := s.getPersonalURL(object)
 		if err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotBuildQuery)
+			return manipulate.NewErrCannotBuildQuery(err.Error())
 		}
 
 		buffer := &bytes.Buffer{}
-		if err1 := json.NewEncoder(buffer).Encode(object); err1 != nil {
-			return manipulate.NewError(err1.Error(), manipulate.ErrCannotMarshal)
+		if err = json.NewEncoder(buffer).Encode(object); err != nil {
+			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
 		request, err := http.NewRequest(http.MethodPut, url, buffer)
 		if err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
+			return manipulate.NewErrCannotExecuteQuery(err.Error())
 		}
 		addQueryParameters(request, context)
 
@@ -245,7 +245,7 @@ func (s *httpManipulator) Update(context *manipulate.Context, objects ...manipul
 
 		defer response.Body.Close()
 		if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
+			return manipulate.NewErrCannotUnmarshal(err.Error())
 		}
 	}
 
@@ -262,12 +262,12 @@ func (s *httpManipulator) Delete(context *manipulate.Context, objects ...manipul
 
 		url, err := s.getPersonalURL(object)
 		if err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotBuildQuery)
+			return manipulate.NewErrCannotBuildQuery(err.Error())
 		}
 
 		request, err := http.NewRequest(http.MethodDelete, url, nil)
 		if err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
+			return manipulate.NewErrCannotExecuteQuery(err.Error())
 		}
 		addQueryParameters(request, context)
 
@@ -288,12 +288,12 @@ func (s *httpManipulator) Count(context *manipulate.Context, identity elemental.
 
 	url, err := s.getURLForChildrenIdentity(context.Parent, identity)
 	if err != nil {
-		return 0, manipulate.NewError(err.Error(), manipulate.ErrCannotBuildQuery)
+		return 0, manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
 	request, err := http.NewRequest(http.MethodHead, url, nil)
 	if err != nil {
-		return 0, manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
+		return 0, manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
 	addQueryParameters(request, context)
 
@@ -313,17 +313,17 @@ func (s *httpManipulator) Assign(context *manipulate.Context, assignation *eleme
 
 	url, err := s.getURLForChildrenIdentity(context.Parent, assignation.MembersIdentity)
 	if err != nil {
-		return manipulate.NewError(err.Error(), manipulate.ErrCannotBuildQuery)
+		return manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
 	buffer := &bytes.Buffer{}
-	if err1 := json.NewEncoder(buffer).Encode(assignation); err1 != nil {
-		return manipulate.NewError(err1.Error(), manipulate.ErrCannotMarshal)
+	if err = json.NewEncoder(buffer).Encode(assignation); err != nil {
+		return manipulate.NewErrCannotMarshal(err.Error())
 	}
 
 	request, err := http.NewRequest(http.MethodPatch, url, buffer)
 	if err != nil {
-		return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
+		return manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
 	addQueryParameters(request, context)
 
@@ -334,7 +334,7 @@ func (s *httpManipulator) Assign(context *manipulate.Context, assignation *eleme
 
 func (s *httpManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
 
-	return manipulate.NewError("Increment is not implemented in HTTPStore", manipulate.ErrNotImplemented)
+	return manipulate.NewErrNotImplemented("Increment method not implemented in http manipulator")
 }
 
 func (s *httpManipulator) makeAuthorizationHeaders() string {
@@ -441,7 +441,7 @@ func (s *httpManipulator) send(request *http.Request, context *manipulate.Contex
 			"response": response,
 			"error":    err,
 		}).Debug("Unable to send the request.")
-		return response, manipulate.NewError(err.Error(), manipulate.ErrCannotCommunicate)
+		return response, manipulate.NewErrCannotCommunicate(err.Error())
 	}
 
 	log.WithFields(log.Fields{
@@ -458,7 +458,7 @@ func (s *httpManipulator) send(request *http.Request, context *manipulate.Contex
 
 		defer response.Body.Close()
 		if err := json.NewDecoder(response.Body).Decode(&es); err != nil {
-			return nil, manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
+			return nil, manipulate.NewErrCannotUnmarshal(err.Error())
 		}
 
 		errs := elemental.NewErrors()
