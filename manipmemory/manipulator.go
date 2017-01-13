@@ -82,7 +82,7 @@ func (s *memdbManipulator) Retrieve(context *manipulate.Context, objects ...mani
 		}
 
 		if raw == nil {
-			return manipulate.NewErrObjectNotFound("Cannot find object with ID " + object.Identifier())
+			return manipulate.NewErrObjectNotFound("cannot find the object for the given ID")
 		}
 
 		reflect.ValueOf(object).Elem().Set(reflect.ValueOf(raw).Elem())

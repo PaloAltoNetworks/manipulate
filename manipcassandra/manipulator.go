@@ -505,7 +505,7 @@ func unmarshalManipulable(iter *gocql.Iter, object manipulate.Manipulable) error
 	}
 
 	if len(maps) != 1 {
-		return manipulate.NewErrObjectNotFound("cannot find object with ID " + object.Identifier())
+		return manipulate.NewErrObjectNotFound("cannot find the object for the given ID")
 	}
 
 	if err := cassandra.Unmarshal(maps[0], object); err != nil {
