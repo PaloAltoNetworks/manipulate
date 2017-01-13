@@ -3,7 +3,6 @@ package manipmemory
 import (
 	"testing"
 
-	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -184,7 +183,7 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
-				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrCannotExecuteQuery)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotExecuteQuery{})
 			})
 		})
 	})
@@ -392,7 +391,7 @@ func TestMemManipulator_Count(t *testing.T) {
 
 				Convey("Then err should not be nil", func() {
 					So(err, ShouldNotBeNil)
-					So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrCannotExecuteQuery)
+					So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotExecuteQuery{})
 				})
 
 				Convey("Then c should equal -1", func() {
@@ -415,7 +414,7 @@ func TestMemManipulator_Assign(t *testing.T) {
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
-				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrNotImplemented)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrNotImplemented{})
 			})
 		})
 	})
@@ -433,7 +432,7 @@ func TestMemManipulator_Increment(t *testing.T) {
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
-				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrNotImplemented)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrNotImplemented{})
 			})
 		})
 	})
@@ -452,7 +451,7 @@ func TestMemManipulator_Commit(t *testing.T) {
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
-				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrCannotCommit)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommit{})
 			})
 		})
 

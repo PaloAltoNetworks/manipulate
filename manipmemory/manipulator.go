@@ -55,7 +55,7 @@ func (s *memdbManipulator) RetrieveMany(context *manipulate.Context, identity el
 	iterator, err := txn.Get(identity.Category, index, args...)
 
 	if err != nil {
-		return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
+		return manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
 
 	out := reflect.ValueOf(dest).Elem()
@@ -78,11 +78,11 @@ func (s *memdbManipulator) Retrieve(context *manipulate.Context, objects ...mani
 
 		raw, err := txn.First(object.Identity().Category, "id", object.Identifier())
 		if err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
+			return manipulate.NewErrCannotExecuteQuery(err.Error())
 		}
 
 		if raw == nil {
-			return manipulate.NewError("Object Not Found", manipulate.ErrObjectNotFound)
+			return manipulate.NewErrObjectNotFound("cannot find the object for the given ID")
 		}
 
 		reflect.ValueOf(object).Elem().Set(reflect.ValueOf(raw).Elem())
@@ -107,7 +107,7 @@ func (s *memdbManipulator) Create(context *manipulate.Context, objects ...manipu
 		object.SetIdentifier(uuid.NewV4().String())
 
 		if err := txn.Insert(object.Identity().Category, object); err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
+			return manipulate.NewErrCannotExecuteQuery(err.Error())
 		}
 	}
 
@@ -131,7 +131,7 @@ func (s *memdbManipulator) Update(context *manipulate.Context, objects ...manipu
 
 	for _, object := range objects {
 		if err := txn.Insert(object.Identity().Category, object); err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
+			return manipulate.NewErrCannotExecuteQuery(err.Error())
 		}
 	}
 
@@ -155,7 +155,7 @@ func (s *memdbManipulator) Delete(context *manipulate.Context, objects ...manipu
 
 	for _, object := range objects {
 		if err := txn.Delete(object.Identity().Category, object); err != nil {
-			return manipulate.NewError(err.Error(), manipulate.ErrCannotExecuteQuery)
+			return manipulate.NewErrCannotExecuteQuery(err.Error())
 		}
 	}
 
@@ -180,13 +180,13 @@ func (s *memdbManipulator) Count(context *manipulate.Context, identity elemental
 // Assign is part of the implementation of the Manipulator interface.
 func (*memdbManipulator) Assign(context *manipulate.Context, assignation *elemental.Assignation) error {
 
-	return manipulate.NewError("Assign is not implemented in MemoryManipulator", manipulate.ErrNotImplemented)
+	return manipulate.NewErrNotImplemented("Assign not implemented in memory manipulator")
 }
 
 // Increment is part of the implementation of the Manipulator interface.
 func (*memdbManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
 
-	return manipulate.NewError("Increment is not implemented in MemoryManipulator", manipulate.ErrNotImplemented)
+	return manipulate.NewErrNotImplemented("Increment not implemented in memory manipulator")
 }
 
 // Commit is part of the implementation of the TransactionalManipulator interface.
@@ -195,7 +195,7 @@ func (s *memdbManipulator) Commit(id manipulate.TransactionID) error {
 	txn := s.registeredTxnWithID(id)
 
 	if txn == nil {
-		return manipulate.NewError("No transaction found for the given transaction ID.", manipulate.ErrCannotCommit)
+		return manipulate.NewErrCannotCommit("Cannot find transaction " + string(id))
 	}
 
 	defer func() { s.unregisterTxn(id) }()

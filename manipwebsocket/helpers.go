@@ -10,7 +10,7 @@ func decodeErrors(response *elemental.Response) error {
 	es := []elemental.Error{}
 
 	if err := response.Decode(&es); err != nil {
-		return manipulate.NewError(err.Error(), manipulate.ErrCannotUnmarshal)
+		return manipulate.NewErrCannotUnmarshal(err.Error())
 	}
 
 	errs := elemental.NewErrors()

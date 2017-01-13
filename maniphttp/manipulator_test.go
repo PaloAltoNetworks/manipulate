@@ -351,7 +351,7 @@ func TestHTTP_Retrieve(t *testing.T) {
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
-				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrCannotBuildQuery)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotBuildQuery{})
 			})
 		})
 	})
@@ -394,11 +394,11 @@ func TestHTTP_Retrieve(t *testing.T) {
 
 			list := NewList()
 			list.ID = "x"
-			errs := store.Retrieve(nil, list)
+			err := store.Retrieve(nil, list)
 
 			Convey("Then error should not be nil", func() {
-				So(errs, ShouldNotBeNil)
-				So(errs.(elemental.Error).Code, ShouldEqual, manipulate.ErrCannotUnmarshal)
+				So(err, ShouldNotBeNil)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotUnmarshal{})
 			})
 		})
 	})
@@ -493,7 +493,7 @@ func TestHTTP_Update(t *testing.T) {
 
 			Convey("Then the error should not be nil", func() {
 				So(err, ShouldNotBeNil)
-				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrCannotUnmarshal)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotUnmarshal{})
 			})
 		})
 	})
@@ -832,7 +832,7 @@ func TestHTTP_Create(t *testing.T) {
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
-				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrCannotMarshal)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotMarshal{})
 			})
 		})
 	})
@@ -991,7 +991,7 @@ func TestHTTP_Increment(t *testing.T) {
 
 			Convey("Then err should should not be nil", func() {
 				So(err, ShouldNotBeNil)
-				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrNotImplemented)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrNotImplemented{})
 			})
 		})
 	})
@@ -1010,7 +1010,7 @@ func TestHTTP_send(t *testing.T) {
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
-				So(err.(elemental.Error).Code, ShouldEqual, manipulate.ErrCannotCommunicate)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
 			})
 		})
 	})
