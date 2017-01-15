@@ -37,4 +37,8 @@ func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Cont
 	if ctx.Namespace != "" {
 		request.Namespace = ctx.Namespace
 	}
+
+	if ctx.Recursive {
+		request.Recursive = true
+	}
 }

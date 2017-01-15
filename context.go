@@ -22,6 +22,7 @@ type Context struct {
 	Attributes    []string
 	TransactionID TransactionID
 	Namespace     string
+	Recursive     bool
 }
 
 // NewContext returns a new *Context
