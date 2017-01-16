@@ -113,7 +113,10 @@ func (s *websocketManipulator) RetrieveMany(context *manipulate.Context, identit
 	req.Identity = identity
 	req.Username = s.username
 	req.Password = s.currentPassword()
-	populateRequestFromContext(req, context)
+
+	if err := populateRequestFromContext(req, context); err != nil {
+		return err
+	}
 
 	resp, err := s.send(req)
 	if err != nil {
@@ -142,7 +145,10 @@ func (s *websocketManipulator) Retrieve(context *manipulate.Context, objects ...
 		req.Username = s.username
 		req.Password = s.currentPassword()
 		req.ObjectID = object.Identifier()
-		populateRequestFromContext(req, context)
+
+		if err := populateRequestFromContext(req, context); err != nil {
+			return err
+		}
 
 		if err := req.Encode(object); err != nil {
 			return manipulate.NewErrCannotMarshal(err.Error())
@@ -175,7 +181,10 @@ func (s *websocketManipulator) Create(context *manipulate.Context, objects ...ma
 		req.Identity = object.Identity()
 		req.Username = s.username
 		req.Password = s.currentPassword()
-		populateRequestFromContext(req, context)
+
+		if err := populateRequestFromContext(req, context); err != nil {
+			return err
+		}
 
 		if err := req.Encode(object); err != nil {
 			return manipulate.NewErrCannotMarshal(err.Error())
@@ -210,7 +219,10 @@ func (s *websocketManipulator) Update(context *manipulate.Context, objects ...ma
 		req.Username = s.username
 		req.Password = s.currentPassword()
 		req.ObjectID = object.Identifier()
-		populateRequestFromContext(req, context)
+
+		if err := populateRequestFromContext(req, context); err != nil {
+			return err
+		}
 
 		if err := req.Encode(object); err != nil {
 			return manipulate.NewErrCannotMarshal(err.Error())
@@ -244,7 +256,10 @@ func (s *websocketManipulator) Delete(context *manipulate.Context, objects ...ma
 		req.Username = s.username
 		req.Password = s.currentPassword()
 		req.ObjectID = object.Identifier()
-		populateRequestFromContext(req, context)
+
+		if err := populateRequestFromContext(req, context); err != nil {
+			return err
+		}
 
 		if err := req.Encode(object); err != nil {
 			return manipulate.NewErrCannotMarshal(err.Error())
@@ -275,7 +290,10 @@ func (s *websocketManipulator) Count(context *manipulate.Context, identity eleme
 	req.Identity = identity
 	req.Username = s.username
 	req.Password = s.currentPassword()
-	populateRequestFromContext(req, context)
+
+	if err := populateRequestFromContext(req, context); err != nil {
+		return 0, err
+	}
 
 	resp, err := s.send(req)
 	if err != nil {

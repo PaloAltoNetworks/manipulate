@@ -3,6 +3,7 @@ package manipwebsocket
 import (
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
+	"github.com/aporeto-inc/manipulate/manipwebsocket/compiler"
 )
 
 func decodeErrors(response *elemental.Response) error {
@@ -21,7 +22,15 @@ func decodeErrors(response *elemental.Response) error {
 	return errs
 }
 
-func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Context) {
+func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Context) error {
+
+	if ctx.Filter != nil {
+		var err error
+		request.Parameters, err = compiler.CompileFilter(ctx.Filter)
+		if err != nil {
+			return err
+		}
+	}
 
 	if ctx.Parameters != nil {
 		for k, v := range ctx.Parameters.KeyValues {
@@ -41,4 +50,6 @@ func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Cont
 	if ctx.Recursive {
 		request.Recursive = true
 	}
+
+	return nil
 }
