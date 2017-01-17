@@ -4,15 +4,20 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 	"github.com/aporeto-inc/manipulate/manipmongo/compiler"
 	"gopkg.in/mgo.v2/bson"
 
-	log "github.com/Sirupsen/logrus"
 	uuid "github.com/satori/go.uuid"
 	mgo "gopkg.in/mgo.v2"
 )
+
+// Logger contains the main logger
+var Logger = logrus.New()
+
+var log = Logger.WithField("package", "manipmongo")
 
 type bulksRegistry map[manipulate.TransactionID]*mgo.Bulk
 
@@ -32,11 +37,10 @@ func NewMongoManipulator(url string, dbName string) manipulate.TransactionalMani
 
 	session, err := mgo.Dial(url)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"package": "manipmongo",
-			"url":     url,
-			"db":      dbName,
-			"error":   err.Error(),
+		log.WithFields(logrus.Fields{
+			"url":   url,
+			"db":    dbName,
+			"error": err.Error(),
 		}).Fatal("Cannot connect to mongo.")
 	}
 
@@ -192,7 +196,7 @@ func (s *mongoManipulator) Commit(id manipulate.TransactionID) error {
 	defer func() { s.unregisterBulk(id) }()
 
 	if s.registeredBulkWithID(id) == nil {
-		log.WithFields(log.Fields{
+		log.WithFields(logrus.Fields{
 			"store":         s,
 			"transactionID": id,
 		}).Error("No batch found for the given transaction.")
@@ -236,16 +240,11 @@ func (s *mongoManipulator) bulkForID(id manipulate.TransactionID, collection *mg
 
 func (s *mongoManipulator) commitBulk(b *mgo.Bulk) error {
 
-	log.WithFields(log.Fields{
-		"bulk": b,
-	}).Debug("Commiting bulk to mongo.")
+	log.WithField("bulk", b).Debug("Commiting bulk to mongo.")
 
 	if _, err := b.Run(); err != nil {
 
-		log.WithFields(log.Fields{
-			"bulk":  b,
-			"error": err,
-		}).Debug("Unable to send bulk command.")
+		log.WithError(err).Debug("Unable to send bulk command.")
 
 		return err
 	}

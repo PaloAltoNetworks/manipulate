@@ -14,12 +14,17 @@ import (
 
 	"golang.org/x/net/websocket"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 
-	log "github.com/Sirupsen/logrus"
 	midgard "github.com/aporeto-inc/midgard-lib/client"
 )
+
+// Logger contains the main logger.
+var Logger = logrus.New()
+
+var log = Logger.WithField("package", "manipwebsocket")
 
 type websocketManipulator struct {
 	responsesChanRegistry     map[string]chan *elemental.Response
@@ -536,9 +541,7 @@ func (s *websocketManipulator) renewMidgardToken(mclient *midgard.Client, certif
 			log.Info("Refreshing Midgard token...")
 			token, err := mclient.IssueFromCertificate(certificates)
 			if err != nil {
-				log.WithFields(log.Fields{
-					"error": err,
-				}).Error("Unable to renew token.")
+				log.WithError(err).Error("Unable to renew token.")
 			}
 			s.renewLock.Lock()
 			s.password = token

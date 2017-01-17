@@ -4,13 +4,18 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 
-	log "github.com/Sirupsen/logrus"
 	memdb "github.com/hashicorp/go-memdb"
 	uuid "github.com/satori/go.uuid"
 )
+
+// Logger contains the main logger.
+var Logger = logrus.New()
+
+var log = Logger.WithField("package", "manipmemory")
 
 type txnRegistry map[manipulate.TransactionID]*memdb.Txn
 
@@ -237,9 +242,7 @@ func (s *memdbManipulator) txnForID(id manipulate.TransactionID) *memdb.Txn {
 
 func (s *memdbManipulator) commitTxn(t *memdb.Txn) {
 
-	log.WithFields(log.Fields{
-		"transaction": t,
-	}).Debug("Commiting transaction to MemDB.")
+	log.WithField("transaction", t).Debug("Commiting transaction to MemDB.")
 
 	t.Commit()
 }

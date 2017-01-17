@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 )
 
 // DoesKeyspaceExist checks if the configured keyspace exists
@@ -19,8 +19,7 @@ func DoesKeyspaceExist(servers []string, version int, keyspace string) (bool, er
 	info, err := session.KeyspaceMetadata(keyspace)
 
 	if err != nil {
-		log.WithFields(log.Fields{
-			"package":  "manipcassandra",
+		log.WithFields(logrus.Fields{
 			"keyspace": keyspace,
 			"error":    err,
 		}).Error("unable to get keyspace metadata")
@@ -76,11 +75,7 @@ func ExecuteScript(servers []string, version int, keyspace string, data string) 
 		}
 
 		if err := session.Query(statement).Exec(); err != nil {
-			log.WithFields(log.Fields{
-				"package": "manipcassandra",
-				"error":   err,
-			}).Error("unable to execute query. aborting script in the middle. be sure to clean up my mess.")
-
+			log.WithError(err).Error("unable to execute query. aborting script in the middle. be sure to clean up my mess.")
 			return err
 		}
 	}

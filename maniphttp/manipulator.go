@@ -14,12 +14,17 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 
-	log "github.com/Sirupsen/logrus"
 	midgardclient "github.com/aporeto-inc/midgard-lib/client"
 )
+
+// Logger contains the main logger.
+var Logger = logrus.New()
+
+var log = Logger.WithField("package", "maniphttp")
 
 type httpManipulator struct {
 	username  string
@@ -433,8 +438,7 @@ func (s *httpManipulator) send(request *http.Request, context *manipulate.Contex
 	response, err := s.client.Do(request)
 
 	if err != nil {
-		log.WithFields(log.Fields{
-			"package":  "maniphttp",
+		log.WithFields(logrus.Fields{
 			"method":   request.Method,
 			"url":      request.URL,
 			"request":  request,
@@ -444,8 +448,7 @@ func (s *httpManipulator) send(request *http.Request, context *manipulate.Contex
 		return response, manipulate.NewErrCannotCommunicate(err.Error())
 	}
 
-	log.WithFields(log.Fields{
-		"package":  "maniphttp",
+	log.WithFields(logrus.Fields{
 		"method":   request.Method,
 		"url":      request.URL,
 		"request":  request,
