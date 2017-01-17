@@ -15,7 +15,7 @@ import (
 // Logger contains the main logger.
 var Logger = logrus.New()
 
-var log = Logger.WithField("package", "manipmemory")
+var log = Logger.WithField("package", "github.com/aporeto-inc/manipulate/manipmemory")
 
 type txnRegistry map[manipulate.TransactionID]*memdb.Txn
 

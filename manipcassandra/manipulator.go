@@ -27,7 +27,7 @@ type batchRegistry map[manipulate.TransactionID]*gocql.Batch
 // Logger contains the main logger.
 var Logger = logrus.New()
 
-var log = Logger.WithField("package", "manipcassandra")
+var log = Logger.WithField("package", "github.com/aporeto-inc/manipulate/manipcassandra")
 
 // AttributeUpdater structu used to make request as UPDATE policy SET NAME = NAME - ?
 type attributeUpdater struct {

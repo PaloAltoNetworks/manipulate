@@ -24,7 +24,7 @@ import (
 // Logger contains the main logger.
 var Logger = logrus.New()
 
-var log = Logger.WithField("package", "maniphttp")
+var log = Logger.WithField("package", "github.com/aporeto-inc/manipulate/maniphttp")
 
 type httpManipulator struct {
 	username  string
