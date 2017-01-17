@@ -363,7 +363,7 @@ func (s *websocketManipulator) Subscribe(
 
 			ws, err = websocket.DialConfig(config)
 			if err != nil {
-				log.WithField("package", "manipwebsocket").Warn("Could not connect to websocket. Retrying in 5s")
+				log.Warn("Could not connect to websocket. Retrying in 5s")
 				<-time.After(5 * time.Second)
 				continue
 			}
@@ -452,7 +452,7 @@ func (s *websocketManipulator) listen() {
 		for {
 
 			if err := s.connect(); err != nil {
-				log.WithField("package", "manipwebsocket").Warn("Websocket not available. Retrying in 5s...")
+				log.Warn("Websocket not available. Retrying in 5s...")
 				<-time.After(5 * time.Second)
 				continue
 			}
