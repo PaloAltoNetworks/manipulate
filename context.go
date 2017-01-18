@@ -6,23 +6,29 @@ package manipulate
 
 import "fmt"
 
+// A FinalizerFunc is the type of a function that can be used as a creation finalizer.
+// This is only supported by manipulators that generate an ID to let a chance to the user.
+// to now the intended ID before actually creating the object.
+type FinalizerFunc func(o Manipulable) error
+
 // Context is a structure
 type Context struct {
-	PageCurrent   int
-	PageSize      int
-	PageFirst     string
-	PageNext      string
-	PagePrev      string
-	PageLast      string
-	Parent        Manipulable
-	CountLocal    int
-	CountTotal    int
-	Filter        *Filter
-	Parameters    *Parameters
-	Attributes    []string
-	TransactionID TransactionID
-	Namespace     string
-	Recursive     bool
+	PageCurrent     int
+	PageSize        int
+	PageFirst       string
+	PageNext        string
+	PagePrev        string
+	PageLast        string
+	Parent          Manipulable
+	CountLocal      int
+	CountTotal      int
+	Filter          *Filter
+	Parameters      *Parameters
+	Attributes      []string
+	TransactionID   TransactionID
+	Namespace       string
+	Recursive       bool
+	CreateFinalizer FinalizerFunc
 }
 
 // NewContext returns a new *Context

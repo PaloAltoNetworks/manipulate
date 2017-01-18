@@ -130,15 +130,21 @@ func (c *cassandraManipulator) Create(context *manipulate.Context, objects ...ma
 	batch := c.batchForID(transactionID)
 
 	for _, object := range objects {
+
 		object.SetIdentifier(gocql.TimeUUID().String())
+
+		if context.CreateFinalizer != nil {
+			if err := context.CreateFinalizer(object); err != nil {
+				return err
+			}
+		}
+
 		list, values, err := cassandra.FieldsAndValues(object)
 
 		if err != nil {
-
 			for _, object := range objects {
 				object.SetIdentifier("")
 			}
-
 			log.WithError(err).Error("Unable to extract fields and values.")
 
 			return manipulate.NewErrCannotBuildQuery(err.Error())
@@ -192,11 +198,8 @@ func (c *cassandraManipulator) Update(context *manipulate.Context, objects ...ma
 	for _, object := range objects {
 
 		primaryKeys, primaryValues, err := cassandra.PrimaryFieldsAndValues(object)
-
 		if err != nil {
-
 			log.WithError(err).Error("Unable to extract primary fields and values.")
-
 			return manipulate.NewErrCannotBuildQuery(err.Error())
 		}
 
@@ -239,9 +242,7 @@ func (c *cassandraManipulator) Delete(context *manipulate.Context, objects ...ma
 		primaryKeys, primaryValues, err := cassandra.PrimaryFieldsAndValues(object)
 
 		if err != nil {
-
 			log.WithError(err).Error("Unable to extract primary keys and values.")
-
 			return manipulate.NewErrCannotBuildQuery(err.Error())
 		}
 
