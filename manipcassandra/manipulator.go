@@ -10,9 +10,9 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/aporeto-inc/elemental"
-	"github.com/aporeto-inc/gocql"
 	"github.com/aporeto-inc/manipulate"
 	"github.com/aporeto-inc/manipulate/manipcassandra/encoding"
+	"github.com/gocql/gocql"
 )
 
 // GocqlTimeout changes the timeout that will be used for the next gocql session

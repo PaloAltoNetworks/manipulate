@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"reflect"
 	"time"
+
+	"github.com/gocql/gocql"
 )
 
 // Unmarshal returns an object from the given map[string]interface{}
@@ -73,6 +75,11 @@ func unmarshal(val reflect.Value, data map[string]interface{}, fieldsMap map[str
 	for key, value := range data {
 		if info, ok := fieldsMap[key]; ok {
 			structField := fieldByIndex(val, info.index)
+
+			// If we have a gocql.UUID type, we convert it to a string
+			if reflect.TypeOf(value).Name() == "UUID" {
+				value = value.(gocql.UUID).String()
+			}
 
 			if structField.Kind() == reflect.Struct && structField.Type() != reflect.TypeOf(defaultTime) {
 				newObject := reflect.New(reflect.TypeOf(structField.Interface())).Interface()
