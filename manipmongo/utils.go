@@ -10,5 +10,5 @@ import (
 // given *mgo.Database.
 func collectionFromIdentity(db *mgo.Database, identity elemental.Identity) *mgo.Collection {
 
-	return db.C(identity.Category)
+	return db.C(identity.Name)
 }

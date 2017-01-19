@@ -19,7 +19,7 @@ var Logger = logrus.New()
 
 var log = Logger.WithField("package", "github.com/aporeto-inc/manipulate/manipmongo")
 
-type bulksRegistry map[manipulate.TransactionID]*mgo.Bulk
+type bulksRegistry map[manipulate.TransactionID]map[*mgo.Collection]*mgo.Bulk
 
 // MongoStore represents a MongoDB session.
 type mongoManipulator struct {
@@ -70,7 +70,7 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, identity el
 	}
 
 	if err := query.All(dest); err != nil {
-		return elemental.NewError("Error", err.Error(), "", 5000)
+		return manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
 
 	return nil
@@ -78,12 +78,26 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, identity el
 
 func (s *mongoManipulator) Retrieve(context *manipulate.Context, objects ...manipulate.Manipulable) error {
 
+	if context == nil {
+		context = manipulate.NewContext()
+	}
+
 	collection := collectionFromIdentity(s.db, objects[0].Identity())
 
 	for i := 0; i < len(objects); i++ {
-		query := collection.Find(bson.M{"_id": objects[i].Identifier()})
+
+		var query *mgo.Query
+		if context.Filter != nil {
+			query = collection.Find(compiler.CompileFilter(context.Filter))
+		} else {
+			query = collection.Find(bson.M{"_id": objects[i].Identifier()})
+		}
+
 		if err := query.One(objects[i]); err != nil {
-			return elemental.NewError("Error", err.Error(), "", 5000)
+			if err == mgo.ErrNotFound {
+				return manipulate.NewErrObjectNotFound("cannot find the object for the given ID")
+			}
+			return manipulate.NewErrCannotExecuteQuery(err.Error())
 		}
 	}
 
@@ -98,7 +112,7 @@ func (s *mongoManipulator) Create(context *manipulate.Context, children ...manip
 
 	collection := collectionFromIdentity(s.db, children[0].Identity())
 	tid := context.TransactionID
-	bulk := s.bulkForID(tid, collection)
+	bulk := s.bulkForIDAndCollection(tid, collection)
 
 	for _, child := range children {
 		child.SetIdentifier(uuid.NewV4().String())
@@ -106,8 +120,8 @@ func (s *mongoManipulator) Create(context *manipulate.Context, children ...manip
 	}
 
 	if tid == "" {
-		if err := s.commitBulk(bulk); err != nil {
-			return elemental.NewError("Error", err.Error(), "", 5000)
+		if err := s.Commit(tid); err != nil {
+			return manipulate.NewErrCannotCommit(err.Error())
 		}
 	}
 
@@ -122,15 +136,25 @@ func (s *mongoManipulator) Update(context *manipulate.Context, objects ...manipu
 
 	collection := collectionFromIdentity(s.db, objects[0].Identity())
 	tid := context.TransactionID
-	bulk := s.bulkForID(tid, collection)
+	bulk := s.bulkForIDAndCollection(tid, collection)
 
 	for i := 0; i < len(objects); i++ {
-		bulk.Update(bson.M{"_id": objects[i].Identifier()}, objects[i])
+
+		filter := bson.M{}
+		if context.Filter != nil {
+			filter = compiler.CompileFilter(context.Filter)
+		}
+
+		if objects[i].Identifier() != "" {
+			filter["_id"] = objects[i].Identifier()
+		}
+
+		bulk.Update(filter, objects[i])
 	}
 
 	if tid == "" {
-		if err := s.commitBulk(bulk); err != nil {
-			return elemental.NewError("Error", err.Error(), "manipulate", 5000)
+		if err := s.Commit(tid); err != nil {
+			return manipulate.NewErrCannotCommit(err.Error())
 		}
 	}
 
@@ -145,15 +169,15 @@ func (s *mongoManipulator) Delete(context *manipulate.Context, objects ...manipu
 
 	collection := collectionFromIdentity(s.db, objects[0].Identity())
 	tid := context.TransactionID
-	bulk := s.bulkForID(tid, collection)
+	bulk := s.bulkForIDAndCollection(tid, collection)
 
 	for i := 0; i < len(objects); i++ {
 		bulk.Remove(bson.M{"_id": objects[i].Identifier()})
 	}
 
 	if tid == "" {
-		if err := s.commitBulk(bulk); err != nil {
-			return elemental.NewError("Error", err.Error(), "manipulate", 5000)
+		if err := s.Commit(tid); err != nil {
+			return manipulate.NewErrCannotCommit(err.Error())
 		}
 	}
 
@@ -177,7 +201,7 @@ func (s *mongoManipulator) Count(context *manipulate.Context, identity elemental
 
 	c, err := query.Count()
 	if err != nil {
-		return 0, elemental.NewError("Error", err.Error(), "manipulate", 5000)
+		return 0, manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
 
 	return c, nil
@@ -188,24 +212,30 @@ func (s *mongoManipulator) Assign(context *manipulate.Context, assignation *elem
 }
 
 func (s *mongoManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
-	return fmt.Errorf("Increment is not implemented in mongo")
+	return nil
 }
 
 func (s *mongoManipulator) Commit(id manipulate.TransactionID) error {
 
 	defer func() { s.unregisterBulk(id) }()
 
-	if s.registeredBulkWithID(id) == nil {
+	bulks := s.registeredTransactionWithID(id)
+	if bulks == nil {
 		log.WithFields(logrus.Fields{
 			"store":         s,
 			"transactionID": id,
 		}).Error("No batch found for the given transaction.")
 
-		return elemental.NewError("Manipulation Error", "No batch found for the given transaction.", "manipulate", 5001)
+		return manipulate.NewErrTransactionNotFound("No batch found for the given transaction.")
 	}
 
-	if err := s.commitBulk(s.registeredBulkWithID(id)); err != nil {
-		return elemental.NewError("Manipulation Error", "Unable to commit.", "manipulate", 5001)
+	for _, bulk := range bulks {
+
+		log.WithField("bulk", bulk).Debug("Commiting bulks to mongo.")
+
+		if _, err := bulk.Run(); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -213,7 +243,7 @@ func (s *mongoManipulator) Commit(id manipulate.TransactionID) error {
 
 func (s *mongoManipulator) Abort(id manipulate.TransactionID) bool {
 
-	if s.registeredBulkWithID(id) == nil {
+	if s.registeredTransactionWithID(id) == nil {
 		return false
 	}
 
@@ -222,40 +252,33 @@ func (s *mongoManipulator) Abort(id manipulate.TransactionID) bool {
 	return true
 }
 
-func (s *mongoManipulator) bulkForID(id manipulate.TransactionID, collection *mgo.Collection) *mgo.Bulk {
+func (s *mongoManipulator) bulkForIDAndCollection(id manipulate.TransactionID, collection *mgo.Collection) *mgo.Bulk {
 
 	if id == "" {
 		return collection.Bulk()
 	}
 
-	bulk := s.registeredBulkWithID(id)
+	bulks := s.registeredTransactionWithID(id)
 
-	if bulk == nil {
-		bulk = collection.Bulk()
-		s.registerBulk(id, bulk)
+	if bulks != nil && bulks[collection] != nil {
+		return bulks[collection]
 	}
+
+	bulk := collection.Bulk()
+	s.registerBulk(id, bulk, collection)
 
 	return bulk
 }
 
-func (s *mongoManipulator) commitBulk(b *mgo.Bulk) error {
-
-	log.WithField("bulk", b).Debug("Commiting bulk to mongo.")
-
-	if _, err := b.Run(); err != nil {
-
-		log.WithError(err).Debug("Unable to send bulk command.")
-
-		return err
-	}
-
-	return nil
-}
-
-func (s *mongoManipulator) registerBulk(id manipulate.TransactionID, bulk *mgo.Bulk) {
+func (s *mongoManipulator) registerBulk(id manipulate.TransactionID, bulk *mgo.Bulk, collection *mgo.Collection) {
 
 	s.bulksRegistryLock.Lock()
-	s.bulksRegistry[id] = bulk
+
+	if s.bulksRegistry[id] == nil {
+		s.bulksRegistry[id] = map[*mgo.Collection]*mgo.Bulk{}
+	}
+	s.bulksRegistry[id][collection] = bulk
+
 	s.bulksRegistryLock.Unlock()
 }
 
@@ -266,7 +289,7 @@ func (s *mongoManipulator) unregisterBulk(id manipulate.TransactionID) {
 	s.bulksRegistryLock.Unlock()
 }
 
-func (s *mongoManipulator) registeredBulkWithID(id manipulate.TransactionID) *mgo.Bulk {
+func (s *mongoManipulator) registeredTransactionWithID(id manipulate.TransactionID) map[*mgo.Collection]*mgo.Bulk {
 
 	s.bulksRegistryLock.Lock()
 	b := s.bulksRegistry[id]
