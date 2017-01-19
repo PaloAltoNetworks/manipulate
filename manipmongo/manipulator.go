@@ -19,7 +19,7 @@ var Logger = logrus.New()
 
 var log = Logger.WithField("package", "github.com/aporeto-inc/manipulate/manipmongo")
 
-type bulksRegistry map[manipulate.TransactionID]map[*mgo.Collection]*mgo.Bulk
+type transactionsRegistry map[manipulate.TransactionID]map[*mgo.Collection]*mgo.Bulk
 
 // MongoStore represents a MongoDB session.
 type mongoManipulator struct {
@@ -28,8 +28,8 @@ type mongoManipulator struct {
 	dbName  string
 	url     string
 
-	bulksRegistry     bulksRegistry
-	bulksRegistryLock *sync.Mutex
+	transactionsRegistry     transactionsRegistry
+	transactionsRegistryLock *sync.Mutex
 }
 
 // NewMongoManipulator returns a new TransactionalManipulator backed by MongoDB
@@ -45,12 +45,12 @@ func NewMongoManipulator(url string, dbName string) manipulate.TransactionalMani
 	}
 
 	return &mongoManipulator{
-		url:               url,
-		dbName:            dbName,
-		bulksRegistry:     bulksRegistry{},
-		bulksRegistryLock: &sync.Mutex{},
-		session:           session,
-		db:                session.DB(dbName),
+		url:                      url,
+		dbName:                   dbName,
+		transactionsRegistry:     transactionsRegistry{},
+		transactionsRegistryLock: &sync.Mutex{},
+		session:                  session,
+		db:                       session.DB(dbName),
 	}
 }
 
@@ -272,28 +272,28 @@ func (s *mongoManipulator) bulkForIDAndCollection(id manipulate.TransactionID, c
 
 func (s *mongoManipulator) registerBulk(id manipulate.TransactionID, bulk *mgo.Bulk, collection *mgo.Collection) {
 
-	s.bulksRegistryLock.Lock()
+	s.transactionsRegistryLock.Lock()
 
-	if s.bulksRegistry[id] == nil {
-		s.bulksRegistry[id] = map[*mgo.Collection]*mgo.Bulk{}
+	if s.transactionsRegistry[id] == nil {
+		s.transactionsRegistry[id] = map[*mgo.Collection]*mgo.Bulk{}
 	}
-	s.bulksRegistry[id][collection] = bulk
+	s.transactionsRegistry[id][collection] = bulk
 
-	s.bulksRegistryLock.Unlock()
+	s.transactionsRegistryLock.Unlock()
 }
 
 func (s *mongoManipulator) unregisterBulk(id manipulate.TransactionID) {
 
-	s.bulksRegistryLock.Lock()
-	delete(s.bulksRegistry, id)
-	s.bulksRegistryLock.Unlock()
+	s.transactionsRegistryLock.Lock()
+	delete(s.transactionsRegistry, id)
+	s.transactionsRegistryLock.Unlock()
 }
 
 func (s *mongoManipulator) registeredTransactionWithID(id manipulate.TransactionID) map[*mgo.Collection]*mgo.Bulk {
 
-	s.bulksRegistryLock.Lock()
-	b := s.bulksRegistry[id]
-	s.bulksRegistryLock.Unlock()
+	s.transactionsRegistryLock.Lock()
+	b := s.transactionsRegistry[id]
+	s.transactionsRegistryLock.Unlock()
 
 	return b
 }
