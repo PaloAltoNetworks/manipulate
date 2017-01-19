@@ -99,3 +99,13 @@ func NewErrTransactionNotFound(message string) ErrTransactionNotFound {
 }
 
 func (e ErrTransactionNotFound) Error() string { return "Transaction not found: " + e.message }
+
+// ErrConstraintViolation represents a failure to find a transaction.
+type ErrConstraintViolation struct{ message string }
+
+// NewErrConstraintViolation returns a new NewErrConstraintViolation.
+func NewErrConstraintViolation(message string) ErrConstraintViolation {
+	return ErrConstraintViolation{message: message}
+}
+
+func (e ErrConstraintViolation) Error() string { return "Constraint violation: " + e.message }

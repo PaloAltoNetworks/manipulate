@@ -285,6 +285,10 @@ func (s *httpManipulator) Delete(context *manipulate.Context, objects ...manipul
 	return nil
 }
 
+func (s *httpManipulator) DeleteMany(context *manipulate.Context, identity elemental.Identity) error {
+	return manipulate.NewErrNotImplemented("DeleteMany not implemented in maniphttp")
+}
+
 func (s *httpManipulator) Count(context *manipulate.Context, identity elemental.Identity) (int, error) {
 
 	if context == nil {

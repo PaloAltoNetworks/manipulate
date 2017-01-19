@@ -171,6 +171,11 @@ func (s *memdbManipulator) Delete(context *manipulate.Context, objects ...manipu
 	return nil
 }
 
+// DeleteMany is part of the implementation of the Manipulator interface.
+func (s *memdbManipulator) DeleteMany(context *manipulate.Context, identity elemental.Identity) error {
+	return manipulate.NewErrNotImplemented("DeleteMany not implemented in manipmemory")
+}
+
 // Count is part of the implementation of the Manipulator interface.
 func (s *memdbManipulator) Count(context *manipulate.Context, identity elemental.Identity) (int, error) {
 

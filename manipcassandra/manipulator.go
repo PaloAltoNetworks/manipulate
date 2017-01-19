@@ -261,6 +261,10 @@ func (c *cassandraManipulator) Delete(context *manipulate.Context, objects ...ma
 	return nil
 }
 
+func (c *cassandraManipulator) DeleteMany(context *manipulate.Context, identity elemental.Identity) error {
+	return manipulate.NewErrNotImplemented("DeleteMany not implemented in manipcassandra")
+}
+
 func (c *cassandraManipulator) Count(context *manipulate.Context, identity elemental.Identity) (int, error) {
 
 	if context == nil {
@@ -296,7 +300,7 @@ func (c *cassandraManipulator) Count(context *manipulate.Context, identity eleme
 }
 
 func (c *cassandraManipulator) Assign(*manipulate.Context, *elemental.Assignation) error {
-	panic("Not implemented")
+	return manipulate.NewErrNotImplemented("Assign not implemented in manipcassandra")
 }
 
 func (c *cassandraManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {

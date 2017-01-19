@@ -23,7 +23,7 @@ func TestUtils_collectionFromIdentity(t *testing.T) {
 			})
 
 			Convey("Then collection fullName should be nil", func() {
-				So(c.FullName, ShouldEqual, ".persons")
+				So(c.FullName, ShouldEqual, ".person")
 			})
 		})
 	})

@@ -44,6 +44,10 @@ type Manipulator interface {
 	// the Manipulables needs to have their Identifier correctly set.
 	Delete(context *Context, objects ...Manipulable) error
 
+	// DeleteMany deletes all objects of with the given identity or
+	// all the ones matching the filtet in the given context.
+	DeleteMany(context *Context, identity elemental.Identity) error
+
 	// Count returns the number of objects with the given identity.
 	Count(context *Context, identity elemental.Identity) (int, error)
 

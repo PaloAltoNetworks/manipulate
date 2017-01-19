@@ -62,14 +62,12 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, identity el
 
 	collection := collectionFromIdentity(s.db, identity)
 
-	var query *mgo.Query
+	filter := bson.M{}
 	if context.Filter != nil {
-		query = collection.Find(compiler.CompileFilter(context.Filter))
-	} else {
-		query = collection.Find(nil)
+		filter = compiler.CompileFilter(context.Filter)
 	}
 
-	if err := query.All(dest); err != nil {
+	if err := collection.Find(filter).All(dest); err != nil {
 		return manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
 
@@ -84,19 +82,23 @@ func (s *mongoManipulator) Retrieve(context *manipulate.Context, objects ...mani
 
 	collection := collectionFromIdentity(s.db, objects[0].Identity())
 
-	for i := 0; i < len(objects); i++ {
+	filter := bson.M{}
+	if context.Filter != nil {
+		filter = compiler.CompileFilter(context.Filter)
+	}
 
-		var query *mgo.Query
-		if context.Filter != nil {
-			query = collection.Find(compiler.CompileFilter(context.Filter))
-		} else {
-			query = collection.Find(bson.M{"_id": objects[i].Identifier()})
+	for _, o := range objects {
+
+		if o.Identifier() != "" {
+			filter["_id"] = o.Identifier()
 		}
 
-		if err := query.One(objects[i]); err != nil {
+		if err := collection.Find(filter).One(o); err != nil {
+
 			if err == mgo.ErrNotFound {
 				return manipulate.NewErrObjectNotFound("cannot find the object for the given ID")
 			}
+
 			return manipulate.NewErrCannotExecuteQuery(err.Error())
 		}
 	}
@@ -120,9 +122,7 @@ func (s *mongoManipulator) Create(context *manipulate.Context, children ...manip
 	}
 
 	if tid == "" {
-		if err := s.Commit(tid); err != nil {
-			return manipulate.NewErrCannotCommit(err.Error())
-		}
+		return s.Commit(tid)
 	}
 
 	return nil
@@ -138,24 +138,12 @@ func (s *mongoManipulator) Update(context *manipulate.Context, objects ...manipu
 	tid := context.TransactionID
 	bulk := s.bulkForIDAndCollection(tid, collection)
 
-	for i := 0; i < len(objects); i++ {
-
-		filter := bson.M{}
-		if context.Filter != nil {
-			filter = compiler.CompileFilter(context.Filter)
-		}
-
-		if objects[i].Identifier() != "" {
-			filter["_id"] = objects[i].Identifier()
-		}
-
-		bulk.Update(filter, objects[i])
+	for _, o := range objects {
+		bulk.Update(bson.M{"_id": o.Identifier()}, o)
 	}
 
 	if tid == "" {
-		if err := s.Commit(tid); err != nil {
-			return manipulate.NewErrCannotCommit(err.Error())
-		}
+		return s.Commit(tid)
 	}
 
 	return nil
@@ -171,14 +159,31 @@ func (s *mongoManipulator) Delete(context *manipulate.Context, objects ...manipu
 	tid := context.TransactionID
 	bulk := s.bulkForIDAndCollection(tid, collection)
 
-	for i := 0; i < len(objects); i++ {
-		bulk.Remove(bson.M{"_id": objects[i].Identifier()})
+	for _, o := range objects {
+		bulk.Remove(bson.M{"_id": o.Identifier()})
 	}
 
 	if tid == "" {
-		if err := s.Commit(tid); err != nil {
-			return manipulate.NewErrCannotCommit(err.Error())
-		}
+		return s.Commit(tid)
+	}
+
+	return nil
+}
+
+func (s *mongoManipulator) DeleteMany(context *manipulate.Context, identity elemental.Identity) error {
+
+	if context == nil {
+		context = manipulate.NewContext()
+	}
+
+	collection := collectionFromIdentity(s.db, identity)
+	tid := context.TransactionID
+	bulk := s.bulkForIDAndCollection(tid, collection)
+
+	bulk.Remove(compiler.CompileFilter(context.Filter))
+
+	if tid == "" {
+		return s.Commit(tid)
 	}
 
 	return nil
@@ -191,15 +196,12 @@ func (s *mongoManipulator) Count(context *manipulate.Context, identity elemental
 	}
 
 	collection := collectionFromIdentity(s.db, identity)
-
-	var query *mgo.Query
+	filter := bson.M{}
 	if context.Filter != nil {
-		query = collection.Find(compiler.CompileFilter(context.Filter))
-	} else {
-		query = collection.Find(nil)
+		filter = compiler.CompileFilter(context.Filter)
 	}
 
-	c, err := query.Count()
+	c, err := collection.Find(filter).Count()
 	if err != nil {
 		return 0, manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
@@ -234,7 +236,10 @@ func (s *mongoManipulator) Commit(id manipulate.TransactionID) error {
 		log.WithField("bulk", bulk).Debug("Commiting bulks to mongo.")
 
 		if _, err := bulk.Run(); err != nil {
-			return err
+			if mgo.IsDup(err) {
+				return manipulate.NewErrConstraintViolation("duplicate key.")
+			}
+			return manipulate.NewErrCannotCommit(err.Error())
 		}
 	}
 

@@ -283,6 +283,10 @@ func (s *websocketManipulator) Delete(context *manipulate.Context, objects ...ma
 	return nil
 }
 
+func (s *websocketManipulator) DeleteMany(context *manipulate.Context, identity elemental.Identity) error {
+	return manipulate.NewErrNotImplemented("DeleteMany not implemented in manipwebsocket")
+}
+
 func (s *websocketManipulator) Count(context *manipulate.Context, identity elemental.Identity) (int, error) {
 
 	if context == nil {
