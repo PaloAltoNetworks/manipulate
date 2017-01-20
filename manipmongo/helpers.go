@@ -17,7 +17,7 @@ func DoesDatabaseExist(manipulator manipulate.Manipulator) (bool, error) {
 		return false, fmt.Errorf("You can only pass a Mongo Manipulator to CreateIndex")
 	}
 
-	dbs, err := m.session.DatabaseNames()
+	dbs, err := m.rootSession.DatabaseNames()
 	if err != nil {
 		return false, err
 	}
@@ -39,7 +39,10 @@ func DropDatabase(manipulator manipulate.Manipulator) error {
 		panic("You can only pass a Mongo Manipulator to CreateIndex")
 	}
 
-	return m.db.DropDatabase()
+	session := m.rootSession.Copy()
+	defer session.Close()
+
+	return session.DB(m.dbName).DropDatabase()
 }
 
 // CreateIndex creates multiple mgo.Index for the collection storing info for the given identity using the given manipulator.
@@ -50,7 +53,10 @@ func CreateIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 		return fmt.Errorf("You can only pass a Mongo Manipulator to CreateIndex")
 	}
 
-	collection := collectionFromIdentity(m.db, identity)
+	session := m.rootSession.Copy()
+	defer session.Close()
+
+	collection := session.DB(m.dbName).C(identity.Name)
 
 	for i, index := range indexes {
 		index.Name = "index_" + identity.Name + "_" + strconv.Itoa(i)

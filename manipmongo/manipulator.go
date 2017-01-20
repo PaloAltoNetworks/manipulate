@@ -2,7 +2,6 @@ package manipmongo
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/aporeto-inc/elemental"
@@ -19,17 +18,12 @@ var Logger = logrus.New()
 
 var log = Logger.WithField("package", "github.com/aporeto-inc/manipulate/manipmongo")
 
-type transactionsRegistry map[manipulate.TransactionID]map[*mgo.Collection]*mgo.Bulk
-
 // MongoStore represents a MongoDB session.
 type mongoManipulator struct {
-	session *mgo.Session
-	db      *mgo.Database
-	dbName  string
-	url     string
-
-	transactionsRegistry     transactionsRegistry
-	transactionsRegistryLock *sync.Mutex
+	rootSession  *mgo.Session
+	dbName       string
+	url          string
+	transactions *transactionsRegistry
 }
 
 // NewMongoManipulator returns a new TransactionalManipulator backed by MongoDB
@@ -45,12 +39,10 @@ func NewMongoManipulator(url string, dbName string) manipulate.TransactionalMani
 	}
 
 	return &mongoManipulator{
-		url:                      url,
-		dbName:                   dbName,
-		transactionsRegistry:     transactionsRegistry{},
-		transactionsRegistryLock: &sync.Mutex{},
-		session:                  session,
-		db:                       session.DB(dbName),
+		url:          url,
+		dbName:       dbName,
+		rootSession:  session,
+		transactions: newTransactionRegistry(),
 	}
 }
 
@@ -60,9 +52,13 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, identity el
 		context = manipulate.NewContext()
 	}
 
-	collection := collectionFromIdentity(s.db, identity)
+	session := s.rootSession.Copy()
+	defer session.Close()
 
+	db := session.DB(s.dbName)
+	collection := collectionFromIdentity(db, identity)
 	filter := bson.M{}
+
 	if context.Filter != nil {
 		filter = compiler.CompileFilter(context.Filter)
 	}
@@ -80,9 +76,13 @@ func (s *mongoManipulator) Retrieve(context *manipulate.Context, objects ...mani
 		context = manipulate.NewContext()
 	}
 
-	collection := collectionFromIdentity(s.db, objects[0].Identity())
+	session := s.rootSession.Copy()
+	defer session.Close()
 
+	db := session.DB(s.dbName)
+	collection := collectionFromIdentity(db, objects[0].Identity())
 	filter := bson.M{}
+
 	if context.Filter != nil {
 		filter = compiler.CompileFilter(context.Filter)
 	}
@@ -112,17 +112,16 @@ func (s *mongoManipulator) Create(context *manipulate.Context, children ...manip
 		context = manipulate.NewContext()
 	}
 
-	collection := collectionFromIdentity(s.db, children[0].Identity())
-	tid := context.TransactionID
-	bulk := s.bulkForIDAndCollection(tid, collection)
+	transaction, commit := s.retrieveTransaction(context)
+	bulk := transaction.bulkForIdentity(children[0].Identity())
 
 	for _, child := range children {
 		child.SetIdentifier(uuid.NewV4().String())
 		bulk.Insert(child)
 	}
 
-	if tid == "" {
-		return s.Commit(tid)
+	if commit {
+		return s.Commit(transaction.id)
 	}
 
 	return nil
@@ -134,16 +133,15 @@ func (s *mongoManipulator) Update(context *manipulate.Context, objects ...manipu
 		context = manipulate.NewContext()
 	}
 
-	collection := collectionFromIdentity(s.db, objects[0].Identity())
-	tid := context.TransactionID
-	bulk := s.bulkForIDAndCollection(tid, collection)
+	transaction, commit := s.retrieveTransaction(context)
+	bulk := transaction.bulkForIdentity(objects[0].Identity())
 
 	for _, o := range objects {
 		bulk.Update(bson.M{"_id": o.Identifier()}, o)
 	}
 
-	if tid == "" {
-		return s.Commit(tid)
+	if commit {
+		return s.Commit(transaction.id)
 	}
 
 	return nil
@@ -155,16 +153,15 @@ func (s *mongoManipulator) Delete(context *manipulate.Context, objects ...manipu
 		context = manipulate.NewContext()
 	}
 
-	collection := collectionFromIdentity(s.db, objects[0].Identity())
-	tid := context.TransactionID
-	bulk := s.bulkForIDAndCollection(tid, collection)
+	transaction, commit := s.retrieveTransaction(context)
+	bulk := transaction.bulkForIdentity(objects[0].Identity())
 
 	for _, o := range objects {
 		bulk.Remove(bson.M{"_id": o.Identifier()})
 	}
 
-	if tid == "" {
-		return s.Commit(tid)
+	if commit {
+		return s.Commit(transaction.id)
 	}
 
 	return nil
@@ -176,14 +173,13 @@ func (s *mongoManipulator) DeleteMany(context *manipulate.Context, identity elem
 		context = manipulate.NewContext()
 	}
 
-	collection := collectionFromIdentity(s.db, identity)
-	tid := context.TransactionID
-	bulk := s.bulkForIDAndCollection(tid, collection)
+	transaction, commit := s.retrieveTransaction(context)
+	bulk := transaction.bulkForIdentity(identity)
 
 	bulk.Remove(compiler.CompileFilter(context.Filter))
 
-	if tid == "" {
-		return s.Commit(tid)
+	if commit {
+		return s.Commit(transaction.id)
 	}
 
 	return nil
@@ -195,8 +191,13 @@ func (s *mongoManipulator) Count(context *manipulate.Context, identity elemental
 		context = manipulate.NewContext()
 	}
 
-	collection := collectionFromIdentity(s.db, identity)
+	session := s.rootSession.Copy()
+	defer session.Close()
+
+	db := session.DB(s.dbName)
+	collection := collectionFromIdentity(db, identity)
 	filter := bson.M{}
+
 	if context.Filter != nil {
 		filter = compiler.CompileFilter(context.Filter)
 	}
@@ -219,10 +220,8 @@ func (s *mongoManipulator) Increment(context *manipulate.Context, identity eleme
 
 func (s *mongoManipulator) Commit(id manipulate.TransactionID) error {
 
-	defer func() { s.unregisterBulk(id) }()
-
-	bulks := s.registeredTransactionWithID(id)
-	if bulks == nil {
+	transaction := s.transactions.transactionWithID(id)
+	if transaction == nil {
 		log.WithFields(logrus.Fields{
 			"store":         s,
 			"transactionID": id,
@@ -231,14 +230,21 @@ func (s *mongoManipulator) Commit(id manipulate.TransactionID) error {
 		return manipulate.NewErrTransactionNotFound("No batch found for the given transaction.")
 	}
 
-	for _, bulk := range bulks {
+	defer func() {
+		transaction.closeSession()
+		s.transactions.unregisterTransaction(id)
+	}()
+
+	for _, bulk := range transaction.bulks {
 
 		log.WithField("bulk", bulk).Debug("Commiting bulks to mongo.")
 
 		if _, err := bulk.Run(); err != nil {
+
 			if mgo.IsDup(err) {
 				return manipulate.NewErrConstraintViolation("duplicate key.")
 			}
+
 			return manipulate.NewErrCannotCommit(err.Error())
 		}
 	}
@@ -248,57 +254,34 @@ func (s *mongoManipulator) Commit(id manipulate.TransactionID) error {
 
 func (s *mongoManipulator) Abort(id manipulate.TransactionID) bool {
 
-	if s.registeredTransactionWithID(id) == nil {
+	transaction := s.transactions.transactionWithID(id)
+	if transaction == nil {
 		return false
 	}
 
-	s.unregisterBulk(id)
+	transaction.closeSession()
+	s.transactions.unregisterTransaction(id)
 
 	return true
 }
 
-func (s *mongoManipulator) bulkForIDAndCollection(id manipulate.TransactionID, collection *mgo.Collection) *mgo.Bulk {
+func (s *mongoManipulator) retrieveTransaction(context *manipulate.Context) (*transaction, bool) {
 
-	if id == "" {
-		return collection.Bulk()
+	var created bool
+
+	tid := context.TransactionID
+	if tid == "" {
+		tid = manipulate.NewTransactionID()
+		created = true
 	}
 
-	bulks := s.registeredTransactionWithID(id)
-
-	if bulks != nil && bulks[collection] != nil {
-		return bulks[collection]
+	t := s.transactions.transactionWithID(tid)
+	if t != nil {
+		return t, created
 	}
 
-	bulk := collection.Bulk()
-	s.registerBulk(id, bulk, collection)
+	t = newTransaction(tid, s.rootSession, s.dbName)
+	s.transactions.registerTransaction(tid, t)
 
-	return bulk
-}
-
-func (s *mongoManipulator) registerBulk(id manipulate.TransactionID, bulk *mgo.Bulk, collection *mgo.Collection) {
-
-	s.transactionsRegistryLock.Lock()
-
-	if s.transactionsRegistry[id] == nil {
-		s.transactionsRegistry[id] = map[*mgo.Collection]*mgo.Bulk{}
-	}
-	s.transactionsRegistry[id][collection] = bulk
-
-	s.transactionsRegistryLock.Unlock()
-}
-
-func (s *mongoManipulator) unregisterBulk(id manipulate.TransactionID) {
-
-	s.transactionsRegistryLock.Lock()
-	delete(s.transactionsRegistry, id)
-	s.transactionsRegistryLock.Unlock()
-}
-
-func (s *mongoManipulator) registeredTransactionWithID(id manipulate.TransactionID) map[*mgo.Collection]*mgo.Bulk {
-
-	s.transactionsRegistryLock.Lock()
-	b := s.transactionsRegistry[id]
-	s.transactionsRegistryLock.Unlock()
-
-	return b
+	return t, created
 }
