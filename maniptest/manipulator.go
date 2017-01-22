@@ -14,6 +14,7 @@ type mockedMethods struct {
 	createMock       func(context *manipulate.Context, objects ...manipulate.Manipulable) error
 	updateMock       func(context *manipulate.Context, objects ...manipulate.Manipulable) error
 	deleteMock       func(context *manipulate.Context, objects ...manipulate.Manipulable) error
+	deleteManyMock   func(context *manipulate.Context, identity elemental.Identity) error
 	countMock        func(context *manipulate.Context, identity elemental.Identity) (int, error)
 	assignMock       func(context *manipulate.Context, assignation *elemental.Assignation) error
 	incrementMock    func(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error
@@ -29,6 +30,7 @@ type TestManipulator interface {
 	MockCreate(t *testing.T, impl func(ctx *manipulate.Context, objects ...manipulate.Manipulable) error)
 	MockUpdate(t *testing.T, impl func(ctx *manipulate.Context, objects ...manipulate.Manipulable) error)
 	MockDelete(t *testing.T, impl func(ctx *manipulate.Context, objects ...manipulate.Manipulable) error)
+	MockDeleteMany(t *testing.T, impl func(ctx *manipulate.Context, identity elemental.Identity) error)
 	MockCount(t *testing.T, impl func(ctx *manipulate.Context, identity elemental.Identity) (int, error))
 	MockAssign(t *testing.T, impl func(ctx *manipulate.Context, assignation *elemental.Assignation) error)
 	MockIncrement(t *testing.T, impl func(ctx *manipulate.Context, identity elemental.Identity, counter string, inc int) error)
@@ -74,6 +76,11 @@ func (m *testManipulator) MockUpdate(t *testing.T, impl func(context *manipulate
 func (m *testManipulator) MockDelete(t *testing.T, impl func(context *manipulate.Context, objects ...manipulate.Manipulable) error) {
 
 	m.currentMocks(t).deleteMock = impl
+}
+
+func (m *testManipulator) MockDeleteMany(t *testing.T, impl func(context *manipulate.Context, identity elemental.Identity) error) {
+
+	m.currentMocks(t).deleteManyMock = impl
 }
 
 func (m *testManipulator) MockCount(t *testing.T, impl func(context *manipulate.Context, identity elemental.Identity) (int, error)) {
@@ -141,6 +148,16 @@ func (m *testManipulator) Delete(context *manipulate.Context, objects ...manipul
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.deleteMock != nil {
 		return mock.deleteMock(context, objects...)
+	}
+
+	return nil
+}
+
+// DeleteMany is part of the implementation of the Manipulator interface.
+func (m *testManipulator) DeleteMany(context *manipulate.Context, identity elemental.Identity) error {
+
+	if mock := m.currentMocks(m.currentTest); mock != nil && mock.deleteManyMock != nil {
+		return mock.deleteManyMock(context, identity)
 	}
 
 	return nil

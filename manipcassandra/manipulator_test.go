@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	"github.com/aporeto-inc/elemental"
-	"github.com/aporeto-inc/gocql"
 	"github.com/aporeto-inc/kennebec/apomock"
 	"github.com/aporeto-inc/manipulate"
+	"github.com/gocql/gocql"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
