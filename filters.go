@@ -8,6 +8,7 @@ import (
 // Comparators represent various comparison operations.
 const (
 	EqualComparator FilterComparator = iota + 1
+	NotEqualComparator
 	GreaterComparator
 	LesserComparator
 	InComparator
@@ -156,6 +157,7 @@ func (f FilterValues) Then(values ...interface{}) FilterValues {
 // FilterValueComposer adds values and operators.
 type FilterValueComposer interface {
 	Equals(...interface{}) FilterKeyComposer
+	NotEquals(...interface{}) FilterKeyComposer
 	GreaterThan(...interface{}) FilterKeyComposer
 	LesserThan(...interface{}) FilterKeyComposer
 	In(...interface{}) FilterKeyComposer
@@ -219,6 +221,13 @@ func (f *Filter) Comparators() FilterComparators {
 func (f *Filter) Equals(values ...interface{}) FilterKeyComposer {
 	f.values = f.values.Then(values...)
 	f.comparators = f.comparators.Then(EqualComparator)
+	return f
+}
+
+// NotEquals adds a an non equality comparator to the FilterComposer.
+func (f *Filter) NotEquals(values ...interface{}) FilterKeyComposer {
+	f.values = f.values.Then(values...)
+	f.comparators = f.comparators.Then(NotEqualComparator)
 	return f
 }
 
