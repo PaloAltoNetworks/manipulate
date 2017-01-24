@@ -117,6 +117,13 @@ func (s *mongoManipulator) Create(context *manipulate.Context, children ...manip
 
 	for _, child := range children {
 		child.SetIdentifier(uuid.NewV4().String())
+
+		if context.CreateFinalizer != nil {
+			if err := context.CreateFinalizer(child); err != nil {
+				return err
+			}
+		}
+
 		bulk.Insert(child)
 	}
 
