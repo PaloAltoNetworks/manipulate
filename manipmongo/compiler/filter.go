@@ -14,11 +14,16 @@ func CompileFilter(f *manipulate.Filter) bson.M {
 	for index, key := range f.Keys() {
 
 		k := strings.ToLower(key[0])
-		if f.Comparators()[index] == manipulate.EqualComparator {
-			filter[k] = f.Values()[index][0]
-		}
 
-		if f.Comparators()[index] == manipulate.ContainComparator {
+		switch f.Comparators()[index] {
+
+		case manipulate.EqualComparator:
+			filter[k] = f.Values()[index][0]
+
+		case manipulate.NotEqualComparator:
+			filter[k] = bson.M{"$ne": f.Values()[index][0]}
+
+		case manipulate.ContainComparator:
 			filter[k] = bson.M{"$in": f.Values()[index]}
 		}
 	}
