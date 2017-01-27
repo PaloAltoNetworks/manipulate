@@ -1,5 +1,0 @@
-github.com/gocql/gocql
-github.com/gocql/gocql/internal/lru
-github.com/gocql/gocql/internal/murmur
-github.com/gocql/gocql/internal/streams
-github.com/aporeto-inc/manipulate/manipcassandra/encoding

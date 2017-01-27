@@ -72,6 +72,10 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, identity el
 
 func (s *mongoManipulator) Retrieve(context *manipulate.Context, objects ...manipulate.Manipulable) error {
 
+	if len(objects) == 0 {
+		return nil
+	}
+
 	if context == nil {
 		context = manipulate.NewContext()
 	}
@@ -136,6 +140,10 @@ func (s *mongoManipulator) Create(context *manipulate.Context, children ...manip
 
 func (s *mongoManipulator) Update(context *manipulate.Context, objects ...manipulate.Manipulable) error {
 
+	if len(objects) == 0 {
+		return nil
+	}
+
 	if context == nil {
 		context = manipulate.NewContext()
 	}
@@ -155,6 +163,10 @@ func (s *mongoManipulator) Update(context *manipulate.Context, objects ...manipu
 }
 
 func (s *mongoManipulator) Delete(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+
+	if len(objects) == 0 {
+		return nil
+	}
 
 	if context == nil {
 		context = manipulate.NewContext()
