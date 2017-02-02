@@ -25,7 +25,14 @@ func CompileFilter(f *manipulate.Filter) bson.M {
 
 		case manipulate.ContainComparator:
 			filter[k] = bson.M{"$in": f.Values()[index]}
+
+		case manipulate.GreaterComparator:
+			filter[k] = bson.M{"$gte": f.Values()[index][0]}
+
+		case manipulate.LesserComparator:
+			filter[k] = bson.M{"$lte": f.Values()[index][0]}
 		}
+
 	}
 
 	return filter
