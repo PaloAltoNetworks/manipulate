@@ -2,6 +2,7 @@ package manipmongo
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/aporeto-inc/elemental"
@@ -22,24 +23,38 @@ var log = Logger.WithField("package", "github.com/aporeto-inc/manipulate/manipmo
 type mongoManipulator struct {
 	rootSession  *mgo.Session
 	dbName       string
-	url          string
 	transactions *transactionsRegistry
 }
 
 // NewMongoManipulator returns a new TransactionalManipulator backed by MongoDB
-func NewMongoManipulator(url string, dbName string) manipulate.TransactionalManipulator {
+func NewMongoManipulator(url []string, dbName string, user string, password string, authsource string) manipulate.TransactionalManipulator {
 
-	session, err := mgo.Dial(url)
+	session, err := mgo.Dial(strings.Join(url, ","))
 	if err != nil {
 		log.WithFields(logrus.Fields{
-			"url":   url,
-			"db":    dbName,
-			"error": err.Error(),
+			"url":      url,
+			"db":       dbName,
+			"username": user,
+			"error":    err.Error(),
 		}).Fatal("Cannot connect to mongo.")
 	}
 
+	if user != "" {
+		if err := session.Login(&mgo.Credential{
+			Username: user,
+			Password: password,
+			Source:   authsource,
+		}); err != nil {
+			log.WithFields(logrus.Fields{
+				"url":      url,
+				"db":       dbName,
+				"username": user,
+				"error":    err.Error(),
+			}).Fatal("Cannot login to mongo.")
+		}
+	}
+
 	return &mongoManipulator{
-		url:          url,
 		dbName:       dbName,
 		rootSession:  session,
 		transactions: newTransactionRegistry(),
