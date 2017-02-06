@@ -371,12 +371,8 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, context *manipul
 		return
 	}
 
-	if context.PageSize != -1 {
-		request.Header.Set("X-Page-Size", strconv.Itoa(context.PageSize))
-	}
-
-	if context.PageCurrent != -1 {
-		request.Header.Set("X-Page-Current", strconv.Itoa(context.PageCurrent))
+	if context.Page != 0 {
+		request.Header.Set("X-Page-Current", strconv.Itoa(context.Page))
 	}
 
 	if context.PageSize > 0 {
@@ -392,14 +388,8 @@ func (s *httpManipulator) readHeaders(response *http.Response, context *manipula
 		return
 	}
 
-	context.PageCurrent, _ = strconv.Atoi(response.Header.Get("X-Page-Current"))
+	context.Page, _ = strconv.Atoi(response.Header.Get("X-Page-Current"))
 	context.PageSize, _ = strconv.Atoi(response.Header.Get("X-Page-Size"))
-	context.PageFirst = response.Header.Get("X-Page-First")
-	context.PagePrev = response.Header.Get("X-Page-Prev")
-	context.PageNext = response.Header.Get("X-Page-Next")
-	context.PageLast = response.Header.Get("X-Page-Last")
-
-	context.CountLocal, _ = strconv.Atoi(response.Header.Get("X-Count-Local"))
 	context.CountTotal, _ = strconv.Atoi(response.Header.Get("X-Count-Total"))
 }
 

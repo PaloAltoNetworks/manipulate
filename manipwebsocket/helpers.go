@@ -51,5 +51,8 @@ func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Cont
 		request.Recursive = true
 	}
 
+	request.Page = ctx.Page
+	request.PageSize = ctx.PageSize
+
 	return nil
 }

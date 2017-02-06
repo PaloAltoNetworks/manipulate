@@ -84,34 +84,6 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 					So(req.Header.Get("X-Namespace"), ShouldEqual, "myns")
 				})
 
-				Convey("Then I should not have a value for X-Page-Current", func() {
-					So(req.Header.Get("X-Page-Current"), ShouldEqual, "0")
-				})
-
-				Convey("Then I should not have a value for X-Page-Size", func() {
-					So(req.Header.Get("X-Page-Size"), ShouldEqual, "0")
-				})
-
-				Convey("Then I should not have a value for X-Page-First", func() {
-					So(req.Header.Get("X-Page-First"), ShouldEqual, "")
-				})
-
-				Convey("Then I should not have a value for X-Page-Prev", func() {
-					So(req.Header.Get("X-Page-Prev"), ShouldEqual, "")
-				})
-
-				Convey("Then I should not have a value for X-Page-Next", func() {
-					So(req.Header.Get("X-Page-Next"), ShouldEqual, "")
-				})
-
-				Convey("Then I should not have a value for X-Page-Last", func() {
-					So(req.Header.Get("X-Page-Last"), ShouldEqual, "")
-				})
-
-				Convey("Then I should not have a value for X-Count-Local", func() {
-					So(req.Header.Get("X-Count-Local"), ShouldEqual, "")
-				})
-
 				Convey("Then I should not have a value for X-Count-Total", func() {
 					So(req.Header.Get("X-Count-Total"), ShouldEqual, "")
 				})
@@ -124,7 +96,7 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 			ctx := manipulate.NewContext()
 
 			Convey("When I prepareHeaders witha fetching info that has a all fields", func() {
-				ctx.PageCurrent = 2
+				ctx.Page = 2
 				ctx.PageSize = 42
 
 				store.prepareHeaders(req, ctx)
@@ -151,10 +123,6 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 
 				Convey("Then I should not have a value for X-Page-Last", func() {
 					So(req.Header.Get("X-Page-Last"), ShouldEqual, "")
-				})
-
-				Convey("Then I should not have a value for X-Count-Local", func() {
-					So(req.Header.Get("X-Count-Local"), ShouldEqual, "")
 				})
 
 				Convey("Then I should not have a value for X-Count-Total", func() {
@@ -185,41 +153,16 @@ func TestHTTP_readHeaders(t *testing.T) {
 
 			req.Header.Set("X-Page-Current", "3")
 			req.Header.Set("X-Page-Size", "42")
-			req.Header.Set("X-Page-First", "http://fake.com/?page=1")
-			req.Header.Set("X-Page-Prev", "http://fake.com/?page=2")
-			req.Header.Set("X-Page-Next", "http://fake.com/?page=4")
-			req.Header.Set("X-Page-Last", "http://fake.com/?page=10")
-			req.Header.Set("X-Count-Local", "123")
 			req.Header.Set("X-Count-Total", "456")
 
 			store.readHeaders(req, ctx)
 
 			Convey("Then Context.PageCurrent should be 3", func() {
-				So(ctx.PageCurrent, ShouldEqual, 3)
+				So(ctx.Page, ShouldEqual, 3)
 			})
 
 			Convey("Then Context.PageSize should be 42", func() {
 				So(ctx.PageSize, ShouldEqual, 42)
-			})
-
-			Convey("Then Context.PageFirst should be correct", func() {
-				So(ctx.PageFirst, ShouldEqual, "http://fake.com/?page=1")
-			})
-
-			Convey("Then Context.PagePrev should be correct", func() {
-				So(ctx.PagePrev, ShouldEqual, "http://fake.com/?page=2")
-			})
-
-			Convey("Then Context.PageNext should be correct", func() {
-				So(ctx.PageNext, ShouldEqual, "http://fake.com/?page=4")
-			})
-
-			Convey("Then Context.PageLast should be correct", func() {
-				So(ctx.PageLast, ShouldEqual, "http://fake.com/?page=10")
-			})
-
-			Convey("Then Context.X-Count-Local should be 123", func() {
-				So(ctx.CountLocal, ShouldEqual, 123)
 			})
 
 			Convey("Then Context.X-Count-Total should be 456", func() {
