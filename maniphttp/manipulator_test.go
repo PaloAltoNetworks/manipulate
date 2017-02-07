@@ -89,47 +89,6 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 				})
 			})
 		})
-
-		Convey("Given I create a Request and a Context", func() {
-
-			req, _ := http.NewRequest("GET", "http://fake.com", nil)
-			ctx := manipulate.NewContext()
-
-			Convey("When I prepareHeaders witha fetching info that has a all fields", func() {
-				ctx.Page = 2
-				ctx.PageSize = 42
-
-				store.prepareHeaders(req, ctx)
-
-				Convey("Then I should have a the X-Page-Current set to 2", func() {
-					So(req.Header.Get("X-Page-Current"), ShouldEqual, "2")
-				})
-
-				Convey("Then I should have a the X-Page-Size set to 42", func() {
-					So(req.Header.Get("X-Page-Size"), ShouldEqual, "42")
-				})
-
-				Convey("Then I should not have a value for X-Page-First", func() {
-					So(req.Header.Get("X-Page-First"), ShouldEqual, "")
-				})
-
-				Convey("Then I should not have a value for X-Page-Prev", func() {
-					So(req.Header.Get("X-Page-Prev"), ShouldEqual, "")
-				})
-
-				Convey("Then I should not have a value for X-Page-Next", func() {
-					So(req.Header.Get("X-Page-Next"), ShouldEqual, "")
-				})
-
-				Convey("Then I should not have a value for X-Page-Last", func() {
-					So(req.Header.Get("X-Page-Last"), ShouldEqual, "")
-				})
-
-				Convey("Then I should not have a value for X-Count-Total", func() {
-					So(req.Header.Get("X-Count-Total"), ShouldEqual, "")
-				})
-			})
-		})
 	})
 }
 
@@ -151,19 +110,9 @@ func TestHTTP_readHeaders(t *testing.T) {
 
 		Convey("When I readHeaders with a request that has information", func() {
 
-			req.Header.Set("X-Page-Current", "3")
-			req.Header.Set("X-Page-Size", "42")
 			req.Header.Set("X-Count-Total", "456")
 
 			store.readHeaders(req, ctx)
-
-			Convey("Then Context.PageCurrent should be 3", func() {
-				So(ctx.Page, ShouldEqual, 3)
-			})
-
-			Convey("Then Context.PageSize should be 42", func() {
-				So(ctx.PageSize, ShouldEqual, 42)
-			})
 
 			Convey("Then Context.X-Count-Total should be 456", func() {
 				So(ctx.CountTotal, ShouldEqual, 456)

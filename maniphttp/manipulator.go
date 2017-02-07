@@ -367,18 +367,6 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, context *manipul
 
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
-	if context == nil {
-		return
-	}
-
-	if context.Page != 0 {
-		request.Header.Set("X-Page-Current", strconv.Itoa(context.Page))
-	}
-
-	if context.PageSize > 0 {
-		request.Header.Set("X-Page-Size", strconv.Itoa(context.PageSize))
-	}
-
 	return
 }
 
@@ -388,8 +376,6 @@ func (s *httpManipulator) readHeaders(response *http.Response, context *manipula
 		return
 	}
 
-	context.Page, _ = strconv.Atoi(response.Header.Get("X-Page-Current"))
-	context.PageSize, _ = strconv.Atoi(response.Header.Get("X-Page-Size"))
 	context.CountTotal, _ = strconv.Atoi(response.Header.Get("X-Count-Total"))
 }
 
