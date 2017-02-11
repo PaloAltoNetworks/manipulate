@@ -17,7 +17,7 @@ func TestMethodNewContext(t *testing.T) {
 		context := NewContext()
 
 		Convey("Then my context should be initiliazed", func() {
-			So(context.PageCurrent, ShouldEqual, 0)
+			So(context.Page, ShouldEqual, 0)
 			So(context.PageSize, ShouldEqual, 0)
 		})
 	})
@@ -54,7 +54,7 @@ func TestMethodString(t *testing.T) {
 	Convey("Given I create a new context and calle the method string", t, func() {
 
 		context := NewContext()
-		context.PageCurrent = 1
+		context.Page = 1
 		context.PageSize = 100
 
 		Convey("Then my context should be initiliazed", func() {

@@ -78,7 +78,58 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, identity el
 		filter = compiler.CompileFilter(context.Filter)
 	}
 
-	if err := collection.Find(filter).All(dest); err != nil {
+	query := collection.Find(filter)
+
+	// This makes squall returning a 500 error.
+	// we should have an ErrBadRequest or something like this.
+	// if context.Page > 0 && context.PageSize <= 0 {
+	// 	return manipulate.NewErrCannotBuildQuery("Invalid pagination information")
+	// }
+
+	var err error
+	if context.Page == 0 || context.PageSize == 0 {
+
+		err = query.All(dest)
+
+	} else if context.Page > 0 {
+
+		skip := (context.Page - 1) * context.PageSize
+		err = query.Skip(skip).Limit(context.PageSize).All(dest)
+
+	} else {
+
+		var n int
+		n, err = s.Count(context, identity)
+		if err != nil {
+			return err
+		}
+
+		page := -context.Page
+		skip := n - page*context.PageSize
+		limit := context.PageSize
+
+		if skip < 0 {
+
+			maxPage := n / context.PageSize
+			balance := n % context.PageSize
+			if balance != 0 {
+				maxPage++
+			}
+
+			// If the use asks or a page we know doesn't exist, we don't even talk to the dabatase.
+			if page > maxPage {
+				return nil
+			}
+
+			// otherwise, we have balance that we need to return.
+			skip = 0
+			limit = balance
+		}
+
+		err = query.Skip(skip).Limit(limit).All(dest)
+	}
+
+	if err != nil {
 		return manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
 

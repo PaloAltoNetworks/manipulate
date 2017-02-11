@@ -18,22 +18,16 @@ func Test_addQueryParameters(t *testing.T) {
 			"b b":  "2 2",
 			"c+&=": "3;:/",
 		}
-		benchmark = "a=1&b+b=2+2&c%2B%26%3D=3%3B%3A%2F"
+		ctx.Page = 1
+		ctx.PageSize = 100
+		ctx.Recursive = true
+		benchmark = "a=1&b+b=2+2&c%2B%26%3D=3%3B%3A%2F&page=1&pagesize=100&recursive=true"
 		return
 	}
 
 	Convey("Given I create an new HTTP request with no query parameters", t, func() {
 
 		request, _ := http.NewRequest(http.MethodGet, "http://test.com", nil)
-
-		Convey("When I call the method addQueryParameters with nil", func() {
-
-			addQueryParameters(request, nil)
-
-			Convey("The query string should be empty", func() {
-				So(request.URL.RawQuery, ShouldEqual, "")
-			})
-		})
 
 		Convey("When I call the method addQueryParameters with parameters", func() {
 
@@ -49,15 +43,6 @@ func Test_addQueryParameters(t *testing.T) {
 
 		request, _ := http.NewRequest(http.MethodGet, "http://test.com", nil)
 		request.URL.RawQuery = "x=1&y=2"
-
-		Convey("When I call the method addQueryParameters with nil", func() {
-
-			addQueryParameters(request, nil)
-
-			Convey("The query string should not change", func() {
-				So(request.URL.RawQuery, ShouldEqual, "x=1&y=2")
-			})
-		})
 
 		Convey("When I call the method addQueryParameters with a context with no Parameters", func() {
 
@@ -86,15 +71,6 @@ func Test_addQueryParameters(t *testing.T) {
 			Convey("The query string should be properly appended with escaped parameters", func() {
 				So(request.URL.RawQuery, ShouldEqual, benchmark+"&x=1&y=2")
 			})
-		})
-	})
-
-	Convey("When I call addQueryParameters with nil for request", t, func() {
-
-		Convey("It should not panic", func() {
-			So(func() {
-				addQueryParameters(nil, nil)
-			}, ShouldNotPanic)
 		})
 	})
 }

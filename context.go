@@ -13,14 +13,9 @@ type FinalizerFunc func(o Manipulable) error
 
 // Context is a structure
 type Context struct {
-	PageCurrent     int
+	Page            int
 	PageSize        int
-	PageFirst       string
-	PageNext        string
-	PagePrev        string
-	PageLast        string
 	Parent          Manipulable
-	CountLocal      int
 	CountTotal      int
 	Filter          *Filter
 	Parameters      *Parameters
@@ -35,10 +30,10 @@ type Context struct {
 func NewContext() *Context {
 
 	return &Context{
-		PageCurrent: 0,
-		PageSize:    0,
-		Parameters:  NewParameters(),
-		Attributes:  []string{},
+		Page:       0,
+		PageSize:   0,
+		Parameters: NewParameters(),
+		Attributes: []string{},
 	}
 }
 
@@ -63,5 +58,5 @@ func NewContextWithTransactionID(tid TransactionID) *Context {
 // String returns the string representation of the Context.
 func (c *Context) String() string {
 
-	return fmt.Sprintf("<Context page: %d, pagesize: %d> <Filter : %v>", c.PageCurrent, c.PageSize, c.Filter)
+	return fmt.Sprintf("<Context page: %d, pagesize: %d> <Filter : %v>", c.Page, c.PageSize, c.Filter)
 }
