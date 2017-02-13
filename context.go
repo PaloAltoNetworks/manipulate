@@ -13,17 +13,18 @@ type FinalizerFunc func(o Manipulable) error
 
 // Context is a structure
 type Context struct {
-	Page            int
-	PageSize        int
-	Parent          Manipulable
-	CountTotal      int
-	Filter          *Filter
-	Parameters      *Parameters
-	Attributes      []string
-	TransactionID   TransactionID
-	Namespace       string
-	Recursive       bool
-	CreateFinalizer FinalizerFunc
+	Page               int
+	PageSize           int
+	Parent             Manipulable
+	CountTotal         int
+	Filter             *Filter
+	Parameters         *Parameters
+	Attributes         []string
+	TransactionID      TransactionID
+	Namespace          string
+	Recursive          bool
+	OverrideProtection bool
+	CreateFinalizer    FinalizerFunc
 }
 
 // NewContext returns a new *Context
