@@ -32,5 +32,9 @@ func addQueryParameters(req *http.Request, ctx *manipulate.Context) {
 		q.Add("recursive", "true")
 	}
 
+	if ctx.OverrideProtection {
+		q.Add("override", "true")
+	}
+
 	req.URL.RawQuery = q.Encode()
 }

@@ -27,7 +27,7 @@ type mongoManipulator struct {
 }
 
 // NewMongoManipulator returns a new TransactionalManipulator backed by MongoDB
-func NewMongoManipulator(url []string, dbName string, user string, password string, authsource string) manipulate.TransactionalManipulator {
+func NewMongoManipulator(url []string, dbName string, user string, password string, authsource string, poolLimit int) manipulate.TransactionalManipulator {
 
 	session, err := mgo.Dial(strings.Join(url, ","))
 	if err != nil {
@@ -38,6 +38,8 @@ func NewMongoManipulator(url []string, dbName string, user string, password stri
 			"error":    err.Error(),
 		}).Fatal("Cannot connect to mongo.")
 	}
+
+	session.SetPoolLimit(poolLimit)
 
 	if user != "" {
 		if err := session.Login(&mgo.Credential{
