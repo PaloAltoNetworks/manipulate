@@ -489,7 +489,7 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 
 		return response, nil
 
-	case <-time.After(5 * time.Second):
+	case <-time.After(30 * time.Second):
 		return nil, manipulate.NewErrCannotCommunicate("Request timeout")
 	}
 }
