@@ -67,3 +67,19 @@ func CreateIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 
 	return nil
 }
+
+// CreateCollection creates a collection using the given mgo.CollectionInfo.
+func CreateCollection(manipulator manipulate.Manipulator, identity elemental.Identity, info *mgo.CollectionInfo) error {
+
+	m, ok := manipulator.(*mongoManipulator)
+	if !ok {
+		return fmt.Errorf("You can only pass a Mongo Manipulator to CreateIndex")
+	}
+
+	session := m.rootSession.Copy()
+	defer session.Close()
+
+	collection := session.DB(m.dbName).C(identity.Name)
+
+	return collection.Create(info)
+}
