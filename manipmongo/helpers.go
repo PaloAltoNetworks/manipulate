@@ -85,12 +85,15 @@ func CreateCollection(manipulator manipulate.Manipulator, identity elemental.Ide
 }
 
 // GetSession returns a ready to use session. Use at your own risks.
-func GetSession(manipulator manipulate.Manipulator) (*mgo.Session, error) {
+// You are responsible for closing the session.
+func GetSession(manipulator manipulate.Manipulator) (*mgo.Database, error) {
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
 		return nil, fmt.Errorf("You can only pass a Mongo Manipulator to CreateIndex")
 	}
 
-	return m.rootSession.Copy(), nil
+	session := m.rootSession.Copy()
+
+	return session.DB(m.dbName), nil
 }
