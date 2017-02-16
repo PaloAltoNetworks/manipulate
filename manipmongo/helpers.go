@@ -67,3 +67,33 @@ func CreateIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 
 	return nil
 }
+
+// CreateCollection creates a collection using the given mgo.CollectionInfo.
+func CreateCollection(manipulator manipulate.Manipulator, identity elemental.Identity, info *mgo.CollectionInfo) error {
+
+	m, ok := manipulator.(*mongoManipulator)
+	if !ok {
+		return fmt.Errorf("You can only pass a Mongo Manipulator to CreateIndex")
+	}
+
+	session := m.rootSession.Copy()
+	defer session.Close()
+
+	collection := session.DB(m.dbName).C(identity.Name)
+
+	return collection.Create(info)
+}
+
+// GetSession returns a ready to use session. Use at your own risks.
+// You are responsible for closing the session by calling the returner close function
+func GetSession(manipulator manipulate.Manipulator) (*mgo.Database, func(), error) {
+
+	m, ok := manipulator.(*mongoManipulator)
+	if !ok {
+		return nil, nil, fmt.Errorf("You can only pass a Mongo Manipulator to CreateIndex")
+	}
+
+	session := m.rootSession.Copy()
+
+	return session.DB(m.dbName), func() { session.Close() }, nil
+}

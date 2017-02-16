@@ -10,30 +10,42 @@ import (
 // CompileFilter compiles the given manipulate Filter into a mongo filter.
 func CompileFilter(f *manipulate.Filter) bson.M {
 
-	filter := bson.M{}
+	ands := []bson.M{bson.M{}}
+
 	for index, key := range f.Keys() {
 
 		k := strings.ToLower(key[0])
+		op := f.Operators()[index]
+
+		var dst bson.M
+
+		if op == manipulate.OrOperator {
+			ands = append(ands, bson.M{})
+		}
+
+		dst = ands[len(ands)-1]
 
 		switch f.Comparators()[index] {
 
 		case manipulate.EqualComparator:
-			filter[k] = f.Values()[index][0]
+			dst[k] = f.Values()[index][0]
 
 		case manipulate.NotEqualComparator:
-			filter[k] = bson.M{"$ne": f.Values()[index][0]}
+			dst[k] = bson.M{"$ne": f.Values()[index][0]}
 
 		case manipulate.ContainComparator:
-			filter[k] = bson.M{"$in": f.Values()[index]}
+			dst[k] = bson.M{"$in": f.Values()[index]}
 
 		case manipulate.GreaterComparator:
-			filter[k] = bson.M{"$gte": f.Values()[index][0]}
+			dst[k] = bson.M{"$gte": f.Values()[index][0]}
 
 		case manipulate.LesserComparator:
-			filter[k] = bson.M{"$lte": f.Values()[index][0]}
+			dst[k] = bson.M{"$lte": f.Values()[index][0]}
 		}
-
 	}
 
-	return filter
+	if len(ands) == 1 {
+		return ands[0]
+	}
+	return bson.M{"$or": ands}
 }
