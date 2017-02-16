@@ -130,7 +130,6 @@ func (c *cassandraManipulator) Create(context *manipulate.Context, objects ...ma
 	batch := c.batchForID(transactionID)
 
 	for _, object := range objects {
-
 		object.SetIdentifier(gocql.TimeUUID().String())
 
 		if context.CreateFinalizer != nil {
