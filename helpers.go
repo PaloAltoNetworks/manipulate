@@ -67,6 +67,8 @@ func RetryManipulation(manipulation func() error, onRetryFunc func(int), maxTrie
 		if waitTime < 5*time.Second {
 			waitTime += 1 * time.Second
 		}
+
+		try++
 	}
 
 	return nil
