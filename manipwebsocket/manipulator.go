@@ -379,6 +379,11 @@ func (s *websocketManipulator) Subscribe(
 			for {
 				event := &elemental.Event{}
 				err := websocket.JSON.Receive(ws, event)
+
+				if stopped {
+					break
+				}
+
 				if err != nil {
 					handler(nil, err)
 					needsReconnectionHandlerCall = true
