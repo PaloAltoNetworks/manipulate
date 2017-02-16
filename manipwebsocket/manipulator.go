@@ -382,7 +382,6 @@ func (s *websocketManipulator) Subscribe(
 				err := websocket.JSON.Receive(ws, event)
 
 				lock.Lock()
-
 				if stopped {
 					lock.Unlock()
 					break
