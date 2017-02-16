@@ -161,7 +161,7 @@ func (s *websocketManipulator) Retrieve(context *manipulate.Context, objects ...
 
 		resp, err := s.send(req)
 		if err != nil {
-			return manipulate.NewErrCannotCommunicate(err.Error())
+			return err
 		}
 
 		if err := resp.Decode(&object); err != nil {
@@ -196,7 +196,6 @@ func (s *websocketManipulator) Create(context *manipulate.Context, objects ...ma
 		}
 
 		resp, err := s.send(req)
-
 		if err != nil {
 			return err
 		}
