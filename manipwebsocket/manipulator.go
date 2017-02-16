@@ -360,6 +360,7 @@ func (s *websocketManipulator) Subscribe(
 
 			lock.Lock()
 			if stopped {
+				lock.Unlock()
 				return
 			}
 			lock.Unlock()
@@ -379,6 +380,14 @@ func (s *websocketManipulator) Subscribe(
 			for {
 				event := &elemental.Event{}
 				err := websocket.JSON.Receive(ws, event)
+
+				lock.Lock()
+				if stopped {
+					lock.Unlock()
+					break
+				}
+				lock.Unlock()
+
 				if err != nil {
 					handler(nil, err)
 					needsReconnectionHandlerCall = true
