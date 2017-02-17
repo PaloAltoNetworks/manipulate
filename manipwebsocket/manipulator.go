@@ -38,6 +38,7 @@ type websocketManipulator struct {
 	tlsConfig                 *tls.Config
 	url                       string
 	username                  string
+	wsLock                    *sync.Mutex
 	ws                        *websocket.Conn
 }
 
@@ -70,6 +71,7 @@ func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string
 		responsesChanRegistryLock: &sync.Mutex{},
 		renewLock:                 &sync.Mutex{},
 		runningLock:               &sync.Mutex{},
+		wsLock:                    &sync.Mutex{},
 		running:                   true,
 	}
 
@@ -80,12 +82,14 @@ func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string
 	go m.listen()
 
 	return m, func() {
+		m.wsLock.Lock()
 		if m.ws != nil && m.ws.IsClientConn() {
 			m.runningLock.Lock()
 			m.running = false
 			m.runningLock.Unlock()
 			m.ws.Close()
 		}
+		m.wsLock.Unlock()
 	}, nil
 }
 
@@ -428,10 +432,14 @@ func (s *websocketManipulator) connect() error {
 		url = url + "&mode=all"
 	}
 
+	s.wsLock.Lock()
 	config, err := websocket.NewConfig(url, url)
 	if err != nil {
+		s.wsLock.Unlock()
 		return err
 	}
+	s.wsLock.Unlock()
+
 	config.TlsConfig = s.tlsConfig
 
 	s.ws, err = websocket.DialConfig(config)
