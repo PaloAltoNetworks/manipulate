@@ -33,7 +33,8 @@ type websocketManipulator struct {
 	namespace                 string
 	password                  string
 	receiveAll                bool
-	stopListening             chan bool
+	running                   bool
+	runningLock               *sync.Mutex
 	tlsConfig                 *tls.Config
 	url                       string
 	username                  string
@@ -66,9 +67,10 @@ func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string
 		namespace:                 namespace,
 		tlsConfig:                 tlsConfig,
 		responsesChanRegistry:     map[string]chan *elemental.Response{},
-		stopListening:             make(chan bool),
 		responsesChanRegistryLock: &sync.Mutex{},
 		renewLock:                 &sync.Mutex{},
+		runningLock:               &sync.Mutex{},
+		running:                   true,
 	}
 
 	if err := m.connect(); err != nil {
@@ -78,7 +80,10 @@ func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string
 	go m.listen()
 
 	return m, func() {
-		if m.ws != nil {
+		if m.ws != nil && m.ws.IsClientConn() {
+			m.runningLock.Lock()
+			m.running = false
+			m.runningLock.Unlock()
 			m.ws.Close()
 		}
 	}, nil
@@ -460,7 +465,14 @@ func (s *websocketManipulator) listen() {
 			continue
 		}
 
-		log.WithField("error", err).Warn("Websocket connnection died. Reconnecting...")
+		s.runningLock.Lock()
+		if !s.running {
+			s.runningLock.Unlock()
+			return
+		}
+		s.runningLock.Unlock()
+
+		log.WithField("error", err).Warn("Websocket connection died. Reconnecting...")
 		for {
 
 			if err := s.connect(); err != nil {
