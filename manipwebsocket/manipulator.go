@@ -346,7 +346,19 @@ func (s *websocketManipulator) Subscribe(
 
 	var ws *websocket.Conn
 	var stopped bool
+
 	lock := &sync.Mutex{}
+
+	needsPublishDisconnectFunc := true
+	disconnectionFuncChan := make(chan manipulate.EventUnsubscriber)
+	disconnectFunc := func() {
+		lock.Lock()
+		stopped = true
+		lock.Unlock()
+		if ws != nil && ws.IsClientConn() {
+			ws.Close()
+		}
+	}
 
 	go func() {
 
@@ -381,6 +393,11 @@ func (s *websocketManipulator) Subscribe(
 				continue
 			}
 
+			if needsPublishDisconnectFunc {
+				disconnectionFuncChan <- disconnectFunc
+			}
+			needsPublishDisconnectFunc = false
+
 			if needsReconnectionHandlerCall && recoHandler != nil {
 				needsReconnectionHandlerCall = false
 				recoHandler()
@@ -410,14 +427,7 @@ func (s *websocketManipulator) Subscribe(
 		}
 	}()
 
-	return func() {
-		lock.Lock()
-		stopped = true
-		lock.Unlock()
-		if ws != nil && ws.IsClientConn() {
-			ws.Close()
-		}
-	}, nil
+	return <-disconnectionFuncChan, nil
 }
 
 func (s *websocketManipulator) connect() error {
