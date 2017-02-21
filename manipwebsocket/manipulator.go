@@ -452,7 +452,9 @@ func (s *websocketManipulator) connect() error {
 
 	config.TlsConfig = s.tlsConfig
 
+	s.wsLock.Lock()
 	s.ws, err = websocket.DialConfig(config)
+	s.wsLock.Unlock()
 	if err != nil {
 		return manipulate.NewErrCannotCommunicate(err.Error())
 	}
