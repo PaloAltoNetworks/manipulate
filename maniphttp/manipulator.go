@@ -35,24 +35,19 @@ type httpManipulator struct {
 	tlsConfig *tls.Config
 }
 
-// Set the namespace value that will be passed as a specific header
-func (s *httpManipulator) setNamespace(namespace string) {
-	s.namespace = namespace
-}
-
 // NewHTTPManipulator returns a Manipulator backed by an ReST API.
-func NewHTTPManipulator(username, password, url string) manipulate.Manipulator {
+func NewHTTPManipulator(username, password, url, namespace string) manipulate.Manipulator {
 
 	CAPool, err := x509.SystemCertPool()
 	if err != nil {
 		log.Error("Unable to load system root cert pool. tls fallback to unsecure.")
 	}
 
-	return NewHTTPManipulatorWithRootCA(username, password, url, CAPool, true)
+	return NewHTTPManipulatorWithRootCA(username, password, url, namespace, CAPool, true)
 }
 
 // NewHTTPManipulatorWithRootCA returns a Manipulator backed by an ReST API using the given CAPool as root CA.
-func NewHTTPManipulatorWithRootCA(username, password, url string, rootCAPool *x509.CertPool, skipTLSVerify bool) manipulate.Manipulator {
+func NewHTTPManipulatorWithRootCA(username, password, url, namespace string, rootCAPool *x509.CertPool, skipTLSVerify bool) manipulate.Manipulator {
 
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: skipTLSVerify,
@@ -68,7 +63,7 @@ func NewHTTPManipulatorWithRootCA(username, password, url string, rootCAPool *x5
 				TLSClientConfig: tlsConfig,
 			},
 		},
-		namespace: "",
+		namespace: namespace,
 		tlsConfig: tlsConfig,
 	}
 }
@@ -81,6 +76,7 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 	rootCAPool *x509.CertPool,
 	clientCAPool *x509.CertPool,
 	certificates []tls.Certificate,
+	namespace string,
 	refreshInterval time.Duration,
 	skipInsecure bool,
 ) (manipulate.Manipulator, func(), error) {

@@ -42,24 +42,24 @@ type websocketManipulator struct {
 	ws                        *websocket.Conn
 }
 
-// Set the namespace value that will be passed as a specific header
-func (s *websocketManipulator) setNamespace(namespace string) {
-	s.namespace = namespace
+// NewWebSocketManipulator returns a Manipulator backed by a websocket API.
+func NewWebSocketManipulator(username, password, url string) (manipulate.EventManipulator, func(), error) {
+	return NewWebSocketManipulatorWithNamespace(username, password, url, "")
 }
 
-// NewWebSocketManipulator returns a Manipulator backed by a websocket API.
-func NewWebSocketManipulator(username, password, url, namespace string) (manipulate.EventManipulator, func(), error) {
+// NewWebSocketManipulatorWithNamespace returns a Manipulator backed by a websocket API.
+func NewWebSocketManipulatorWithNamespace(username, password, url, namespace string) (manipulate.EventManipulator, func(), error) {
 
 	CAPool, err := x509.SystemCertPool()
 	if err != nil {
 		log.Error("Unable to load system root cert pool. tls fallback to unsecure.")
 	}
 
-	return NewWebSocketManipulatorWithRootCA(username, password, url, CAPool, true)
+	return NewWebSocketManipulatorWithRootCA(username, password, url, namespace, CAPool, true)
 }
 
 // NewWebSocketManipulatorWithRootCA returns a Manipulator backed by an ReST API using the given CAPool as root CA.
-func NewWebSocketManipulatorWithRootCA(username, password, url string, rootCAPool *x509.CertPool, skipTLSVerify bool) (manipulate.EventManipulator, func(), error) {
+func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string, rootCAPool *x509.CertPool, skipTLSVerify bool) (manipulate.EventManipulator, func(), error) {
 
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: skipTLSVerify,
@@ -70,7 +70,7 @@ func NewWebSocketManipulatorWithRootCA(username, password, url string, rootCAPoo
 		username:                  username,
 		password:                  password,
 		url:                       url,
-		namespace:                 "",
+		namespace:                 namespace,
 		tlsConfig:                 tlsConfig,
 		responsesChanRegistry:     map[string]chan *elemental.Response{},
 		responsesChanRegistryLock: &sync.Mutex{},
@@ -100,7 +100,7 @@ func NewWebSocketManipulatorWithRootCA(username, password, url string, rootCAPoo
 
 // NewWebSocketManipulatorWithMidgardCertAuthentication returns a http backed manipulate.Manipulator
 // using a certificates to authenticate against a Midgard server.
-func NewWebSocketManipulatorWithMidgardCertAuthentication(url string, midgardurl string, rootCAPool *x509.CertPool, clientCAPool *x509.CertPool, certificates []tls.Certificate, refreshInterval time.Duration, skipInsecure bool) (manipulate.EventManipulator, func(), error) {
+func NewWebSocketManipulatorWithMidgardCertAuthentication(url string, midgardurl string, rootCAPool *x509.CertPool, clientCAPool *x509.CertPool, certificates []tls.Certificate, namespace string, refreshInterval time.Duration, skipInsecure bool) (manipulate.EventManipulator, func(), error) {
 
 	mclient := midgard.NewClientWithCAPool(midgardurl, rootCAPool, clientCAPool, skipInsecure)
 	token, err := mclient.IssueFromCertificate(certificates)
@@ -108,7 +108,7 @@ func NewWebSocketManipulatorWithMidgardCertAuthentication(url string, midgardurl
 		return nil, nil, err
 	}
 
-	m, stop, err := NewWebSocketManipulatorWithRootCA("Bearer", token, url, rootCAPool, skipInsecure)
+	m, stop, err := NewWebSocketManipulatorWithRootCA("Bearer", token, url, namespace, rootCAPool, skipInsecure)
 	if err != nil {
 		return nil, nil, err
 	}
