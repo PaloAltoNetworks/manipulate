@@ -36,18 +36,28 @@ type httpManipulator struct {
 }
 
 // NewHTTPManipulator returns a Manipulator backed by an ReST API.
-func NewHTTPManipulator(username, password, url, namespace string) manipulate.Manipulator {
+func NewHTTPManipulator(username, password, url string) manipulate.Manipulator {
+	return NewHTTPManipulatorWithNamespace(username, password, url, "")
+}
+
+// NewHTTPManipulatorWithNamespace returns a Manipulator backed by an ReST API.
+func NewHTTPManipulatorWithNamespace(username, password, url, namespace string) manipulate.Manipulator {
 
 	CAPool, err := x509.SystemCertPool()
 	if err != nil {
 		log.Error("Unable to load system root cert pool. tls fallback to unsecure.")
 	}
 
-	return NewHTTPManipulatorWithRootCA(username, password, url, namespace, CAPool, true)
+	return NewHTTPManipulatorWithRootCAAndNamespace(username, password, url, namespace, CAPool, true)
 }
 
 // NewHTTPManipulatorWithRootCA returns a Manipulator backed by an ReST API using the given CAPool as root CA.
-func NewHTTPManipulatorWithRootCA(username, password, url, namespace string, rootCAPool *x509.CertPool, skipTLSVerify bool) manipulate.Manipulator {
+func NewHTTPManipulatorWithRootCA(username, password, url string, rootCAPool *x509.CertPool, skipTLSVerify bool) manipulate.Manipulator {
+	return NewHTTPManipulatorWithRootCAAndNamespace(username, password, url, "", rootCAPool, skipTLSVerify)
+}
+
+// NewHTTPManipulatorWithRootCAAndNamespace returns a Manipulator backed by an ReST API using the given CAPool as root CA.
+func NewHTTPManipulatorWithRootCAAndNamespace(username, password, url, namespace string, rootCAPool *x509.CertPool, skipTLSVerify bool) manipulate.Manipulator {
 
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: skipTLSVerify,
