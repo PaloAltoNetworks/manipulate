@@ -15,6 +15,9 @@ type RecoveryHandler func()
 // EventUnsubscriber is the type of the unsubscribe function.
 type EventUnsubscriber func()
 
+// EventFilterUpdater is the type of the function to update a PushFilter.
+type EventFilterUpdater func(*elemental.PushFilter)
+
 // ManipulablesList is a list of objects implementing the Manipulable interface.
 type ManipulablesList []Manipulable
 
@@ -77,5 +80,5 @@ type EventManipulator interface {
 
 	// Subscribe subscribes the given EventHandler for event on the given identities.
 	// If you pass nil as identities, then you will receive events for everything.
-	Subscribe(identities []elemental.Identity, allNamespaces bool, eventHandler EventHandler, recoHandler RecoveryHandler) (EventUnsubscriber, error)
+	Subscribe(filter *elemental.PushFilter, lNamespaces bool, eventHandler EventHandler, recoHandler RecoveryHandler) (EventUnsubscriber, EventFilterUpdater, error)
 }

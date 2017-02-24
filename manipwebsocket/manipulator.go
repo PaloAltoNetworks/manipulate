@@ -331,32 +331,37 @@ func (s *websocketManipulator) Increment(context *manipulate.Context, identity e
 }
 
 func (s *websocketManipulator) Subscribe(
-	identities []elemental.Identity,
+	filter *elemental.PushFilter,
 	allNamespaces bool,
 	handler manipulate.EventHandler,
 	recoHandler manipulate.RecoveryHandler,
-) (manipulate.EventUnsubscriber, error) {
-
-	relatedIdentities := map[string]bool{}
-	if identities != nil {
-		for _, i := range identities {
-			relatedIdentities[i.Name] = true
-		}
-	}
+) (manipulate.EventUnsubscriber, manipulate.EventFilterUpdater, error) {
 
 	var ws *websocket.Conn
 	var stopped bool
 
 	lock := &sync.Mutex{}
+	readyChan := make(chan bool)
 
 	needsPublishDisconnectFunc := true
-	disconnectionFuncChan := make(chan manipulate.EventUnsubscriber)
+
 	disconnectFunc := func() {
 		lock.Lock()
+		defer lock.Unlock()
+
 		stopped = true
-		lock.Unlock()
+
 		if ws != nil && ws.IsClientConn() {
 			ws.Close()
+		}
+	}
+
+	eventFilterSetterFunc := func(filter *elemental.PushFilter) {
+		lock.Lock()
+		defer lock.Unlock()
+
+		if ws != nil && ws.IsClientConn() {
+			websocket.JSON.Send(ws, filter)
 		}
 	}
 
@@ -384,7 +389,6 @@ func (s *websocketManipulator) Subscribe(
 				lock.Unlock()
 				return
 			}
-			lock.Unlock()
 
 			ws, err = websocket.DialConfig(config)
 			if err != nil {
@@ -392,9 +396,14 @@ func (s *websocketManipulator) Subscribe(
 				<-time.After(5 * time.Second)
 				continue
 			}
+			lock.Unlock()
+
+			if filter != nil {
+				websocket.JSON.Send(ws, filter)
+			}
 
 			if needsPublishDisconnectFunc {
-				disconnectionFuncChan <- disconnectFunc
+				readyChan <- true
 			}
 			needsPublishDisconnectFunc = false
 
@@ -420,14 +429,14 @@ func (s *websocketManipulator) Subscribe(
 					break
 				}
 
-				if _, ok := relatedIdentities[event.Identity]; ok || identities == nil {
-					handler(event, nil)
-				}
+				handler(event, nil)
 			}
 		}
 	}()
 
-	return <-disconnectionFuncChan, nil
+	<-readyChan
+
+	return disconnectFunc, eventFilterSetterFunc, nil
 }
 
 func (s *websocketManipulator) connect() error {
