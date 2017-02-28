@@ -372,7 +372,10 @@ func (s *websocketManipulator) Subscribe(
 		for {
 			url := strings.Replace(s.url, "http://", "ws://", 1)
 			url = strings.Replace(url, "https://", "wss://", 1)
-			url = url + "/events?token=" + s.currentPassword() + "&namespace=" + s.namespace
+			url = url + "/events?token=" + s.currentPassword()
+			if s.namespace != "" {
+				url += "&namespace=" + s.namespace
+			}
 
 			if allNamespaces {
 				url = url + "&mode=all"
@@ -445,7 +448,10 @@ func (s *websocketManipulator) connect() error {
 
 	url := strings.Replace(s.url, "http://", "ws://", 1)
 	url = strings.Replace(url, "https://", "wss://", 1)
-	url = url + "/wsapi?token=" + s.currentPassword() + "&namespace=" + s.namespace
+	url = url + "/wsapi?token=" + s.currentPassword()
+	if s.namespace != "" {
+		url += "&namespace=" + s.namespace
+	}
 
 	if s.receiveAll {
 		url = url + "&mode=all"
