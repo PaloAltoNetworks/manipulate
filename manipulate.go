@@ -24,18 +24,18 @@ type Manipulator interface {
 	RetrieveMany(context *Context, identity elemental.Identity, dest interface{}) error
 
 	// Retrieve retrieves one or multiple elemental.Identifiables. In order to be retrievable,
-	// the Manipulables needs to have their Identifier correctly set.
+	// the elemental.Identifiable needs to have their Identifier correctly set.
 	Retrieve(context *Context, objects ...elemental.Identifiable) error
 
-	// Create creates a the given elemental.Identifiables in the given parent Manipulable.
+	// Create creates a the given elemental.Identifiables in the given parent elemental.Identifiable.
 	Create(context *Context, objects ...elemental.Identifiable) error
 
 	// Update updates one or multiple elemental.Identifiables. In order to be updatable,
-	// the Manipulables needs to have their Identifier correctly set.
+	// the elemental.Identifiable needs to have their Identifier correctly set.
 	Update(context *Context, objects ...elemental.Identifiable) error
 
 	// Delete deletes one or multiple elemental.Identifiables. In order to be deletable,
-	// the Manipulables needs to have their Identifier correctly set.
+	// the elemental.Identifiable needs to have their Identifier correctly set.
 	Delete(context *Context, objects ...elemental.Identifiable) error
 
 	// DeleteMany deletes all objects of with the given identity or

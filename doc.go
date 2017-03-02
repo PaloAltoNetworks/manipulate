@@ -6,8 +6,7 @@
 // which is an extension of the Manipulator add methods to manage transactions, like
 // Commit and Abort.
 //
-// A Manipulator works with a Manipulable which is a combination of the interfaces
-// elemental.Identifiable and elemental.Validatable.
+// A Manipulator works with a elemental.Identifiable.
 //
 // The storage engine used by a Manipulator is abstracted. By default manipulate
 // provides implementations for Cassandra, Mongo, ReST API. You can of course implement

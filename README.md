@@ -8,7 +8,7 @@ methods for creation, modification, retrieval and so on. TransactionalManipulato
 which is an extension of the Manipulator add methods to manage transactions, like
 Commit and Abort.
 
-A Manipulator works with a Manipulable which is a combination of the interfaces
+A Manipulator works with a elemental.Identifiable which is a combination of the interfaces
 elemental.Identifiable and elemental.Validatable.
 
 The storage engine used by a Manipulator is abstracted. By default manipulate
