@@ -19,6 +19,10 @@ var ListIdentity = elemental.Identity{
 // ListsList represents a list of Lists
 type ListsList []*List
 
+func (o *ListsList) ContentIdentity() elemental.Identity {
+	return ListIdentity
+}
+
 // List represents the model of a list
 type List struct {
 	ID          string `json:"ID,omitempty"`
@@ -77,6 +81,10 @@ var TaskIdentity = elemental.Identity{
 
 // TasksList represents a list of Tasks
 type TasksList []*Task
+
+func (o *TasksList) ContentIdentity() elemental.Identity {
+	return TaskIdentity
+}
 
 // Task represents the model of a task
 type Task struct {

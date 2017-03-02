@@ -114,13 +114,13 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 	return m, func() { stopCh <- true }, nil
 }
 
-func (s *httpManipulator) RetrieveMany(context *manipulate.Context, identity elemental.Identity, dest interface{}) error {
+func (s *httpManipulator) RetrieveMany(context *manipulate.Context, dest elemental.ContentIdentifiable) error {
 
 	if context == nil {
 		context = manipulate.NewContext()
 	}
 
-	url, err := s.getURLForChildrenIdentity(context.Parent, identity)
+	url, err := s.getURLForChildrenIdentity(context.Parent, dest.ContentIdentity())
 	if err != nil {
 		return manipulate.NewErrCannotBuildQuery(err.Error())
 	}

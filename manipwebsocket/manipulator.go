@@ -115,7 +115,7 @@ func NewWebSocketManipulatorWithMidgardCertAuthentication(url string, midgardurl
 	return m, func() { stop(); stopCh <- true }, err
 }
 
-func (s *websocketManipulator) RetrieveMany(context *manipulate.Context, identity elemental.Identity, dest interface{}) error {
+func (s *websocketManipulator) RetrieveMany(context *manipulate.Context, dest elemental.ContentIdentifiable) error {
 
 	if context == nil {
 		context = manipulate.NewContext()
@@ -124,7 +124,7 @@ func (s *websocketManipulator) RetrieveMany(context *manipulate.Context, identit
 	req := elemental.NewRequest()
 	req.Namespace = s.namespace
 	req.Operation = elemental.OperationRetrieveMany
-	req.Identity = identity
+	req.Identity = dest.ContentIdentity()
 	req.Username = s.username
 	req.Password = s.currentPassword()
 

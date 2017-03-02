@@ -21,7 +21,7 @@ type EventFilterUpdater func(*elemental.PushFilter)
 // Manipulator is the interface of a storage backend.
 type Manipulator interface {
 	// RetrieveMany retrieves the a list of objects with the given elemental.Identity and put them in the given dest.
-	RetrieveMany(context *Context, identity elemental.Identity, dest interface{}) error
+	RetrieveMany(context *Context, dest elemental.ContentIdentifiable) error
 
 	// Retrieve retrieves one or multiple elemental.Identifiables. In order to be retrievable,
 	// the elemental.Identifiable needs to have their Identifier correctly set.

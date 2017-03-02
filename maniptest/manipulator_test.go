@@ -17,7 +17,8 @@ func TestTestManipulator_MockRetrieveMany(t *testing.T) {
 
 		Convey("When I call RetrieveMany without mock", func() {
 
-			err := m.RetrieveMany(nil, PersonIdentity, nil)
+			ps := PersonList{}
+			err := m.RetrieveMany(nil, &ps)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
@@ -25,11 +26,11 @@ func TestTestManipulator_MockRetrieveMany(t *testing.T) {
 
 			Convey("When I mock it to return an error", func() {
 
-				m.MockRetrieveMany(t, func(context *manipulate.Context, identity elemental.Identity, dest interface{}) error {
+				m.MockRetrieveMany(t, func(context *manipulate.Context, dest elemental.ContentIdentifiable) error {
 					return fmt.Errorf("wow such error")
 				})
 
-				err := m.RetrieveMany(nil, PersonIdentity, nil)
+				err := m.RetrieveMany(nil, &ps)
 
 				Convey("Then err should not be nil", func() {
 					So(err, ShouldNotBeNil)
@@ -38,7 +39,7 @@ func TestTestManipulator_MockRetrieveMany(t *testing.T) {
 
 			Convey("When I don't mock it", func() {
 
-				err := m.RetrieveMany(nil, PersonIdentity, nil)
+				err := m.RetrieveMany(nil, &ps)
 
 				Convey("Then err should be nil", func() {
 					So(err, ShouldBeNil)

@@ -63,7 +63,7 @@ func NewMongoManipulator(url []string, dbName string, user string, password stri
 	}
 }
 
-func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, identity elemental.Identity, dest interface{}) error {
+func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, dest elemental.ContentIdentifiable) error {
 
 	if context == nil {
 		context = manipulate.NewContext()
@@ -73,7 +73,7 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, identity el
 	defer session.Close()
 
 	db := session.DB(s.dbName)
-	collection := collectionFromIdentity(db, identity)
+	collection := collectionFromIdentity(db, dest.ContentIdentity())
 	filter := bson.M{}
 
 	if context.Filter != nil {
@@ -101,7 +101,7 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, identity el
 	} else {
 
 		var n int
-		n, err = s.Count(context, identity)
+		n, err = s.Count(context, dest.ContentIdentity())
 		if err != nil {
 			return err
 		}

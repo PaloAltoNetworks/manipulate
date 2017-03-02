@@ -12,6 +12,12 @@ var PersonIdentity = elemental.Identity{
 	Category: "persons",
 }
 
+type PersonsList []*Person
+
+func (o *PersonsList) ContentIdentity() elemental.Identity {
+	return PersonIdentity
+}
+
 type Person struct {
 	ID       string
 	Name     string

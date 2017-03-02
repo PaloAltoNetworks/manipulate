@@ -42,7 +42,7 @@ func NewMemoryManipulator(schema *memdb.DBSchema) manipulate.TransactionalManipu
 }
 
 // RetrieveMany is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) RetrieveMany(context *manipulate.Context, identity elemental.Identity, dest interface{}) error {
+func (s *memdbManipulator) RetrieveMany(context *manipulate.Context, dest elemental.ContentIdentifiable) error {
 
 	if context == nil {
 		context = manipulate.NewContext()
@@ -57,7 +57,7 @@ func (s *memdbManipulator) RetrieveMany(context *manipulate.Context, identity el
 		args = context.Filter.Values()[0]
 	}
 
-	iterator, err := txn.Get(identity.Category, index, args...)
+	iterator, err := txn.Get(dest.ContentIdentity().Category, index, args...)
 
 	if err != nil {
 		return manipulate.NewErrCannotExecuteQuery(err.Error())
@@ -179,12 +179,14 @@ func (s *memdbManipulator) DeleteMany(context *manipulate.Context, identity elem
 // Count is part of the implementation of the Manipulator interface.
 func (s *memdbManipulator) Count(context *manipulate.Context, identity elemental.Identity) (int, error) {
 
-	out := elemental.IdentifiablesList{}
-	if err := s.RetrieveMany(context, identity, &out); err != nil {
-		return -1, err
-	}
+	// out := elemental.IdentifiablesList{}
+	// if err := s.RetrieveMany(context, &out); err != nil {
+	// 	return -1, err
+	// }
+	//
+	// return len(out), nil
 
-	return len(out), nil
+	return 0, nil
 }
 
 // Assign is part of the implementation of the Manipulator interface.

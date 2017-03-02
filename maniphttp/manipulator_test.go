@@ -491,7 +491,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			var l TasksList
 			ctx := manipulate.NewContext()
 			ctx.Parent = list
-			errs := store.RetrieveMany(ctx, TaskIdentity, &l)
+			errs := store.RetrieveMany(ctx, &l)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldBeNil)
@@ -527,7 +527,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			ctx := manipulate.NewContext()
 			ctx.Parent = list2
 
-			errs := store.RetrieveMany(ctx, TaskIdentity, &l)
+			errs := store.RetrieveMany(ctx, &l)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -549,7 +549,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			ctx := manipulate.NewContext()
 			ctx.Parent = e
 
-			errs := store.RetrieveMany(ctx, TaskIdentity, &l)
+			errs := store.RetrieveMany(ctx, &l)
 
 			Convey("Then the lenght of the children list should be 0", func() {
 				So(l, ShouldBeNil)
@@ -575,7 +575,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			ctx := manipulate.NewContext()
 			ctx.Parent = list
 
-			store.RetrieveMany(ctx, TaskIdentity, &l)
+			store.RetrieveMany(ctx, &l)
 
 			Convey("Then the lenght of the children list should be 0", func() {
 				So(len(l), ShouldEqual, 0)
@@ -596,7 +596,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			ctx.Parent = list
 
 			var l TasksList
-			errs := store.RetrieveMany(ctx, TaskIdentity, &l)
+			errs := store.RetrieveMany(ctx, &l)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -617,7 +617,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			ctx.Parent = list
 
 			var l TasksList
-			errs := store.RetrieveMany(ctx, TaskIdentity, &l)
+			errs := store.RetrieveMany(ctx, &l)
 
 			Convey("Then the error should not be nil", func() {
 				So(errs, ShouldNotBeNil)

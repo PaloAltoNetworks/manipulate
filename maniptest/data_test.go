@@ -8,6 +8,12 @@ var PersonIdentity = elemental.Identity{
 	Category: "persons",
 }
 
+type PersonList []*Person
+
+func (o *PersonList) ContentIdentity() elemental.Identity {
+	return PersonIdentity
+}
+
 type Person struct {
 	ID       string   `bson:"_id"`
 	Name     string   `bson:"name"`
