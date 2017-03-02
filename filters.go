@@ -290,18 +290,18 @@ func (f *Filter) String() string {
 	var buffer bytes.Buffer
 
 	for i, operator := range f.operators {
-		WriteString(&buffer, translateOperator(operator))
+		writeString(&buffer, translateOperator(operator))
 		if i > 0 {
-			WriteString(&buffer, " ")
+			writeString(&buffer, " ")
 		}
-		WriteString(&buffer, fmt.Sprintf("%v", f.keys[i]))
-		WriteString(&buffer, " ")
-		WriteString(&buffer, translateComparator(f.comparators[i]))
-		WriteString(&buffer, " ")
-		WriteString(&buffer, fmt.Sprintf("%v", f.values[i]))
+		writeString(&buffer, fmt.Sprintf("%v", f.keys[i]))
+		writeString(&buffer, " ")
+		writeString(&buffer, translateComparator(f.comparators[i]))
+		writeString(&buffer, " ")
+		writeString(&buffer, fmt.Sprintf("%v", f.values[i]))
 
 		if i+1 < len(f.operators) {
-			WriteString(&buffer, " ")
+			writeString(&buffer, " ")
 		}
 	}
 

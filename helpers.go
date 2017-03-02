@@ -5,9 +5,7 @@ import (
 	"time"
 )
 
-// WriteString is a wrapper to buffer.WriteString that panics in
-// case of write error.
-func WriteString(buffer *bytes.Buffer, str string) {
+func writeString(buffer *bytes.Buffer, str string) {
 	if _, err := buffer.WriteString(str); err != nil {
 		panic(err)
 	}
