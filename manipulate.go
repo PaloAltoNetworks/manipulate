@@ -18,34 +18,25 @@ type EventUnsubscriber func()
 // EventFilterUpdater is the type of the function to update a PushFilter.
 type EventFilterUpdater func(*elemental.PushFilter)
 
-// ManipulablesList is a list of objects implementing the Manipulable interface.
-type ManipulablesList []Manipulable
-
-// Manipulable is the interface of objects that can be manipulated.
-type Manipulable interface {
-	elemental.Identifiable
-	elemental.Validatable
-}
-
 // Manipulator is the interface of a storage backend.
 type Manipulator interface {
 	// RetrieveMany retrieves the a list of objects with the given elemental.Identity and put them in the given dest.
 	RetrieveMany(context *Context, identity elemental.Identity, dest interface{}) error
 
-	// Retrieve retrieves one or multiple Manipulables. In order to be retrievable,
+	// Retrieve retrieves one or multiple elemental.Identifiables. In order to be retrievable,
 	// the Manipulables needs to have their Identifier correctly set.
-	Retrieve(context *Context, objects ...Manipulable) error
+	Retrieve(context *Context, objects ...elemental.Identifiable) error
 
-	// Create creates a the given Manipulables in the given parent Manipulable.
-	Create(context *Context, objects ...Manipulable) error
+	// Create creates a the given elemental.Identifiables in the given parent Manipulable.
+	Create(context *Context, objects ...elemental.Identifiable) error
 
-	// Update updates one or multiple Manipulables. In order to be updatable,
+	// Update updates one or multiple elemental.Identifiables. In order to be updatable,
 	// the Manipulables needs to have their Identifier correctly set.
-	Update(context *Context, objects ...Manipulable) error
+	Update(context *Context, objects ...elemental.Identifiable) error
 
-	// Delete deletes one or multiple Manipulables. In order to be deletable,
+	// Delete deletes one or multiple elemental.Identifiables. In order to be deletable,
 	// the Manipulables needs to have their Identifier correctly set.
-	Delete(context *Context, objects ...Manipulable) error
+	Delete(context *Context, objects ...elemental.Identifiable) error
 
 	// DeleteMany deletes all objects of with the given identity or
 	// all the ones matching the filtet in the given context.

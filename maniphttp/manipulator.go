@@ -148,7 +148,7 @@ func (s *httpManipulator) RetrieveMany(context *manipulate.Context, identity ele
 	return nil
 }
 
-func (s *httpManipulator) Retrieve(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (s *httpManipulator) Retrieve(context *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if context == nil {
 		context = manipulate.NewContext()
@@ -181,7 +181,7 @@ func (s *httpManipulator) Retrieve(context *manipulate.Context, objects ...manip
 	return nil
 }
 
-func (s *httpManipulator) Create(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (s *httpManipulator) Create(context *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if context == nil {
 		context = manipulate.NewContext()
@@ -219,7 +219,7 @@ func (s *httpManipulator) Create(context *manipulate.Context, objects ...manipul
 	return nil
 }
 
-func (s *httpManipulator) Update(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (s *httpManipulator) Update(context *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if context == nil {
 		context = manipulate.NewContext()
@@ -257,7 +257,7 @@ func (s *httpManipulator) Update(context *manipulate.Context, objects ...manipul
 	return nil
 }
 
-func (s *httpManipulator) Delete(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (s *httpManipulator) Delete(context *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if context == nil {
 		context = manipulate.NewContext()
@@ -379,12 +379,12 @@ func (s *httpManipulator) readHeaders(response *http.Response, context *manipula
 	context.CountTotal, _ = strconv.Atoi(response.Header.Get("X-Count-Total"))
 }
 
-func (s *httpManipulator) getGeneralURL(o manipulate.Manipulable) string {
+func (s *httpManipulator) getGeneralURL(o elemental.Identifiable) string {
 
 	return s.url + "/" + o.Identity().Category
 }
 
-func (s *httpManipulator) getPersonalURL(o manipulate.Manipulable) (string, error) {
+func (s *httpManipulator) getPersonalURL(o elemental.Identifiable) (string, error) {
 
 	if o.Identifier() == "" {
 		return "", fmt.Errorf("Cannot GetPersonalURL of an object with no ID set")
@@ -393,7 +393,7 @@ func (s *httpManipulator) getPersonalURL(o manipulate.Manipulable) (string, erro
 	return s.getGeneralURL(o) + "/" + o.Identifier(), nil
 }
 
-func (s *httpManipulator) getURLForChildrenIdentity(parent manipulate.Manipulable, childrenIdentity elemental.Identity) (string, error) {
+func (s *httpManipulator) getURLForChildrenIdentity(parent elemental.Identifiable, childrenIdentity elemental.Identity) (string, error) {
 
 	if parent == nil {
 		return s.url + "/" + childrenIdentity.Category, nil

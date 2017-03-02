@@ -4,18 +4,22 @@
 
 package manipulate
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/aporeto-inc/elemental"
+)
 
 // A FinalizerFunc is the type of a function that can be used as a creation finalizer.
 // This is only supported by manipulators that generate an ID to let a chance to the user.
 // to now the intended ID before actually creating the object.
-type FinalizerFunc func(o Manipulable) error
+type FinalizerFunc func(o elemental.Identifiable) error
 
 // Context is a structure
 type Context struct {
 	Page               int
 	PageSize           int
-	Parent             Manipulable
+	Parent             elemental.Identifiable
 	CountTotal         int
 	Filter             *Filter
 	Parameters         *Parameters

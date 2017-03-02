@@ -138,7 +138,7 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, identity el
 	return nil
 }
 
-func (s *mongoManipulator) Retrieve(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (s *mongoManipulator) Retrieve(context *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if len(objects) == 0 {
 		return nil
@@ -178,7 +178,7 @@ func (s *mongoManipulator) Retrieve(context *manipulate.Context, objects ...mani
 	return nil
 }
 
-func (s *mongoManipulator) Create(context *manipulate.Context, children ...manipulate.Manipulable) error {
+func (s *mongoManipulator) Create(context *manipulate.Context, children ...elemental.Identifiable) error {
 
 	if context == nil {
 		context = manipulate.NewContext()
@@ -206,7 +206,7 @@ func (s *mongoManipulator) Create(context *manipulate.Context, children ...manip
 	return nil
 }
 
-func (s *mongoManipulator) Update(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (s *mongoManipulator) Update(context *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if len(objects) == 0 {
 		return nil
@@ -230,7 +230,7 @@ func (s *mongoManipulator) Update(context *manipulate.Context, objects ...manipu
 	return nil
 }
 
-func (s *mongoManipulator) Delete(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (s *mongoManipulator) Delete(context *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if len(objects) == 0 {
 		return nil

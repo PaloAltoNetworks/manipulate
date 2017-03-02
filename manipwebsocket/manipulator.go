@@ -144,7 +144,7 @@ func (s *websocketManipulator) RetrieveMany(context *manipulate.Context, identit
 	return nil
 }
 
-func (s *websocketManipulator) Retrieve(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (s *websocketManipulator) Retrieve(context *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if context == nil {
 		context = manipulate.NewContext()
@@ -181,7 +181,7 @@ func (s *websocketManipulator) Retrieve(context *manipulate.Context, objects ...
 	return nil
 }
 
-func (s *websocketManipulator) Create(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (s *websocketManipulator) Create(context *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if context == nil {
 		context = manipulate.NewContext()
@@ -217,7 +217,7 @@ func (s *websocketManipulator) Create(context *manipulate.Context, objects ...ma
 	return nil
 }
 
-func (s *websocketManipulator) Update(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (s *websocketManipulator) Update(context *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if context == nil {
 		context = manipulate.NewContext()
@@ -254,7 +254,7 @@ func (s *websocketManipulator) Update(context *manipulate.Context, objects ...ma
 	return nil
 }
 
-func (s *websocketManipulator) Delete(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (s *websocketManipulator) Delete(context *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if context == nil {
 		context = manipulate.NewContext()

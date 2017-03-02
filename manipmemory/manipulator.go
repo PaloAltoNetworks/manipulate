@@ -75,7 +75,7 @@ func (s *memdbManipulator) RetrieveMany(context *manipulate.Context, identity el
 }
 
 // Retrieve is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Retrieve(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (s *memdbManipulator) Retrieve(context *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	txn := s.db.Txn(false)
 
@@ -97,7 +97,7 @@ func (s *memdbManipulator) Retrieve(context *manipulate.Context, objects ...mani
 }
 
 // Create is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Create(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (s *memdbManipulator) Create(context *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if context == nil {
 		context = manipulate.NewContext()
@@ -124,7 +124,7 @@ func (s *memdbManipulator) Create(context *manipulate.Context, objects ...manipu
 }
 
 // Update is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Update(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (s *memdbManipulator) Update(context *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if context == nil {
 		context = manipulate.NewContext()
@@ -148,7 +148,7 @@ func (s *memdbManipulator) Update(context *manipulate.Context, objects ...manipu
 }
 
 // Delete is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Delete(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+func (s *memdbManipulator) Delete(context *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if context == nil {
 		context = manipulate.NewContext()
@@ -179,7 +179,7 @@ func (s *memdbManipulator) DeleteMany(context *manipulate.Context, identity elem
 // Count is part of the implementation of the Manipulator interface.
 func (s *memdbManipulator) Count(context *manipulate.Context, identity elemental.Identity) (int, error) {
 
-	out := manipulate.ManipulablesList{}
+	out := elemental.IdentifiablesList{}
 	if err := s.RetrieveMany(context, identity, &out); err != nil {
 		return -1, err
 	}

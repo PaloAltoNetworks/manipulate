@@ -5,7 +5,7 @@
 //
 // For example:
 //      m := maniptest.NewTestManipulator()
-//      m.MockCreate(t, func(context *manipulate.Context, objects ...manipulate.Manipulable) error {
+//      m.MockCreate(t, func(context *manipulate.Context, objects ...elemental.Identifiable) error {
 //          return elemental.NewError("title", "description", "subject", 43)
 //      })
 //
