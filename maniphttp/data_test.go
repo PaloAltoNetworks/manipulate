@@ -19,8 +19,12 @@ var ListIdentity = elemental.Identity{
 // ListsList represents a list of Lists
 type ListsList []*List
 
-func (o *ListsList) ContentIdentity() elemental.Identity {
+func (o ListsList) ContentIdentity() elemental.Identity {
 	return ListIdentity
+}
+
+func (o ListsList) List() elemental.IdentifiablesList {
+	return nil
 }
 
 // List represents the model of a list
@@ -82,8 +86,12 @@ var TaskIdentity = elemental.Identity{
 // TasksList represents a list of Tasks
 type TasksList []*Task
 
-func (o *TasksList) ContentIdentity() elemental.Identity {
+func (o TasksList) ContentIdentity() elemental.Identity {
 	return TaskIdentity
+}
+
+func (o TasksList) List() elemental.IdentifiablesList {
+	return nil
 }
 
 // Task represents the model of a task

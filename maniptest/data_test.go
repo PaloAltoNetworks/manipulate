@@ -10,8 +10,12 @@ var PersonIdentity = elemental.Identity{
 
 type PersonList []*Person
 
-func (o *PersonList) ContentIdentity() elemental.Identity {
+func (o PersonList) ContentIdentity() elemental.Identity {
 	return PersonIdentity
+}
+
+func (o PersonList) List() elemental.IdentifiablesList {
+	return nil
 }
 
 type Person struct {
