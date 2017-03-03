@@ -87,7 +87,7 @@ func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string
 			m.runningLock.Lock()
 			m.running = false
 			m.runningLock.Unlock()
-			_ = m.ws.Close()
+			m.ws.Close() // nolint: errcheck
 		}
 		m.wsLock.Unlock()
 	}, nil
