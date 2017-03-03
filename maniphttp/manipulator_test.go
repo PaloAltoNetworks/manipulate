@@ -404,7 +404,7 @@ func TestHTTP_Update(t *testing.T) {
 			list := NewList()
 
 			Convey("Then it not should panic", func() {
-				So(func() { store.Update(nil, list) }, ShouldNotPanic)
+				So(func() { _ = store.Update(nil, list) }, ShouldNotPanic)
 			})
 		})
 	})
@@ -427,7 +427,7 @@ func TestHTTP_Delete(t *testing.T) {
 			list := NewList()
 			list.ID = "xxx"
 
-			store.Delete(nil, list)
+			_ = store.Delete(nil, list)
 
 			Convey("Then ID should 'xxx'", func() {
 				So(list.Identifier(), ShouldEqual, "xxx")
@@ -497,7 +497,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 				So(errs, ShouldBeNil)
 			})
 
-			Convey("Then the lenght of the children list should be 2", func() {
+			Convey("Then the length of the children list should be 2", func() {
 				So(len(l), ShouldEqual, 2)
 			})
 
@@ -551,7 +551,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 
 			errs := store.RetrieveMany(ctx, &l)
 
-			Convey("Then the lenght of the children list should be 0", func() {
+			Convey("Then the length of the children list should be 0", func() {
 				So(l, ShouldBeNil)
 			})
 
@@ -575,9 +575,9 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			ctx := manipulate.NewContext()
 			ctx.Parent = list
 
-			store.RetrieveMany(ctx, &l)
+			_ = store.RetrieveMany(ctx, &l)
 
-			Convey("Then the lenght of the children list should be 0", func() {
+			Convey("Then the length of the children list should be 0", func() {
 				So(len(l), ShouldEqual, 0)
 			})
 		})

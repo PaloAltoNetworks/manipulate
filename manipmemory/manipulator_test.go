@@ -77,7 +77,7 @@ func TestMemManipulator_Retrieve(t *testing.T) {
 			Name: "Antoine1",
 		}
 
-		m.Create(nil, p1)
+		_ = m.Create(nil, p1)
 
 		Convey("When I retrieve the person", func() {
 
@@ -133,7 +133,7 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 			Name: "Antoine2",
 		}
 
-		m.Create(nil, p1, p2)
+		_ = m.Create(nil, p1, p2)
 
 		Convey("When I retrieve the persons", func() {
 

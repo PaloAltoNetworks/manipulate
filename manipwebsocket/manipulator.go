@@ -87,7 +87,7 @@ func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string
 			m.runningLock.Lock()
 			m.running = false
 			m.runningLock.Unlock()
-			m.ws.Close()
+			_ = m.ws.Close()
 		}
 		m.wsLock.Unlock()
 	}, nil
@@ -345,24 +345,17 @@ func (s *websocketManipulator) Subscribe(
 
 	needsPublishDisconnectFunc := true
 
-	disconnectFunc := func() {
+	disconnectFunc := func() error {
 		lock.Lock()
 		defer lock.Unlock()
-
 		stopped = true
-
-		if ws != nil && ws.IsClientConn() {
-			ws.Close()
-		}
+		return ws.Close()
 	}
 
-	eventFilterSetterFunc := func(filter *elemental.PushFilter) {
+	eventFilterSetterFunc := func(filter *elemental.PushFilter) error {
 		lock.Lock()
 		defer lock.Unlock()
-
-		if ws != nil && ws.IsClientConn() {
-			websocket.JSON.Send(ws, filter)
-		}
+		return websocket.JSON.Send(ws, filter)
 	}
 
 	go func() {
@@ -402,7 +395,10 @@ func (s *websocketManipulator) Subscribe(
 			lock.Unlock()
 
 			if filter != nil {
-				websocket.JSON.Send(ws, filter)
+				if err := websocket.JSON.Send(ws, filter); err != nil {
+					handler(nil, err)
+					break
+				}
 			}
 
 			if needsPublishDisconnectFunc {

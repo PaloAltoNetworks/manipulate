@@ -13,10 +13,10 @@ type EventHandler func(event *elemental.Event, err error)
 type RecoveryHandler func()
 
 // EventUnsubscriber is the type of the unsubscribe function.
-type EventUnsubscriber func()
+type EventUnsubscriber func() error
 
 // EventFilterUpdater is the type of the function to update a PushFilter.
-type EventFilterUpdater func(*elemental.PushFilter)
+type EventFilterUpdater func(*elemental.PushFilter) error
 
 // Manipulator is the interface of a storage backend.
 type Manipulator interface {

@@ -38,7 +38,7 @@ func TestMethodNewContextWithFilter(t *testing.T) {
 
 func TestMethodNewContextWithTransactionID(t *testing.T) {
 
-	Convey("Given I create a new context iwth transactionID", t, func() {
+	Convey("Given I create a new context with transactionID", t, func() {
 
 		tid := NewTransactionID()
 		context := NewContextWithTransactionID(tid)

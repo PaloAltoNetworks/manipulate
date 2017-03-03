@@ -249,7 +249,7 @@ func (s *memdbManipulator) txnForID(id manipulate.TransactionID) *memdb.Txn {
 
 func (s *memdbManipulator) commitTxn(t *memdb.Txn) {
 
-	log.WithField("transaction", t).Debug("Commiting transaction to MemDB.")
+	log.WithField("transaction", t).Debug("Committing transaction to MemDB.")
 
 	t.Commit()
 }

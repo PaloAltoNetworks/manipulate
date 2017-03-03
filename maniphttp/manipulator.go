@@ -140,7 +140,7 @@ func (s *httpManipulator) RetrieveMany(context *manipulate.Context, dest element
 		return nil
 	}
 
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if err := json.NewDecoder(response.Body).Decode(dest); err != nil {
 		return manipulate.NewErrCannotUnmarshal(err.Error())
 	}
@@ -172,7 +172,7 @@ func (s *httpManipulator) Retrieve(context *manipulate.Context, objects ...eleme
 			return err
 		}
 
-		defer response.Body.Close()
+		defer func() { _ = response.Body.Close() }()
 		if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
 			return manipulate.NewErrCannotUnmarshal(err.Error())
 		}
@@ -210,7 +210,7 @@ func (s *httpManipulator) Create(context *manipulate.Context, objects ...element
 			return err
 		}
 
-		defer response.Body.Close()
+		defer func() { _ = response.Body.Close() }()
 		if err := json.NewDecoder(response.Body).Decode(&child); err != nil {
 			return manipulate.NewErrCannotUnmarshal(err.Error())
 		}
@@ -248,7 +248,7 @@ func (s *httpManipulator) Update(context *manipulate.Context, objects ...element
 			return err
 		}
 
-		defer response.Body.Close()
+		defer func() { _ = response.Body.Close() }()
 		if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
 			return manipulate.NewErrCannotUnmarshal(err.Error())
 		}
@@ -435,7 +435,7 @@ func (s *httpManipulator) send(request *http.Request, context *manipulate.Contex
 
 		es := []elemental.Error{}
 
-		defer response.Body.Close()
+		defer func() { _ = response.Body.Close() }()
 		if err := json.NewDecoder(response.Body).Decode(&es); err != nil {
 			return nil, manipulate.NewErrCannotUnmarshal(err.Error())
 		}

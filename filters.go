@@ -142,7 +142,7 @@ func NewFilterValues(values ...interface{}) FilterValues {
 	return FilterValues{fv}
 }
 
-// Then adds a new value to the reciever and returns it.
+// Then adds a new value to the receiver and returns it.
 func (f FilterValues) Then(values ...interface{}) FilterValues {
 
 	fv := FilterValue{}
