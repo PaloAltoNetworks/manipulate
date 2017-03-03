@@ -141,7 +141,7 @@ func (s *httpManipulator) RetrieveMany(context *manipulate.Context, dest element
 	}
 
 	defer response.Body.Close()
-	if err := json.NewDecoder(response.Body).Decode(&dest); err != nil {
+	if err := json.NewDecoder(response.Body).Decode(dest); err != nil {
 		return manipulate.NewErrCannotUnmarshal(err.Error())
 	}
 

@@ -137,7 +137,7 @@ func (s *websocketManipulator) RetrieveMany(context *manipulate.Context, dest el
 		return err
 	}
 
-	if err := resp.Decode(&dest); err != nil {
+	if err := resp.Decode(dest); err != nil {
 		return manipulate.NewErrCannotUnmarshal(err.Error())
 	}
 
