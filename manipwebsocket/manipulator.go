@@ -589,18 +589,38 @@ func (s *websocketManipulator) currentPassword() string {
 	return s.password
 }
 
-func (s *websocketManipulator) renewMidgardToken(mclient *midgard.Client, certificates []tls.Certificate, interval time.Duration, stop chan bool) {
+func (s *websocketManipulator) renewMidgardToken(
+	mclient *midgard.Client,
+	certificates []tls.Certificate,
+	interval time.Duration,
+	stop chan bool,
+) {
+
+	nextRefresh := time.Now().Add(interval)
+
 	for {
 		select {
-		case <-time.Tick(interval):
+		case <-time.Tick(time.Minute):
+
+			now := time.Now()
+			if now.Before(nextRefresh) {
+				continue
+			}
+
 			log.Info("Refreshing Midgard token...")
+
 			token, err := mclient.IssueFromCertificate(certificates)
 			if err != nil {
 				log.WithError(err).Error("Unable to renew token.")
+				break
 			}
+
 			s.renewLock.Lock()
 			s.password = token
 			s.renewLock.Unlock()
+
+			nextRefresh = time.Now().Add(interval)
+
 		case <-stop:
 			return
 		}
