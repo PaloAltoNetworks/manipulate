@@ -10,7 +10,6 @@ import (
 	"github.com/aporeto-inc/manipulate/manipmongo/compiler"
 	"gopkg.in/mgo.v2/bson"
 
-	uuid "github.com/satori/go.uuid"
 	mgo "gopkg.in/mgo.v2"
 )
 
@@ -188,7 +187,7 @@ func (s *mongoManipulator) Create(context *manipulate.Context, children ...eleme
 	bulk := transaction.bulkForIdentity(children[0].Identity())
 
 	for _, child := range children {
-		child.SetIdentifier(uuid.NewV4().String())
+		child.SetIdentifier(bson.NewObjectId().Hex())
 
 		if context.CreateFinalizer != nil {
 			if err := context.CreateFinalizer(child); err != nil {
