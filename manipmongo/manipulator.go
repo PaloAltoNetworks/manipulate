@@ -263,7 +263,7 @@ func (s *mongoManipulator) DeleteMany(context *manipulate.Context, identity elem
 	transaction, commit := s.retrieveTransaction(context)
 	bulk := transaction.bulkForIdentity(identity)
 
-	bulk.Remove(compiler.CompileFilter(context.Filter))
+	bulk.RemoveAll(compiler.CompileFilter(context.Filter))
 
 	if commit {
 		return s.Commit(transaction.id)
