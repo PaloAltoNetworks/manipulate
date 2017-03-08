@@ -1,6 +1,8 @@
 package manipwebsocket
 
 import (
+	"fmt"
+
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 	"github.com/aporeto-inc/manipulate/manipwebsocket/compiler"
@@ -56,4 +58,16 @@ func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Cont
 	request.OverrideProtection = ctx.OverrideProtection
 
 	return nil
+}
+
+// SendRequest sends the given request with the given manipulator
+func SendRequest(manipulator manipulate.Manipulator, request *elemental.Request) (*elemental.Response, error) {
+
+	m, ok := manipulator.(*websocketManipulator)
+
+	if !ok {
+		return nil, fmt.Errorf("You can only pass a Websocket Manipulator to GetWebsocketConn")
+	}
+
+	return m.send(request)
 }
