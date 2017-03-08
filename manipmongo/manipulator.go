@@ -134,6 +134,13 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, dest elemen
 		return manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
 
+	// backport all default values that are empty.
+	for _, o := range dest.List() {
+		if a, ok := o.(elemental.AttributeSpecifiable); ok {
+			elemental.ResetDefaultForZeroValues(a)
+		}
+	}
+
 	return nil
 }
 
@@ -171,6 +178,11 @@ func (s *mongoManipulator) Retrieve(context *manipulate.Context, objects ...elem
 			}
 
 			return manipulate.NewErrCannotExecuteQuery(err.Error())
+		}
+
+		// backport all default values that are empty.
+		if a, ok := o.(elemental.AttributeSpecifiable); ok {
+			elemental.ResetDefaultForZeroValues(a)
 		}
 	}
 
@@ -244,6 +256,11 @@ func (s *mongoManipulator) Delete(context *manipulate.Context, objects ...elemen
 
 	for _, o := range objects {
 		bulk.Remove(bson.M{"_id": o.Identifier()})
+
+		// backport all default values that are empty.
+		if a, ok := o.(elemental.AttributeSpecifiable); ok {
+			elemental.ResetDefaultForZeroValues(a)
+		}
 	}
 
 	if commit {
