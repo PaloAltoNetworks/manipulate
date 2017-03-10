@@ -67,7 +67,7 @@ func SendRequest(manipulator manipulate.Manipulator, request *elemental.Request)
 	m, ok := manipulator.(*websocketManipulator)
 
 	if !ok {
-		return nil, fmt.Errorf("You can only pass a Websocket Manipulator to GetWebsocketConn")
+		return nil, fmt.Errorf("You can only pass a Websocket Manipulator to SendRequest")
 	}
 
 	return m.send(request)
