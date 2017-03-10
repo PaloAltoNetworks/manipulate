@@ -387,12 +387,12 @@ func (s *websocketManipulator) Subscribe(
 			}
 
 			ws, err = websocket.DialConfig(config)
+			lock.Unlock()
 			if err != nil {
 				log.Warn("Could not connect to websocket. Retrying in 5s")
 				<-time.After(5 * time.Second)
 				continue
 			}
-			lock.Unlock()
 
 			if filter != nil {
 				if err := websocket.JSON.Send(ws, filter); err != nil {
