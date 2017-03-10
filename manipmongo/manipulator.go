@@ -167,9 +167,7 @@ func (s *mongoManipulator) Retrieve(context *manipulate.Context, objects ...elem
 
 	for _, o := range objects {
 
-		if o.Identifier() != "" {
-			filter["_id"] = o.Identifier()
-		}
+		filter["_id"] = o.Identifier()
 
 		if err := collection.Find(filter).One(o); err != nil {
 
