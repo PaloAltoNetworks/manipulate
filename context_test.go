@@ -56,9 +56,10 @@ func TestMethodString(t *testing.T) {
 		context := NewContext()
 		context.Page = 1
 		context.PageSize = 100
+		context.Version = 12
 
 		Convey("Then my context should be initiliazed", func() {
-			So(context.String(), ShouldEqual, "<Context page: 1, pagesize: 100> <Filter : <nil>>")
+			So(context.String(), ShouldEqual, "<Context page:1 pagesize:100 filter:<nil> version:12>")
 		})
 	})
 }

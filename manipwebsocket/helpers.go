@@ -54,6 +54,7 @@ func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Cont
 	request.Page = ctx.Page
 	request.PageSize = ctx.PageSize
 	request.OverrideProtection = ctx.OverrideProtection
+	request.Version = ctx.Version
 
 	return nil
 }

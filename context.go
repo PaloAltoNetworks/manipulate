@@ -29,14 +29,13 @@ type Context struct {
 	Recursive          bool
 	OverrideProtection bool
 	CreateFinalizer    FinalizerFunc
+	Version            int
 }
 
 // NewContext returns a new *Context
 func NewContext() *Context {
 
 	return &Context{
-		Page:       0,
-		PageSize:   0,
 		Parameters: NewParameters(),
 		Attributes: []string{},
 	}
@@ -63,5 +62,5 @@ func NewContextWithTransactionID(tid TransactionID) *Context {
 // String returns the string representation of the Context.
 func (c *Context) String() string {
 
-	return fmt.Sprintf("<Context page: %d, pagesize: %d> <Filter : %v>", c.Page, c.PageSize, c.Filter)
+	return fmt.Sprintf("<Context page:%d pagesize:%d filter:%v version:%d>", c.Page, c.PageSize, c.Filter, c.Version)
 }
