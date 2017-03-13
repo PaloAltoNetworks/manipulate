@@ -453,13 +453,10 @@ func (s *websocketManipulator) connect() error {
 		url = url + "&mode=all"
 	}
 
-	s.wsLock.Lock()
 	config, err := websocket.NewConfig(url, url)
 	if err != nil {
-		s.wsLock.Unlock()
 		return err
 	}
-	s.wsLock.Unlock()
 
 	config.TlsConfig = s.tlsConfig
 
