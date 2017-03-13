@@ -521,7 +521,11 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 		return nil, manipulate.NewErrCannotCommunicate("Websocket not initialized")
 	}
 
-	if err := websocket.JSON.Send(s.ws, request); err != nil {
+	s.wsLock.Lock()
+	err := websocket.JSON.Send(s.ws, request)
+	s.wsLock.Unlock()
+
+	if err != nil {
 		return nil, manipulate.NewErrCannotCommunicate(err.Error())
 	}
 
