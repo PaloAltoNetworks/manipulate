@@ -1,8 +1,12 @@
 package manipmongo
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"net"
 	"strings"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/aporeto-inc/elemental"
@@ -26,33 +30,47 @@ type mongoManipulator struct {
 }
 
 // NewMongoManipulator returns a new TransactionalManipulator backed by MongoDB
-func NewMongoManipulator(url []string, dbName string, user string, password string, authsource string, poolLimit int) manipulate.TransactionalManipulator {
+func NewMongoManipulator(urls []string, dbName string, user string, password string, authsource string, poolLimit int, CAPool *x509.CertPool, clientCerts []tls.Certificate) manipulate.TransactionalManipulator {
 
-	session, err := mgo.Dial(strings.Join(url, ","))
+	dialInfo, err := mgo.ParseURL(strings.Join(urls, ","))
 	if err != nil {
 		log.WithFields(logrus.Fields{
-			"url":      url,
+			"urls":     urls,
+			"db":       dbName,
+			"username": user,
+			"error":    err.Error(),
+		}).Fatal("Unable to create dial information")
+	}
+
+	dialInfo.PoolLimit = poolLimit
+	dialInfo.Database = dbName
+	dialInfo.Source = authsource
+	dialInfo.Username = user
+	dialInfo.Password = password
+	dialInfo.Timeout = 3 * time.Second
+	dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
+
+		conn, e := tls.Dial("tcp", addr.String(), &tls.Config{
+			RootCAs:      CAPool,
+			Certificates: clientCerts,
+		})
+
+		if e == nil {
+			return conn, nil
+		}
+
+		log.WithError(e).Warn("Unable to dial to mongo using TLS. Trying with unencrypted dialing")
+		return net.Dial("tcp", addr.String())
+	}
+
+	session, err := mgo.DialWithInfo(dialInfo)
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"urls":     urls,
 			"db":       dbName,
 			"username": user,
 			"error":    err.Error(),
 		}).Fatal("Cannot connect to mongo.")
-	}
-
-	session.SetPoolLimit(poolLimit)
-
-	if user != "" {
-		if err := session.Login(&mgo.Credential{
-			Username: user,
-			Password: password,
-			Source:   authsource,
-		}); err != nil {
-			log.WithFields(logrus.Fields{
-				"url":      url,
-				"db":       dbName,
-				"username": user,
-				"error":    err.Error(),
-			}).Fatal("Cannot login to mongo.")
-		}
 	}
 
 	return &mongoManipulator{
