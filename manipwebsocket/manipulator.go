@@ -527,6 +527,13 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 	s.wsLock.Unlock()
 
 	if err != nil {
+		log.WithFields(logrus.Fields{
+			"method":  request.Operation,
+			"url":     s.url,
+			"request": request.String(),
+			"data":    string(request.Data),
+			"error":   err,
+		}).Debug("Unable to send the request.")
 		return nil, manipulate.NewErrCannotCommunicate(err.Error())
 	}
 
@@ -535,6 +542,15 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 
 	select {
 	case response := <-ch:
+
+		log.WithFields(logrus.Fields{
+			"method":             request.Operation,
+			"url":                s.url,
+			"request":            request.String(),
+			"requestData":        string(request.Data),
+			"responseStatusCode": response.StatusCode,
+			"responseData":       string(response.Data),
+		}).Debug("Request sent.")
 
 		if response.StatusCode < 200 || response.StatusCode > 300 {
 			return nil, decodeErrors(response)
