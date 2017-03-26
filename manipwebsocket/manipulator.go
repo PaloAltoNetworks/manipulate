@@ -543,14 +543,16 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 	select {
 	case response := <-ch:
 
-		log.WithFields(logrus.Fields{
-			"method":             request.Operation,
-			"url":                s.url,
-			"request":            request.String(),
-			"requestData":        string(request.Data),
-			"responseStatusCode": response.StatusCode,
-			"responseData":       string(response.Data),
-		}).Debug("Request sent.")
+		if log.Level == logrus.DebugLevel {
+			log.WithFields(logrus.Fields{
+				"method":             request.Operation,
+				"url":                s.url,
+				"request":            request.String(),
+				"requestData":        string(request.Data),
+				"responseStatusCode": response.StatusCode,
+				"responseData":       string(response.Data),
+			}).Debug("Request sent.")
+		}
 
 		if response.StatusCode < 200 || response.StatusCode > 300 {
 			return nil, decodeErrors(response)
