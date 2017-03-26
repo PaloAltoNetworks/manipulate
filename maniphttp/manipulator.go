@@ -419,7 +419,7 @@ func (s *httpManipulator) send(request *http.Request, context *manipulate.Contex
 			"url":      request.URL,
 			"request":  request,
 			"response": response,
-			"error":    err,
+			"error":    err.Error(),
 		}).Debug("Unable to send the request.")
 		return response, manipulate.NewErrCannotCommunicate(err.Error())
 	}
