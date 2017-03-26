@@ -532,7 +532,7 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 			"url":     s.url,
 			"request": request.String(),
 			"data":    string(request.Data),
-			"error":   err,
+			"error":   err.Error(),
 		}).Debug("Unable to send the request.")
 		return nil, manipulate.NewErrCannotCommunicate(err.Error())
 	}
