@@ -356,8 +356,6 @@ func (s *mongoManipulator) Commit(id manipulate.TransactionID) error {
 
 	for _, bulk := range transaction.bulks {
 
-		log.WithField("bulk", bulk).Debug("Committing bulks to mongo.")
-
 		if _, err := bulk.Run(); err != nil {
 
 			if mgo.IsDup(err) {
