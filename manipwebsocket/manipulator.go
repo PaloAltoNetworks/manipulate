@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -442,18 +443,18 @@ func (s *websocketManipulator) connect() error {
 
 	s.unregisterAllResponseChannels()
 
-	url := strings.Replace(s.url, "http://", "ws://", 1)
-	url = strings.Replace(url, "https://", "wss://", 1)
-	url = url + "/wsapi?token=" + s.currentPassword()
+	destURL := strings.Replace(s.url, "http://", "ws://", 1)
+	destURL = strings.Replace(destURL, "https://", "wss://", 1)
+	destURL = destURL + "/wsapi?token=" + s.currentPassword()
 	if s.namespace != "" {
-		url += "&namespace=" + s.namespace
+		destURL += "&namespace=" + url.QueryEscape(s.namespace)
 	}
 
 	if s.receiveAll {
-		url = url + "&mode=all"
+		destURL = destURL + "&mode=all"
 	}
 
-	config, err := websocket.NewConfig(url, url)
+	config, err := websocket.NewConfig(destURL, destURL)
 	if err != nil {
 		return err
 	}
