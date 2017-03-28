@@ -598,9 +598,9 @@ func (s *websocketManipulator) renewMidgardToken(
 	stop chan bool,
 ) {
 
-	nextRefresh := time.Now().Add(interval)
-
 	for {
+		nextRefresh := time.Now().Add(interval)
+
 		select {
 		case <-time.Tick(time.Minute):
 
@@ -609,19 +609,15 @@ func (s *websocketManipulator) renewMidgardToken(
 				continue
 			}
 
-			log.Info("Refreshing Midgard token...")
-
 			token, err := mclient.IssueFromCertificate(certificates)
 			if err != nil {
 				log.WithError(err).Error("Unable to renew token.")
 				break
 			}
 
-			s.renewLock.Lock()
-			s.password = token
-			s.renewLock.Unlock()
+			s.setPassword(token)
 
-			nextRefresh = time.Now().Add(interval)
+			log.Info("Midgard token refreshed")
 
 		case <-stop:
 			return
