@@ -17,6 +17,10 @@ func CompileFilter(f *manipulate.Filter) bson.M {
 		k := strings.ToLower(key[0])
 		op := f.Operators()[index]
 
+		if k == "id" {
+			k = "_id"
+		}
+
 		var dst bson.M
 
 		if op == manipulate.OrOperator {
@@ -25,27 +29,36 @@ func CompileFilter(f *manipulate.Filter) bson.M {
 
 		dst = ands[len(ands)-1]
 
+		if _, ok := dst["$and"]; !ok {
+			dst["$and"] = []bson.M{}
+		}
+
+		b := dst["$and"].([]bson.M)
+
 		switch f.Comparators()[index] {
 
 		case manipulate.EqualComparator:
-			dst[k] = f.Values()[index][0]
+			b = append(b, bson.M{k: bson.M{"$eq": f.Values()[index][0]}})
 
 		case manipulate.NotEqualComparator:
-			dst[k] = bson.M{"$ne": f.Values()[index][0]}
+			b = append(b, bson.M{k: bson.M{"$ne": f.Values()[index][0]}})
 
 		case manipulate.ContainComparator:
-			dst[k] = bson.M{"$in": f.Values()[index]}
+			b = append(b, bson.M{k: bson.M{"$in": f.Values()[index]}})
 
 		case manipulate.GreaterComparator:
-			dst[k] = bson.M{"$gte": f.Values()[index][0]}
+			b = append(b, bson.M{k: bson.M{"$gte": f.Values()[index][0]}})
 
 		case manipulate.LesserComparator:
-			dst[k] = bson.M{"$lte": f.Values()[index][0]}
+			b = append(b, bson.M{k: bson.M{"$lte": f.Values()[index][0]}})
 		}
+
+		dst["$and"] = b
 	}
 
 	if len(ands) == 1 {
 		return ands[0]
 	}
+
 	return bson.M{"$or": ands}
 }

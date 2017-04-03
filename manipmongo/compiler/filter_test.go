@@ -21,7 +21,7 @@ func TestUtils_compiler(t *testing.T) {
 			b, _ := bson.MarshalJSON(CompileFilter(f))
 
 			Convey("Then the bson should be correct", func() {
-				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"x":1}`)
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$eq":1}}]}`)
 			})
 		})
 	})
@@ -35,7 +35,21 @@ func TestUtils_compiler(t *testing.T) {
 			b, _ := bson.MarshalJSON(CompileFilter(f))
 
 			Convey("Then the bson should be correct", func() {
-				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"x":1,"y":2}`)
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$eq":1}},{"y":{"$eq":2}}]}`)
+			})
+		})
+	})
+
+	Convey("Given I have a simple multiple key and manipulate.Filter", t, func() {
+
+		f := manipulate.NewFilterComposer().WithKey("x").NotEquals(1).AndKey("x").NotEquals(2).Done()
+
+		Convey("When I compile the filter", func() {
+
+			b, _ := bson.MarshalJSON(CompileFilter(f))
+
+			Convey("Then the bson should be correct", func() {
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$ne":1}},{"x":{"$ne":2}}]}`)
 			})
 		})
 	})
@@ -49,7 +63,7 @@ func TestUtils_compiler(t *testing.T) {
 			b, _ := bson.MarshalJSON(CompileFilter(f))
 
 			Convey("Then the bson should be correct", func() {
-				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"x":1,"z":{"$in":["a","b"]}}`)
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$eq":1}},{"z":{"$in":["a","b"]}}]}`)
 			})
 		})
 	})
@@ -63,7 +77,7 @@ func TestUtils_compiler(t *testing.T) {
 			b, _ := bson.MarshalJSON(CompileFilter(f))
 
 			Convey("Then the bson should be correct", func() {
-				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$or":[{"x":1},{"x":100}]}`)
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$or":[{"$and":[{"x":{"$eq":1}}]},{"$and":[{"x":{"$eq":100}}]}]}`)
 			})
 		})
 	})
@@ -82,7 +96,7 @@ func TestUtils_compiler(t *testing.T) {
 			b, _ := bson.MarshalJSON(CompileFilter(f))
 
 			Convey("Then the bson should be correct", func() {
-				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$or":[{"x":1,"z":{"$in":["a","b"]}},{"x":100,"z":{"$in":["aa","bb"]}}]}`)
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$or":[{"$and":[{"x":{"$eq":1}},{"z":{"$in":["a","b"]}}]},{"$and":[{"x":{"$eq":100}},{"z":{"$in":["aa","bb"]}}]}]}`)
 			})
 		})
 	})
