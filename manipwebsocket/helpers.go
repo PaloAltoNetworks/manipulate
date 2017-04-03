@@ -35,7 +35,9 @@ func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Cont
 	}
 
 	if ctx.Parameters != nil {
-		request.Parameters = ctx.Parameters.KeyValues
+		for k, v := range ctx.Parameters.KeyValues {
+			request.Parameters[k] = v
+		}
 	}
 
 	if ctx.Parent != nil {
