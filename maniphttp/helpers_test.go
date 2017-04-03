@@ -2,6 +2,7 @@ package maniphttp
 
 import (
 	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/aporeto-inc/manipulate"
@@ -13,10 +14,10 @@ func Test_addQueryParameters(t *testing.T) {
 	createTestData := func() (ctx *manipulate.Context, benchmark string) {
 		ctx = manipulate.NewContext()
 		ctx.Parameters = &manipulate.Parameters{}
-		ctx.Parameters.KeyValues = map[string]string{
-			"a":    "1",
-			"b b":  "2 2",
-			"c+&=": "3;:/",
+		ctx.Parameters.KeyValues = url.Values{
+			"a":    []string{"1"},
+			"b b":  []string{"2 2"},
+			"c+&=": []string{"3;:/"},
 		}
 		ctx.Page = 1
 		ctx.PageSize = 100

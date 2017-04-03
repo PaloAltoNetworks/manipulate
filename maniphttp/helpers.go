@@ -16,7 +16,7 @@ func addQueryParameters(req *http.Request, ctx *manipulate.Context) {
 	if ctx.Parameters != nil && ctx.Parameters.KeyValues != nil {
 		keyValues := ctx.Parameters.KeyValues
 		for k, v := range keyValues {
-			q.Add(k, v)
+			q[k] = v
 		}
 	}
 
