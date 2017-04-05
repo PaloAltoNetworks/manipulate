@@ -524,17 +524,22 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 		return nil, manipulate.NewErrCannotCommunicate("Websocket not initialized")
 	}
 
+	log.WithFields(logrus.Fields{
+		"method":     request.Operation,
+		"server":     s.url,
+		"url":        request.URL(),
+		"headers":    request.Headers,
+		"parameters": request.Parameters,
+		"namespace":  request.Namespace,
+		"recursive":  request.Recursive,
+		"data":       string(request.Data),
+		"username":   request.Username,
+	}).Debug("Send request")
+
 	err := websocket.JSON.Send(s.ws, request)
 	s.wsLock.Unlock()
 
 	if err != nil {
-		log.WithFields(logrus.Fields{
-			"method":  request.Operation,
-			"url":     s.url,
-			"request": request.String(),
-			"data":    string(request.Data),
-			"error":   err.Error(),
-		}).Debug("Unable to send the request.")
 		return nil, manipulate.NewErrCannotCommunicate(err.Error())
 	}
 
@@ -544,16 +549,18 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 	select {
 	case response := <-ch:
 
-		if log.Level == logrus.DebugLevel {
-			log.WithFields(logrus.Fields{
-				"method":             request.Operation,
-				"url":                s.url,
-				"request":            request.String(),
-				"requestData":        string(request.Data),
-				"responseStatusCode": response.StatusCode,
-				"responseData":       string(response.Data),
-			}).Debug("Request sent.")
-		}
+		log.WithFields(logrus.Fields{
+			"method":             request.Operation,
+			"server":             s.url,
+			"url":                request.URL(),
+			"headers":            request.Headers,
+			"parameters":         request.Parameters,
+			"namespace":          request.Namespace,
+			"recursive":          request.Recursive,
+			"data":               string(request.Data),
+			"responseStatusCode": response.StatusCode,
+			"responseData":       string(response.Data),
+		}).Debug("Response received")
 
 		if response.StatusCode < 200 || response.StatusCode > 300 {
 			return nil, decodeErrors(response)
