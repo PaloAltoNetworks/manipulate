@@ -136,7 +136,10 @@ func (s *httpManipulator) RetrieveMany(context *manipulate.Context, dest element
 	}
 	addQueryParameters(request, context)
 
-	tracing.InjectInHTTPRequest(sp, request)
+	if err = tracing.InjectInHTTPRequest(sp, request); err != nil {
+		tracing.FinishTraceWithError(sp, err)
+		return err
+	}
 
 	response, err := s.send(request, context)
 	if err != nil {
@@ -186,7 +189,10 @@ func (s *httpManipulator) Retrieve(context *manipulate.Context, objects ...eleme
 		}
 		addQueryParameters(request, context)
 
-		tracing.InjectInHTTPRequest(subSp, request)
+		if err = tracing.InjectInHTTPRequest(subSp, request); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
+			return err
+		}
 
 		response, err := s.send(request, context)
 		if err != nil {
@@ -239,7 +245,10 @@ func (s *httpManipulator) Create(context *manipulate.Context, objects ...element
 		}
 		addQueryParameters(request, context)
 
-		tracing.InjectInHTTPRequest(subSp, request)
+		if err = tracing.InjectInHTTPRequest(subSp, request); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
+			return err
+		}
 
 		response, err := s.send(request, context)
 		if err != nil {
@@ -296,7 +305,10 @@ func (s *httpManipulator) Update(context *manipulate.Context, objects ...element
 		}
 		addQueryParameters(request, context)
 
-		tracing.InjectInHTTPRequest(subSp, request)
+		if err = tracing.InjectInHTTPRequest(subSp, request); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
+			return err
+		}
 
 		response, err := s.send(request, context)
 		if err != nil {
@@ -343,7 +355,10 @@ func (s *httpManipulator) Delete(context *manipulate.Context, objects ...element
 		}
 		addQueryParameters(request, context)
 
-		tracing.InjectInHTTPRequest(subSp, request)
+		if err = tracing.InjectInHTTPRequest(subSp, request); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
+			return err
+		}
 
 		_, err = s.send(request, context)
 		if err != nil {
@@ -382,7 +397,10 @@ func (s *httpManipulator) Count(context *manipulate.Context, identity elemental.
 	}
 	addQueryParameters(request, context)
 
-	tracing.InjectInHTTPRequest(sp, request)
+	if err = tracing.InjectInHTTPRequest(sp, request); err != nil {
+		tracing.FinishTraceWithError(sp, err)
+		return 0, err
+	}
 
 	_, err = s.send(request, context)
 	if err != nil {

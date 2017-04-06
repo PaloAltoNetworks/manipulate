@@ -138,7 +138,10 @@ func (s *websocketManipulator) RetrieveMany(context *manipulate.Context, dest el
 		return err
 	}
 
-	tracing.InjectInElementalRequest(sp, req)
+	if err := tracing.InjectInElementalRequest(sp, req); err != nil {
+		tracing.FinishTraceWithError(sp, err)
+		return err
+	}
 
 	resp, err := s.send(req)
 	if err != nil {
@@ -192,7 +195,10 @@ func (s *websocketManipulator) Retrieve(context *manipulate.Context, objects ...
 			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
-		tracing.InjectInElementalRequest(subSp, req)
+		if err := tracing.InjectInElementalRequest(subSp, req); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
+			return err
+		}
 
 		resp, err := s.send(req)
 		if err != nil {
@@ -242,7 +248,10 @@ func (s *websocketManipulator) Create(context *manipulate.Context, objects ...el
 			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
-		tracing.InjectInElementalRequest(subSp, req)
+		if err := tracing.InjectInElementalRequest(subSp, req); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
+			return err
+		}
 
 		resp, err := s.send(req)
 		if err != nil {
@@ -293,7 +302,10 @@ func (s *websocketManipulator) Update(context *manipulate.Context, objects ...el
 			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
-		tracing.InjectInElementalRequest(subSp, req)
+		if err := tracing.InjectInElementalRequest(subSp, req); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
+			return err
+		}
 
 		resp, err := s.send(req)
 		if err != nil {
@@ -344,7 +356,10 @@ func (s *websocketManipulator) Delete(context *manipulate.Context, objects ...el
 			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
-		tracing.InjectInElementalRequest(subSp, req)
+		if err := tracing.InjectInElementalRequest(subSp, req); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
+			return err
+		}
 
 		resp, err := s.send(req)
 		if err != nil {
@@ -388,7 +403,10 @@ func (s *websocketManipulator) Count(context *manipulate.Context, identity eleme
 		return 0, err
 	}
 
-	tracing.InjectInElementalRequest(sp, req)
+	if err := tracing.InjectInElementalRequest(sp, req); err != nil {
+		tracing.FinishTraceWithError(sp, err)
+		return 0, err
+	}
 
 	resp, err := s.send(req)
 	if err != nil {
