@@ -183,12 +183,6 @@ func (s *memdbManipulator) Count(context *manipulate.Context, identity elemental
 	return 0, nil
 }
 
-// Assign is part of the implementation of the Manipulator interface.
-func (*memdbManipulator) Assign(context *manipulate.Context, assignation *elemental.Assignation) error {
-
-	return manipulate.NewErrNotImplemented("Assign not implemented in memory manipulator")
-}
-
 // Increment is part of the implementation of the Manipulator interface.
 func (*memdbManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
 

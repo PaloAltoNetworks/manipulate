@@ -401,11 +401,6 @@ func (s *websocketManipulator) Count(context *manipulate.Context, identity eleme
 	return resp.Total, nil
 }
 
-func (s *websocketManipulator) Assign(context *manipulate.Context, assignation *elemental.Assignation) error {
-
-	return manipulate.NewErrNotImplemented("Assign not implemented in websocket manipulator")
-}
-
 func (s *websocketManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
 
 	return manipulate.NewErrNotImplemented("Increment not implemented in websocket manipulator")

@@ -375,10 +375,6 @@ func (s *mongoManipulator) Count(context *manipulate.Context, identity elemental
 	return c, nil
 }
 
-func (s *mongoManipulator) Assign(context *manipulate.Context, assignation *elemental.Assignation) error {
-	return fmt.Errorf("Assign is not implemented in mongo")
-}
-
 func (s *mongoManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
 	return nil
 }

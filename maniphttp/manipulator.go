@@ -395,11 +395,6 @@ func (s *httpManipulator) Count(context *manipulate.Context, identity elemental.
 	return context.CountTotal, nil
 }
 
-func (s *httpManipulator) Assign(context *manipulate.Context, assignation *elemental.Assignation) error {
-
-	return manipulate.NewErrNotImplemented("Assign method not implemented in http manipulator")
-}
-
 func (s *httpManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
 
 	return manipulate.NewErrNotImplemented("Increment method not implemented in http manipulator")
