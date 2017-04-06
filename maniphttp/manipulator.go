@@ -136,6 +136,8 @@ func (s *httpManipulator) RetrieveMany(context *manipulate.Context, dest element
 	}
 	addQueryParameters(request, context)
 
+	tracing.InjectInHTTPRequest(sp, request)
+
 	response, err := s.send(request, context)
 	if err != nil {
 		tracing.FinishTraceWithError(sp, err)
@@ -183,6 +185,8 @@ func (s *httpManipulator) Retrieve(context *manipulate.Context, objects ...eleme
 			return manipulate.NewErrCannotExecuteQuery(err.Error())
 		}
 		addQueryParameters(request, context)
+
+		tracing.InjectInHTTPRequest(subSp, request)
 
 		response, err := s.send(request, context)
 		if err != nil {
@@ -234,6 +238,8 @@ func (s *httpManipulator) Create(context *manipulate.Context, objects ...element
 			return manipulate.NewErrCannotExecuteQuery(err.Error())
 		}
 		addQueryParameters(request, context)
+
+		tracing.InjectInHTTPRequest(subSp, request)
 
 		response, err := s.send(request, context)
 		if err != nil {
@@ -290,6 +296,8 @@ func (s *httpManipulator) Update(context *manipulate.Context, objects ...element
 		}
 		addQueryParameters(request, context)
 
+		tracing.InjectInHTTPRequest(subSp, request)
+
 		response, err := s.send(request, context)
 		if err != nil {
 			tracing.FinishTraceWithError(subSp, err)
@@ -335,6 +343,8 @@ func (s *httpManipulator) Delete(context *manipulate.Context, objects ...element
 		}
 		addQueryParameters(request, context)
 
+		tracing.InjectInHTTPRequest(subSp, request)
+
 		_, err = s.send(request, context)
 		if err != nil {
 			tracing.FinishTraceWithError(subSp, err)
@@ -372,6 +382,8 @@ func (s *httpManipulator) Count(context *manipulate.Context, identity elemental.
 	}
 	addQueryParameters(request, context)
 
+	tracing.InjectInHTTPRequest(sp, request)
+
 	_, err = s.send(request, context)
 	if err != nil {
 		tracing.FinishTraceWithError(sp, err)
@@ -385,29 +397,7 @@ func (s *httpManipulator) Count(context *manipulate.Context, identity elemental.
 
 func (s *httpManipulator) Assign(context *manipulate.Context, assignation *elemental.Assignation) error {
 
-	if context == nil {
-		context = manipulate.NewContext()
-	}
-
-	url, err := s.getURLForChildrenIdentity(context.Parent, assignation.MembersIdentity)
-	if err != nil {
-		return manipulate.NewErrCannotBuildQuery(err.Error())
-	}
-
-	buffer := &bytes.Buffer{}
-	if err = json.NewEncoder(buffer).Encode(assignation); err != nil {
-		return manipulate.NewErrCannotMarshal(err.Error())
-	}
-
-	request, err := http.NewRequest(http.MethodPatch, url, buffer)
-	if err != nil {
-		return manipulate.NewErrCannotExecuteQuery(err.Error())
-	}
-	addQueryParameters(request, context)
-
-	_, err = s.send(request, context)
-
-	return err
+	return manipulate.NewErrNotImplemented("Assign method not implemented in http manipulator")
 }
 
 func (s *httpManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {

@@ -1,6 +1,8 @@
 package tracing
 
 import (
+	"net/http"
+
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 	"github.com/opentracing/opentracing-go"
@@ -68,8 +70,8 @@ func FinishTraceWithError(span opentracing.Span, err error) {
 	span.Finish()
 }
 
-// Inject injects the span info into the given elemental.Request
-func Inject(span opentracing.Span, request *elemental.Request) error {
+// InjectInElementalRequest injects the span info into the given elemental.Request.
+func InjectInElementalRequest(span opentracing.Span, request *elemental.Request) error {
 
 	if span == nil {
 		return nil
@@ -82,4 +84,20 @@ func Inject(span opentracing.Span, request *elemental.Request) error {
 	}
 
 	return tracer.Inject(span.Context(), opentracing.TextMap, request.TrackingData)
+}
+
+// InjectInHTTPRequest injects the span info into the given http.Request.
+func InjectInHTTPRequest(span opentracing.Span, request *http.Request) error {
+
+	if span == nil {
+		return nil
+	}
+
+	tracer := span.Tracer()
+
+	if tracer == nil {
+		return nil
+	}
+
+	return tracer.Inject(span.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(request.Header))
 }

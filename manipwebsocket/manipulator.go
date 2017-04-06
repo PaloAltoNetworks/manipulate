@@ -138,7 +138,7 @@ func (s *websocketManipulator) RetrieveMany(context *manipulate.Context, dest el
 		return err
 	}
 
-	tracing.Inject(sp, req)
+	tracing.InjectInElementalRequest(sp, req)
 
 	resp, err := s.send(req)
 	if err != nil {
@@ -192,7 +192,7 @@ func (s *websocketManipulator) Retrieve(context *manipulate.Context, objects ...
 			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
-		tracing.Inject(subSp, req)
+		tracing.InjectInElementalRequest(subSp, req)
 
 		resp, err := s.send(req)
 		if err != nil {
@@ -242,7 +242,7 @@ func (s *websocketManipulator) Create(context *manipulate.Context, objects ...el
 			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
-		tracing.Inject(subSp, req)
+		tracing.InjectInElementalRequest(subSp, req)
 
 		resp, err := s.send(req)
 		if err != nil {
@@ -293,7 +293,7 @@ func (s *websocketManipulator) Update(context *manipulate.Context, objects ...el
 			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
-		tracing.Inject(subSp, req)
+		tracing.InjectInElementalRequest(subSp, req)
 
 		resp, err := s.send(req)
 		if err != nil {
@@ -344,7 +344,7 @@ func (s *websocketManipulator) Delete(context *manipulate.Context, objects ...el
 			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
-		tracing.Inject(subSp, req)
+		tracing.InjectInElementalRequest(subSp, req)
 
 		resp, err := s.send(req)
 		if err != nil {
@@ -388,7 +388,7 @@ func (s *websocketManipulator) Count(context *manipulate.Context, identity eleme
 		return 0, err
 	}
 
-	tracing.Inject(sp, req)
+	tracing.InjectInElementalRequest(sp, req)
 
 	resp, err := s.send(req)
 	if err != nil {
