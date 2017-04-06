@@ -7,25 +7,22 @@ package manipwebsocket
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
 
-	"golang.org/x/net/websocket"
-
 	"github.com/Sirupsen/logrus"
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
+	"github.com/aporeto-inc/manipulate/internal/tracing"
+	"github.com/opentracing/opentracing-go"
+	"golang.org/x/net/websocket"
 
 	midgard "github.com/aporeto-inc/midgard-lib/client"
 )
-
-// Logger contains the main logger.
-var Logger = logrus.New()
-
-var log = Logger.WithField("package", "manipwebsocket")
 
 type websocketManipulator struct {
 	responsesChanRegistry     map[string]chan *elemental.Response
@@ -48,7 +45,7 @@ func NewWebSocketManipulator(username, password, url, namespace string) (manipul
 
 	CAPool, err := x509.SystemCertPool()
 	if err != nil {
-		log.Error("Unable to load system root cert pool. tls fallback to unsecure.")
+		logrus.Error("Unable to load system root cert pool. tls fallback to unsecure.")
 	}
 
 	return NewWebSocketManipulatorWithRootCA(username, password, url, namespace, CAPool, true)
@@ -98,14 +95,19 @@ func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string
 // using a certificates to authenticate against a Midgard server.
 func NewWebSocketManipulatorWithMidgardCertAuthentication(url string, midgardurl string, rootCAPool *x509.CertPool, clientCAPool *x509.CertPool, certificates []tls.Certificate, namespace string, refreshInterval time.Duration, skipInsecure bool) (manipulate.EventManipulator, func(), error) {
 
+	sp := opentracing.StartSpan("manipwebsocket.authenthication")
+	defer sp.Finish()
+
 	mclient := midgard.NewClientWithCAPool(midgardurl, rootCAPool, clientCAPool, skipInsecure)
-	token, err := mclient.IssueFromCertificate(certificates)
+	token, err := mclient.IssueFromCertificateWithValidity(certificates, 24*time.Hour, sp)
 	if err != nil {
+		tracing.FinishTraceWithError(sp, err)
 		return nil, nil, err
 	}
 
 	m, stop, err := NewWebSocketManipulatorWithRootCA("Bearer", token, url, namespace, rootCAPool, skipInsecure)
 	if err != nil {
+		tracing.FinishTraceWithError(sp, err)
 		return nil, nil, err
 	}
 
@@ -122,6 +124,8 @@ func (s *websocketManipulator) RetrieveMany(context *manipulate.Context, dest el
 		context = manipulate.NewContext()
 	}
 
+	sp := tracing.StartTrace(context.TrackingSpan, fmt.Sprintf("manipwebsocket.retrieve_many.%s", dest.ContentIdentity().Category), context)
+
 	req := elemental.NewRequest()
 	req.Namespace = s.namespace
 	req.Operation = elemental.OperationRetrieveMany
@@ -130,28 +134,45 @@ func (s *websocketManipulator) RetrieveMany(context *manipulate.Context, dest el
 	req.Password = s.currentPassword()
 
 	if err := populateRequestFromContext(req, context); err != nil {
+		tracing.FinishTraceWithError(sp, err)
 		return err
 	}
 
+	tracing.Inject(sp, req)
+
 	resp, err := s.send(req)
 	if err != nil {
+		tracing.FinishTraceWithError(sp, err)
 		return err
 	}
 
 	if err := resp.Decode(dest); err != nil {
+		tracing.FinishTraceWithError(sp, err)
 		return manipulate.NewErrCannotUnmarshal(err.Error())
 	}
+
+	tracing.FinishTrace(sp)
 
 	return nil
 }
 
 func (s *websocketManipulator) Retrieve(context *manipulate.Context, objects ...elemental.Identifiable) error {
 
+	if len(objects) == 0 {
+		return nil
+	}
+
 	if context == nil {
 		context = manipulate.NewContext()
 	}
 
+	sp := tracing.StartTrace(context.TrackingSpan, "manipwebsocket.retrieve", context)
+	defer tracing.FinishTrace(sp)
+
 	for _, object := range objects {
+
+		subSp := tracing.StartTrace(sp, fmt.Sprintf("manipwebsocket.retrieve.object.%s", object.Identity().Name), context)
+		tracing.SetTag(subSp, "manipwebsocket.retrieve.object.id", object.Identifier())
 
 		req := elemental.NewRequest()
 		req.Namespace = s.namespace
@@ -162,21 +183,29 @@ func (s *websocketManipulator) Retrieve(context *manipulate.Context, objects ...
 		req.ObjectID = object.Identifier()
 
 		if err := populateRequestFromContext(req, context); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
 			return err
 		}
 
 		if err := req.Encode(object); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
 			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
+		tracing.Inject(subSp, req)
+
 		resp, err := s.send(req)
 		if err != nil {
+			tracing.FinishTraceWithError(subSp, err)
 			return err
 		}
 
 		if err := resp.Decode(&object); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
 			return manipulate.NewErrCannotUnmarshal(err.Error())
 		}
+
+		tracing.FinishTrace(subSp)
 	}
 
 	return nil
@@ -188,7 +217,13 @@ func (s *websocketManipulator) Create(context *manipulate.Context, objects ...el
 		context = manipulate.NewContext()
 	}
 
+	sp := tracing.StartTrace(context.TrackingSpan, "manipwebsocket.create", context)
+	defer tracing.FinishTrace(sp)
+
 	for _, object := range objects {
+
+		subSp := tracing.StartTrace(sp, fmt.Sprintf("manipwebsocket.create.object.%s", object.Identity().Name), context)
+		tracing.SetTag(subSp, "manipwebsocket.create.object.id", object.Identifier())
 
 		req := elemental.NewRequest()
 		req.Namespace = s.namespace
@@ -198,21 +233,29 @@ func (s *websocketManipulator) Create(context *manipulate.Context, objects ...el
 		req.Password = s.currentPassword()
 
 		if err := populateRequestFromContext(req, context); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
 			return err
 		}
 
 		if err := req.Encode(object); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
 			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
+		tracing.Inject(subSp, req)
+
 		resp, err := s.send(req)
 		if err != nil {
+			tracing.FinishTraceWithError(subSp, err)
 			return err
 		}
 
 		if err := resp.Decode(&object); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
 			return manipulate.NewErrCannotUnmarshal(err.Error())
 		}
+
+		tracing.FinishTrace(subSp)
 	}
 
 	return nil
@@ -224,7 +267,13 @@ func (s *websocketManipulator) Update(context *manipulate.Context, objects ...el
 		context = manipulate.NewContext()
 	}
 
+	sp := tracing.StartTrace(context.TrackingSpan, "manipwebsocket.update", context)
+	defer tracing.FinishTrace(sp)
+
 	for _, object := range objects {
+
+		subSp := tracing.StartTrace(sp, fmt.Sprintf("manipwebsocket.update.object.%s", object.Identity().Name), context)
+		tracing.SetTag(subSp, "manipwebsocket.update.object.id", object.Identifier())
 
 		req := elemental.NewRequest()
 		req.Namespace = s.namespace
@@ -235,21 +284,29 @@ func (s *websocketManipulator) Update(context *manipulate.Context, objects ...el
 		req.ObjectID = object.Identifier()
 
 		if err := populateRequestFromContext(req, context); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
 			return err
 		}
 
 		if err := req.Encode(object); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
 			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
+		tracing.Inject(subSp, req)
+
 		resp, err := s.send(req)
 		if err != nil {
+			tracing.FinishTraceWithError(subSp, err)
 			return err
 		}
 
 		if err := resp.Decode(&object); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
 			return manipulate.NewErrCannotUnmarshal(err.Error())
 		}
+
+		tracing.FinishTrace(subSp)
 	}
 
 	return nil
@@ -261,7 +318,13 @@ func (s *websocketManipulator) Delete(context *manipulate.Context, objects ...el
 		context = manipulate.NewContext()
 	}
 
+	sp := tracing.StartTrace(context.TrackingSpan, "manipwebsocket.delete", context)
+	defer tracing.FinishTrace(sp)
+
 	for _, object := range objects {
+
+		subSp := tracing.StartTrace(sp, fmt.Sprintf("manipwebsocket.delete.object.%s", object.Identity().Name), context)
+		tracing.SetTag(subSp, "manipwebsocket.delete.object.id", object.Identifier())
 
 		req := elemental.NewRequest()
 		req.Namespace = s.namespace
@@ -272,27 +335,36 @@ func (s *websocketManipulator) Delete(context *manipulate.Context, objects ...el
 		req.ObjectID = object.Identifier()
 
 		if err := populateRequestFromContext(req, context); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
 			return err
 		}
 
 		if err := req.Encode(object); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
 			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
+		tracing.Inject(subSp, req)
+
 		resp, err := s.send(req)
 		if err != nil {
+			tracing.FinishTraceWithError(subSp, err)
 			return err
 		}
 
 		if err := resp.Decode(&object); err != nil {
+			tracing.FinishTraceWithError(subSp, err)
 			return manipulate.NewErrCannotUnmarshal(err.Error())
 		}
+
+		tracing.FinishTrace(subSp)
 	}
 
 	return nil
 }
 
 func (s *websocketManipulator) DeleteMany(context *manipulate.Context, identity elemental.Identity) error {
+
 	return manipulate.NewErrNotImplemented("DeleteMany not implemented in manipwebsocket")
 }
 
@@ -302,6 +374,8 @@ func (s *websocketManipulator) Count(context *manipulate.Context, identity eleme
 		context = manipulate.NewContext()
 	}
 
+	sp := tracing.StartTrace(context.TrackingSpan, fmt.Sprintf("manipwebsocket.count.%s", identity.Category), context)
+
 	req := elemental.NewRequest()
 	req.Namespace = s.namespace
 	req.Operation = elemental.OperationInfo
@@ -310,13 +384,19 @@ func (s *websocketManipulator) Count(context *manipulate.Context, identity eleme
 	req.Password = s.currentPassword()
 
 	if err := populateRequestFromContext(req, context); err != nil {
+		tracing.FinishTraceWithError(sp, err)
 		return 0, err
 	}
 
+	tracing.Inject(sp, req)
+
 	resp, err := s.send(req)
 	if err != nil {
+		tracing.FinishTraceWithError(sp, err)
 		return 0, err
 	}
+
+	tracing.FinishTrace(sp)
 
 	return resp.Total, nil
 }
@@ -390,7 +470,7 @@ func (s *websocketManipulator) Subscribe(
 			ws, err = websocket.DialConfig(config)
 			lock.Unlock()
 			if err != nil {
-				log.Warn("Could not connect to websocket. Retrying in 5s")
+				logrus.Warn("Could not connect to websocket. Retrying in 5s")
 				<-time.After(5 * time.Second)
 				continue
 			}
@@ -501,16 +581,16 @@ func (s *websocketManipulator) listen() {
 		}
 		s.runningLock.Unlock()
 
-		log.WithField("error", err).Warn("Websocket connection died. Reconnecting...")
+		logrus.WithField("error", err).Warn("Websocket connection died. Reconnecting...")
 		for {
 
 			if err := s.connect(); err != nil {
-				log.Warn("Websocket not available. Retrying in 5s...")
+				logrus.Warn("Websocket not available. Retrying in 5s...")
 				<-time.After(5 * time.Second)
 				continue
 			}
 
-			log.Info("Websocket connection restored.")
+			logrus.Info("Websocket connection restored.")
 			break
 		}
 	}
@@ -528,7 +608,7 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 	s.wsLock.Unlock()
 
 	if err != nil {
-		log.WithFields(logrus.Fields{
+		logrus.WithFields(logrus.Fields{
 			"method":  request.Operation,
 			"url":     s.url,
 			"request": request.String(),
@@ -543,17 +623,6 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 
 	select {
 	case response := <-ch:
-
-		if log.Level == logrus.DebugLevel {
-			log.WithFields(logrus.Fields{
-				"method":             request.Operation,
-				"url":                s.url,
-				"request":            request.String(),
-				"requestData":        string(request.Data),
-				"responseStatusCode": response.StatusCode,
-				"responseData":       string(response.Data),
-			}).Debug("Request sent.")
-		}
 
 		if response.StatusCode < 200 || response.StatusCode > 300 {
 			return nil, decodeErrors(response)
@@ -630,13 +699,13 @@ func (s *websocketManipulator) renewMidgardToken(
 
 			token, err := mclient.IssueFromCertificate(certificates)
 			if err != nil {
-				log.WithError(err).Error("Unable to renew token.")
+				logrus.WithError(err).Error("Unable to renew token.")
 				break
 			}
 
 			s.setPassword(token)
 
-			log.Info("Midgard token refreshed")
+			logrus.Info("Midgard token refreshed")
 
 		case <-stop:
 			return

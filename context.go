@@ -7,6 +7,8 @@ package manipulate
 import (
 	"fmt"
 
+	"github.com/opentracing/opentracing-go"
+
 	"github.com/aporeto-inc/elemental"
 )
 
@@ -30,6 +32,7 @@ type Context struct {
 	OverrideProtection bool
 	CreateFinalizer    FinalizerFunc
 	Version            int
+	TrackingSpan       opentracing.Span
 }
 
 // NewContext returns a new *Context
@@ -46,6 +49,15 @@ func NewContextWithFilter(filter *Filter) *Context {
 
 	ctx := NewContext()
 	ctx.Filter = filter
+
+	return ctx
+}
+
+// NewContextWithTrackingSpan returns a new *Context with the given tracer.
+func NewContextWithTrackingSpan(span opentracing.Span) *Context {
+
+	ctx := NewContext()
+	ctx.TrackingSpan = span
 
 	return ctx
 }

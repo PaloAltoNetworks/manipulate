@@ -4,6 +4,8 @@ import (
 	"crypto/tls"
 	"time"
 
+	"github.com/Sirupsen/logrus"
+
 	midgardclient "github.com/aporeto-inc/midgard-lib/client"
 )
 
@@ -25,10 +27,10 @@ func renewMidgardToken(
 				continue
 			}
 
-			log.Info("Refreshing Midgard token...")
+			logrus.Info("Refreshing Midgard token...")
 			token, err := midgardClient.IssueFromCertificate(certificates)
 			if err != nil {
-				log.WithError(err).Error("Unable to renew token.")
+				logrus.WithError(err).Error("Unable to renew token.")
 				break
 			}
 
