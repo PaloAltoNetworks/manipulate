@@ -24,7 +24,12 @@ func StartTrace(rootSpan opentracing.Span, name string, mctx *manipulate.Context
 		sp.SetTag("manipulate.context.page_size", mctx.PageSize)
 		sp.SetTag("manipulate.context.override_protection", mctx.OverrideProtection)
 		sp.SetTag("manipulate.context.recursive", mctx.Recursive)
-		sp.SetTag("manipulate.context.namespace", mctx.Namespace)
+
+		if mctx.Namespace != "" {
+			sp.SetTag("manipulate.context.namespace", mctx.Namespace)
+		} else {
+			sp.SetTag("manipulate.context.namespace", "manipulator-default")
+		}
 
 		if len(mctx.Parameters.KeyValues) >= 0 {
 			sp.SetTag("manipulate.context.parameters", mctx.Parameters.KeyValues)
