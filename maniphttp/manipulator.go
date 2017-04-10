@@ -441,6 +441,10 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, context *manipul
 		request.Header.Set("X-External-Tracking-ID", context.ExternalTrackingID)
 	}
 
+	if context.ExternalTrackingType != "" {
+		request.Header.Set("X-External-Tracking-Type", context.ExternalTrackingType)
+	}
+
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
 	return
