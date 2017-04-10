@@ -437,6 +437,10 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, context *manipul
 		request.Header.Set("Authorization", s.makeAuthorizationHeaders())
 	}
 
+	if context.ExternalTrackingID != "" {
+		request.Header.Set("X-External-Tracking-ID", context.ExternalTrackingID)
+	}
+
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
 	return
@@ -484,7 +488,6 @@ func (s *httpManipulator) send(request *http.Request, context *manipulate.Contex
 	s.prepareHeaders(request, context)
 
 	response, err := s.client.Do(request)
-
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"method":   request.Method,

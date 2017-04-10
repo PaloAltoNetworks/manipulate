@@ -53,6 +53,7 @@ func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Cont
 		request.Recursive = true
 	}
 
+	request.ExternalTrackingID = ctx.ExternalTrackingID
 	request.Page = ctx.Page
 	request.PageSize = ctx.PageSize
 	request.OverrideProtection = ctx.OverrideProtection

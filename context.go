@@ -33,6 +33,7 @@ type Context struct {
 	CreateFinalizer    FinalizerFunc
 	Version            int
 	TrackingSpan       opentracing.Span
+	ExternalTrackingID string
 }
 
 // NewContext returns a new *Context
