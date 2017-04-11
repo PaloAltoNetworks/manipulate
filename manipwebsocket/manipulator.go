@@ -483,7 +483,7 @@ func (s *websocketManipulator) Subscribe(
 			ws, err = websocket.DialConfig(config)
 			lock.Unlock()
 			if err != nil {
-				logrus.Warn("Could not connect to websocket. Retrying in 5s")
+				logrus.WithField("error", err.Error()).Warn("Could not connect to websocket. Retrying in 5s")
 				<-time.After(5 * time.Second)
 				continue
 			}
@@ -598,7 +598,7 @@ func (s *websocketManipulator) listen() {
 		for {
 
 			if err := s.connect(); err != nil {
-				logrus.Warn("Websocket not available. Retrying in 5s...")
+				logrus.WithField("error", err.Error()).Warn("Websocket not available. Retrying in 5s...")
 				<-time.After(5 * time.Second)
 				continue
 			}
