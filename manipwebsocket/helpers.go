@@ -74,3 +74,22 @@ func SendRequest(manipulator manipulate.Manipulator, request *elemental.Request)
 
 	return m.send(request)
 }
+
+// IsConnected checks the connection state of the manipulator.
+func IsConnected(manipulator manipulate.Manipulator) bool {
+
+	m, ok := manipulator.(*websocketManipulator)
+
+	if !ok {
+		return false
+	}
+
+	if !m.isConnected() {
+		return false
+	}
+
+	m.wsLock.Lock()
+	defer m.wsLock.Unlock()
+
+	return m.ws != nil
+}
