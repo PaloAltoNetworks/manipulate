@@ -109,4 +109,13 @@ func NewErrConstraintViolation(message string) ErrConstraintViolation {
 }
 
 func (e ErrConstraintViolation) Error() string { return "Constraint violation: " + e.message }
+
+// ErrDisconnected represents an error due user disconnection.
+type ErrDisconnected struct{ message string }
+
+// NewErrDisconnected returns a new ErrDisconnected.
+func NewErrDisconnected(message string) ErrDisconnected {
+	return ErrDisconnected{message: message}
+}
+
 func (e ErrDisconnected) Error() string { return "Disconnected: " + e.message }

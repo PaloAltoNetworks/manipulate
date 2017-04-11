@@ -31,8 +31,8 @@ type websocketManipulator struct {
 	namespace                 string
 	password                  string
 	receiveAll                bool
-	running                   bool
-	runningLock               *sync.Mutex
+	connected                 bool
+	connectedLock             *sync.Mutex
 	tlsConfig                 *tls.Config
 	url                       string
 	username                  string
@@ -68,9 +68,9 @@ func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string
 		responsesChanRegistry:     map[string]chan *elemental.Response{},
 		responsesChanRegistryLock: &sync.Mutex{},
 		renewLock:                 &sync.Mutex{},
-		runningLock:               &sync.Mutex{},
+		connectedLock:             &sync.Mutex{},
 		wsLock:                    &sync.Mutex{},
-		running:                   true,
+		connected:                 true,
 	}
 
 	if err := m.connect(); err != nil {
@@ -80,11 +80,12 @@ func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string
 	go m.listen()
 
 	return m, func() {
+		m.connectedLock.Lock()
+		m.connected = false
+		m.connectedLock.Unlock()
+
 		m.wsLock.Lock()
 		if m.ws != nil && m.ws.IsClientConn() {
-			m.runningLock.Lock()
-			m.running = false
-			m.runningLock.Unlock()
 			m.ws.Close() // nolint: errcheck
 		}
 		m.wsLock.Unlock()
@@ -437,88 +438,110 @@ func (s *websocketManipulator) Subscribe(
 	lock := &sync.Mutex{}
 	readyChan := make(chan bool)
 
-	needsPublishDisconnectFunc := true
-
+	// Returned disconnection function
 	disconnectFunc := func() error {
 		lock.Lock()
 		defer lock.Unlock()
 		stopped = true
+		if ws == nil {
+			return nil
+		}
 		return ws.Close()
 	}
 
+	// Returned event filtert updater
 	eventFilterSetterFunc := func(filter *elemental.PushFilter) error {
 		lock.Lock()
 		defer lock.Unlock()
 		return websocket.JSON.Send(ws, filter)
 	}
 
+	// Internal helper to check if the connection has been stopped.
+	isStopped := func() bool {
+		lock.Lock()
+		s := stopped
+		lock.Unlock()
+		return s
+	}
+
+	// Build the initial URL:
+	u := strings.Replace(s.url, "http://", "ws://", 1)
+	u = strings.Replace(u, "https://", "wss://", 1)
+	u = u + "/events?token=" + s.currentPassword()
+	if s.namespace != "" {
+		u += "&namespace=" + s.namespace
+	}
+	if allNamespaces {
+		u = u + "&mode=all"
+	}
+
+	// Build the initial ws config
+	config, err := websocket.NewConfig(u, u)
+	if err != nil {
+		return nil, nil, err
+	}
+	config.TlsConfig = s.tlsConfig
+
 	go func() {
 
-		var needsReconnectionHandlerCall bool
+		var callRecoHandler bool
+		var connectionAnnounced bool
 
 		for {
-			url := strings.Replace(s.url, "http://", "ws://", 1)
-			url = strings.Replace(url, "https://", "wss://", 1)
-			url = url + "/events?token=" + s.currentPassword()
-			if s.namespace != "" {
-				url += "&namespace=" + s.namespace
-			}
 
-			if allNamespaces {
-				url = url + "&mode=all"
-			}
-
-			config, err := websocket.NewConfig(url, url)
-			if err != nil {
-				panic(err)
-			}
-			config.TlsConfig = s.tlsConfig
-
+			// Connect to the websocket.
 			lock.Lock()
-			if stopped {
-				lock.Unlock()
-				return
-			}
-
 			ws, err = websocket.DialConfig(config)
 			lock.Unlock()
+
+			// If we have an error, we first check if the user has asked to stop the sub.
+			// If so we exit, otherwise, we try to reconnect.
 			if err != nil {
-				logrus.WithField("error", err.Error()).Warn("Could not connect to websocket. Retrying in 5s")
+				if isStopped() {
+					return
+				}
+
+				logrus.WithField("error", err.Error()).Warn("Could not connect to event websocket. Retrying in 5s")
 				<-time.After(5 * time.Second)
+
 				continue
 			}
 
+			// if we have an initial filter, we send it.
 			if filter != nil {
 				if err := websocket.JSON.Send(ws, filter); err != nil {
 					handler(nil, err)
-					break
+					return
 				}
 			}
 
-			if needsPublishDisconnectFunc {
+			// If it's the first time we are connected, let's announce it.
+			if !connectionAnnounced {
+				connectionAnnounced = true
 				readyChan <- true
 			}
-			needsPublishDisconnectFunc = false
 
-			if needsReconnectionHandlerCall && recoHandler != nil {
-				needsReconnectionHandlerCall = false
+			// If we are not in the initial loop and we need to call the reco handler, we do it.
+			if callRecoHandler && recoHandler != nil {
+				callRecoHandler = false
 				recoHandler()
 			}
 
+			// Now we start the main receive loop.
 			for {
 				event := &elemental.Event{}
 				err := websocket.JSON.Receive(ws, event)
 
-				lock.Lock()
-				if stopped {
-					lock.Unlock()
-					break
-				}
-				lock.Unlock()
-
+				// Same here. If we have have an error, we first check if the user has asked to stop the sub.
+				// If so, we return, otherwise we call the handler, ask to call the reco handler, and  restart the main loop to reconnect.
 				if err != nil {
+
+					if isStopped() {
+						return
+					}
+
 					handler(nil, err)
-					needsReconnectionHandlerCall = true
+					callRecoHandler = true
 					break
 				}
 
@@ -536,18 +559,18 @@ func (s *websocketManipulator) connect() error {
 
 	s.unregisterAllResponseChannels()
 
-	destURL := strings.Replace(s.url, "http://", "ws://", 1)
-	destURL = strings.Replace(destURL, "https://", "wss://", 1)
-	destURL = destURL + "/wsapi?token=" + s.currentPassword()
+	u := strings.Replace(s.url, "http://", "ws://", 1)
+	u = strings.Replace(u, "https://", "wss://", 1)
+	u = u + "/wsapi?token=" + s.currentPassword()
 	if s.namespace != "" {
-		destURL += "&namespace=" + url.QueryEscape(s.namespace)
+		u += "&namespace=" + url.QueryEscape(s.namespace)
 	}
 
 	if s.receiveAll {
-		destURL = destURL + "&mode=all"
+		u = u + "&mode=all"
 	}
 
-	config, err := websocket.NewConfig(destURL, destURL)
+	config, err := websocket.NewConfig(u, u)
 	if err != nil {
 		return err
 	}
@@ -557,6 +580,7 @@ func (s *websocketManipulator) connect() error {
 	s.wsLock.Lock()
 	s.ws, err = websocket.DialConfig(config)
 	s.wsLock.Unlock()
+
 	if err != nil {
 		return manipulate.NewErrCannotCommunicate(err.Error())
 	}
@@ -573,6 +597,15 @@ func (s *websocketManipulator) connect() error {
 	return nil
 }
 
+func (s *websocketManipulator) isConnected() bool {
+
+	s.connectedLock.Lock()
+	r := s.connected
+	s.connectedLock.Unlock()
+
+	return r
+}
+
 func (s *websocketManipulator) listen() {
 
 	for {
@@ -587,19 +620,22 @@ func (s *websocketManipulator) listen() {
 			continue
 		}
 
-		s.runningLock.Lock()
-		if !s.running {
-			s.runningLock.Unlock()
+		if !s.isConnected() {
 			return
 		}
-		s.runningLock.Unlock()
 
 		logrus.WithField("error", err).Warn("Websocket connection died. Reconnecting...")
 		for {
 
 			if err := s.connect(); err != nil {
-				logrus.WithField("error", err.Error()).Warn("Websocket not available. Retrying in 5s...")
+
+				if !s.isConnected() {
+					return
+				}
+
+				logrus.WithField("error", err.Error()).Warn("API websocket not available. Retrying in 5s...")
 				<-time.After(5 * time.Second)
+
 				continue
 			}
 
@@ -621,6 +657,11 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 	s.wsLock.Unlock()
 
 	if err != nil {
+
+		if !s.isConnected() {
+			return nil, manipulate.NewErrDisconnected("Disconnected per user request")
+		}
+
 		logrus.WithFields(logrus.Fields{
 			"method":  request.Operation,
 			"url":     s.url,
