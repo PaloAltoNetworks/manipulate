@@ -38,6 +38,7 @@ type websocketManipulator struct {
 	username                  string
 	wsLock                    *sync.Mutex
 	ws                        *websocket.Conn
+	stopSendChan              chan bool
 }
 
 // NewWebSocketManipulator returns a Manipulator backed by a websocket API.
@@ -71,6 +72,7 @@ func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string
 		connectedLock:             &sync.Mutex{},
 		wsLock:                    &sync.Mutex{},
 		connected:                 true,
+		stopSendChan:              make(chan bool, 1),
 	}
 
 	if err := m.connect(); err != nil {
@@ -80,15 +82,19 @@ func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string
 	go m.listen()
 
 	return m, func() {
+
 		m.connectedLock.Lock()
 		m.connected = false
 		m.connectedLock.Unlock()
+
+		m.stopSendChan <- true
 
 		m.wsLock.Lock()
 		if m.ws != nil && m.ws.IsClientConn() {
 			m.ws.Close() // nolint: errcheck
 		}
 		m.wsLock.Unlock()
+
 	}, nil
 }
 
@@ -582,12 +588,12 @@ func (s *websocketManipulator) connect() error {
 	s.wsLock.Unlock()
 
 	if err != nil {
-		return manipulate.NewErrCannotCommunicate(err.Error())
+		return handleCommunicationError(s, err)
 	}
 
 	response := elemental.NewResponse()
 	if err := websocket.JSON.Receive(s.ws, &response); err != nil {
-		return manipulate.NewErrCannotCommunicate(err.Error())
+		return handleCommunicationError(s, err)
 	}
 
 	if response.StatusCode != http.StatusOK {
@@ -650,32 +656,21 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 	s.wsLock.Lock()
 	if s.ws == nil {
 		s.wsLock.Unlock()
-		return nil, manipulate.NewErrCannotCommunicate("Websocket not initialized")
+		return nil, handleCommunicationError(s, fmt.Errorf("Websocket not initialized"))
 	}
 
 	err := websocket.JSON.Send(s.ws, request)
 	s.wsLock.Unlock()
 
 	if err != nil {
-
-		if !s.isConnected() {
-			return nil, manipulate.NewErrDisconnected("Disconnected per user request")
-		}
-
-		logrus.WithFields(logrus.Fields{
-			"method":  request.Operation,
-			"url":     s.url,
-			"request": request.String(),
-			"data":    string(request.Data),
-			"error":   err.Error(),
-		}).Debug("Unable to send the request.")
-		return nil, manipulate.NewErrCannotCommunicate(err.Error())
+		return nil, handleCommunicationError(s, err)
 	}
 
 	ch := s.registerResponseChannel(request.RequestID)
 	defer s.unregisterResponseChannel(request.RequestID)
 
 	select {
+
 	case response := <-ch:
 
 		if response.StatusCode < 200 || response.StatusCode > 300 {
@@ -684,7 +679,10 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 
 		return response, nil
 
-	case <-time.After(30 * time.Second):
+	case <-s.stopSendChan:
+		return nil, manipulate.NewErrDisconnected("Disconnected per user request")
+
+	case <-time.After(5 * time.Second):
 		return nil, manipulate.NewErrCannotCommunicate("Request timeout")
 	}
 }

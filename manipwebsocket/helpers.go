@@ -24,6 +24,19 @@ func decodeErrors(response *elemental.Response) error {
 	return errs
 }
 
+func handleCommunicationError(m *websocketManipulator, err error) error {
+
+	if _, ok := err.(manipulate.ErrDisconnected); ok {
+		return err
+	}
+
+	if !m.isConnected() {
+		return manipulate.NewErrDisconnected("disconnected per user request")
+	}
+
+	return manipulate.NewErrCannotCommunicate(err.Error())
+}
+
 func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Context) error {
 
 	if ctx.Filter != nil {
