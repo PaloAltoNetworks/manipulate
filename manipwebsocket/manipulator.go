@@ -100,13 +100,13 @@ func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string
 
 // NewWebSocketManipulatorWithMidgardCertAuthentication returns a http backed manipulate.Manipulator
 // using a certificates to authenticate against a Midgard server.
-func NewWebSocketManipulatorWithMidgardCertAuthentication(url string, midgardurl string, rootCAPool *x509.CertPool, clientCAPool *x509.CertPool, certificates []tls.Certificate, namespace string, refreshInterval time.Duration, skipInsecure bool) (manipulate.EventManipulator, func(), error) {
+func NewWebSocketManipulatorWithMidgardCertAuthentication(url string, midgardurl string, rootCAPool *x509.CertPool, clientCAPool *x509.CertPool, certificates []tls.Certificate, namespace string, validity time.Duration, skipInsecure bool) (manipulate.EventManipulator, func(), error) {
 
 	sp := opentracing.StartSpan("manipwebsocket.authenthication")
 	defer sp.Finish()
 
 	mclient := midgard.NewClientWithCAPool(midgardurl, rootCAPool, clientCAPool, skipInsecure)
-	token, err := mclient.IssueFromCertificateWithValidity(certificates, 24*time.Hour, sp)
+	token, err := mclient.IssueFromCertificateWithValidity(certificates, validity, sp)
 	if err != nil {
 		tracing.FinishTraceWithError(sp, err)
 		return nil, nil, err
@@ -120,7 +120,7 @@ func NewWebSocketManipulatorWithMidgardCertAuthentication(url string, midgardurl
 
 	stopCh := make(chan bool)
 
-	go m.(*websocketManipulator).renewMidgardToken(mclient, certificates, refreshInterval, stopCh)
+	go m.(*websocketManipulator).renewMidgardToken(mclient, certificates, validity/2, stopCh)
 
 	return m, func() { stop(); stopCh <- true }, err
 }
@@ -736,18 +736,20 @@ func (s *websocketManipulator) renewMidgardToken(
 	stop chan bool,
 ) {
 
+	nextRefresh := time.Now().Add(interval)
+
 	for {
-		nextRefresh := time.Now().Add(interval)
 
 		select {
 		case <-time.Tick(time.Minute):
 
 			now := time.Now()
 			if now.Before(nextRefresh) {
-				continue
+				break
 			}
 
-			token, err := mclient.IssueFromCertificate(certificates)
+			logrus.Info("Renewing midgard token...")
+			token, err := mclient.IssueFromCertificateWithValidity(certificates, interval*2, nil)
 			if err != nil {
 				logrus.WithError(err).Error("Unable to renew token.")
 				break
@@ -755,6 +757,7 @@ func (s *websocketManipulator) renewMidgardToken(
 
 			s.setPassword(token)
 
+			nextRefresh = time.Now().Add(interval)
 			logrus.Info("Midgard token refreshed")
 
 		case <-stop:

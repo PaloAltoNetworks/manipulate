@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -28,6 +29,7 @@ type httpManipulator struct {
 	password  string
 	url       string
 	namespace string
+	renewLock *sync.Mutex
 	client    *http.Client
 	tlsConfig *tls.Config
 }
@@ -52,9 +54,10 @@ func NewHTTPManipulatorWithRootCA(username, password, url, namespace string, roo
 	}
 
 	return &httpManipulator{
-		username: username,
-		password: password,
-		url:      url,
+		username:  username,
+		password:  password,
+		renewLock: &sync.Mutex{},
+		url:       url,
 		client: &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConfig,
@@ -74,7 +77,7 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 	clientCAPool *x509.CertPool,
 	certificates []tls.Certificate,
 	namespace string,
-	refreshInterval time.Duration,
+	validity time.Duration,
 	skipInsecure bool,
 ) (manipulate.Manipulator, func(), error) {
 
@@ -82,7 +85,7 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 	defer sp.Finish()
 
 	mclient := midgardclient.NewClientWithCAPool(midgardurl, rootCAPool, clientCAPool, skipInsecure)
-	token, err := mclient.IssueFromCertificateWithValidity(certificates, 24*time.Hour, sp)
+	token, err := mclient.IssueFromCertificateWithValidity(certificates, validity, sp)
 	if err != nil {
 		tracing.FinishTraceWithError(sp, err)
 		return nil, nil, err
@@ -96,9 +99,10 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 	}
 
 	m := &httpManipulator{
-		username: "Bearer",
-		password: token,
-		url:      url,
+		username:  "Bearer",
+		password:  token,
+		renewLock: &sync.Mutex{},
+		url:       url,
 		client: &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConfig,
@@ -110,7 +114,7 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 
 	stopCh := make(chan bool)
 
-	go renewMidgardToken(mclient, m, certificates, refreshInterval, stopCh)
+	go m.renewMidgardToken(mclient, certificates, validity/2, stopCh)
 
 	return m, func() { stopCh <- true }, nil
 }
@@ -420,7 +424,7 @@ func (s *httpManipulator) Increment(context *manipulate.Context, identity elemen
 
 func (s *httpManipulator) makeAuthorizationHeaders() string {
 
-	return s.username + " " + s.password
+	return s.username + " " + s.currentPassword()
 }
 
 func (s *httpManipulator) prepareHeaders(request *http.Request, context *manipulate.Context) {
@@ -433,7 +437,7 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, context *manipul
 		request.Header.Set("X-Namespace", context.Namespace)
 	}
 
-	if s.username != "" && s.password != "" {
+	if s.username != "" && s.currentPassword() != "" {
 		request.Header.Set("Authorization", s.makeAuthorizationHeaders())
 	}
 
@@ -531,4 +535,53 @@ func (s *httpManipulator) send(request *http.Request, context *manipulate.Contex
 	s.readHeaders(response, context)
 
 	return response, nil
+}
+
+func (s *httpManipulator) setPassword(password string) {
+	s.renewLock.Lock()
+	s.password = password
+	s.renewLock.Unlock()
+}
+
+func (s *httpManipulator) currentPassword() string {
+	s.renewLock.Lock()
+	defer s.renewLock.Unlock()
+	return s.password
+}
+
+func (s *httpManipulator) renewMidgardToken(
+	mclient *midgardclient.Client,
+	certificates []tls.Certificate,
+	interval time.Duration,
+	stop chan bool,
+) {
+
+	nextRefresh := time.Now().Add(interval)
+
+	for {
+
+		select {
+		case <-time.Tick(time.Minute):
+
+			now := time.Now()
+			if now.Before(nextRefresh) {
+				break
+			}
+
+			logrus.Info("Renewing midgard token...")
+			token, err := mclient.IssueFromCertificateWithValidity(certificates, interval*2, nil)
+			if err != nil {
+				logrus.WithError(err).Error("Unable to renew Midgard token")
+				break
+			}
+
+			s.setPassword(token)
+
+			nextRefresh = now.Add(interval)
+			logrus.Info("Midgard token renewed.")
+
+		case <-stop:
+			return
+		}
+	}
 }
