@@ -433,7 +433,7 @@ func (s *websocketManipulator) Increment(context *manipulate.Context, identity e
 
 func (s *websocketManipulator) Subscribe(
 	filter *elemental.PushFilter,
-	allNamespaces bool,
+	recursive bool,
 	handler manipulate.EventHandler,
 	recoHandler manipulate.RecoveryHandler,
 ) (manipulate.EventUnsubscriber, manipulate.EventFilterUpdater, error) {
@@ -470,30 +470,17 @@ func (s *websocketManipulator) Subscribe(
 		return s
 	}
 
-	// Build the initial URL:
-	u := strings.Replace(s.url, "http://", "ws://", 1)
-	u = strings.Replace(u, "https://", "wss://", 1)
-	u = u + "/events?token=" + s.currentPassword()
-	if s.namespace != "" {
-		u += "&namespace=" + s.namespace
-	}
-	if allNamespaces {
-		u = u + "&mode=all"
-	}
-
-	// Build the initial ws config
-	config, err := websocket.NewConfig(u, u)
-	if err != nil {
-		return nil, nil, err
-	}
-	config.TlsConfig = s.tlsConfig
-
 	go func() {
 
 		var callRecoHandler bool
 		var connectionAnnounced bool
 
 		for {
+
+			config, err := s.buildWSDialConfig("events", recursive)
+			if err != nil {
+				panic(err)
+			}
 
 			// Connect to the websocket.
 			lock.Lock()
@@ -565,23 +552,10 @@ func (s *websocketManipulator) connect() error {
 
 	s.unregisterAllResponseChannels()
 
-	u := strings.Replace(s.url, "http://", "ws://", 1)
-	u = strings.Replace(u, "https://", "wss://", 1)
-	u = u + "/wsapi?token=" + s.currentPassword()
-	if s.namespace != "" {
-		u += "&namespace=" + url.QueryEscape(s.namespace)
-	}
-
-	if s.receiveAll {
-		u = u + "&mode=all"
-	}
-
-	config, err := websocket.NewConfig(u, u)
+	config, err := s.buildWSDialConfig("wsapi", s.receiveAll)
 	if err != nil {
-		return err
+		panic(err)
 	}
-
-	config.TlsConfig = s.tlsConfig
 
 	s.wsLock.Lock()
 	s.ws, err = websocket.DialConfig(config)
@@ -601,15 +575,6 @@ func (s *websocketManipulator) connect() error {
 	}
 
 	return nil
-}
-
-func (s *websocketManipulator) isConnected() bool {
-
-	s.connectedLock.Lock()
-	r := s.connected
-	s.connectedLock.Unlock()
-
-	return r
 }
 
 func (s *websocketManipulator) listen() {
@@ -685,6 +650,39 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 	case <-time.After(5 * time.Second):
 		return nil, manipulate.NewErrCannotCommunicate("Request timeout")
 	}
+}
+
+func (s *websocketManipulator) isConnected() bool {
+
+	s.connectedLock.Lock()
+	r := s.connected
+	s.connectedLock.Unlock()
+
+	return r
+}
+
+func (s *websocketManipulator) buildWSDialConfig(endpoint string, recursive bool) (*websocket.Config, error) {
+
+	u := strings.Replace(s.url, "http://", "ws://", 1)
+	u = strings.Replace(u, "https://", "wss://", 1)
+	u = fmt.Sprintf("%s/%s?token=%s", u, endpoint, s.currentPassword())
+
+	if s.namespace != "" {
+		u += "&namespace=" + url.QueryEscape(s.namespace)
+	}
+
+	if recursive {
+		u = u + "&mode=all"
+	}
+
+	// Build the initial ws config
+	config, err := websocket.NewConfig(u, u)
+	if err != nil {
+		return nil, err
+	}
+	config.TlsConfig = s.tlsConfig
+
+	return config, nil
 }
 
 func (s *websocketManipulator) registerResponseChannel(rid string) chan *elemental.Response {
