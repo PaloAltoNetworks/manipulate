@@ -578,7 +578,7 @@ func (s *httpManipulator) renewMidgardToken(
 			s.setPassword(token)
 
 			nextRefresh = now.Add(interval)
-			logrus.Info("Midgard token renewed.")
+			logrus.Info("Midgard token renewed")
 
 		case <-stop:
 			return

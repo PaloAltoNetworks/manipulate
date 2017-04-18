@@ -758,7 +758,7 @@ func (s *websocketManipulator) renewMidgardToken(
 			s.setPassword(token)
 
 			nextRefresh = time.Now().Add(interval)
-			logrus.Info("Midgard token refreshed")
+			logrus.Info("Midgard token renewed")
 
 		case <-stop:
 			return
