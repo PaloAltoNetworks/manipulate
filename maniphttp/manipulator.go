@@ -15,7 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"go.uber.org/zap"
+
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 	"github.com/aporeto-inc/manipulate/internal/tracing"
@@ -39,7 +40,7 @@ func NewHTTPManipulator(username, password, url, namespace string) manipulate.Ma
 
 	CAPool, err := x509.SystemCertPool()
 	if err != nil {
-		logrus.Error("Unable to load system root cert pool. tls fallback to unsecure.")
+		zap.L().Fatal("Unable to load system root cert pool", zap.Error(err))
 	}
 
 	return NewHTTPManipulatorWithRootCA(username, password, url, namespace, CAPool, true)
@@ -500,22 +501,8 @@ func (s *httpManipulator) send(request *http.Request, context *manipulate.Contex
 
 	response, err := s.client.Do(request)
 	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"method":   request.Method,
-			"url":      request.URL,
-			"request":  request,
-			"response": response,
-			"error":    err.Error(),
-		}).Debug("Unable to send the request.")
 		return response, manipulate.NewErrCannotCommunicate(err.Error())
 	}
-
-	logrus.WithFields(logrus.Fields{
-		"method":   request.Method,
-		"url":      request.URL,
-		"request":  request,
-		"response": response,
-	}).Debug("Request sent.")
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 
@@ -564,24 +551,23 @@ func (s *httpManipulator) renewMidgardToken(
 	for {
 
 		select {
-		case <-time.Tick(time.Minute):
+		case <-time.After(time.Minute):
 
 			now := time.Now()
 			if now.Before(nextRefresh) {
 				break
 			}
 
-			logrus.Info("Renewing midgard token...")
 			token, err := mclient.IssueFromCertificateWithValidity(certificates, interval*2, nil)
 			if err != nil {
-				logrus.WithError(err).Error("Unable to renew Midgard token")
+				zap.L().Error("Unable to renew Midgard token", zap.Error(err))
 				break
 			}
 
 			s.setPassword(token)
 
 			nextRefresh = now.Add(interval)
-			logrus.Info("Midgard token renewed")
+			zap.L().Info("Midgard token renewed")
 
 		case <-stop:
 			return

@@ -14,7 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"go.uber.org/zap"
+
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 	"github.com/aporeto-inc/manipulate/internal/tracing"
@@ -46,7 +47,7 @@ func NewWebSocketManipulator(username, password, url, namespace string) (manipul
 
 	CAPool, err := x509.SystemCertPool()
 	if err != nil {
-		logrus.Error("Unable to load system root cert pool. tls fallback to unsecure.")
+		zap.L().Fatal("Unable to load system root cert pool", zap.Error(err))
 	}
 
 	return NewWebSocketManipulatorWithRootCA(username, password, url, namespace, CAPool, true)
@@ -493,8 +494,7 @@ func (s *websocketManipulator) Subscribe(
 				if isStopped() {
 					return
 				}
-
-				logrus.WithField("error", err.Error()).Warn("Could not connect to event websocket. Retrying in 5s")
+				zap.L().Warn("Could not connect to event websocket. Retrying in 5s", zap.Error(err))
 				<-time.After(5 * time.Second)
 
 				continue
@@ -595,7 +595,7 @@ func (s *websocketManipulator) listen() {
 			return
 		}
 
-		logrus.WithField("error", err).Warn("Websocket connection died. Reconnecting...")
+		zap.L().Warn("Websocket connection died. Reconnecting...", zap.Error(err))
 		for {
 
 			if err := s.connect(); err != nil {
@@ -604,13 +604,13 @@ func (s *websocketManipulator) listen() {
 					return
 				}
 
-				logrus.WithField("error", err.Error()).Warn("API websocket not available. Retrying in 5s...")
+				zap.L().Warn("API websocket not available. Retrying in 5s...", zap.Error(err))
 				<-time.After(5 * time.Second)
 
 				continue
 			}
 
-			logrus.Info("Websocket connection restored.")
+			zap.L().Info("Websocket connection restored")
 			break
 		}
 	}
@@ -741,24 +741,23 @@ func (s *websocketManipulator) renewMidgardToken(
 	for {
 
 		select {
-		case <-time.Tick(time.Minute):
+		case <-time.After(time.Minute):
 
 			now := time.Now()
 			if now.Before(nextRefresh) {
 				break
 			}
 
-			logrus.Info("Renewing midgard token...")
 			token, err := mclient.IssueFromCertificateWithValidity(certificates, interval*2, nil)
 			if err != nil {
-				logrus.WithError(err).Error("Unable to renew token.")
+				zap.L().Error("Unable to renew token", zap.Error(err))
 				break
 			}
 
 			s.setPassword(token)
 
 			nextRefresh = time.Now().Add(interval)
-			logrus.Info("Midgard token renewed")
+			zap.L().Info("Midgard token renewed")
 
 		case <-stop:
 			return

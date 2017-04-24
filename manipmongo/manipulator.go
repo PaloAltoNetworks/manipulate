@@ -8,7 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"go.uber.org/zap"
+
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 	"github.com/aporeto-inc/manipulate/internal/tracing"
@@ -30,12 +31,12 @@ func NewMongoManipulator(urls []string, dbName string, user string, password str
 
 	dialInfo, err := mgo.ParseURL(strings.Join(urls, ","))
 	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"urls":     urls,
-			"db":       dbName,
-			"username": user,
-			"error":    err.Error(),
-		}).Fatal("Unable to create dial information")
+		zap.L().Fatal("Unable to create dial information",
+			zap.Strings("uri", urls),
+			zap.String("db", dbName),
+			zap.String("username", user),
+			zap.Error(err),
+		)
 	}
 
 	dialInfo.PoolLimit = poolLimit
@@ -55,18 +56,18 @@ func NewMongoManipulator(urls []string, dbName string, user string, password str
 			return conn, nil
 		}
 
-		logrus.WithError(e).Warn("Unable to dial to mongo using TLS. Trying with unencrypted dialing")
+		zap.L().Warn("Unable to dial to mongo using TLS. Trying with unencrypted dialing", zap.Error(err))
 		return net.Dial("tcp", addr.String())
 	}
 
 	session, err := mgo.DialWithInfo(dialInfo)
 	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"urls":     urls,
-			"db":       dbName,
-			"username": user,
-			"error":    err.Error(),
-		}).Fatal("Cannot connect to mongo.")
+		zap.L().Fatal("Cannot connect to mongo",
+			zap.Strings("uri", urls),
+			zap.String("db", dbName),
+			zap.String("username", user),
+			zap.Error(err),
+		)
 	}
 
 	return &mongoManipulator{
@@ -383,11 +384,6 @@ func (s *mongoManipulator) Commit(id manipulate.TransactionID) error {
 
 	transaction := s.transactions.transactionWithID(id)
 	if transaction == nil {
-		logrus.WithFields(logrus.Fields{
-			"store":         s,
-			"transactionID": id,
-		}).Error("No batch found for the given transaction.")
-
 		return manipulate.NewErrTransactionNotFound("No batch found for the given transaction.")
 	}
 
