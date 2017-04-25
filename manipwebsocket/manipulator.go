@@ -18,6 +18,7 @@ import (
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
+	"github.com/aporeto-inc/manipulate/internal/sec"
 	"github.com/aporeto-inc/manipulate/internal/tracing"
 	"github.com/opentracing/opentracing-go"
 	"golang.org/x/net/websocket"
@@ -494,7 +495,7 @@ func (s *websocketManipulator) Subscribe(
 				if isStopped() {
 					return
 				}
-				zap.L().Warn("Could not connect to event websocket. Retrying in 5s", zap.Error(err))
+				zap.L().Warn("Could not connect to event websocket. Retrying in 5s", zap.Error(sec.Snip(err, s.currentPassword())))
 				<-time.After(5 * time.Second)
 
 				continue
@@ -595,7 +596,7 @@ func (s *websocketManipulator) listen() {
 			return
 		}
 
-		zap.L().Warn("Websocket connection died. Reconnecting...", zap.Error(err))
+		zap.L().Warn("Websocket connection died. Reconnecting...", zap.Error(sec.Snip(err, s.currentPassword())))
 		for {
 
 			if err := s.connect(); err != nil {
@@ -604,7 +605,7 @@ func (s *websocketManipulator) listen() {
 					return
 				}
 
-				zap.L().Warn("API websocket not available. Retrying in 5s...", zap.Error(err))
+				zap.L().Warn("API websocket not available. Retrying in 5s...", zap.Error(sec.Snip(err, s.currentPassword())))
 				<-time.After(5 * time.Second)
 
 				continue

@@ -19,6 +19,7 @@ import (
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
+	"github.com/aporeto-inc/manipulate/internal/sec"
 	"github.com/aporeto-inc/manipulate/internal/tracing"
 	"github.com/opentracing/opentracing-go"
 
@@ -501,7 +502,7 @@ func (s *httpManipulator) send(request *http.Request, context *manipulate.Contex
 
 	response, err := s.client.Do(request)
 	if err != nil {
-		return response, manipulate.NewErrCannotCommunicate(err.Error())
+		return response, manipulate.NewErrCannotCommunicate(sec.Snip(err, s.currentPassword()).Error())
 	}
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {

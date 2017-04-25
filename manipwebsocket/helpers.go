@@ -5,6 +5,7 @@ import (
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
+	"github.com/aporeto-inc/manipulate/internal/sec"
 	"github.com/aporeto-inc/manipulate/manipwebsocket/compiler"
 )
 
@@ -34,7 +35,7 @@ func handleCommunicationError(m *websocketManipulator, err error) error {
 		return manipulate.NewErrDisconnected("disconnected per user request")
 	}
 
-	return manipulate.NewErrCannotCommunicate(err.Error())
+	return manipulate.NewErrCannotCommunicate(sec.Snip(err, m.currentPassword()).Error())
 }
 
 func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Context) error {
