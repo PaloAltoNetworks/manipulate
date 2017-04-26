@@ -2,6 +2,8 @@ package manipulate
 
 import (
 	"bytes"
+	"os"
+	"os/signal"
 	"time"
 )
 
@@ -16,6 +18,9 @@ func writeString(buffer *bytes.Buffer, str string) {
 // You can pass -1 to always retry. The function will retry immediately the first try,
 // then after 1s, 2s etc until a try every 5s.
 func RetryManipulation(manipulation func() error, onRetryFunc func(int), maxTries int) error {
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
 
 	try := 0
 	waitTime := 0 * time.Second
@@ -44,7 +49,11 @@ func RetryManipulation(manipulation func() error, onRetryFunc func(int), maxTrie
 		}
 
 		// Otherwise wait, increase the time and try again.
-		<-time.After(waitTime)
+		select {
+		case <-time.After(waitTime):
+		case <-c:
+			return NewErrDisconnected("Disconnected per signal")
+		}
 
 		if waitTime < 5*time.Second {
 			waitTime += 1 * time.Second
