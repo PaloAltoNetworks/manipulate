@@ -105,6 +105,7 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, dest elemen
 	// }
 
 	var err error
+
 	if context.Page == 0 || context.PageSize == 0 {
 
 		err = query.All(dest)
@@ -116,37 +117,8 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, dest elemen
 
 	} else {
 
-		var n int
-		n, err = s.Count(context, dest.ContentIdentity())
-		if err != nil {
-			tracing.FinishTraceWithError(sp, err)
-			return err
-		}
-
-		page := -context.Page
-		skip := n - page*context.PageSize
-		limit := context.PageSize
-
-		if skip < 0 {
-
-			maxPage := n / context.PageSize
-			balance := n % context.PageSize
-			if balance != 0 {
-				maxPage++
-			}
-
-			// If the use asks or a page we know doesn't exist, we don't even talk to the dabatase.
-			if page > maxPage {
-				tracing.FinishTrace(sp)
-				return nil
-			}
-
-			// otherwise, we have balance that we need to return.
-			skip = 0
-			limit = balance
-		}
-
-		err = query.Skip(skip).Limit(limit).All(dest)
+		skip := (-context.Page - 1) * context.PageSize
+		err = query.Skip(skip).Limit(context.PageSize).Sort("-$natural").All(dest)
 	}
 
 	if err != nil {
