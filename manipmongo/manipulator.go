@@ -44,7 +44,7 @@ func NewMongoManipulator(urls []string, dbName string, user string, password str
 	dialInfo.Source = authsource
 	dialInfo.Username = user
 	dialInfo.Password = password
-	dialInfo.Timeout = 3 * time.Second
+	dialInfo.Timeout = 10 * time.Second
 	dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
 
 		conn, e := tls.Dial("tcp", addr.String(), &tls.Config{
