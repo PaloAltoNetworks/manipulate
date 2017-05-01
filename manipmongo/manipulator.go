@@ -104,24 +104,20 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, dest elemen
 	// 	return manipulate.NewErrCannotBuildQuery("Invalid pagination information")
 	// }
 
-	var err error
+	if context.Page > 0 {
 
-	if context.Page == 0 || context.PageSize == 0 {
+		query = query.Skip((context.Page - 1) * context.PageSize).Limit(context.PageSize)
 
-		err = query.All(dest)
+	} else if context.Page < 0 {
 
-	} else if context.Page > 0 {
-
-		skip := (context.Page - 1) * context.PageSize
-		err = query.Skip(skip).Limit(context.PageSize).All(dest)
-
-	} else {
-
-		skip := (-context.Page - 1) * context.PageSize
-		err = query.Skip(skip).Limit(context.PageSize).Sort("-$natural").All(dest)
+		query = query.Skip((-context.Page - 1) * context.PageSize).Limit(context.PageSize).Sort("-$natural")
 	}
 
-	if err != nil {
+	if len(context.Order) > 0 {
+		query = query.Sort(context.Order...)
+	}
+
+	if err := query.All(dest); err != nil {
 		tracing.FinishTraceWithError(sp, err)
 		return manipulate.NewErrCannotExecuteQuery(err.Error())
 	}

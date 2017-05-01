@@ -35,6 +35,7 @@ type Context struct {
 	TrackingSpan         opentracing.Span
 	ExternalTrackingID   string
 	ExternalTrackingType string
+	Order                []string
 }
 
 // NewContext returns a new *Context

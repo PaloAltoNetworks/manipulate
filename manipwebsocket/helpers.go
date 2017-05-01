@@ -73,6 +73,7 @@ func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Cont
 	request.PageSize = ctx.PageSize
 	request.OverrideProtection = ctx.OverrideProtection
 	request.Version = ctx.Version
+	request.Order = append([]string{}, ctx.Order...)
 
 	return nil
 }
