@@ -648,7 +648,7 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 	case <-s.stopSendChan:
 		return nil, manipulate.NewErrDisconnected("Disconnected per user request")
 
-	case <-time.After(5 * time.Second):
+	case <-time.After(15 * time.Second):
 		return nil, manipulate.NewErrCannotCommunicate("Request timeout")
 	}
 }
