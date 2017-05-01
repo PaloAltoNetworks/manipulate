@@ -114,7 +114,11 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, dest elemen
 	}
 
 	if len(context.Order) > 0 {
-		query = query.Sort(context.Order...)
+		var o []string
+		for _, key := range context.Order {
+			o = append(o, strings.ToLower(key))
+		}
+		query = query.Sort(o...)
 	}
 
 	if err := query.All(dest); err != nil {
