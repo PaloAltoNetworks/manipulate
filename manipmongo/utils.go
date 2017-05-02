@@ -28,3 +28,14 @@ func invertSortKey(k string, revert bool) string {
 
 	return "-" + k
 }
+
+func applyOrdering(order []string, inverted bool) []string {
+
+	var o []string
+
+	for _, key := range order {
+		o = append(o, strings.ToLower(invertSortKey(key, inverted)))
+	}
+
+	return o
+}

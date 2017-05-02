@@ -114,13 +114,11 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, dest elemen
 	}
 
 	if len(context.Order) > 0 {
-		var o []string
-		for _, key := range context.Order {
-			o = append(o, strings.ToLower(invertSortKey(key, inverted)))
-		}
-		query = query.Sort(o...)
+		query = query.Sort(applyOrdering(context.Order, inverted)...)
+	} else if orderer, ok := dest.(elemental.DefaultOrderer); ok {
+		query = query.Sort(applyOrdering(orderer.DefaultOrder(), inverted)...)
 	} else {
-		query.Sort(invertSortKey("$natural", inverted))
+		query = query.Sort(invertSortKey("$natural", inverted))
 	}
 
 	if err := query.All(dest); err != nil {
