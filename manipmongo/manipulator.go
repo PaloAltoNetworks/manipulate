@@ -104,36 +104,23 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, dest elemen
 	// 	return manipulate.NewErrCannotBuildQuery("Invalid pagination information")
 	// }
 
-	var revertedSorting bool
+	var inverted bool
 
 	if context.Page > 0 {
 		query = query.Skip((context.Page - 1) * context.PageSize).Limit(context.PageSize)
 	} else if context.Page < 0 {
 		query = query.Skip((-context.Page - 1) * context.PageSize).Limit(context.PageSize)
-		revertedSorting = true
+		inverted = true
 	}
 
-	if len(context.Order) == 0 {
-		if revertedSorting {
-			query.Sort("-$natural")
-		} else {
-			query.Sort("$natural")
-		}
-
-	} else {
+	if len(context.Order) > 0 {
 		var o []string
 		for _, key := range context.Order {
-
-			if revertedSorting {
-				if strings.HasPrefix(key, "-") {
-					key = key[1:]
-				} else {
-					key = "-" + key
-				}
-			}
-			o = append(o, strings.ToLower(key))
+			o = append(o, strings.ToLower(invertSortKey(key, inverted)))
 		}
 		query = query.Sort(o...)
+	} else {
+		query.Sort(invertSortKey("$natural", inverted))
 	}
 
 	if err := query.All(dest); err != nil {
