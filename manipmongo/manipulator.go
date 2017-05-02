@@ -104,12 +104,13 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, dest elemen
 	// 	return manipulate.NewErrCannotBuildQuery("Invalid pagination information")
 	// }
 
-	if context.Page > 0 {
-
-		query = query.Skip((context.Page - 1) * context.PageSize).Limit(context.PageSize)
-
+	if context.Page == 0 {
+		if len(context.Order) == 0 {
+			query = query.Sort("$natural")
+		}
+	} else if context.Page > 0 {
+		query = query.Skip((context.Page - 1) * context.PageSize).Limit(context.PageSize).Sort("$natural")
 	} else if context.Page < 0 {
-
 		query = query.Skip((-context.Page - 1) * context.PageSize).Limit(context.PageSize).Sort("-$natural")
 	}
 
