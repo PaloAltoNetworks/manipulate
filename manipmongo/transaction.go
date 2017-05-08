@@ -5,28 +5,31 @@ import (
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
+	"github.com/opentracing/opentracing-go"
 
 	mgo "gopkg.in/mgo.v2"
 )
 
 type transaction struct {
-	bulks   map[elemental.Identity]*mgo.Bulk
-	db      *mgo.Database
-	id      manipulate.TransactionID
-	lock    *sync.Mutex
-	session *mgo.Session
+	bulks      map[elemental.Identity]*mgo.Bulk
+	db         *mgo.Database
+	id         manipulate.TransactionID
+	lock       *sync.Mutex
+	session    *mgo.Session
+	rootTracer opentracing.Span
 }
 
-func newTransaction(id manipulate.TransactionID, rootSession *mgo.Session, dbName string) *transaction {
+func newTransaction(id manipulate.TransactionID, rootSession *mgo.Session, dbName string, rootTracer opentracing.Span) *transaction {
 
 	s := rootSession.Copy()
 
 	return &transaction{
-		bulks:   map[elemental.Identity]*mgo.Bulk{},
-		db:      s.DB(dbName),
-		id:      id,
-		lock:    &sync.Mutex{},
-		session: s,
+		bulks:      map[elemental.Identity]*mgo.Bulk{},
+		db:         s.DB(dbName),
+		id:         id,
+		lock:       &sync.Mutex{},
+		session:    s,
+		rootTracer: rootTracer,
 	}
 }
 

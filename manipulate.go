@@ -45,9 +45,6 @@ type Manipulator interface {
 	// Count returns the number of objects with the given identity.
 	Count(context *Context, identity elemental.Identity) (int, error)
 
-	// Assign is not really used yet.
-	Assign(context *Context, assignation *elemental.Assignation) error
-
 	// Increment increments the given counter filter by the given increment for the given identity.
 	// Filter should be set in the context to decide which element to increment.
 	Increment(context *Context, identity elemental.Identity, counter string, inc int) error

@@ -8,19 +8,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"go.uber.org/zap"
+
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
+	"github.com/aporeto-inc/manipulate/internal/tracing"
 	"github.com/aporeto-inc/manipulate/manipmongo/compiler"
 	"gopkg.in/mgo.v2/bson"
 
 	mgo "gopkg.in/mgo.v2"
 )
-
-// Logger contains the main logger
-var Logger = logrus.New()
-
-var log = Logger.WithField("package", "github.com/aporeto-inc/manipulate/manipmongo")
 
 // MongoStore represents a MongoDB session.
 type mongoManipulator struct {
@@ -34,12 +31,12 @@ func NewMongoManipulator(urls []string, dbName string, user string, password str
 
 	dialInfo, err := mgo.ParseURL(strings.Join(urls, ","))
 	if err != nil {
-		log.WithFields(logrus.Fields{
-			"urls":     urls,
-			"db":       dbName,
-			"username": user,
-			"error":    err.Error(),
-		}).Fatal("Unable to create dial information")
+		zap.L().Fatal("Unable to create dial information",
+			zap.Strings("uri", urls),
+			zap.String("db", dbName),
+			zap.String("username", user),
+			zap.Error(err),
+		)
 	}
 
 	dialInfo.PoolLimit = poolLimit
@@ -47,7 +44,7 @@ func NewMongoManipulator(urls []string, dbName string, user string, password str
 	dialInfo.Source = authsource
 	dialInfo.Username = user
 	dialInfo.Password = password
-	dialInfo.Timeout = 3 * time.Second
+	dialInfo.Timeout = 10 * time.Second
 	dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
 
 		conn, e := tls.Dial("tcp", addr.String(), &tls.Config{
@@ -59,18 +56,18 @@ func NewMongoManipulator(urls []string, dbName string, user string, password str
 			return conn, nil
 		}
 
-		log.WithError(e).Warn("Unable to dial to mongo using TLS. Trying with unencrypted dialing")
+		zap.L().Warn("Unable to dial to mongo using TLS. Trying with unencrypted dialing", zap.Error(err))
 		return net.Dial("tcp", addr.String())
 	}
 
 	session, err := mgo.DialWithInfo(dialInfo)
 	if err != nil {
-		log.WithFields(logrus.Fields{
-			"urls":     urls,
-			"db":       dbName,
-			"username": user,
-			"error":    err.Error(),
-		}).Fatal("Cannot connect to mongo.")
+		zap.L().Fatal("Cannot connect to mongo",
+			zap.Strings("uri", urls),
+			zap.String("db", dbName),
+			zap.String("username", user),
+			zap.Error(err),
+		)
 	}
 
 	return &mongoManipulator{
@@ -85,6 +82,8 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, dest elemen
 	if context == nil {
 		context = manipulate.NewContext()
 	}
+
+	sp := tracing.StartTrace(context.TrackingSpan, fmt.Sprintf("manipmongo.retrieve_many.%s", dest.ContentIdentity().Category), context)
 
 	session := s.rootSession.Copy()
 	defer session.Close()
@@ -105,50 +104,25 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, dest elemen
 	// 	return manipulate.NewErrCannotBuildQuery("Invalid pagination information")
 	// }
 
-	var err error
-	if context.Page == 0 || context.PageSize == 0 {
+	var inverted bool
 
-		err = query.All(dest)
-
-	} else if context.Page > 0 {
-
-		skip := (context.Page - 1) * context.PageSize
-		err = query.Skip(skip).Limit(context.PageSize).All(dest)
-
-	} else {
-
-		var n int
-		n, err = s.Count(context, dest.ContentIdentity())
-		if err != nil {
-			return err
-		}
-
-		page := -context.Page
-		skip := n - page*context.PageSize
-		limit := context.PageSize
-
-		if skip < 0 {
-
-			maxPage := n / context.PageSize
-			balance := n % context.PageSize
-			if balance != 0 {
-				maxPage++
-			}
-
-			// If the use asks or a page we know doesn't exist, we don't even talk to the dabatase.
-			if page > maxPage {
-				return nil
-			}
-
-			// otherwise, we have balance that we need to return.
-			skip = 0
-			limit = balance
-		}
-
-		err = query.Skip(skip).Limit(limit).All(dest)
+	if context.Page > 0 {
+		query = query.Skip((context.Page - 1) * context.PageSize).Limit(context.PageSize)
+	} else if context.Page < 0 {
+		query = query.Skip((-context.Page - 1) * context.PageSize).Limit(context.PageSize)
+		inverted = true
 	}
 
-	if err != nil {
+	if len(context.Order) > 0 {
+		query = query.Sort(applyOrdering(context.Order, inverted)...)
+	} else if orderer, ok := dest.(elemental.DefaultOrderer); ok {
+		query = query.Sort(applyOrdering(orderer.DefaultOrder(), inverted)...)
+	} else {
+		query = query.Sort(invertSortKey("$natural", inverted))
+	}
+
+	if err := query.All(dest); err != nil {
+		tracing.FinishTraceWithError(sp, err)
 		return manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
 
@@ -158,6 +132,8 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, dest elemen
 			elemental.ResetDefaultForZeroValues(a)
 		}
 	}
+
+	tracing.FinishTrace(sp)
 
 	return nil
 }
@@ -172,6 +148,9 @@ func (s *mongoManipulator) Retrieve(context *manipulate.Context, objects ...elem
 		context = manipulate.NewContext()
 	}
 
+	sp := tracing.StartTrace(context.TrackingSpan, "manipmongo.retrieve", context)
+	defer tracing.FinishTrace(sp)
+
 	session := s.rootSession.Copy()
 	defer session.Close()
 
@@ -185,14 +164,19 @@ func (s *mongoManipulator) Retrieve(context *manipulate.Context, objects ...elem
 
 	for _, o := range objects {
 
+		subSp := tracing.StartTrace(sp, fmt.Sprintf("manipmongo.retrieve.object.%s", o.Identity().Name), context)
+		tracing.SetTag(subSp, "manipmongo.retrieve.object.id", o.Identifier())
+
 		filter["_id"] = o.Identifier()
 
 		if err := collection.Find(filter).One(o); err != nil {
 
 			if err == mgo.ErrNotFound {
+				tracing.FinishTrace(subSp)
 				return manipulate.NewErrObjectNotFound("cannot find the object for the given ID")
 			}
 
+			tracing.FinishTraceWithError(subSp, err)
 			return manipulate.NewErrCannotExecuteQuery(err.Error())
 		}
 
@@ -200,6 +184,8 @@ func (s *mongoManipulator) Retrieve(context *manipulate.Context, objects ...elem
 		if a, ok := o.(elemental.AttributeSpecifiable); ok {
 			elemental.ResetDefaultForZeroValues(a)
 		}
+
+		tracing.FinishTrace(subSp)
 	}
 
 	return nil
@@ -214,16 +200,25 @@ func (s *mongoManipulator) Create(context *manipulate.Context, children ...eleme
 	transaction, commit := s.retrieveTransaction(context)
 	bulk := transaction.bulkForIdentity(children[0].Identity())
 
+	sp := tracing.StartTrace(context.TrackingSpan, "manipmongo.create", context)
+	defer tracing.FinishTrace(sp)
+
 	for _, child := range children {
+
 		child.SetIdentifier(bson.NewObjectId().Hex())
+
+		subSp := tracing.StartTrace(sp, fmt.Sprintf("manipmongo.create.object.%s", child.Identity().Name), context)
+		tracing.SetTag(subSp, "manipmongo.create.object.id", child.Identifier())
 
 		if context.CreateFinalizer != nil {
 			if err := context.CreateFinalizer(child); err != nil {
+				tracing.FinishTraceWithError(subSp, err)
 				return err
 			}
 		}
 
 		bulk.Insert(child)
+		tracing.FinishTrace(subSp)
 	}
 
 	if commit {
@@ -243,11 +238,19 @@ func (s *mongoManipulator) Update(context *manipulate.Context, objects ...elemen
 		context = manipulate.NewContext()
 	}
 
+	sp := tracing.StartTrace(context.TrackingSpan, "manipmongo.update", context)
+	defer tracing.FinishTrace(sp)
+
 	transaction, commit := s.retrieveTransaction(context)
 	bulk := transaction.bulkForIdentity(objects[0].Identity())
 
 	for _, o := range objects {
+
+		subSp := tracing.StartTrace(sp, fmt.Sprintf("manipmongo.update.object.%s", o.Identity().Name), context)
+		tracing.SetTag(subSp, "manipmongo.update.object.id", o.Identifier())
+
 		bulk.Update(bson.M{"_id": o.Identifier()}, o)
+		tracing.FinishTrace(subSp)
 	}
 
 	if commit {
@@ -267,16 +270,25 @@ func (s *mongoManipulator) Delete(context *manipulate.Context, objects ...elemen
 		context = manipulate.NewContext()
 	}
 
+	sp := tracing.StartTrace(context.TrackingSpan, "manipmongo.delete", context)
+	defer tracing.FinishTrace(sp)
+
 	transaction, commit := s.retrieveTransaction(context)
 	bulk := transaction.bulkForIdentity(objects[0].Identity())
 
 	for _, o := range objects {
+
+		subSp := tracing.StartTrace(sp, fmt.Sprintf("manipmongo.delete.object.%s", o.Identity().Name), context)
+		tracing.SetTag(subSp, "manipmongo.delete.object.id", o.Identifier())
+
 		bulk.Remove(bson.M{"_id": o.Identifier()})
 
 		// backport all default values that are empty.
 		if a, ok := o.(elemental.AttributeSpecifiable); ok {
 			elemental.ResetDefaultForZeroValues(a)
 		}
+
+		tracing.FinishTrace(subSp)
 	}
 
 	if commit {
@@ -291,6 +303,9 @@ func (s *mongoManipulator) DeleteMany(context *manipulate.Context, identity elem
 	if context == nil {
 		context = manipulate.NewContext()
 	}
+
+	sp := tracing.StartTrace(context.TrackingSpan, "manipmongo.delete_many", context)
+	defer tracing.FinishTrace(sp)
 
 	transaction, commit := s.retrieveTransaction(context)
 	bulk := transaction.bulkForIdentity(identity)
@@ -310,6 +325,8 @@ func (s *mongoManipulator) Count(context *manipulate.Context, identity elemental
 		context = manipulate.NewContext()
 	}
 
+	sp := tracing.StartTrace(context.TrackingSpan, fmt.Sprintf("manipmongo.count.%s", identity.Category), context)
+
 	session := s.rootSession.Copy()
 	defer session.Close()
 
@@ -323,14 +340,12 @@ func (s *mongoManipulator) Count(context *manipulate.Context, identity elemental
 
 	c, err := collection.Find(filter).Count()
 	if err != nil {
+		tracing.FinishTraceWithError(sp, err)
 		return 0, manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
 
+	tracing.FinishTrace(sp)
 	return c, nil
-}
-
-func (s *mongoManipulator) Assign(context *manipulate.Context, assignation *elemental.Assignation) error {
-	return fmt.Errorf("Assign is not implemented in mongo")
 }
 
 func (s *mongoManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
@@ -341,13 +356,10 @@ func (s *mongoManipulator) Commit(id manipulate.TransactionID) error {
 
 	transaction := s.transactions.transactionWithID(id)
 	if transaction == nil {
-		log.WithFields(logrus.Fields{
-			"store":         s,
-			"transactionID": id,
-		}).Error("No batch found for the given transaction.")
-
 		return manipulate.NewErrTransactionNotFound("No batch found for the given transaction.")
 	}
+
+	sp := tracing.StartTrace(transaction.rootTracer, "manipmongo.commit", nil)
 
 	defer func() {
 		transaction.closeSession()
@@ -359,12 +371,16 @@ func (s *mongoManipulator) Commit(id manipulate.TransactionID) error {
 		if _, err := bulk.Run(); err != nil {
 
 			if mgo.IsDup(err) {
+				tracing.FinishTrace(sp)
 				return manipulate.NewErrConstraintViolation("duplicate key.")
 			}
 
+			tracing.FinishTraceWithError(sp, err)
 			return manipulate.NewErrCannotCommit(err.Error())
 		}
 	}
+
+	tracing.FinishTrace(sp)
 
 	return nil
 }
@@ -397,7 +413,7 @@ func (s *mongoManipulator) retrieveTransaction(context *manipulate.Context) (*tr
 		return t, created
 	}
 
-	t = newTransaction(tid, s.rootSession, s.dbName)
+	t = newTransaction(tid, s.rootSession, s.dbName, context.TrackingSpan)
 	s.transactions.registerTransaction(tid, t)
 
 	return t, created

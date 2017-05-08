@@ -4,18 +4,12 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 
 	memdb "github.com/hashicorp/go-memdb"
 	uuid "github.com/satori/go.uuid"
 )
-
-// Logger contains the main logger.
-var Logger = logrus.New()
-
-var log = Logger.WithField("package", "github.com/aporeto-inc/manipulate/manipmemory")
 
 type txnRegistry map[manipulate.TransactionID]*memdb.Txn
 
@@ -189,12 +183,6 @@ func (s *memdbManipulator) Count(context *manipulate.Context, identity elemental
 	return 0, nil
 }
 
-// Assign is part of the implementation of the Manipulator interface.
-func (*memdbManipulator) Assign(context *manipulate.Context, assignation *elemental.Assignation) error {
-
-	return manipulate.NewErrNotImplemented("Assign not implemented in memory manipulator")
-}
-
 // Increment is part of the implementation of the Manipulator interface.
 func (*memdbManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
 
@@ -248,8 +236,6 @@ func (s *memdbManipulator) txnForID(id manipulate.TransactionID) *memdb.Txn {
 }
 
 func (s *memdbManipulator) commitTxn(t *memdb.Txn) {
-
-	log.WithField("transaction", t).Debug("Committing transaction to MemDB.")
 
 	t.Commit()
 }

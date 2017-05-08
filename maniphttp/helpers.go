@@ -20,6 +20,10 @@ func addQueryParameters(req *http.Request, ctx *manipulate.Context) {
 		}
 	}
 
+	for _, order := range ctx.Order {
+		q.Add("order", order)
+	}
+
 	if ctx.Page != 0 {
 		q.Add("page", strconv.Itoa(ctx.Page))
 	}

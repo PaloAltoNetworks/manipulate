@@ -5,6 +5,7 @@ import (
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
+	"github.com/aporeto-inc/manipulate/internal/sec"
 	"github.com/aporeto-inc/manipulate/manipwebsocket/compiler"
 )
 
@@ -24,6 +25,19 @@ func decodeErrors(response *elemental.Response) error {
 	return errs
 }
 
+func handleCommunicationError(m *websocketManipulator, err error) error {
+
+	if _, ok := err.(manipulate.ErrDisconnected); ok {
+		return err
+	}
+
+	if !m.isConnected() {
+		return manipulate.NewErrDisconnected("disconnected per user request")
+	}
+
+	return manipulate.NewErrCannotCommunicate(sec.Snip(err, m.currentPassword()).Error())
+}
+
 func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Context) error {
 
 	if ctx.Filter != nil {
@@ -35,7 +49,9 @@ func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Cont
 	}
 
 	if ctx.Parameters != nil {
-		request.Parameters = ctx.Parameters.KeyValues
+		for k, v := range ctx.Parameters.KeyValues {
+			request.Parameters[k] = v
+		}
 	}
 
 	if ctx.Parent != nil {
@@ -51,10 +67,13 @@ func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Cont
 		request.Recursive = true
 	}
 
+	request.ExternalTrackingID = ctx.ExternalTrackingID
+	request.ExternalTrackingType = ctx.ExternalTrackingType
 	request.Page = ctx.Page
 	request.PageSize = ctx.PageSize
 	request.OverrideProtection = ctx.OverrideProtection
 	request.Version = ctx.Version
+	request.Order = append([]string{}, ctx.Order...)
 
 	return nil
 }
@@ -69,4 +88,23 @@ func SendRequest(manipulator manipulate.Manipulator, request *elemental.Request)
 	}
 
 	return m.send(request)
+}
+
+// IsConnected checks the connection state of the manipulator.
+func IsConnected(manipulator manipulate.Manipulator) bool {
+
+	m, ok := manipulator.(*websocketManipulator)
+
+	if !ok {
+		return false
+	}
+
+	if !m.isConnected() {
+		return false
+	}
+
+	m.wsLock.Lock()
+	defer m.wsLock.Unlock()
+
+	return m.ws != nil
 }
