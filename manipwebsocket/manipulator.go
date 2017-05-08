@@ -625,6 +625,11 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 		return nil, handleCommunicationError(s, fmt.Errorf("Websocket not initialized"))
 	}
 
+	zap.L().Debug("Send request",
+		zap.Stringer("request", request),
+		zap.ByteString("data", request.Data),
+	)
+
 	err := websocket.JSON.Send(s.ws, request)
 	s.wsLock.Unlock()
 
@@ -638,6 +643,11 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 	select {
 
 	case response := <-ch:
+
+		zap.L().Debug("Receive response",
+			zap.Int("responseStatusCode", response.StatusCode),
+			zap.ByteString("responseData", response.Data),
+		)
 
 		if response.StatusCode < 200 || response.StatusCode > 300 {
 			return nil, decodeErrors(response)
