@@ -644,7 +644,7 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 
 	case response := <-ch:
 
-		zap.L().Debug("Response received",
+		zap.L().Debug("Receive response",
 			zap.Int("responseStatusCode", response.StatusCode),
 			zap.ByteString("responseData", response.Data),
 		)
