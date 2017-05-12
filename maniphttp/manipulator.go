@@ -19,6 +19,7 @@ import (
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
+	"github.com/aporeto-inc/manipulate/internal/auth"
 	"github.com/aporeto-inc/manipulate/internal/sec"
 	"github.com/aporeto-inc/manipulate/internal/tracing"
 	"github.com/opentracing/opentracing-go"
@@ -90,7 +91,7 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 	defer sp.Finish()
 
 	mclient := midgardclient.NewClientWithCAPool(midgardurl, rootCAPool, clientCAPool, skipInsecure)
-	token, err := mclient.IssueFromCertificateWithValidity(certificates, validity, sp)
+	token, err := auth.IssueInitialToken(mclient, certificates, validity, sp)
 	if err != nil {
 		tracing.FinishTraceWithError(sp, err)
 		return nil, nil, err
@@ -119,7 +120,7 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 
 	stopCh := make(chan bool)
 
-	go m.renewMidgardToken(mclient, certificates, validity/2, stopCh)
+	go auth.RenewMidgardToken(mclient, certificates, validity/2, m.setPassword, stopCh)
 
 	return m, func() { stopCh <- true }, nil
 }
@@ -538,40 +539,4 @@ func (s *httpManipulator) currentPassword() string {
 	s.renewLock.Lock()
 	defer s.renewLock.Unlock()
 	return s.password
-}
-
-func (s *httpManipulator) renewMidgardToken(
-	mclient *midgardclient.Client,
-	certificates []tls.Certificate,
-	interval time.Duration,
-	stop chan bool,
-) {
-
-	nextRefresh := time.Now().Add(interval)
-
-	for {
-
-		select {
-		case <-time.After(time.Minute):
-
-			now := time.Now()
-			if now.Before(nextRefresh) {
-				break
-			}
-
-			token, err := mclient.IssueFromCertificateWithValidity(certificates, interval*2, nil)
-			if err != nil {
-				zap.L().Error("Unable to renew Midgard token", zap.Error(err))
-				break
-			}
-
-			s.setPassword(token)
-
-			nextRefresh = now.Add(interval)
-			zap.L().Info("Midgard token renewed")
-
-		case <-stop:
-			return
-		}
-	}
 }
