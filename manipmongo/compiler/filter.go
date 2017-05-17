@@ -14,7 +14,14 @@ func CompileFilter(f *manipulate.Filter) bson.M {
 
 	for index, key := range f.Keys() {
 
-		k := strings.ToLower(key[0])
+		var k string
+		if path := strings.SplitN(key[0], ".", 2); len(path) > 1 {
+			path[0] = strings.ToLower(path[0])
+			k = strings.Join(path, ".")
+		} else {
+			k = strings.ToLower(key[0])
+		}
+
 		op := f.Operators()[index]
 
 		if k == "id" {

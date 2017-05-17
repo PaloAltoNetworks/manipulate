@@ -26,6 +26,20 @@ func TestUtils_compiler(t *testing.T) {
 		})
 	})
 
+	Convey("Given I have a simple manipulate.Filter with dots", t, func() {
+
+		f := manipulate.NewFilterComposer().WithKey("X.TOTO.Titu").Equals(1).Done()
+
+		Convey("When I compile the filter", func() {
+
+			b, _ := bson.MarshalJSON(CompileFilter(f))
+
+			Convey("Then the bson should be correct", func() {
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x.TOTO.Titu":{"$eq":1}}]}`)
+			})
+		})
+	})
+
 	Convey("Given I have a simple and manipulate.Filter", t, func() {
 
 		f := manipulate.NewFilterComposer().WithKey("x").Equals(1).AndKey("y").Equals(2).Done()
