@@ -51,6 +51,7 @@ func CompileFilter(f *manipulate.Filter) bson.M {
 			b = append(b, bson.M{k: bson.M{"$ne": f.Values()[index][0]}})
 
 		case manipulate.ContainComparator:
+		case manipulate.InComparator:
 			b = append(b, bson.M{k: bson.M{"$in": f.Values()[index]}})
 
 		case manipulate.GreaterComparator:
