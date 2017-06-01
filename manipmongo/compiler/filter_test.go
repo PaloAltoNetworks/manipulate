@@ -114,4 +114,18 @@ func TestUtils_compiler(t *testing.T) {
 			})
 		})
 	})
+
+	Convey("Given I have filter that contains Match", t, func() {
+		f := manipulate.NewFilterComposer().
+			WithKey("x").Matches("$abc^", ".*").
+			Done()
+
+		Convey("When I compile the filter", func() {
+			b, _ := bson.MarshalJSON(CompileFilter(f))
+
+			Convey("Then the bson should be correct", func() {
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"$or":[{"x":{"$options":"m","$regex":"$abc^"}},{"x":{"$options":"m","$regex":".*"}}]}]}`)
+			})
+		})
+	})
 }

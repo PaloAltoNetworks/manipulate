@@ -13,6 +13,7 @@ const (
 	LesserComparator
 	InComparator
 	ContainComparator
+	MatchComparator
 )
 
 // An FilterComparator is the type of a operator used by a filter.
@@ -162,6 +163,7 @@ type FilterValueComposer interface {
 	LesserThan(...interface{}) FilterKeyComposer
 	In(...interface{}) FilterKeyComposer
 	Contains(...interface{}) FilterKeyComposer
+	Matches(...interface{}) FilterKeyComposer
 }
 
 // FilterKeyComposer composes a filter.
@@ -256,6 +258,13 @@ func (f *Filter) In(values ...interface{}) FilterKeyComposer {
 func (f *Filter) Contains(values ...interface{}) FilterKeyComposer {
 	f.values = f.values.Then(values...)
 	f.comparators = f.comparators.Then(ContainComparator)
+	return f
+}
+
+// Matches adds a match comparator to the FilterComposer.
+func (f *Filter) Matches(values ...interface{}) FilterKeyComposer {
+	f.values = f.values.Then(values...)
+	f.comparators = f.comparators.Then(MatchComparator)
 	return f
 }
 
