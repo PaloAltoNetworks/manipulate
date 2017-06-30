@@ -33,7 +33,11 @@ func Test_addQueryParameters(t *testing.T) {
 		Convey("When I call the method addQueryParameters with parameters", func() {
 
 			ctx, benchmark := createTestData()
-			addQueryParameters(request, ctx)
+			err := addQueryParameters(request, ctx)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
 			Convey("The query string should be properly filled with escaped parameters", func() {
 				So(request.URL.RawQuery, ShouldEqual, benchmark)
 			})
@@ -47,8 +51,10 @@ func Test_addQueryParameters(t *testing.T) {
 
 		Convey("When I call the method addQueryParameters with a context with no Parameters", func() {
 
-			addQueryParameters(request, manipulate.NewContext())
-
+			err := addQueryParameters(request, manipulate.NewContext())
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
 			Convey("The query string should not change", func() {
 				So(request.URL.RawQuery, ShouldEqual, "x=1&y=2")
 			})
@@ -58,7 +64,11 @@ func Test_addQueryParameters(t *testing.T) {
 
 			ctx := manipulate.NewContext()
 			ctx.Parameters = &manipulate.Parameters{}
-			addQueryParameters(request, ctx)
+			err := addQueryParameters(request, ctx)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
 
 			Convey("The query string should not change", func() {
 				So(request.URL.RawQuery, ShouldEqual, "x=1&y=2")
@@ -68,9 +78,28 @@ func Test_addQueryParameters(t *testing.T) {
 		Convey("When I call the method addQueryParameters with parameters", func() {
 
 			ctx, benchmark := createTestData()
-			addQueryParameters(request, ctx)
+			err := addQueryParameters(request, ctx)
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
 			Convey("The query string should be properly appended with escaped parameters", func() {
 				So(request.URL.RawQuery, ShouldEqual, benchmark+"&x=1&y=2")
+			})
+		})
+
+		Convey("When I call the method addQueryParameters with a filter", func() {
+
+			ctx, benchmark := createTestData()
+			ctx.Filter = manipulate.NewFilterComposer().WithKey("name").Equals("toto").AndKey("description").Equals("hello").Done()
+
+			err := addQueryParameters(request, ctx)
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("The query string should be properly appended with escaped parameters", func() {
+				So(request.URL.RawQuery, ShouldEqual, benchmark+"&tag=%24name%3Dtoto&tag=%24description%3Dhello&x=1&y=2")
 			})
 		})
 	})

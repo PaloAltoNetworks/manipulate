@@ -6,7 +6,7 @@ import (
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 	"github.com/aporeto-inc/manipulate/internal/sec"
-	"github.com/aporeto-inc/manipulate/manipwebsocket/compiler"
+	"github.com/aporeto-inc/manipulate/internal/sharedcompiler"
 )
 
 func decodeErrors(response *elemental.Response) error {
@@ -42,7 +42,7 @@ func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Cont
 
 	if ctx.Filter != nil {
 		var err error
-		request.Parameters, err = compiler.CompileFilter(ctx.Filter)
+		request.Parameters, err = sharedcompiler.CompileFilter(ctx.Filter)
 		if err != nil {
 			return err
 		}

@@ -5,13 +5,24 @@ import (
 	"strconv"
 
 	"github.com/aporeto-inc/manipulate"
+	"github.com/aporeto-inc/manipulate/internal/sharedcompiler"
 )
 
 // AddQueryParameters appends each key-value pair from ctx.Parameters.KeyValues
 // to a request as query parameters with proper escaping.
-func addQueryParameters(req *http.Request, ctx *manipulate.Context) {
+func addQueryParameters(req *http.Request, ctx *manipulate.Context) error {
 
 	q := req.URL.Query()
+
+	if ctx.Filter != nil {
+		query, err := sharedcompiler.CompileFilter(ctx.Filter)
+		if err != nil {
+			return err
+		}
+		for k, v := range query {
+			q[k] = v
+		}
+	}
 
 	if ctx.Parameters != nil && ctx.Parameters.KeyValues != nil {
 		keyValues := ctx.Parameters.KeyValues
@@ -41,4 +52,6 @@ func addQueryParameters(req *http.Request, ctx *manipulate.Context) {
 	}
 
 	req.URL.RawQuery = q.Encode()
+
+	return nil
 }
