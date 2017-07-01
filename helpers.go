@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/signal"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 func writeString(buffer *bytes.Buffer, str string) {
@@ -18,6 +20,22 @@ func writeString(buffer *bytes.Buffer, str string) {
 // You can pass -1 to always retry. The function will retry immediately the first try,
 // then after 1s, 2s etc until a try every 5s.
 func RetryManipulation(manipulation func() error, onRetryFunc func(int), maxTries int) error {
+
+	zap.L().Warn("manipulate.RetryManipulation is deprecated. Please switch to manipulate.Retry")
+	return retryManipulation(manipulation, onRetryFunc, nil, maxTries)
+}
+
+// Retry will retry the given function that tries a manipulate
+// operation at least maxTries if the error is a manipulate.ErrCannotCommunicate.
+// You can pass -1 to always retry. The function will retry immediately the first try,
+// then after 1s, 2s etc until a try every 5s. If the onRetryFunc is passed and it returns false,
+// the retrying process will be interrupted.
+func Retry(manipulation func() error, onRetryFunc func(int, error) bool, maxTries int) error {
+
+	return retryManipulation(manipulation, nil, onRetryFunc, maxTries)
+}
+
+func retryManipulation(manipulation func() error, onRetryFunc func(int), onRetryCheckFunc func(int, error) bool, maxTries int) error {
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -46,6 +64,10 @@ func RetryManipulation(manipulation func() error, onRetryFunc func(int), maxTrie
 
 		if onRetryFunc != nil {
 			onRetryFunc(try)
+		}
+
+		if onRetryCheckFunc != nil && !onRetryCheckFunc(try, err) {
+			return nil
 		}
 
 		// Otherwise wait, increase the time and try again.
