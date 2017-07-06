@@ -468,8 +468,6 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, context *manipul
 	}
 
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
-
-	return
 }
 
 func (s *httpManipulator) readHeaders(response *http.Response, context *manipulate.Context) {
