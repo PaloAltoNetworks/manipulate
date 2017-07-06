@@ -12,13 +12,12 @@ inputs:
 run:
   path: sh
   args:
-    - -exc
+    - -ec
     - |
-      set +x
       export PATH=$PATH:$GOPATH/bin:$PWD/go/bin
       export GOPATH=$PWD/go:$GOPATH
 
       cd go/src/github.com/aporeto-inc/manipulate
-      make init || exit 1
-      make test || exit 1
-      make release || exit 1
+      make init
+      make test
+      make release
