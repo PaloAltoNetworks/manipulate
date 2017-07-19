@@ -42,6 +42,7 @@ type websocketManipulator struct {
 	wsLock                    *sync.Mutex
 	ws                        *websocket.Conn
 	stopSendChan              chan bool
+	defaultAPIVersion         int
 }
 
 // NewWebSocketManipulator returns a Manipulator backed by a websocket API.
@@ -128,6 +129,11 @@ func NewWebSocketManipulatorWithMidgardCertAuthentication(url string, midgardurl
 	return m, func() { stop(); stopCh <- true }, err
 }
 
+// SetDefaultAPIVersion sets the default version of the api to use.
+func (s *websocketManipulator) SetDefaultAPIVersion(version int) {
+	s.defaultAPIVersion = version
+}
+
 func (s *websocketManipulator) RetrieveMany(context *manipulate.Context, dest elemental.ContentIdentifiable) error {
 
 	if context == nil {
@@ -143,7 +149,7 @@ func (s *websocketManipulator) RetrieveMany(context *manipulate.Context, dest el
 	req.Username = s.username
 	req.Password = s.currentPassword()
 
-	if err := populateRequestFromContext(req, context); err != nil {
+	if err := populateRequestFromContext(req, context, s.defaultAPIVersion); err != nil {
 		tracing.FinishTraceWithError(sp, err)
 		return err
 	}
@@ -195,7 +201,7 @@ func (s *websocketManipulator) Retrieve(context *manipulate.Context, objects ...
 		req.Password = s.currentPassword()
 		req.ObjectID = object.Identifier()
 
-		if err := populateRequestFromContext(req, context); err != nil {
+		if err := populateRequestFromContext(req, context, s.defaultAPIVersion); err != nil {
 			tracing.FinishTraceWithError(subSp, err)
 			return err
 		}
@@ -248,7 +254,7 @@ func (s *websocketManipulator) Create(context *manipulate.Context, objects ...el
 		req.Username = s.username
 		req.Password = s.currentPassword()
 
-		if err := populateRequestFromContext(req, context); err != nil {
+		if err := populateRequestFromContext(req, context, s.defaultAPIVersion); err != nil {
 			tracing.FinishTraceWithError(subSp, err)
 			return err
 		}
@@ -302,7 +308,7 @@ func (s *websocketManipulator) Update(context *manipulate.Context, objects ...el
 		req.Password = s.currentPassword()
 		req.ObjectID = object.Identifier()
 
-		if err := populateRequestFromContext(req, context); err != nil {
+		if err := populateRequestFromContext(req, context, s.defaultAPIVersion); err != nil {
 			tracing.FinishTraceWithError(subSp, err)
 			return err
 		}
@@ -356,7 +362,7 @@ func (s *websocketManipulator) Delete(context *manipulate.Context, objects ...el
 		req.Password = s.currentPassword()
 		req.ObjectID = object.Identifier()
 
-		if err := populateRequestFromContext(req, context); err != nil {
+		if err := populateRequestFromContext(req, context, s.defaultAPIVersion); err != nil {
 			tracing.FinishTraceWithError(subSp, err)
 			return err
 		}
@@ -408,7 +414,7 @@ func (s *websocketManipulator) Count(context *manipulate.Context, identity eleme
 	req.Username = s.username
 	req.Password = s.currentPassword()
 
-	if err := populateRequestFromContext(req, context); err != nil {
+	if err := populateRequestFromContext(req, context, s.defaultAPIVersion); err != nil {
 		tracing.FinishTraceWithError(sp, err)
 		return 0, err
 	}

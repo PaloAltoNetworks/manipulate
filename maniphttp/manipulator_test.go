@@ -132,58 +132,175 @@ func TestHTTP_standardURI(t *testing.T) {
 		Convey("When I check personal URI of a standard object with an ID", func() {
 
 			list.SetIdentifier("xxx")
-			url, err := store.getPersonalURL(list)
 
-			Convey("Then it should be http://url.com/lists/xxx", func() {
-				So(url, ShouldEqual, "http://url.com/lists/xxx")
+			Convey("When I use no version", func() {
+
+				url, err := store.getPersonalURL(list, 0)
+
+				Convey("Then it should be http://url.com/lists/xxx", func() {
+					So(url, ShouldEqual, "http://url.com/lists/xxx")
+				})
+
+				Convey("Then err should be nil", func() {
+					So(err, ShouldBeNil)
+				})
 			})
 
-			Convey("Then err should be nil", func() {
-				So(err, ShouldBeNil)
+			Convey("When I use a version", func() {
+
+				url, err := store.getPersonalURL(list, 12)
+
+				Convey("Then it should be http://url.com/v12/lists/xxx", func() {
+					So(url, ShouldEqual, "http://url.com/v12/lists/xxx")
+				})
+
+				Convey("Then err should be nil", func() {
+					So(err, ShouldBeNil)
+				})
+			})
+
+			Convey("When I use a default version", func() {
+
+				store.SetDefaultAPIVersion(42)
+				url, err := store.getPersonalURL(list, 0)
+
+				Convey("Then it should be http://url.com/v42/lists/xxx", func() {
+					So(url, ShouldEqual, "http://url.com/v42/lists/xxx")
+				})
+
+				Convey("Then err should be nil", func() {
+					So(err, ShouldBeNil)
+				})
 			})
 		})
 
 		Convey("When I check general URI of a standard object with an ID", func() {
 
 			list.SetIdentifier("xxx")
-			url := store.getGeneralURL(list)
 
-			Convey("Then it should be http://url.com/lists", func() {
-				So(url, ShouldEqual, "http://url.com/lists")
+			Convey("When I use no version", func() {
+
+				url := store.getGeneralURL(list, 0)
+
+				Convey("Then it should be http://url.com/lists", func() {
+					So(url, ShouldEqual, "http://url.com/lists")
+				})
+			})
+
+			Convey("When I use a version", func() {
+
+				url := store.getGeneralURL(list, 12)
+
+				Convey("Then it should be http://url.com/v12/lists", func() {
+					So(url, ShouldEqual, "http://url.com/v12/lists")
+				})
+			})
+
+			Convey("When I use a default version", func() {
+
+				store.SetDefaultAPIVersion(42)
+				url := store.getGeneralURL(list, 0)
+
+				Convey("Then it should be http://url.com/v42/lists", func() {
+					So(url, ShouldEqual, "http://url.com/v42/lists")
+				})
 			})
 		})
 
 		Convey("When I check children URL for a root object", func() {
 
 			list.SetIdentifier("xxx")
-			url, err := store.getURLForChildrenIdentity(nil, ListIdentity)
 
-			Convey("Then URL of the children with ListIdentity should be http://url.com/lists", func() {
-				So(url, ShouldEqual, "http://url.com/lists")
+			Convey("When I use no version", func() {
+
+				url, err := store.getURLForChildrenIdentity(nil, ListIdentity, 0)
+
+				Convey("Then URL of the children with ListIdentity should be http://url.com/lists", func() {
+					So(url, ShouldEqual, "http://url.com/lists")
+				})
+
+				Convey("Then err should be nil", func() {
+					So(err, ShouldBeNil)
+				})
 			})
 
-			Convey("Then err should be nil", func() {
-				So(err, ShouldBeNil)
+			Convey("When I use a version", func() {
+
+				url, err := store.getURLForChildrenIdentity(nil, ListIdentity, 12)
+
+				Convey("Then URL of the children with ListIdentity should be http://url.com/v12/lists", func() {
+					So(url, ShouldEqual, "http://url.com/v12/lists")
+				})
+
+				Convey("Then err should be nil", func() {
+					So(err, ShouldBeNil)
+				})
+			})
+
+			Convey("When I use default version", func() {
+
+				store.SetDefaultAPIVersion(42)
+				url, err := store.getURLForChildrenIdentity(nil, ListIdentity, 0)
+
+				Convey("Then URL of the children with ListIdentity should be http://url.com/v42/lists", func() {
+					So(url, ShouldEqual, "http://url.com/v42/lists")
+				})
+
+				Convey("Then err should be nil", func() {
+					So(err, ShouldBeNil)
+				})
 			})
 		})
 
 		Convey("When I check children URL for a standard object with an ID", func() {
 
 			list.SetIdentifier("xxx")
-			url, err := store.getURLForChildrenIdentity(list, TaskIdentity)
 
-			Convey("Then URL of the children with FakeRootIdentity should be http://url.com/lists/xxx/tasks", func() {
-				So(url, ShouldEqual, "http://url.com/lists/xxx/tasks")
+			Convey("When I use no version", func() {
+
+				url, err := store.getURLForChildrenIdentity(list, TaskIdentity, 0)
+
+				Convey("Then URL of the children with FakeRootIdentity should be http://url.com/lists/xxx/tasks", func() {
+					So(url, ShouldEqual, "http://url.com/lists/xxx/tasks")
+				})
+
+				Convey("Then err should be nil", func() {
+					So(err, ShouldBeNil)
+				})
 			})
 
-			Convey("Then err should be nil", func() {
-				So(err, ShouldBeNil)
+			Convey("When I use a version", func() {
+
+				url, err := store.getURLForChildrenIdentity(list, TaskIdentity, 12)
+
+				Convey("Then URL of the children with FakeRootIdentity should be http://url.com/v12/lists/xxx/tasks", func() {
+					So(url, ShouldEqual, "http://url.com/v12/lists/xxx/tasks")
+				})
+
+				Convey("Then err should be nil", func() {
+					So(err, ShouldBeNil)
+				})
+			})
+
+			Convey("When I use a default version", func() {
+
+				store.SetDefaultAPIVersion(42)
+
+				url, err := store.getURLForChildrenIdentity(list, TaskIdentity, 0)
+
+				Convey("Then URL of the children with FakeRootIdentity should be http://url.com/v42/lists/xxx/tasks", func() {
+					So(url, ShouldEqual, "http://url.com/v42/lists/xxx/tasks")
+				})
+
+				Convey("Then err should be nil", func() {
+					So(err, ShouldBeNil)
+				})
 			})
 		})
 
 		Convey("When I check the general URL of a standard object without an ID", func() {
 
-			url, err := store.getURLForChildrenIdentity(list, TaskIdentity)
+			url, err := store.getURLForChildrenIdentity(list, TaskIdentity, 0)
 
 			Convey("Then it should be ''", func() {
 				So(url, ShouldEqual, "")
@@ -196,7 +313,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 		Convey("When I check the children URL for a standard object without an ID", func() {
 
-			url, err := store.getURLForChildrenIdentity(list, TaskIdentity)
+			url, err := store.getURLForChildrenIdentity(list, TaskIdentity, 0)
 
 			Convey("Then it should be ''", func() {
 				So(url, ShouldEqual, "")

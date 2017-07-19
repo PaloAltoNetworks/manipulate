@@ -28,13 +28,14 @@ import (
 )
 
 type httpManipulator struct {
-	username  string
-	password  string
-	url       string
-	namespace string
-	renewLock *sync.Mutex
-	client    *http.Client
-	tlsConfig *tls.Config
+	username          string
+	password          string
+	url               string
+	namespace         string
+	renewLock         *sync.Mutex
+	client            *http.Client
+	tlsConfig         *tls.Config
+	defaultAPIVersion int
 }
 
 // NewHTTPManipulator returns a Manipulator backed by an ReST API.
@@ -125,6 +126,11 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 	return m, func() { stopCh <- true }, nil
 }
 
+// SetDefaultAPIVersion sets the default version of the api to use.
+func (s *httpManipulator) SetDefaultAPIVersion(version int) {
+	s.defaultAPIVersion = version
+}
+
 func (s *httpManipulator) RetrieveMany(context *manipulate.Context, dest elemental.ContentIdentifiable) error {
 
 	if context == nil {
@@ -133,7 +139,7 @@ func (s *httpManipulator) RetrieveMany(context *manipulate.Context, dest element
 
 	sp := tracing.StartTrace(context.TrackingSpan, fmt.Sprintf("maniphttp.retrieve_many.%s", dest.ContentIdentity().Category), context)
 
-	url, err := s.getURLForChildrenIdentity(context.Parent, dest.ContentIdentity())
+	url, err := s.getURLForChildrenIdentity(context.Parent, dest.ContentIdentity(), context.Version)
 	if err != nil {
 		tracing.FinishTraceWithError(sp, err)
 		return manipulate.NewErrCannotBuildQuery(err.Error())
@@ -188,7 +194,7 @@ func (s *httpManipulator) Retrieve(context *manipulate.Context, objects ...eleme
 		subSp := tracing.StartTrace(sp, fmt.Sprintf("maniphttp.retrieve.object.%s", object.Identity().Name), context)
 		tracing.SetTag(subSp, "maniphttp.retrieve.object.id", object.Identifier())
 
-		url, err := s.getPersonalURL(object)
+		url, err := s.getPersonalURL(object, context.Version)
 		if err != nil {
 			tracing.FinishTraceWithError(subSp, err)
 			return manipulate.NewErrCannotBuildQuery(err.Error())
@@ -240,7 +246,7 @@ func (s *httpManipulator) Create(context *manipulate.Context, objects ...element
 		subSp := tracing.StartTrace(sp, fmt.Sprintf("maniphttp.create.object.%s", child.Identity().Name), context)
 		tracing.SetTag(subSp, "maniphttp.create.object.id", child.Identifier())
 
-		url, err := s.getURLForChildrenIdentity(context.Parent, child.Identity())
+		url, err := s.getURLForChildrenIdentity(context.Parent, child.Identity(), context.Version)
 		if err != nil {
 			tracing.FinishTraceWithError(subSp, err)
 			return manipulate.NewErrCannotBuildQuery(err.Error())
@@ -302,7 +308,7 @@ func (s *httpManipulator) Update(context *manipulate.Context, objects ...element
 		subSp := tracing.StartTrace(sp, fmt.Sprintf("maniphttp.update.object.%s", object.Identity().Name), context)
 		tracing.SetTag(subSp, "maniphttp.update.object.id", object.Identifier())
 
-		url, err := s.getPersonalURL(object)
+		url, err := s.getPersonalURL(object, context.Version)
 		if err != nil {
 			tracing.FinishTraceWithError(subSp, err)
 			return manipulate.NewErrCannotBuildQuery(err.Error())
@@ -360,7 +366,7 @@ func (s *httpManipulator) Delete(context *manipulate.Context, objects ...element
 		subSp := tracing.StartTrace(sp, fmt.Sprintf("maniphttp.delete.object.%s", object.Identity().Name), context)
 		tracing.SetTag(subSp, "maniphttp.delete.object.id", object.Identifier())
 
-		url, err := s.getPersonalURL(object)
+		url, err := s.getPersonalURL(object, context.Version)
 		if err != nil {
 			tracing.FinishTraceWithError(subSp, err)
 			return manipulate.NewErrCannotBuildQuery(err.Error())
@@ -404,7 +410,7 @@ func (s *httpManipulator) Count(context *manipulate.Context, identity elemental.
 
 	sp := tracing.StartTrace(context.TrackingSpan, fmt.Sprintf("maniphttp.count.%s", identity.Category), context)
 
-	url, err := s.getURLForChildrenIdentity(context.Parent, identity)
+	url, err := s.getURLForChildrenIdentity(context.Parent, identity, context.Version)
 	if err != nil {
 		tracing.FinishTraceWithError(sp, err)
 		return 0, manipulate.NewErrCannotBuildQuery(err.Error())
@@ -479,27 +485,43 @@ func (s *httpManipulator) readHeaders(response *http.Response, context *manipula
 	context.CountTotal, _ = strconv.Atoi(response.Header.Get("X-Count-Total"))
 }
 
-func (s *httpManipulator) getGeneralURL(o elemental.Identifiable) string {
+func (s *httpManipulator) computeVersion(version int) string {
 
-	return s.url + "/" + o.Identity().Category
+	if version > 0 {
+		return "v" + strconv.Itoa(version) + "/"
+	}
+
+	if s.defaultAPIVersion > 0 {
+		return "v" + strconv.Itoa(s.defaultAPIVersion) + "/"
+	}
+
+	return ""
 }
 
-func (s *httpManipulator) getPersonalURL(o elemental.Identifiable) (string, error) {
+func (s *httpManipulator) getGeneralURL(o elemental.Identifiable, version int) string {
+
+	v := s.computeVersion(version)
+
+	return s.url + "/" + v + o.Identity().Category
+}
+
+func (s *httpManipulator) getPersonalURL(o elemental.Identifiable, version int) (string, error) {
 
 	if o.Identifier() == "" {
 		return "", fmt.Errorf("Cannot GetPersonalURL of an object with no ID set")
 	}
 
-	return s.getGeneralURL(o) + "/" + o.Identifier(), nil
+	return s.getGeneralURL(o, version) + "/" + o.Identifier(), nil
 }
 
-func (s *httpManipulator) getURLForChildrenIdentity(parent elemental.Identifiable, childrenIdentity elemental.Identity) (string, error) {
+func (s *httpManipulator) getURLForChildrenIdentity(parent elemental.Identifiable, childrenIdentity elemental.Identity, version int) (string, error) {
 
 	if parent == nil {
-		return s.url + "/" + childrenIdentity.Category, nil
+		v := s.computeVersion(version)
+		return s.url + "/" + v + childrenIdentity.Category, nil
 	}
 
-	url, err := s.getPersonalURL(parent)
+	url, err := s.getPersonalURL(parent, version)
 	if err != nil {
 		return "", err
 	}

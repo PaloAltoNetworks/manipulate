@@ -38,7 +38,7 @@ func handleCommunicationError(m *websocketManipulator, err error) error {
 	return manipulate.NewErrCannotCommunicate(sec.Snip(err, m.currentPassword()).Error())
 }
 
-func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Context) error {
+func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Context, defaultVersion int) error {
 
 	if ctx.Filter != nil {
 		var err error
@@ -67,12 +67,15 @@ func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Cont
 		request.Recursive = true
 	}
 
+	if ctx.Version == 0 {
+		request.Version = defaultVersion
+	}
+
 	request.ExternalTrackingID = ctx.ExternalTrackingID
 	request.ExternalTrackingType = ctx.ExternalTrackingType
 	request.Page = ctx.Page
 	request.PageSize = ctx.PageSize
 	request.OverrideProtection = ctx.OverrideProtection
-	request.Version = ctx.Version
 	request.Order = append([]string{}, ctx.Order...)
 
 	return nil
