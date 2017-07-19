@@ -28,14 +28,13 @@ import (
 )
 
 type httpManipulator struct {
-	username          string
-	password          string
-	url               string
-	namespace         string
-	renewLock         *sync.Mutex
-	client            *http.Client
-	tlsConfig         *tls.Config
-	defaultAPIVersion int
+	username  string
+	password  string
+	url       string
+	namespace string
+	renewLock *sync.Mutex
+	client    *http.Client
+	tlsConfig *tls.Config
 }
 
 // NewHTTPManipulator returns a Manipulator backed by an ReST API.
@@ -124,11 +123,6 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 	go auth.RenewMidgardToken(mclient, certificates, validity/2, m.setPassword, stopCh)
 
 	return m, func() { stopCh <- true }, nil
-}
-
-// SetDefaultAPIVersion sets the default version of the api to use.
-func (s *httpManipulator) SetDefaultAPIVersion(version int) {
-	s.defaultAPIVersion = version
 }
 
 func (s *httpManipulator) RetrieveMany(context *manipulate.Context, dest elemental.ContentIdentifiable) error {
@@ -485,14 +479,16 @@ func (s *httpManipulator) readHeaders(response *http.Response, context *manipula
 	context.CountTotal, _ = strconv.Atoi(response.Header.Get("X-Count-Total"))
 }
 
-func (s *httpManipulator) computeVersion(version int) string {
+func (s *httpManipulator) computeVersion(o elemental.Identifiable, version int) string {
 
 	if version > 0 {
 		return "v/" + strconv.Itoa(version) + "/"
 	}
 
-	if s.defaultAPIVersion > 0 {
-		return "v/" + strconv.Itoa(s.defaultAPIVersion) + "/"
+	if v, ok := o.(elemental.Versionable); ok {
+		if v.Version() > 0 {
+			return "v/" + strconv.Itoa(int(v.Version())) + "/"
+		}
 	}
 
 	return ""
@@ -500,7 +496,7 @@ func (s *httpManipulator) computeVersion(version int) string {
 
 func (s *httpManipulator) getGeneralURL(o elemental.Identifiable, version int) string {
 
-	v := s.computeVersion(version)
+	v := s.computeVersion(o, version)
 
 	return s.url + "/" + v + o.Identity().Category
 }
@@ -517,7 +513,7 @@ func (s *httpManipulator) getPersonalURL(o elemental.Identifiable, version int) 
 func (s *httpManipulator) getURLForChildrenIdentity(parent elemental.Identifiable, childrenIdentity elemental.Identity, version int) (string, error) {
 
 	if parent == nil {
-		v := s.computeVersion(version)
+		v := s.computeVersion(parent, version)
 		return s.url + "/" + v + childrenIdentity.Category, nil
 	}
 

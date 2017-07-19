@@ -27,6 +27,10 @@ func (o ListsList) List() elemental.IdentifiablesList {
 	return nil
 }
 
+func (o ListsList) Version() float64 {
+	return 1.0
+}
+
 // List represents the model of a list
 type List struct {
 	ID          string `json:"ID,omitempty"`
@@ -35,12 +39,14 @@ type List struct {
 	Owner       string `json:"owner,omitempty"`
 	Description string `json:"description,omitempty"`
 	Name        string `json:"name,omitempty"`
+
+	ModelVersion float64 `json:"-"`
 }
 
 // NewList returns a new *List
 func NewList() *List {
 
-	return &List{}
+	return &List{ModelVersion: 1.0}
 }
 
 // Identity returns the Identity of the object.
@@ -59,6 +65,12 @@ func (o *List) Identifier() string {
 func (o *List) SetIdentifier(ID string) {
 
 	o.ID = ID
+}
+
+// Returns the version
+func (o *List) Version() float64 {
+
+	return o.ModelVersion
 }
 
 // Validate valides the current information stored into the structure.
@@ -94,6 +106,10 @@ func (o TasksList) List() elemental.IdentifiablesList {
 	return nil
 }
 
+func (o TasksList) Version() float64 {
+	return 1.0
+}
+
 // Task represents the model of a task
 type Task struct {
 	ID          string `json:"ID,omitempty"`
@@ -103,13 +119,16 @@ type Task struct {
 	Description string `json:"description,omitempty"`
 	Name        string `json:"name,omitempty"`
 	Status      string `json:"status,omitempty"`
+
+	ModelVersion float64 `json:"-"`
 }
 
 // NewTask returns a new *Task
 func NewTask() *Task {
 
 	return &Task{
-		Status: "TODO",
+		ModelVersion: 1.0,
+		Status:       "TODO",
 	}
 }
 
@@ -129,6 +148,12 @@ func (o *Task) Identifier() string {
 func (o *Task) SetIdentifier(ID string) {
 
 	o.ID = ID
+}
+
+// Returns the version
+func (o *Task) Version() float64 {
+
+	return o.ModelVersion
 }
 
 // Validate valides the current information stored into the structure.

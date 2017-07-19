@@ -38,7 +38,7 @@ func handleCommunicationError(m *websocketManipulator, err error) error {
 	return manipulate.NewErrCannotCommunicate(sec.Snip(err, m.currentPassword()).Error())
 }
 
-func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Context, defaultVersion int) error {
+func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Context, o interface{}) error {
 
 	if ctx.Filter != nil {
 		var err error
@@ -68,7 +68,9 @@ func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Cont
 	}
 
 	if ctx.Version == 0 {
-		request.Version = defaultVersion
+		if v, ok := o.(elemental.Versionable); ok {
+			request.Version = int(v.Version())
+		}
 	}
 
 	request.ExternalTrackingID = ctx.ExternalTrackingID
