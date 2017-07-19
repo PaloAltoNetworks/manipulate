@@ -150,8 +150,8 @@ func TestHTTP_standardURI(t *testing.T) {
 
 				url, err := store.getPersonalURL(list, 12)
 
-				Convey("Then it should be http://url.com/v12/lists/xxx", func() {
-					So(url, ShouldEqual, "http://url.com/v12/lists/xxx")
+				Convey("Then it should be http://url.com/v/12/lists/xxx", func() {
+					So(url, ShouldEqual, "http://url.com/v/12/lists/xxx")
 				})
 
 				Convey("Then err should be nil", func() {
@@ -164,8 +164,8 @@ func TestHTTP_standardURI(t *testing.T) {
 				store.SetDefaultAPIVersion(42)
 				url, err := store.getPersonalURL(list, 0)
 
-				Convey("Then it should be http://url.com/v42/lists/xxx", func() {
-					So(url, ShouldEqual, "http://url.com/v42/lists/xxx")
+				Convey("Then it should be http://url.com/v/42/lists/xxx", func() {
+					So(url, ShouldEqual, "http://url.com/v/42/lists/xxx")
 				})
 
 				Convey("Then err should be nil", func() {
@@ -191,8 +191,8 @@ func TestHTTP_standardURI(t *testing.T) {
 
 				url := store.getGeneralURL(list, 12)
 
-				Convey("Then it should be http://url.com/v12/lists", func() {
-					So(url, ShouldEqual, "http://url.com/v12/lists")
+				Convey("Then it should be http://url.com/v/12/lists", func() {
+					So(url, ShouldEqual, "http://url.com/v/12/lists")
 				})
 			})
 
@@ -201,8 +201,8 @@ func TestHTTP_standardURI(t *testing.T) {
 				store.SetDefaultAPIVersion(42)
 				url := store.getGeneralURL(list, 0)
 
-				Convey("Then it should be http://url.com/v42/lists", func() {
-					So(url, ShouldEqual, "http://url.com/v42/lists")
+				Convey("Then it should be http://url.com/v/42/lists", func() {
+					So(url, ShouldEqual, "http://url.com/v/42/lists")
 				})
 			})
 		})
@@ -228,8 +228,8 @@ func TestHTTP_standardURI(t *testing.T) {
 
 				url, err := store.getURLForChildrenIdentity(nil, ListIdentity, 12)
 
-				Convey("Then URL of the children with ListIdentity should be http://url.com/v12/lists", func() {
-					So(url, ShouldEqual, "http://url.com/v12/lists")
+				Convey("Then URL of the children with ListIdentity should be http://url.com/v/12/lists", func() {
+					So(url, ShouldEqual, "http://url.com/v/12/lists")
 				})
 
 				Convey("Then err should be nil", func() {
@@ -242,8 +242,8 @@ func TestHTTP_standardURI(t *testing.T) {
 				store.SetDefaultAPIVersion(42)
 				url, err := store.getURLForChildrenIdentity(nil, ListIdentity, 0)
 
-				Convey("Then URL of the children with ListIdentity should be http://url.com/v42/lists", func() {
-					So(url, ShouldEqual, "http://url.com/v42/lists")
+				Convey("Then URL of the children with ListIdentity should be http://url.com/v/42/lists", func() {
+					So(url, ShouldEqual, "http://url.com/v/42/lists")
 				})
 
 				Convey("Then err should be nil", func() {
@@ -273,8 +273,8 @@ func TestHTTP_standardURI(t *testing.T) {
 
 				url, err := store.getURLForChildrenIdentity(list, TaskIdentity, 12)
 
-				Convey("Then URL of the children with FakeRootIdentity should be http://url.com/v12/lists/xxx/tasks", func() {
-					So(url, ShouldEqual, "http://url.com/v12/lists/xxx/tasks")
+				Convey("Then URL of the children with FakeRootIdentity should be http://url.com/v/12/lists/xxx/tasks", func() {
+					So(url, ShouldEqual, "http://url.com/v/12/lists/xxx/tasks")
 				})
 
 				Convey("Then err should be nil", func() {
@@ -288,8 +288,8 @@ func TestHTTP_standardURI(t *testing.T) {
 
 				url, err := store.getURLForChildrenIdentity(list, TaskIdentity, 0)
 
-				Convey("Then URL of the children with FakeRootIdentity should be http://url.com/v42/lists/xxx/tasks", func() {
-					So(url, ShouldEqual, "http://url.com/v42/lists/xxx/tasks")
+				Convey("Then URL of the children with FakeRootIdentity should be http://url.com/v/42/lists/xxx/tasks", func() {
+					So(url, ShouldEqual, "http://url.com/v/42/lists/xxx/tasks")
 				})
 
 				Convey("Then err should be nil", func() {

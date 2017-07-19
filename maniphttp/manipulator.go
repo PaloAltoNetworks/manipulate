@@ -488,11 +488,11 @@ func (s *httpManipulator) readHeaders(response *http.Response, context *manipula
 func (s *httpManipulator) computeVersion(version int) string {
 
 	if version > 0 {
-		return "v" + strconv.Itoa(version) + "/"
+		return "v/" + strconv.Itoa(version) + "/"
 	}
 
 	if s.defaultAPIVersion > 0 {
-		return "v" + strconv.Itoa(s.defaultAPIVersion) + "/"
+		return "v/" + strconv.Itoa(s.defaultAPIVersion) + "/"
 	}
 
 	return ""
