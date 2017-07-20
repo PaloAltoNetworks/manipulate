@@ -22,6 +22,10 @@ func (o PersonsList) List() elemental.IdentifiablesList {
 	return nil
 }
 
+func (o PersonsList) Version() int {
+	return 1
+}
+
 type Person struct {
 	ID       string
 	Name     string
@@ -48,6 +52,10 @@ func (p *Person) SetIdentifier(ID string) {
 // SetIdentifier sets the value of the object's unique identifier.
 func (p *Person) Validate() error {
 	return nil
+}
+
+func (p *Person) Version() int {
+	return 1
 }
 
 type NotPerson struct {

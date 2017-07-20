@@ -133,7 +133,7 @@ func (s *httpManipulator) RetrieveMany(context *manipulate.Context, dest element
 
 	sp := tracing.StartTrace(context.TrackingSpan, fmt.Sprintf("maniphttp.retrieve_many.%s", dest.ContentIdentity().Category), context)
 
-	url, err := s.getURLForChildrenIdentity(context.Parent, dest.ContentIdentity(), context.Version)
+	url, err := s.getURLForChildrenIdentity(context.Parent, dest.ContentIdentity(), dest.Version(), context.Version)
 	if err != nil {
 		tracing.FinishTraceWithError(sp, err)
 		return manipulate.NewErrCannotBuildQuery(err.Error())
@@ -240,7 +240,7 @@ func (s *httpManipulator) Create(context *manipulate.Context, objects ...element
 		subSp := tracing.StartTrace(sp, fmt.Sprintf("maniphttp.create.object.%s", child.Identity().Name), context)
 		tracing.SetTag(subSp, "maniphttp.create.object.id", child.Identifier())
 
-		url, err := s.getURLForChildrenIdentity(context.Parent, child.Identity(), context.Version)
+		url, err := s.getURLForChildrenIdentity(context.Parent, child.Identity(), child.Version(), context.Version)
 		if err != nil {
 			tracing.FinishTraceWithError(subSp, err)
 			return manipulate.NewErrCannotBuildQuery(err.Error())
@@ -404,7 +404,7 @@ func (s *httpManipulator) Count(context *manipulate.Context, identity elemental.
 
 	sp := tracing.StartTrace(context.TrackingSpan, fmt.Sprintf("maniphttp.count.%s", identity.Category), context)
 
-	url, err := s.getURLForChildrenIdentity(context.Parent, identity, context.Version)
+	url, err := s.getURLForChildrenIdentity(context.Parent, identity, 0, context.Version)
 	if err != nil {
 		tracing.FinishTraceWithError(sp, err)
 		return 0, manipulate.NewErrCannotBuildQuery(err.Error())
@@ -479,45 +479,48 @@ func (s *httpManipulator) readHeaders(response *http.Response, context *manipula
 	context.CountTotal, _ = strconv.Atoi(response.Header.Get("X-Count-Total"))
 }
 
-func (s *httpManipulator) computeVersion(o elemental.Identifiable, version int) string {
+func (s *httpManipulator) computeVersion(modelVersion int, contextVersion int) string {
 
-	if version > 0 {
-		return "v/" + strconv.Itoa(version) + "/"
+	if contextVersion > 0 {
+		return fmt.Sprintf("v/%d/", contextVersion)
 	}
 
-	if v, ok := o.(elemental.Versionable); ok {
-		if v.Version() > 0 {
-			return "v/" + strconv.Itoa(int(v.Version())) + "/"
-		}
+	if modelVersion > 0 {
+		return fmt.Sprintf("v/%d/", modelVersion)
 	}
 
 	return ""
 }
 
-func (s *httpManipulator) getGeneralURL(o elemental.Identifiable, version int) string {
+func (s *httpManipulator) getGeneralURL(o elemental.Identifiable, contextVersion int) string {
 
-	v := s.computeVersion(o, version)
+	v := s.computeVersion(o.Version(), contextVersion)
 
 	return s.url + "/" + v + o.Identity().Category
 }
 
-func (s *httpManipulator) getPersonalURL(o elemental.Identifiable, version int) (string, error) {
+func (s *httpManipulator) getPersonalURL(o elemental.Identifiable, contextVersion int) (string, error) {
 
 	if o.Identifier() == "" {
 		return "", fmt.Errorf("Cannot GetPersonalURL of an object with no ID set")
 	}
 
-	return s.getGeneralURL(o, version) + "/" + o.Identifier(), nil
+	return s.getGeneralURL(o, contextVersion) + "/" + o.Identifier(), nil
 }
 
-func (s *httpManipulator) getURLForChildrenIdentity(parent elemental.Identifiable, childrenIdentity elemental.Identity, version int) (string, error) {
+func (s *httpManipulator) getURLForChildrenIdentity(
+	parent elemental.Identifiable,
+	childrenIdentity elemental.Identity,
+	modelVersion int,
+	contextVersion int,
+) (string, error) {
 
 	if parent == nil {
-		v := s.computeVersion(parent, version)
+		v := s.computeVersion(modelVersion, contextVersion)
 		return s.url + "/" + v + childrenIdentity.Category, nil
 	}
 
-	url, err := s.getPersonalURL(parent, version)
+	url, err := s.getPersonalURL(parent, contextVersion)
 	if err != nil {
 		return "", err
 	}

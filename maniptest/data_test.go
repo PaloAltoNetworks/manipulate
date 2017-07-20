@@ -18,6 +18,10 @@ func (o PersonList) List() elemental.IdentifiablesList {
 	return nil
 }
 
+func (o PersonList) Version() int {
+	return 1
+}
+
 type Person struct {
 	ID       string   `bson:"_id"`
 	Name     string   `bson:"name"`
@@ -44,4 +48,8 @@ func (p *Person) SetIdentifier(ID string) {
 // SetIdentifier sets the value of the object's unique identifier.
 func (p *Person) Validate() elemental.Errors {
 	return nil
+}
+
+func (p *Person) Version() int {
+	return 1
 }

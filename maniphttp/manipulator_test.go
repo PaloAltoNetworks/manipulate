@@ -189,7 +189,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 			Convey("When I use no version", func() {
 
-				url, err := store.getURLForChildrenIdentity(nil, ListIdentity, 0)
+				url, err := store.getURLForChildrenIdentity(nil, ListIdentity, 0, 0)
 
 				Convey("Then URL of the children with ListIdentity should be http://url.com/lists", func() {
 					So(url, ShouldEqual, "http://url.com/lists")
@@ -202,7 +202,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 			Convey("When I use a version", func() {
 
-				url, err := store.getURLForChildrenIdentity(nil, ListIdentity, 12)
+				url, err := store.getURLForChildrenIdentity(nil, ListIdentity, 0, 12)
 
 				Convey("Then URL of the children with ListIdentity should be http://url.com/v/12/lists", func() {
 					So(url, ShouldEqual, "http://url.com/v/12/lists")
@@ -220,7 +220,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 			Convey("When I use no version", func() {
 
-				url, err := store.getURLForChildrenIdentity(list, TaskIdentity, 0)
+				url, err := store.getURLForChildrenIdentity(list, TaskIdentity, 0, 0)
 
 				Convey("Then URL of the children with FakeRootIdentity should be http://url.com/v/1/lists/xxx/tasks", func() {
 					So(url, ShouldEqual, "http://url.com/v/1/lists/xxx/tasks")
@@ -233,7 +233,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 			Convey("When I use a version", func() {
 
-				url, err := store.getURLForChildrenIdentity(list, TaskIdentity, 12)
+				url, err := store.getURLForChildrenIdentity(list, TaskIdentity, 0, 12)
 
 				Convey("Then URL of the children with FakeRootIdentity should be http://url.com/v/12/lists/xxx/tasks", func() {
 					So(url, ShouldEqual, "http://url.com/v/12/lists/xxx/tasks")
@@ -248,7 +248,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 		Convey("When I check the general URL of a standard object without an ID", func() {
 
-			url, err := store.getURLForChildrenIdentity(list, TaskIdentity, 0)
+			url, err := store.getURLForChildrenIdentity(list, TaskIdentity, 0, 0)
 
 			Convey("Then it should be ''", func() {
 				So(url, ShouldEqual, "")
@@ -261,7 +261,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 		Convey("When I check the children URL for a standard object without an ID", func() {
 
-			url, err := store.getURLForChildrenIdentity(list, TaskIdentity, 0)
+			url, err := store.getURLForChildrenIdentity(list, TaskIdentity, 0, 0)
 
 			Convey("Then it should be ''", func() {
 				So(url, ShouldEqual, "")
