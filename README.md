@@ -118,4 +118,4 @@ func main() {
 
 Build this, retrieve a valid token (for instance using `apoctl`), then execute it:
 
-    $ ./main -token $TOKEN -namespace /your-namespace.
+    $ ./main -token $TOKEN -namespace /your-namespace
