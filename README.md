@@ -77,17 +77,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	// We want to recursively retrieve all the running processing units starting from the given namespace.
+	// We want to recursively retrieve all the running processing units starting
+	// from the given namespace.
 
-	// We first create a simple manipulator using an existing token. There are more sophisticated ways of doing this, such as using
-	// manipwebsocket.NewWebSocketManipulatorWithMidgardCertAuthentication to handle automatic token renewal based
-	// on a certificate, but we'll keep this example simple.
-	manipulator, disconnect, err := manipwebsocket.NewWebSocketManipulator("Bearer", token, aporetoAPIURL, namespace)
+	// We first create a simple manipulator using an existing token. There are more
+	// sophisticated ways of doing this, such as using
+	// manipwebsocket.NewWebSocketManipulatorWithMidgardCertAuthentication to handle
+	// automatic token renewal based on a certificate, but we'll keep this example simple.
+	manipulator, disconnect, err := manipwebsocket.NewWebSocketManipulator(
+		"Bearer",
+		token,
+		aporetoAPIURL,
+		namespace,
+	)
 	if err != nil {
 		panic(err)
 	}
 
-	// As we want only the Running processing unit, we need to filter them on the operationalstatus status tag.
+	// As we want only the Running processing unit, we need to filter them on
+	// the operationalstatus status tag.
 	// To do so, we need to create a manipulate.Context and give it a filter.
 	mctx := manipulate.NewContextWithFilter(
 		manipulate.NewFilterComposer().
@@ -95,7 +103,8 @@ func main() {
 			Done(),
 	)
 
-	// Then as we want to get all processing units recursively, we set the Recursive parameter of the context to true.
+	// Then as we want to get all processing units recursively, we set
+	// the Recursive parameter of the context to true.
 	mctx.Recursive = true
 
 	// We create a ProcessingUnitsList to store the results.
