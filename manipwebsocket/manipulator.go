@@ -650,6 +650,10 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 			zap.ByteString("responseData", response.Data),
 		)
 
+		if response.StatusCode == http.StatusNotFound {
+			return nil, manipulate.NewErrObjectNotFound("cannot find the object for the given ID")
+		}
+
 		if response.StatusCode < 200 || response.StatusCode > 300 {
 			return nil, decodeErrors(response)
 		}
