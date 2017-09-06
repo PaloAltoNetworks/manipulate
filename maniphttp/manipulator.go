@@ -532,10 +532,18 @@ func (s *httpManipulator) send(request *http.Request, context *manipulate.Contex
 
 	s.prepareHeaders(request, context)
 
+	zap.L().Debug("Send request",
+		zap.Any("Header", request.Header),
+	)
+
 	response, err := s.client.Do(request)
 	if err != nil {
 		return response, manipulate.NewErrCannotCommunicate(sec.Snip(err, s.currentPassword()).Error())
 	}
+
+	zap.L().Debug("Receive response",
+		zap.Int("responseStatusCode", response.StatusCode),
+	)
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 
