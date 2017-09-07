@@ -631,15 +631,14 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 		zap.ByteString("data", request.Data),
 	)
 
+	ch := s.registerResponseChannel(request.RequestID)
+	defer s.unregisterResponseChannel(request.RequestID)
+
 	err := websocket.JSON.Send(s.ws, request)
 	s.wsLock.Unlock()
-
 	if err != nil {
 		return nil, handleCommunicationError(s, err)
 	}
-
-	ch := s.registerResponseChannel(request.RequestID)
-	defer s.unregisterResponseChannel(request.RequestID)
 
 	select {
 
