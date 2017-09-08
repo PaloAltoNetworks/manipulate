@@ -307,6 +307,31 @@ func TestFilter_NewComposer(t *testing.T) {
 					})
 				})
 			})
+
+			Convey("When I add a new difference comparator", func() {
+				f.AndKey("x").NotEquals(true)
+
+				Convey("Then the filter should be correctly populated", func() {
+					So(f.keys, ShouldResemble, FilterKeys{
+						FilterKey{"hello", "world"},
+						FilterKey{"x"},
+					})
+					So(f.values, ShouldResemble, FilterValues{
+						FilterValue{1, 2},
+						FilterValue{true},
+					})
+					So(f.operators, ShouldResemble, FilterOperators{
+						InitialOperator,
+						AndOperator,
+					})
+					So(f.comparators, ShouldResemble, FilterComparators{
+						EqualComparator,
+						NotEqualComparator,
+					})
+					So(f.String(), ShouldEqual, "[hello world] = [1 2] and [x] != [true]")
+				})
+			})
+
 		})
 	})
 }
