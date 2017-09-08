@@ -19,16 +19,14 @@ type transaction struct {
 	rootTracer opentracing.Span
 }
 
-func newTransaction(id manipulate.TransactionID, rootSession *mgo.Session, dbName string, rootTracer opentracing.Span) *transaction {
-
-	s := rootSession.Copy()
+func newTransaction(id manipulate.TransactionID, session *mgo.Session, dbName string, rootTracer opentracing.Span) *transaction {
 
 	return &transaction{
 		bulks:      map[elemental.Identity]*mgo.Bulk{},
-		db:         s.DB(dbName),
+		db:         session.DB(dbName),
 		id:         id,
 		lock:       &sync.Mutex{},
-		session:    s,
+		session:    session,
 		rootTracer: rootTracer,
 	}
 }

@@ -153,7 +153,7 @@ func (s *websocketManipulator) RetrieveMany(context *manipulate.Context, dest el
 		return err
 	}
 
-	resp, err := s.send(req)
+	resp, err := s.send(req, context.Timeout)
 	if err != nil {
 		tracing.FinishTraceWithError(sp, err)
 		return err
@@ -210,7 +210,7 @@ func (s *websocketManipulator) Retrieve(context *manipulate.Context, objects ...
 			return err
 		}
 
-		resp, err := s.send(req)
+		resp, err := s.send(req, context.Timeout)
 		if err != nil {
 			tracing.FinishTraceWithError(subSp, err)
 			return err
@@ -263,7 +263,7 @@ func (s *websocketManipulator) Create(context *manipulate.Context, objects ...el
 			return err
 		}
 
-		resp, err := s.send(req)
+		resp, err := s.send(req, context.Timeout)
 		if err != nil {
 			tracing.FinishTraceWithError(subSp, err)
 			return err
@@ -317,7 +317,7 @@ func (s *websocketManipulator) Update(context *manipulate.Context, objects ...el
 			return err
 		}
 
-		resp, err := s.send(req)
+		resp, err := s.send(req, context.Timeout)
 		if err != nil {
 			tracing.FinishTraceWithError(subSp, err)
 			return err
@@ -371,7 +371,7 @@ func (s *websocketManipulator) Delete(context *manipulate.Context, objects ...el
 			return err
 		}
 
-		resp, err := s.send(req)
+		resp, err := s.send(req, context.Timeout)
 		if err != nil {
 			tracing.FinishTraceWithError(subSp, err)
 			return err
@@ -418,7 +418,7 @@ func (s *websocketManipulator) Count(context *manipulate.Context, identity eleme
 		return 0, err
 	}
 
-	resp, err := s.send(req)
+	resp, err := s.send(req, context.Timeout)
 	if err != nil {
 		tracing.FinishTraceWithError(sp, err)
 		return 0, err
@@ -618,7 +618,7 @@ func (s *websocketManipulator) listen() {
 	}
 }
 
-func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Response, error) {
+func (s *websocketManipulator) send(request *elemental.Request, timeout time.Duration) (*elemental.Response, error) {
 
 	s.wsLock.Lock()
 	if s.ws == nil {
@@ -658,7 +658,7 @@ func (s *websocketManipulator) send(request *elemental.Request) (*elemental.Resp
 	case <-s.stopSendChan:
 		return nil, manipulate.NewErrDisconnected("Disconnected per user request")
 
-	case <-time.After(60 * time.Second):
+	case <-time.After(timeout):
 		return nil, manipulate.NewErrCannotCommunicate("Request timeout")
 	}
 }

@@ -92,7 +92,8 @@ func SendRequest(manipulator manipulate.Manipulator, request *elemental.Request)
 		return nil, fmt.Errorf("You can only pass a Websocket Manipulator to SendRequest")
 	}
 
-	return m.send(request)
+	// @TODO: make this configurable. I have no idea who is using this function.
+	return m.send(request, manipulate.NewContext().Timeout)
 }
 
 // IsConnected checks the connection state of the manipulator.

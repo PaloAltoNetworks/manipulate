@@ -6,6 +6,7 @@ package manipulate
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/opentracing/opentracing-go"
 
@@ -36,6 +37,7 @@ type Context struct {
 	ExternalTrackingID   string
 	ExternalTrackingType string
 	Order                []string
+	Timeout              time.Duration
 }
 
 // NewContext returns a new *Context
@@ -44,6 +46,7 @@ func NewContext() *Context {
 	return &Context{
 		Parameters: NewParameters(),
 		Attributes: []string{},
+		Timeout:    60 * time.Second,
 	}
 }
 

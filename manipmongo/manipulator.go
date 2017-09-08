@@ -85,7 +85,7 @@ func (s *mongoManipulator) RetrieveMany(context *manipulate.Context, dest elemen
 
 	sp := tracing.StartTrace(context.TrackingSpan, fmt.Sprintf("manipmongo.retrieve_many.%s", dest.ContentIdentity().Category), context)
 
-	session := s.rootSession.Copy()
+	session := s.copySession(context)
 	defer session.Close()
 
 	db := session.DB(s.dbName)
@@ -151,7 +151,7 @@ func (s *mongoManipulator) Retrieve(context *manipulate.Context, objects ...elem
 	sp := tracing.StartTrace(context.TrackingSpan, "manipmongo.retrieve", context)
 	defer tracing.FinishTrace(sp)
 
-	session := s.rootSession.Copy()
+	session := s.copySession(context)
 	defer session.Close()
 
 	db := session.DB(s.dbName)
@@ -327,7 +327,7 @@ func (s *mongoManipulator) Count(context *manipulate.Context, identity elemental
 
 	sp := tracing.StartTrace(context.TrackingSpan, fmt.Sprintf("manipmongo.count.%s", identity.Category), context)
 
-	session := s.rootSession.Copy()
+	session := s.copySession(context)
 	defer session.Close()
 
 	db := session.DB(s.dbName)
@@ -413,8 +413,16 @@ func (s *mongoManipulator) retrieveTransaction(context *manipulate.Context) (*tr
 		return t, created
 	}
 
-	t = newTransaction(tid, s.rootSession, s.dbName, context.TrackingSpan)
+	t = newTransaction(tid, s.copySession(context), s.dbName, context.TrackingSpan)
 	s.transactions.registerTransaction(tid, t)
 
 	return t, created
+}
+
+func (s *mongoManipulator) copySession(context *manipulate.Context) *mgo.Session {
+
+	session := s.rootSession.Copy()
+	session.SetSocketTimeout(context.Timeout)
+
+	return session
 }
