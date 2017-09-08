@@ -87,7 +87,6 @@ func populateRequestFromContext(request *elemental.Request, ctx *manipulate.Cont
 func SendRequest(manipulator manipulate.Manipulator, request *elemental.Request) (*elemental.Response, error) {
 
 	m, ok := manipulator.(*websocketManipulator)
-
 	if !ok {
 		return nil, fmt.Errorf("You can only pass a Websocket Manipulator to SendRequest")
 	}
@@ -100,7 +99,6 @@ func SendRequest(manipulator manipulate.Manipulator, request *elemental.Request)
 func IsConnected(manipulator manipulate.Manipulator) bool {
 
 	m, ok := manipulator.(*websocketManipulator)
-
 	if !ok {
 		return false
 	}

@@ -5,6 +5,7 @@ import (
 
 	mgo "gopkg.in/mgo.v2"
 
+	"github.com/aporeto-inc/manipulate/internal/testdata"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -16,14 +17,14 @@ func TestUtils_collectionFromIdentity(t *testing.T) {
 
 			db := &mgo.Database{}
 
-			c := collectionFromIdentity(db, PersonIdentity)
+			c := collectionFromIdentity(db, testdata.ListIdentity)
 
 			Convey("Then collection should not be nil", func() {
 				So(c, ShouldNotBeNil)
 			})
 
 			Convey("Then collection fullName should be nil", func() {
-				So(c.FullName, ShouldEqual, ".person")
+				So(c.FullName, ShouldEqual, ".list")
 			})
 		})
 	})

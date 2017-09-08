@@ -4,8 +4,30 @@ import (
 	"testing"
 
 	"github.com/aporeto-inc/manipulate"
+	"github.com/aporeto-inc/manipulate/internal/testdata"
+
+	memdb "github.com/hashicorp/go-memdb"
 	. "github.com/smartystreets/goconvey/convey"
 )
+
+var Schema = &memdb.DBSchema{
+	Tables: map[string]*memdb.TableSchema{
+		"lists": &memdb.TableSchema{
+			Name: "lists",
+			Indexes: map[string]*memdb.IndexSchema{
+				"id": &memdb.IndexSchema{
+					Name:    "id",
+					Unique:  true,
+					Indexer: &memdb.StringFieldIndex{Field: "ID"},
+				},
+				"Name": &memdb.IndexSchema{
+					Name:    "Name",
+					Indexer: &memdb.StringFieldIndex{Field: "Name"},
+				},
+			},
+		},
+	},
+}
 
 func TestMemManipulator_NewMemoryManipulator(t *testing.T) {
 
@@ -19,14 +41,14 @@ func TestMemManipulator_NewMemoryManipulator(t *testing.T) {
 
 func TestMemManipulator_Create(t *testing.T) {
 
-	Convey("Given I have a memory manipulator and a person", t, func() {
+	Convey("Given I have a memory manipulator and a list", t, func() {
 
 		m := NewMemoryManipulator(Schema)
-		p := &Person{
+		p := &testdata.List{
 			Name: "Antoine",
 		}
 
-		Convey("When I create person", func() {
+		Convey("When I create list", func() {
 
 			err := m.Create(nil, p)
 
@@ -34,32 +56,32 @@ func TestMemManipulator_Create(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 
-			Convey("Then person ID should not be empty", func() {
+			Convey("Then list ID should not be empty", func() {
 				So(p.ID, ShouldNotBeEmpty)
 			})
 
-			Convey("When I retrieve the person in a second structure", func() {
+			Convey("When I retrieve the list in a second structure", func() {
 
-				p2 := &Person{
+				l2 := &testdata.List{
 					ID:   p.ID,
 					Name: "not good",
 				}
 
-				err := m.Retrieve(nil, p2)
+				err := m.Retrieve(nil, l2)
 
 				Convey("Then err should be nil", func() {
 					So(err, ShouldBeNil)
 				})
 
-				Convey("Then p2 should be p", func() {
-					So(p2, ShouldResemble, p)
+				Convey("Then l2 should be p", func() {
+					So(l2, ShouldResemble, p)
 				})
 			})
 		})
 
 		Convey("When I create an object that is not part of the schema", func() {
 
-			err := m.Create(nil, &NotPerson{})
+			err := m.Create(nil, &testdata.Task{})
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -70,19 +92,19 @@ func TestMemManipulator_Create(t *testing.T) {
 
 func TestMemManipulator_Retrieve(t *testing.T) {
 
-	Convey("Given I have a memory manipulator and a person", t, func() {
+	Convey("Given I have a memory manipulator and a list", t, func() {
 
 		m := NewMemoryManipulator(Schema)
-		p1 := &Person{
+		l1 := &testdata.List{
 			Name: "Antoine1",
 		}
 
-		_ = m.Create(nil, p1)
+		_ = m.Create(nil, l1)
 
-		Convey("When I retrieve the person", func() {
+		Convey("When I retrieve the list", func() {
 
-			ps := &Person{
-				ID: p1.ID,
+			ps := &testdata.List{
+				ID: l1.ID,
 			}
 
 			err := m.Retrieve(nil, ps)
@@ -91,14 +113,14 @@ func TestMemManipulator_Retrieve(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 
-			Convey("Then I should  have retrieved p1 and p2", func() {
-				So(ps, ShouldResemble, p1)
+			Convey("Then I should  have retrieved l1 and l2", func() {
+				So(ps, ShouldResemble, l1)
 			})
 		})
 
-		Convey("When I retrieve a non existing person", func() {
+		Convey("When I retrieve a non existing list", func() {
 
-			ps := &Person{
+			ps := &testdata.List{
 				ID: "not-good",
 			}
 
@@ -111,7 +133,7 @@ func TestMemManipulator_Retrieve(t *testing.T) {
 
 		Convey("When I retrieve an object that is not part of the schema", func() {
 
-			err := m.Retrieve(nil, &NotPerson{})
+			err := m.Retrieve(nil, &testdata.Task{})
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -123,21 +145,21 @@ func TestMemManipulator_Retrieve(t *testing.T) {
 
 func TestMemManipulator_RetrieveMany(t *testing.T) {
 
-	Convey("Given I have a memory manipulator and a person", t, func() {
+	Convey("Given I have a memory manipulator and a list", t, func() {
 
 		m := NewMemoryManipulator(Schema)
-		p1 := &Person{
+		l1 := &testdata.List{
 			Name: "Antoine1",
 		}
-		p2 := &Person{
+		l2 := &testdata.List{
 			Name: "Antoine2",
 		}
 
-		_ = m.Create(nil, p1, p2)
+		_ = m.Create(nil, l1, l2)
 
-		Convey("When I retrieve the persons", func() {
+		Convey("When I retrieve the lists", func() {
 
-			ps := PersonsList{}
+			ps := testdata.ListsList{}
 
 			err := m.RetrieveMany(nil, &ps)
 
@@ -145,15 +167,15 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 
-			Convey("Then I should  have retrieved p1 and p2", func() {
-				So(ps, ShouldContain, p1)
-				So(ps, ShouldContain, p2)
+			Convey("Then I should  have retrieved l1 and l2", func() {
+				So(ps, ShouldContain, l1)
+				So(ps, ShouldContain, l2)
 			})
 		})
 
-		Convey("When I retrieve the persons with a filter that matches p1", func() {
+		Convey("When I retrieve the lists with a filter that matches l1", func() {
 
-			ps := PersonsList{}
+			ps := testdata.ListsList{}
 
 			ctx := manipulate.NewContextWithFilter(
 				manipulate.NewFilterComposer().WithKey("Name").Equals("Antoine1").Done(),
@@ -165,15 +187,15 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 
-			Convey("Then I should only have retrieved p1", func() {
-				So(ps, ShouldContain, p1)
-				So(ps, ShouldNotContain, p2)
+			Convey("Then I should only have retrieved l1", func() {
+				So(ps, ShouldContain, l1)
+				So(ps, ShouldNotContain, l2)
 			})
 		})
 
-		Convey("When I retrieve the persons with a bad filter", func() {
+		Convey("When I retrieve the lists with a bad filter", func() {
 
-			ps := PersonsList{}
+			ps := testdata.ListsList{}
 
 			ctx := manipulate.NewContextWithFilter(
 				manipulate.NewFilterComposer().WithKey("Bad").Equals("Antoine1").Done(),
@@ -191,14 +213,14 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 func TestMemManipulator_Update(t *testing.T) {
 
-	Convey("Given I have a memory manipulator and a person", t, func() {
+	Convey("Given I have a memory manipulator and a list", t, func() {
 
 		m := NewMemoryManipulator(Schema)
-		p := &Person{
+		p := &testdata.List{
 			Name: "Antoine",
 		}
 
-		Convey("When I create the person", func() {
+		Convey("When I create the list", func() {
 
 			err := m.Create(nil, p)
 
@@ -206,7 +228,7 @@ func TestMemManipulator_Update(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 
-			Convey("When I update the person", func() {
+			Convey("When I update the list", func() {
 
 				p.Name = "New Antoine"
 
@@ -216,27 +238,27 @@ func TestMemManipulator_Update(t *testing.T) {
 					So(err, ShouldBeNil)
 				})
 
-				Convey("When I retrieve the person", func() {
+				Convey("When I retrieve the list", func() {
 
-					p2 := &Person{
+					l2 := &testdata.List{
 						ID: p.ID,
 					}
 
-					err := m.Retrieve(nil, p2)
+					err := m.Retrieve(nil, l2)
 
 					Convey("Then err should be nil", func() {
 						So(err, ShouldBeNil)
 					})
 
-					Convey("Then p2 should contains the updated data", func() {
-						So(p2.Name, ShouldEqual, "New Antoine")
+					Convey("Then l2 should contains the updated data", func() {
+						So(l2.Name, ShouldEqual, "New Antoine")
 					})
 				})
 			})
 
-			Convey("When I update the a non existing person", func() {
+			Convey("When I update the a non existing list", func() {
 
-				pp := &Person{
+				pp := &testdata.List{
 					ID: "not-good",
 				}
 
@@ -252,14 +274,14 @@ func TestMemManipulator_Update(t *testing.T) {
 
 func TestMemManipulator_Delete(t *testing.T) {
 
-	Convey("Given I have a memory manipulator and a person", t, func() {
+	Convey("Given I have a memory manipulator and a list", t, func() {
 
 		m := NewMemoryManipulator(Schema)
-		p := &Person{
+		p := &testdata.List{
 			Name: "Antoine",
 		}
 
-		Convey("When I create the person", func() {
+		Convey("When I create the list", func() {
 
 			err := m.Create(nil, p)
 
@@ -267,7 +289,7 @@ func TestMemManipulator_Delete(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 
-			Convey("When I delete the person", func() {
+			Convey("When I delete the list", func() {
 
 				err := m.Delete(nil, p)
 
@@ -275,13 +297,13 @@ func TestMemManipulator_Delete(t *testing.T) {
 					So(err, ShouldBeNil)
 				})
 
-				Convey("When I retrieve the persons using a wrapper", func() {
+				Convey("When I retrieve the lists using a wrapper", func() {
 
-					ps := PersonsList{}
+					ps := testdata.ListsList{}
 
 					var err error
 
-					func(zob *PersonsList) {
+					func(zob *testdata.ListsList) {
 						err = m.RetrieveMany(nil, zob)
 					}(&ps)
 
@@ -294,9 +316,9 @@ func TestMemManipulator_Delete(t *testing.T) {
 					})
 				})
 
-				Convey("When I retrieve the persons ", func() {
+				Convey("When I retrieve the lists ", func() {
 
-					ps := PersonsList{}
+					ps := testdata.ListsList{}
 					err := m.RetrieveMany(nil, &ps)
 
 					Convey("Then err should be nil", func() {
@@ -309,9 +331,9 @@ func TestMemManipulator_Delete(t *testing.T) {
 				})
 			})
 
-			Convey("When I delete the a non existing person", func() {
+			Convey("When I delete the a non existing list", func() {
 
-				pp := &Person{
+				pp := &testdata.List{
 					ID: "not-good",
 				}
 
@@ -327,26 +349,26 @@ func TestMemManipulator_Delete(t *testing.T) {
 
 func TestMemManipulator_Count(t *testing.T) {
 
-	Convey("Given I have a memory manipulator and a person", t, func() {
+	Convey("Given I have a memory manipulator and a list", t, func() {
 
 		m := NewMemoryManipulator(Schema)
-		p1 := &Person{
+		l1 := &testdata.List{
 			Name: "Antoine1",
 		}
 
-		p2 := &Person{
+		l2 := &testdata.List{
 			Name: "Antoine2",
 		}
 
-		Convey("When I create the person", func() {
+		Convey("When I create the list", func() {
 
-			err := m.Create(nil, p1, p2)
+			err := m.Create(nil, l1, l2)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
 			})
 
-			// Convey("When I count the persons", func() {
+			// Convey("When I count the lists", func() {
 			//
 			// 	n, err := m.Count(nil, PersonIdentity)
 			//
@@ -359,15 +381,15 @@ func TestMemManipulator_Count(t *testing.T) {
 			// 	})
 			// })
 
-			Convey("When I delete the person", func() {
+			Convey("When I delete the list", func() {
 
-				err := m.Delete(nil, p1)
+				err := m.Delete(nil, l1)
 
 				Convey("Then err should be nil", func() {
 					So(err, ShouldBeNil)
 				})
 
-				// Convey("When I count the persons", func() {
+				// Convey("When I count the lists", func() {
 				//
 				// 	n, err := m.Count(nil, PersonIdentity)
 				//
@@ -410,7 +432,7 @@ func TestMemManipulator_Increment(t *testing.T) {
 
 		Convey("When I call Increment", func() {
 
-			err := m.Increment(nil, PersonIdentity, "counter", 1)
+			err := m.Increment(nil, testdata.ListIdentity, "counter", 1)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)

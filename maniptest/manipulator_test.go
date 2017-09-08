@@ -6,6 +6,7 @@ import (
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
+	"github.com/aporeto-inc/manipulate/internal/testdata"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -17,7 +18,7 @@ func TestTestManipulator_MockRetrieveMany(t *testing.T) {
 
 		Convey("When I call RetrieveMany without mock", func() {
 
-			ps := PersonList{}
+			ps := testdata.ListsList{}
 			err := m.RetrieveMany(nil, &ps)
 
 			Convey("Then err should be nil", func() {
@@ -213,7 +214,7 @@ func TestTestManipulator_MockCount(t *testing.T) {
 
 		Convey("When I call Retrieve without mock", func() {
 
-			c, err := m.Count(nil, PersonIdentity)
+			c, err := m.Count(nil, testdata.ListIdentity)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
@@ -229,7 +230,7 @@ func TestTestManipulator_MockCount(t *testing.T) {
 					return -1, fmt.Errorf("wow such error")
 				})
 
-				c, err := m.Count(nil, PersonIdentity)
+				c, err := m.Count(nil, testdata.ListIdentity)
 
 				Convey("Then err should not be nil", func() {
 					So(err, ShouldNotBeNil)
@@ -242,7 +243,7 @@ func TestTestManipulator_MockCount(t *testing.T) {
 
 			Convey("When I don't mock it", func() {
 
-				c, err := m.Count(nil, PersonIdentity)
+				c, err := m.Count(nil, testdata.ListIdentity)
 
 				Convey("Then err should be nil", func() {
 					So(err, ShouldBeNil)
@@ -264,7 +265,7 @@ func TestTestManipulator_MockIncrement(t *testing.T) {
 
 		Convey("When I call Retrieve without mock", func() {
 
-			err := m.Increment(nil, PersonIdentity, "counter", 1)
+			err := m.Increment(nil, testdata.ListIdentity, "counter", 1)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
@@ -276,7 +277,7 @@ func TestTestManipulator_MockIncrement(t *testing.T) {
 					return fmt.Errorf("wow such error")
 				})
 
-				err := m.Increment(nil, PersonIdentity, "counter", 1)
+				err := m.Increment(nil, testdata.ListIdentity, "counter", 1)
 
 				Convey("Then err should not be nil", func() {
 					So(err, ShouldNotBeNil)
@@ -285,7 +286,7 @@ func TestTestManipulator_MockIncrement(t *testing.T) {
 
 			Convey("When I don't mock it", func() {
 
-				err := m.Increment(nil, PersonIdentity, "counter", 1)
+				err := m.Increment(nil, testdata.ListIdentity, "counter", 1)
 
 				Convey("Then err should be nil", func() {
 					So(err, ShouldBeNil)

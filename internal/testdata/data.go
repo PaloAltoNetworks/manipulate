@@ -1,8 +1,4 @@
-// Author: Antoine Mercadal
-// See LICENSE file for full LICENSE
-// Copyright 2016 Aporeto.
-
-package maniphttp
+package testdata
 
 import (
 	"fmt"
@@ -19,14 +15,17 @@ var ListIdentity = elemental.Identity{
 // ListsList represents a list of Lists
 type ListsList []*List
 
+// ContentIdentity is test data
 func (o ListsList) ContentIdentity() elemental.Identity {
 	return ListIdentity
 }
 
+// List is test data
 func (o ListsList) List() elemental.IdentifiablesList {
 	return nil
 }
 
+// Version is test data
 func (o ListsList) Version() int {
 	return 1
 }
@@ -67,7 +66,7 @@ func (o *List) SetIdentifier(ID string) {
 	o.ID = ID
 }
 
-// Returns the version
+// Version is test data
 func (o *List) Version() int {
 
 	return o.ModelVersion
@@ -98,14 +97,17 @@ var TaskIdentity = elemental.Identity{
 // TasksList represents a list of Tasks
 type TasksList []*Task
 
+// ContentIdentity is test data
 func (o TasksList) ContentIdentity() elemental.Identity {
 	return TaskIdentity
 }
 
+// List is test data
 func (o TasksList) List() elemental.IdentifiablesList {
 	return nil
 }
 
+// Version is test data
 func (o TasksList) Version() int {
 	return 1
 }
@@ -150,7 +152,7 @@ func (o *Task) SetIdentifier(ID string) {
 	o.ID = ID
 }
 
-// Returns the version
+// Version is test data
 func (o *Task) Version() int {
 
 	return o.ModelVersion
@@ -172,24 +174,31 @@ func (o *Task) Validate() error {
 	return errors
 }
 
+// UnmarshalableListIdentity is test data
 var UnmarshalableListIdentity = elemental.Identity{Name: "list", Category: "lists"}
 
+// UnmarshalableList is test data
 type UnmarshalableList struct {
 	List
 }
 
+// NewUnmarshalableList is test data
 func NewUnmarshalableList() *UnmarshalableList {
 	return &UnmarshalableList{List: List{}}
 }
 
+// Identity is test data
 func (o *UnmarshalableList) Identity() elemental.Identity { return UnmarshalableListIdentity }
 
+// UnmarshalJSON is test data
 func (o *UnmarshalableList) UnmarshalJSON([]byte) error {
 	return fmt.Errorf("error unmarshalling")
 }
 
+// MarshalJSON is test data
 func (o *UnmarshalableList) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("error marshalling")
 }
 
+// Validate is test data
 func (o *UnmarshalableList) Validate() error { return nil }
