@@ -322,6 +322,8 @@ func translateComparator(comparator FilterComparator) string {
 	switch comparator {
 	case EqualComparator:
 		return "="
+	case NotEqualComparator:
+		return "!="
 	case GreaterComparator:
 		return ">="
 	case LesserComparator:
