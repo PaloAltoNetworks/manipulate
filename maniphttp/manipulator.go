@@ -164,10 +164,12 @@ func (s *httpManipulator) RetrieveMany(context *manipulate.Context, dest element
 		return nil
 	}
 
-	defer response.Body.Close() // nolint: errcheck
-	if err := json.NewDecoder(response.Body).Decode(dest); err != nil {
-		tracing.FinishTraceWithError(sp, err)
-		return manipulate.NewErrCannotUnmarshal(err.Error())
+	if response.StatusCode != http.StatusNoContent {
+		defer response.Body.Close() // nolint: errcheck
+		if err := json.NewDecoder(response.Body).Decode(dest); err != nil {
+			tracing.FinishTraceWithError(sp, err)
+			return manipulate.NewErrCannotUnmarshal(err.Error())
+		}
 	}
 
 	tracing.FinishTrace(sp)
@@ -214,10 +216,12 @@ func (s *httpManipulator) Retrieve(context *manipulate.Context, objects ...eleme
 			return err
 		}
 
-		defer response.Body.Close() // nolint: errcheck
-		if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
-			tracing.FinishTraceWithError(subSp, err)
-			return manipulate.NewErrCannotUnmarshal(err.Error())
+		if response.StatusCode != http.StatusNoContent {
+			defer response.Body.Close() // nolint: errcheck
+			if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
+				tracing.FinishTraceWithError(subSp, err)
+				return manipulate.NewErrCannotUnmarshal(err.Error())
+			}
 		}
 
 		tracing.FinishTrace(subSp)
@@ -272,10 +276,12 @@ func (s *httpManipulator) Create(context *manipulate.Context, objects ...element
 			return err
 		}
 
-		defer response.Body.Close() // nolint: errcheck
-		if err := json.NewDecoder(response.Body).Decode(&child); err != nil {
-			tracing.FinishTraceWithError(subSp, err)
-			return manipulate.NewErrCannotUnmarshal(err.Error())
+		if response.StatusCode != http.StatusNoContent {
+			defer response.Body.Close() // nolint: errcheck
+			if err := json.NewDecoder(response.Body).Decode(&child); err != nil {
+				tracing.FinishTraceWithError(subSp, err)
+				return manipulate.NewErrCannotUnmarshal(err.Error())
+			}
 		}
 
 		tracing.FinishTrace(subSp)
@@ -334,10 +340,12 @@ func (s *httpManipulator) Update(context *manipulate.Context, objects ...element
 			return err
 		}
 
-		defer response.Body.Close() // nolint: errcheck
-		if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
-			tracing.FinishTraceWithError(subSp, err)
-			return manipulate.NewErrCannotUnmarshal(err.Error())
+		if response.StatusCode != http.StatusNoContent {
+			defer response.Body.Close() // nolint: errcheck
+			if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
+				tracing.FinishTraceWithError(subSp, err)
+				return manipulate.NewErrCannotUnmarshal(err.Error())
+			}
 		}
 
 		tracing.FinishTrace(subSp)
