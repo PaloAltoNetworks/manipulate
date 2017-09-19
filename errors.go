@@ -90,6 +90,16 @@ func NewErrCannotCommunicate(message string) ErrCannotCommunicate {
 
 func (e ErrCannotCommunicate) Error() string { return "Cannot communicate: " + e.message }
 
+// ErrLocked represents the error returned when the server api is locked..
+type ErrLocked struct{ message string }
+
+// NewErrLocked returns a new ErrCannotCommunicate.
+func NewErrLocked(message string) ErrLocked {
+	return ErrLocked{message: message}
+}
+
+func (e ErrLocked) Error() string { return "Cannot communicate: " + e.message }
+
 // ErrTransactionNotFound represents a failure to find a transaction.
 type ErrTransactionNotFound struct{ message string }
 

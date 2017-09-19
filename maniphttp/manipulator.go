@@ -570,6 +570,10 @@ func (s *httpManipulator) send(request *http.Request, context *manipulate.Contex
 		return response, manipulate.NewErrCannotCommunicate(sec.Snip(err, s.currentPassword()).Error())
 	}
 
+	if response.StatusCode == http.StatusLocked {
+		return response, manipulate.NewErrLocked("The api has been locked down by the server.")
+	}
+
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 
 		es := []elemental.Error{}

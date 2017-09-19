@@ -52,36 +52,50 @@ func retryManipulation(manipulation func() error, onRetryFunc func(int), onRetry
 			break
 		}
 
-		// Check the type of the error.
-		if _, ok := err.(ErrCannotCommunicate); !ok {
+		switch err.(type) {
+
+		// If this is a ErrLocked, we retry forever and we don't give the client any choice.
+		// but to eventually die.
+		case ErrLocked:
+
+			zap.L().Warn("API locked. Retrying in 10s", zap.Error(err))
+			select {
+			case <-time.After(10 * time.Second):
+			case <-c:
+				return NewErrDisconnected("Disconnected per signal")
+			}
+
+		// If this is a ErrCannotCommunicate, we retry until the maxTries.
+		case ErrCannotCommunicate:
+
+			// If we reach the maxtries, return the error
+			if maxTries != -1 && try == maxTries {
+				return err
+			}
+
+			if onRetryFunc != nil {
+				onRetryFunc(try)
+			}
+
+			if onRetryCheckFunc != nil && !onRetryCheckFunc(try, err) {
+				return nil
+			}
+
+			// Otherwise wait, increase the time and try again.
+			select {
+			case <-time.After(waitTime):
+			case <-c:
+				return NewErrDisconnected("Disconnected per signal")
+			}
+
+			if waitTime < 5*time.Second {
+				waitTime += 1 * time.Second
+			}
+
+			try++
+		default:
 			return err
 		}
-
-		// If we reach the maxtries, return the error
-		if maxTries != -1 && try == maxTries {
-			return err
-		}
-
-		if onRetryFunc != nil {
-			onRetryFunc(try)
-		}
-
-		if onRetryCheckFunc != nil && !onRetryCheckFunc(try, err) {
-			return nil
-		}
-
-		// Otherwise wait, increase the time and try again.
-		select {
-		case <-time.After(waitTime):
-		case <-c:
-			return NewErrDisconnected("Disconnected per signal")
-		}
-
-		if waitTime < 5*time.Second {
-			waitTime += 1 * time.Second
-		}
-
-		try++
 	}
 
 	return nil

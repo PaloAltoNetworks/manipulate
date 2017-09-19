@@ -649,6 +649,10 @@ func (s *websocketManipulator) send(request *elemental.Request, timeout time.Dur
 			zap.ByteString("responseData", response.Data),
 		)
 
+		if response.StatusCode == http.StatusLocked {
+			return nil, manipulate.NewErrLocked("The api has been locked down by the server.")
+		}
+
 		if response.StatusCode < 200 || response.StatusCode > 300 {
 			return nil, decodeErrors(response)
 		}
