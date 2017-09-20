@@ -21,6 +21,9 @@ func RenewMidgardToken(mclient *midgardclient.Client, certificates []tls.Certifi
 
 	nextRefresh := time.Now().Add(interval)
 
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
 	for {
 
 		select {
@@ -43,6 +46,9 @@ func RenewMidgardToken(mclient *midgardclient.Client, certificates []tls.Certifi
 			zap.L().Info("Midgard token renewed")
 
 		case <-stop:
+			return
+
+		case <-c:
 			return
 		}
 	}
