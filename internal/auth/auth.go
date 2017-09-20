@@ -13,16 +13,10 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
-// TokenUpdateFunc is the type of the function used to update the token.
-type TokenUpdateFunc func(token string)
-
 // RenewMidgardToken renews the midgard token using the given parameters.
-func RenewMidgardToken(mclient *midgardclient.Client, certificates []tls.Certificate, interval time.Duration, tokenUpdateFunc TokenUpdateFunc, stop chan bool) {
+func RenewMidgardToken(retriever manipulate.TokenRetrieveManipulator, stop chan bool) {
 
-	nextRefresh := time.Now().Add(interval)
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	nextRefresh := time.Now().Add(retriever.Validity() / 2)
 
 	for {
 
@@ -34,21 +28,15 @@ func RenewMidgardToken(mclient *midgardclient.Client, certificates []tls.Certifi
 				break
 			}
 
-			token, err := mclient.IssueFromCertificateWithValidity(certificates, interval*2, nil)
-			if err != nil {
+			if err := retriever.RetrieveToken(); err != nil {
 				zap.L().Error("Unable to renew Midgard token", zap.Error(err))
 				break
 			}
 
-			tokenUpdateFunc(token)
-
-			nextRefresh = now.Add(interval)
+			nextRefresh = now.Add(retriever.Validity() / 2)
 			zap.L().Info("Midgard token renewed")
 
 		case <-stop:
-			return
-
-		case <-c:
 			return
 		}
 	}

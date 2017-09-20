@@ -4,7 +4,11 @@
 
 package manipulate
 
-import "github.com/aporeto-inc/elemental"
+import (
+	"time"
+
+	"github.com/aporeto-inc/elemental"
+)
 
 // EventHandler is the type of event an handler.
 type EventHandler func(event *elemental.Event, err error)
@@ -69,4 +73,10 @@ type EventManipulator interface {
 	// Subscribe subscribes the given EventHandler for event on the given identities.
 	// If you pass nil as identities, then you will receive events for everything.
 	Subscribe(filter *elemental.PushFilter, lNamespaces bool, eventHandler EventHandler, recoHandler RecoveryHandler) (EventUnsubscriber, EventFilterUpdater, error)
+}
+
+// TokenRetrieveManipulator is the interface of a manipulator that can retrieve a token.
+type TokenRetrieveManipulator interface {
+	RetrieveToken() error
+	Validity() time.Duration
 }

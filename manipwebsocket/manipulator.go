@@ -42,6 +42,8 @@ type websocketManipulator struct {
 	wsLock                    *sync.Mutex
 	ws                        *websocket.Conn
 	stopSendChan              chan bool
+	mclient                   *midgard.Client
+	tokenValidity             time.Duration
 }
 
 // NewWebSocketManipulator returns a Manipulator backed by a websocket API.
@@ -121,9 +123,16 @@ func NewWebSocketManipulatorWithMidgardCertAuthentication(url string, midgardurl
 		return nil, nil, err
 	}
 
+	wsmanip := m.(*websocketManipulator)
+	wsmanip.mclient = mclient
+	wsmanip.tokenValidity = validity
+	wsmanip.tlsConfig.Certificates = certificates
+	wsmanip.tlsConfig.RootCAs = rootCAPool
+	wsmanip.tlsConfig.ClientCAs = clientCAPool
+
 	stopCh := make(chan bool)
 
-	go auth.RenewMidgardToken(mclient, certificates, validity/2, m.(*websocketManipulator).setPassword, stopCh)
+	go auth.RenewMidgardToken(wsmanip, stopCh)
 
 	return m, func() { stop(); stopCh <- true }, err
 }
@@ -653,6 +662,16 @@ func (s *websocketManipulator) send(request *elemental.Request, timeout time.Dur
 			return nil, manipulate.NewErrLocked("The api has been locked down by the server.")
 		}
 
+		if response.StatusCode == http.StatusUnauthorized && s.mclient != nil {
+			zap.L().Warn("Authentication error. Trying to renew the token...")
+			for i := 0; i < 3; i++ {
+				if err := s.RetrieveToken(); err == nil {
+					return nil, manipulate.NewErrCannotCommunicate("Temporary authentication error. token renewed, please retry.")
+				}
+				<-time.After(10 * time.Second)
+			}
+		}
+
 		if response.StatusCode < 200 || response.StatusCode > 300 {
 			return nil, decodeErrors(response)
 		}
@@ -742,4 +761,25 @@ func (s *websocketManipulator) currentPassword() string {
 	s.renewLock.Lock()
 	defer s.renewLock.Unlock()
 	return s.password
+}
+
+func (s *websocketManipulator) RetrieveToken() error {
+
+	if s.mclient == nil {
+		return fmt.Errorf("this manipulator is not configured to renew tokens")
+	}
+
+	token, err := s.mclient.IssueFromCertificateWithValidity(s.tlsConfig.Certificates, s.tokenValidity, nil)
+	if err != nil {
+		return err
+	}
+
+	s.setPassword(token)
+
+	return nil
+}
+
+func (s *websocketManipulator) Validity() time.Duration {
+
+	return s.tokenValidity
 }

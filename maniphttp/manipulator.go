@@ -28,13 +28,15 @@ import (
 )
 
 type httpManipulator struct {
-	username  string
-	password  string
-	url       string
-	namespace string
-	renewLock *sync.Mutex
-	client    *http.Client
-	tlsConfig *tls.Config
+	username      string
+	password      string
+	url           string
+	namespace     string
+	renewLock     *sync.Mutex
+	client        *http.Client
+	tlsConfig     *tls.Config
+	mclient       *midgardclient.Client
+	tokenValidity time.Duration
 }
 
 // NewHTTPManipulator returns a Manipulator backed by an ReST API.
@@ -139,13 +141,15 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 				TLSClientConfig: tlsConfig,
 			},
 		},
-		namespace: namespace,
-		tlsConfig: tlsConfig,
+		namespace:     namespace,
+		tlsConfig:     tlsConfig,
+		mclient:       mclient,
+		tokenValidity: validity,
 	}
 
 	stopCh := make(chan bool)
 
-	go auth.RenewMidgardToken(mclient, certificates, validity/2, m.setPassword, stopCh)
+	go auth.RenewMidgardToken(m, stopCh)
 
 	return m, func() { stopCh <- true }, nil
 }
@@ -574,6 +578,16 @@ func (s *httpManipulator) send(request *http.Request, context *manipulate.Contex
 		return response, manipulate.NewErrLocked("The api has been locked down by the server.")
 	}
 
+	if response.StatusCode == http.StatusUnauthorized && s.mclient != nil {
+		zap.L().Warn("Authentication error. Trying to renew the token...")
+		for i := 0; i < 3; i++ {
+			if err := s.RetrieveToken(); err == nil {
+				return nil, manipulate.NewErrCannotCommunicate("Temporary authentication error. token renewed, please retry.")
+			}
+			<-time.After(10 * time.Second)
+		}
+	}
+
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 
 		es := []elemental.Error{}
@@ -607,4 +621,25 @@ func (s *httpManipulator) currentPassword() string {
 	s.renewLock.Lock()
 	defer s.renewLock.Unlock()
 	return s.password
+}
+
+func (s *httpManipulator) RetrieveToken() error {
+
+	if s.mclient == nil {
+		return fmt.Errorf("this manipulator is not configured to renew tokens")
+	}
+
+	token, err := s.mclient.IssueFromCertificateWithValidity(s.tlsConfig.Certificates, s.tokenValidity, nil)
+	if err != nil {
+		return err
+	}
+
+	s.setPassword(token)
+
+	return nil
+}
+
+func (s *httpManipulator) Validity() time.Duration {
+
+	return s.tokenValidity
 }
