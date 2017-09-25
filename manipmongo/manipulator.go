@@ -39,8 +39,8 @@ func NewMongoManipulator(urls []string, dbName string, user string, password str
 		)
 	}
 
-	if user == "" && password == "" && len(clientCerts) > 0 {
-		zap.L().Debug("No user and password provided, but have certificates. Using MONGODB-X509 auth mechanism")
+	if password == "" && len(clientCerts) > 0 {
+		zap.L().Debug("No password provided, but have certificates. Using MONGODB-X509 auth mechanism")
 		dialInfo.Mechanism = "MONGODB-X509"
 	}
 

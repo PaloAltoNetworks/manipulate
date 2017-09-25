@@ -14,7 +14,7 @@ func DoesDatabaseExist(manipulator manipulate.Manipulator) (bool, error) {
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
-		return false, fmt.Errorf("You can only pass a Mongo Manipulator to CreateIndex")
+		return false, fmt.Errorf("You can only pass a Mongo Manipulator to DoesDatabaseExist")
 	}
 
 	dbs, err := m.rootSession.DatabaseNames()
