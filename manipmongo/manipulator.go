@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net"
-	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -27,21 +26,16 @@ type mongoManipulator struct {
 }
 
 // NewMongoManipulator returns a new TransactionalManipulator backed by MongoDB
-func NewMongoManipulator(urls []string, dbName string, user string, password string, authsource string, poolLimit int, CAPool *x509.CertPool, clientCerts []tls.Certificate) manipulate.TransactionalManipulator {
+func NewMongoManipulator(connectionString string, dbName string, user string, password string, authsource string, poolLimit int, CAPool *x509.CertPool, clientCerts []tls.Certificate) manipulate.TransactionalManipulator {
 
-	dialInfo, err := mgo.ParseURL(strings.Join(urls, ","))
+	dialInfo, err := mgo.ParseURL(connectionString)
 	if err != nil {
 		zap.L().Fatal("Unable to create dial information",
-			zap.Strings("uri", urls),
+			zap.String("uri", connectionString),
 			zap.String("db", dbName),
 			zap.String("username", user),
 			zap.Error(err),
 		)
-	}
-
-	if user != "" && password == "" && len(clientCerts) > 0 {
-		zap.L().Debug("No password provided, but have certificates. Using MONGODB-X509 auth mechanism")
-		dialInfo.Mechanism = "MONGODB-X509"
 	}
 
 	dialInfo.PoolLimit = poolLimit
@@ -68,7 +62,7 @@ func NewMongoManipulator(urls []string, dbName string, user string, password str
 	session, err := mgo.DialWithInfo(dialInfo)
 	if err != nil {
 		zap.L().Fatal("Cannot connect to mongo",
-			zap.Strings("uri", urls),
+			zap.String("url", connectionString),
 			zap.String("db", dbName),
 			zap.String("username", user),
 			zap.Error(err),
