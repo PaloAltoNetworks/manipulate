@@ -61,7 +61,7 @@ func NewMongoManipulator(urls []string, dbName string, user string, password str
 			return conn, nil
 		}
 
-		zap.L().Warn("Unable to dial to mongo using TLS. Trying with unencrypted dialing", zap.Error(err))
+		zap.L().Warn("Unable to dial to mongo using TLS. Trying with unencrypted dialing", zap.Error(e))
 		return net.Dial("tcp", addr.String())
 	}
 
