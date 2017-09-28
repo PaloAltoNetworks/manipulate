@@ -436,7 +436,7 @@ func (s *mongoManipulator) Ping(timeout time.Duration) error {
 
 	select {
 	case <-time.After(timeout):
-		return fmt.Errorf("Connection Timeout")
+		return fmt.Errorf("timeout")
 	case err := <-errChannel:
 		return err
 	}
