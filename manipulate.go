@@ -80,3 +80,11 @@ type TokenRetrieveManipulator interface {
 	RetrieveToken() error
 	Validity() time.Duration
 }
+
+// PingManipulator is a manipulator that has a Ping method
+type PingManipulator interface {
+	Manipulator
+
+	// Ping the connection in the given timeout. Returns an error if any
+	Ping(timeout time.Duration) error
+}
