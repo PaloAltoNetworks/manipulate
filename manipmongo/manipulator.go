@@ -427,11 +427,11 @@ func (s *mongoManipulator) copySession(context *manipulate.Context) *mgo.Session
 }
 
 func (s *mongoManipulator) Ping(timeout time.Duration) error {
-	session := s.rootSession.Copy()
+
 	errChannel := make(chan error, 1)
 
 	go func() {
-		errChannel <- session.Ping()
+		errChannel <- s.rootSession.Ping()
 	}()
 
 	select {
