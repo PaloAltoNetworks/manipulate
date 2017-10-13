@@ -36,6 +36,17 @@ func (o ListsList) Version() int {
 	return 1
 }
 
+// Append appends the objects to the a new copy of the TasksList.
+func (o ListsList) Append(objects ...elemental.Identifiable) elemental.ContentIdentifiable {
+
+	out := append(ListsList{}, o...)
+	for _, obj := range objects {
+		out = append(out, obj.(*List))
+	}
+
+	return out
+}
+
 // List represents the model of a list
 type List struct {
 	ID          string `json:"ID,omitempty"`
@@ -122,6 +133,17 @@ func (o TasksList) List() elemental.IdentifiablesList {
 // Version is test data
 func (o TasksList) Version() int {
 	return 1
+}
+
+// Append appends the objects to the a new copy of the TasksList.
+func (o TasksList) Append(objects ...elemental.Identifiable) elemental.ContentIdentifiable {
+
+	out := append(TasksList{}, o...)
+	for _, obj := range objects {
+		out = append(out, obj.(*Task))
+	}
+
+	return out
 }
 
 // Task represents the model of a task
