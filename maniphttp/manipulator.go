@@ -77,17 +77,17 @@ func NewHTTPManipulatorWithRootCA(username, password, url, namespace string, roo
 }
 
 // NewHTTPManipulatorWithMTLS returns a Manipulator backed by an ReST API using the given CAPool as root CA and client certificate.
-func NewHTTPManipulatorWithMTLS(url string, rootCAPool *x509.CertPool, clientsCAPool *x509.CertPool, clientCertificates []tls.Certificate, skipTLSVerify bool) manipulate.Manipulator {
+func NewHTTPManipulatorWithMTLS(url string, namespace string, rootCAPool *x509.CertPool, clientCertificates []tls.Certificate, skipTLSVerify bool) manipulate.Manipulator {
 
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: skipTLSVerify,
 		RootCAs:            rootCAPool,
-		ClientCAs:          clientsCAPool,
 		Certificates:       clientCertificates,
 	}
 
 	return &httpManipulator{
 		renewLock: &sync.Mutex{},
+		namespace: namespace,
 		url:       url,
 		client: &http.Client{
 			Timeout: 10 * time.Second,
