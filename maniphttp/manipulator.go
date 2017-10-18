@@ -107,7 +107,6 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 	url string,
 	midgardurl string,
 	rootCAPool *x509.CertPool,
-	clientCAPool *x509.CertPool,
 	certificates []tls.Certificate,
 	namespace string,
 	validity time.Duration,
@@ -117,7 +116,7 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 	sp := opentracing.StartSpan("maniphttp.authenthication")
 	defer sp.Finish()
 
-	mclient := midgardclient.NewClientWithCAPool(midgardurl, rootCAPool, clientCAPool, skipInsecure)
+	mclient := midgardclient.NewClientWithCAPool(midgardurl, rootCAPool, skipInsecure)
 	token, err := auth.IssueInitialToken(mclient, certificates, validity, sp)
 	if err != nil {
 		tracing.FinishTraceWithError(sp, err)
@@ -128,7 +127,6 @@ func NewHTTPManipulatorWithMidgardCertAuthentication(
 		Certificates:       certificates,
 		InsecureSkipVerify: skipInsecure,
 		RootCAs:            rootCAPool,
-		ClientCAs:          clientCAPool,
 	}
 
 	m := &httpManipulator{
