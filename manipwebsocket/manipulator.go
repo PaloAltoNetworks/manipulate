@@ -105,12 +105,12 @@ func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string
 
 // NewWebSocketManipulatorWithMidgardCertAuthentication returns a http backed manipulate.Manipulator
 // using a certificates to authenticate against a Midgard server.
-func NewWebSocketManipulatorWithMidgardCertAuthentication(url string, midgardurl string, rootCAPool *x509.CertPool, clientCAPool *x509.CertPool, certificates []tls.Certificate, namespace string, validity time.Duration, skipInsecure bool) (manipulate.EventManipulator, func(), error) {
+func NewWebSocketManipulatorWithMidgardCertAuthentication(url string, midgardurl string, rootCAPool *x509.CertPool, certificates []tls.Certificate, namespace string, validity time.Duration, skipInsecure bool) (manipulate.EventManipulator, func(), error) {
 
-	sp := opentracing.StartSpan("manipwebsocket.authenthication")
+	sp := opentracing.StartSpan("manipwebsocket.authentication")
 	defer sp.Finish()
 
-	mclient := midgard.NewClientWithCAPool(midgardurl, rootCAPool, clientCAPool, skipInsecure)
+	mclient := midgard.NewClientWithCAPool(midgardurl, rootCAPool, skipInsecure)
 	token, err := auth.IssueInitialToken(mclient, certificates, validity, sp)
 	if err != nil {
 		tracing.FinishTraceWithError(sp, err)
@@ -128,7 +128,6 @@ func NewWebSocketManipulatorWithMidgardCertAuthentication(url string, midgardurl
 	wsmanip.tokenValidity = validity
 	wsmanip.tlsConfig.Certificates = certificates
 	wsmanip.tlsConfig.RootCAs = rootCAPool
-	wsmanip.tlsConfig.ClientCAs = clientCAPool
 
 	stopCh := make(chan bool)
 
