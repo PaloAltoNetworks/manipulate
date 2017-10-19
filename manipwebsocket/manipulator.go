@@ -16,10 +16,10 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/aporeto-inc/addedeffect/tokensnip"
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 	"github.com/aporeto-inc/manipulate/internal/auth"
-	"github.com/aporeto-inc/manipulate/internal/sec"
 	"github.com/aporeto-inc/manipulate/internal/tracing"
 	"github.com/opentracing/opentracing-go"
 	"golang.org/x/net/websocket"
@@ -504,7 +504,7 @@ func (s *websocketManipulator) Subscribe(
 				if isStopped() {
 					return
 				}
-				zap.L().Warn("Could not connect to event websocket. Retrying in 5s", zap.Error(sec.Snip(err, s.currentPassword())))
+				zap.L().Warn("Could not connect to event websocket. Retrying in 5s", zap.Error(tokensnip.Snip(err, s.currentPassword())))
 				<-time.After(5 * time.Second)
 
 				continue
@@ -605,7 +605,7 @@ func (s *websocketManipulator) listen() {
 			return
 		}
 
-		zap.L().Warn("Websocket connection died. Reconnecting...", zap.Error(sec.Snip(err, s.currentPassword())))
+		zap.L().Warn("Websocket connection died. Reconnecting...", zap.Error(tokensnip.Snip(err, s.currentPassword())))
 		for {
 
 			if err := s.connect(); err != nil {
@@ -614,7 +614,7 @@ func (s *websocketManipulator) listen() {
 					return
 				}
 
-				zap.L().Warn("API websocket not available. Retrying in 5s...", zap.Error(sec.Snip(err, s.currentPassword())))
+				zap.L().Warn("API websocket not available. Retrying in 5s...", zap.Error(tokensnip.Snip(err, s.currentPassword())))
 				<-time.After(5 * time.Second)
 
 				continue
@@ -758,8 +758,9 @@ func (s *websocketManipulator) setPassword(password string) {
 
 func (s *websocketManipulator) currentPassword() string {
 	s.renewLock.Lock()
-	defer s.renewLock.Unlock()
-	return s.password
+	p := s.password
+	s.renewLock.Unlock()
+	return p
 }
 
 func (s *websocketManipulator) RetrieveToken() error {

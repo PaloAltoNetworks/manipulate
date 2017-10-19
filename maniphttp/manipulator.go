@@ -17,10 +17,10 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/aporeto-inc/addedeffect/tokensnip"
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 	"github.com/aporeto-inc/manipulate/internal/auth"
-	"github.com/aporeto-inc/manipulate/internal/sec"
 	"github.com/aporeto-inc/manipulate/internal/tracing"
 	"github.com/opentracing/opentracing-go"
 
@@ -569,7 +569,7 @@ func (s *httpManipulator) send(request *http.Request, context *manipulate.Contex
 
 	response, err := s.client.Do(request)
 	if err != nil {
-		return response, manipulate.NewErrCannotCommunicate(sec.Snip(err, s.currentPassword()).Error())
+		return response, manipulate.NewErrCannotCommunicate(tokensnip.Snip(err, s.currentPassword()).Error())
 	}
 
 	if response.StatusCode == http.StatusLocked {
@@ -617,8 +617,9 @@ func (s *httpManipulator) setPassword(password string) {
 
 func (s *httpManipulator) currentPassword() string {
 	s.renewLock.Lock()
-	defer s.renewLock.Unlock()
-	return s.password
+	p := s.password
+	s.renewLock.Unlock()
+	return p
 }
 
 func (s *httpManipulator) RetrieveToken() error {
