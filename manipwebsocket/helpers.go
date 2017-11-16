@@ -1,8 +1,6 @@
 package manipwebsocket
 
 import (
-	"fmt"
-
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 )
@@ -12,7 +10,7 @@ func SendRequest(manipulator manipulate.Manipulator, request *elemental.Request)
 
 	m, ok := manipulator.(*websocketManipulator)
 	if !ok {
-		return nil, fmt.Errorf("You can only pass a Websocket Manipulator to SendRequest")
+		panic("You can only pass a Websocket Manipulator to SendRequest")
 	}
 
 	// @TODO: make this configurable. I have no idea who is using this function.
@@ -43,7 +41,7 @@ func ExtractCredentials(manipulator manipulate.Manipulator) (string, string, err
 
 	m, ok := manipulator.(*websocketManipulator)
 	if !ok {
-		return "", "", fmt.Errorf("You can only pass a HTTP Manipulator to ExtractCredentials")
+		panic("You can only pass a HTTP Manipulator to ExtractCredentials")
 	}
 
 	m.renewLock.Lock()
