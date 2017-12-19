@@ -1,7 +1,6 @@
 package manipmongo
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/aporeto-inc/elemental"
@@ -14,7 +13,7 @@ func DoesDatabaseExist(manipulator manipulate.Manipulator) (bool, error) {
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
-		return false, fmt.Errorf("You can only pass a Mongo Manipulator to DoesDatabaseExist")
+		panic("you can only pass a mongo manipulator to DoesDatabaseExist")
 	}
 
 	dbs, err := m.rootSession.DatabaseNames()
@@ -36,7 +35,7 @@ func DropDatabase(manipulator manipulate.Manipulator) error {
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
-		panic("You can only pass a Mongo Manipulator to CreateIndex")
+		panic("you can only pass a mongo manipulator to CreateIndex")
 	}
 
 	session := m.rootSession.Copy()
@@ -50,7 +49,7 @@ func CreateIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
-		return fmt.Errorf("You can only pass a Mongo Manipulator to CreateIndex")
+		panic("you can only pass a mongo manipulator to CreateIndex")
 	}
 
 	session := m.rootSession.Copy()
@@ -73,7 +72,7 @@ func CreateCollection(manipulator manipulate.Manipulator, identity elemental.Ide
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
-		return fmt.Errorf("You can only pass a Mongo Manipulator to CreateIndex")
+		panic("you can only pass a mongo manipulator to CreateCollection")
 	}
 
 	session := m.rootSession.Copy()
@@ -90,10 +89,25 @@ func GetSession(manipulator manipulate.Manipulator) (*mgo.Database, func(), erro
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
-		return nil, nil, fmt.Errorf("You can only pass a Mongo Manipulator to CreateIndex")
+		panic("you can only pass a mongo manipulator to GetSession")
 	}
 
 	session := m.rootSession.Copy()
 
 	return session.DB(m.dbName), func() { session.Close() }, nil
+}
+
+// SetConsistencyMode sets the mongo consistency mode of the mongo session.
+func SetConsistencyMode(manipulator manipulate.Manipulator, mode mgo.Mode, refresh bool) {
+
+	m, ok := manipulator.(*mongoManipulator)
+	if !ok {
+		panic("you can only pass a Mongo Manipulator to SetConsistencyMode")
+	}
+
+	if m.rootSession == nil {
+		panic("cannot apply SetConsistencyMode. The root mongo session is not ready")
+	}
+
+	m.rootSession.SetMode(mode, refresh)
 }
