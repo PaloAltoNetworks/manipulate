@@ -6,7 +6,7 @@ import (
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
+	"github.com/opentracing/opentracing-go/log"
 )
 
 // StartTrace starts a new trace from the root span if any.
@@ -70,8 +70,7 @@ func FinishTraceWithError(span opentracing.Span, err error) {
 		return
 	}
 
-	ext.Error.Set(span, true)
-	span.LogEventWithPayload("Error", err.Error())
+	span.LogFields(log.Error(err))
 	span.Finish()
 }
 
