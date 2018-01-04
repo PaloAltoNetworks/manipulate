@@ -80,3 +80,7 @@ type TokenRetrieveManipulator interface {
 	RetrieveToken() error
 	Validity() time.Duration
 }
+
+type Pingable interface {
+	Ping(timeout time.Duration) error
+}
