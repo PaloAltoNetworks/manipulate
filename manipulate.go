@@ -10,18 +10,6 @@ import (
 	"github.com/aporeto-inc/elemental"
 )
 
-// EventHandler is the type of event an handler.
-type EventHandler func(event *elemental.Event, err error)
-
-// RecoveryHandler is the type of connection recovery handler.
-type RecoveryHandler func()
-
-// EventUnsubscriber is the type of the unsubscribe function.
-type EventUnsubscriber func() error
-
-// EventFilterUpdater is the type of the function to update a PushFilter.
-type EventFilterUpdater func(*elemental.PushFilter) error
-
 // Manipulator is the interface of a storage backend.
 type Manipulator interface {
 	// RetrieveMany retrieves the a list of objects with the given elemental.Identity and put them in the given dest.
@@ -66,13 +54,19 @@ type TransactionalManipulator interface {
 	Abort(id TransactionID) bool
 }
 
-// An EventManipulator is a manipulator with event capabilities.
-type EventManipulator interface {
-	Manipulator
+// A Subscriber is the interface to control a push event subscription.
+type Subscriber interface {
+	// UpdateFilter updates the current filter.
+	UpdateFilter(*elemental.PushFilter) error
 
-	// Subscribe subscribes the given EventHandler for event on the given identities.
-	// If you pass nil as identities, then you will receive events for everything.
-	Subscribe(filter *elemental.PushFilter, lNamespaces bool, eventHandler EventHandler, recoHandler RecoveryHandler) (EventUnsubscriber, EventFilterUpdater, error)
+	// Unsubscribe terminate the subscription.
+	Unsubscribe() error
+
+	// Events returns the events channel.
+	Events() chan *elemental.Event
+
+	// Errors returns the errors channel.
+	Errors() chan error
 }
 
 // TokenRetrieveManipulator is the interface of a manipulator that can retrieve a token.

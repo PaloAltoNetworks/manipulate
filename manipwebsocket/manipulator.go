@@ -9,8 +9,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net/http"
-	"net/url"
-	"strings"
 	"sync"
 	"time"
 
@@ -21,6 +19,7 @@ import (
 	"github.com/aporeto-inc/manipulate"
 	"github.com/aporeto-inc/manipulate/internal/auth"
 	"github.com/aporeto-inc/manipulate/internal/tracing"
+	"github.com/aporeto-inc/manipulate/internal/wsutils"
 	"github.com/gorilla/websocket"
 	"github.com/opentracing/opentracing-go"
 
@@ -47,7 +46,7 @@ type websocketManipulator struct {
 }
 
 // NewWebSocketManipulator returns a Manipulator backed by a websocket API.
-func NewWebSocketManipulator(username, password, url, namespace string) (manipulate.EventManipulator, func(), error) {
+func NewWebSocketManipulator(username, password, url, namespace string) (manipulate.Manipulator, func(), error) {
 
 	CAPool, err := x509.SystemCertPool()
 	if err != nil {
@@ -58,7 +57,7 @@ func NewWebSocketManipulator(username, password, url, namespace string) (manipul
 }
 
 // NewWebSocketManipulatorWithRootCA returns a Manipulator backed by an ReST API using the given CAPool as root CA.
-func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string, rootCAPool *x509.CertPool, skipTLSVerify bool) (manipulate.EventManipulator, func(), error) {
+func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string, rootCAPool *x509.CertPool, skipTLSVerify bool) (manipulate.Manipulator, func(), error) {
 
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: skipTLSVerify,
@@ -105,7 +104,7 @@ func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string
 
 // NewWebSocketManipulatorWithMidgardCertAuthentication returns a http backed manipulate.Manipulator
 // using a certificates to authenticate against a Midgard server.
-func NewWebSocketManipulatorWithMidgardCertAuthentication(url string, midgardurl string, rootCAPool *x509.CertPool, certificates []tls.Certificate, namespace string, validity time.Duration, skipInsecure bool) (manipulate.EventManipulator, func(), error) {
+func NewWebSocketManipulatorWithMidgardCertAuthentication(url string, midgardurl string, rootCAPool *x509.CertPool, certificates []tls.Certificate, namespace string, validity time.Duration, skipInsecure bool) (manipulate.Manipulator, func(), error) {
 
 	sp := opentracing.StartSpan("manipwebsocket.authentication")
 	defer sp.Finish()
@@ -442,121 +441,12 @@ func (s *websocketManipulator) Increment(context *manipulate.Context, identity e
 	return manipulate.NewErrNotImplemented("Increment not implemented in websocket manipulator")
 }
 
-func (s *websocketManipulator) Subscribe(
-	filter *elemental.PushFilter,
-	recursive bool,
-	handler manipulate.EventHandler,
-	recoHandler manipulate.RecoveryHandler,
-) (manipulate.EventUnsubscriber, manipulate.EventFilterUpdater, error) {
-
-	var ws *websocket.Conn
-	var stopped bool
-
-	lock := &sync.Mutex{}
-	readyChan := make(chan bool)
-
-	// Returned disconnection function
-	disconnectFunc := func() error {
-		lock.Lock()
-		defer lock.Unlock()
-		stopped = true
-		if ws == nil {
-			return nil
-		}
-		return ws.Close()
-	}
-
-	// Returned event filtert updater
-	eventFilterSetterFunc := func(filter *elemental.PushFilter) error {
-		lock.Lock()
-		defer lock.Unlock()
-		return ws.WriteJSON(filter)
-	}
-
-	// Internal helper to check if the connection has been stopped.
-	isStopped := func() bool {
-		lock.Lock()
-		s := stopped
-		lock.Unlock()
-		return s
-	}
-
-	go func() {
-
-		var callRecoHandler bool
-		var connectionAnnounced bool
-
-		for {
-			// Connect to the websocket.
-			lock.Lock()
-			ws, err := s.buildWS("events", recursive)
-			lock.Unlock()
-
-			// If we have an error, we first check if the user has asked to stop the sub.
-			// If so we exit, otherwise, we try to reconnect.
-			if err != nil {
-				if isStopped() {
-					return
-				}
-				zap.L().Warn("Could not connect to event websocket. Retrying in 5s", zap.Error(tokensnip.Snip(err, s.currentPassword())))
-				<-time.After(5 * time.Second)
-
-				continue
-			}
-
-			// if we have an initial filter, we send it.
-			if filter != nil {
-				if err := ws.WriteJSON(filter); err != nil {
-					handler(nil, err)
-					return
-				}
-			}
-
-			// If it's the first time we are connected, let's announce it.
-			if !connectionAnnounced {
-				connectionAnnounced = true
-				readyChan <- true
-			}
-
-			// If we are not in the initial loop and we need to call the reco handler, we do it.
-			if callRecoHandler && recoHandler != nil {
-				callRecoHandler = false
-				recoHandler()
-			}
-
-			// Now we start the main receive loop.
-			for {
-				event := &elemental.Event{}
-				err := ws.ReadJSON(event)
-
-				// Same here. If we have have an error, we first check if the user has asked to stop the sub.
-				// If so, we return, otherwise we call the handler, ask to call the reco handler, and  restart the main loop to reconnect.
-				if err != nil {
-
-					if isStopped() {
-						return
-					}
-
-					handler(nil, err)
-					callRecoHandler = true
-					break
-				}
-
-				handler(event, nil)
-			}
-		}
-	}()
-
-	<-readyChan
-
-	return disconnectFunc, eventFilterSetterFunc, nil
-}
-
 func (s *websocketManipulator) connect() error {
 
 	s.unregisterAllResponseChannels()
 
-	ws, err := s.buildWS("wsapi", s.receiveAll)
+	u := wsutils.MakeURL(s.url, "wsapi", s.namespace, s.currentPassword(), s.receiveAll)
+	ws, err := wsutils.Dial(u, s.tlsConfig)
 	if err != nil {
 		return err
 	}
@@ -567,15 +457,6 @@ func (s *websocketManipulator) connect() error {
 
 	if err != nil {
 		return handleCommunicationError(s, err)
-	}
-
-	response := elemental.NewResponse()
-	if err := s.ws.ReadJSON(&response); err != nil {
-		return handleCommunicationError(s, err)
-	}
-
-	if response.StatusCode != http.StatusOK {
-		return decodeErrors(response)
 	}
 
 	return nil
@@ -686,43 +567,6 @@ func (s *websocketManipulator) isConnected() bool {
 	s.connectedLock.Unlock()
 
 	return r
-}
-
-func (s *websocketManipulator) buildWS(endpoint string, recursive bool) (*websocket.Conn, error) {
-
-	u := strings.Replace(s.url, "http://", "ws://", 1)
-	u = strings.Replace(u, "https://", "wss://", 1)
-	u = fmt.Sprintf("%s/%s?token=%s", u, endpoint, s.currentPassword())
-
-	if s.namespace != "" {
-		u += "&namespace=" + url.QueryEscape(s.namespace)
-	}
-
-	if recursive {
-		u = u + "&mode=all"
-	}
-
-	// url, err := url.Parse(u)
-	// if err != nil {
-	// 	return nil, nil, err
-	// }
-
-	dialer := &websocket.Dialer{
-		Proxy:           http.ProxyFromEnvironment,
-		TLSClientConfig: s.tlsConfig,
-	}
-
-	conn, resp, err := dialer.Dial(u, nil)
-	fmt.Println(resp.Status)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusSwitchingProtocols {
-		return nil, err
-	}
-
-	return conn, nil
 }
 
 func (s *websocketManipulator) registerResponseChannel(rid string) chan *elemental.Response {
