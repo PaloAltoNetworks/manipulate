@@ -425,3 +425,20 @@ func (s *mongoManipulator) copySession(context *manipulate.Context) *mgo.Session
 
 	return session
 }
+
+func (s *mongoManipulator) Ping(timeout time.Duration) error {
+
+	errChannel := make(chan error, 1)
+
+	go func() {
+		errChannel <- s.rootSession.Ping()
+	}()
+
+	select {
+	case <-time.After(timeout):
+		return fmt.Errorf("timeout")
+	case err := <-errChannel:
+		return err
+	}
+
+}
