@@ -103,7 +103,7 @@ func (s *memdbManipulator) Create(context *manipulate.Context, objects ...elemen
 
 	for _, object := range objects {
 
-		object.SetIdentifier(uuid.NewV4().String())
+		object.SetIdentifier(uuid.Must(uuid.NewV4()).String())
 
 		if err := txn.Insert(object.Identity().Category, object); err != nil {
 			return manipulate.NewErrCannotExecuteQuery(err.Error())

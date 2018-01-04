@@ -55,7 +55,7 @@ func IssueInitialToken(mclient *midgardclient.Client, certificates []tls.Certifi
 
 		token, err = mclient.IssueFromCertificateWithValidity(certificates, validity, sp)
 		if err == nil {
-			zap.L().Info("Initial Midgard token issued")
+			zap.L().Debug("Initial Midgard token issued")
 			return token, nil
 		}
 
