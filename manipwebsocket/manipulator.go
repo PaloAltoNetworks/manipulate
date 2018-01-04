@@ -21,8 +21,8 @@ import (
 	"github.com/aporeto-inc/manipulate"
 	"github.com/aporeto-inc/manipulate/internal/auth"
 	"github.com/aporeto-inc/manipulate/internal/tracing"
+	"github.com/gorilla/websocket"
 	"github.com/opentracing/opentracing-go"
-	"golang.org/x/net/websocket"
 
 	midgard "github.com/aporeto-inc/midgard-lib/client"
 )
@@ -95,7 +95,7 @@ func NewWebSocketManipulatorWithRootCA(username, password, url, namespace string
 		m.stopSendChan <- true
 
 		m.wsLock.Lock()
-		if m.ws != nil && m.ws.IsClientConn() {
+		if m.ws != nil {
 			m.ws.Close() // nolint: errcheck
 		}
 		m.wsLock.Unlock()
@@ -470,7 +470,7 @@ func (s *websocketManipulator) Subscribe(
 	eventFilterSetterFunc := func(filter *elemental.PushFilter) error {
 		lock.Lock()
 		defer lock.Unlock()
-		return websocket.JSON.Send(ws, filter)
+		return ws.WriteJSON(filter)
 	}
 
 	// Internal helper to check if the connection has been stopped.
@@ -487,15 +487,9 @@ func (s *websocketManipulator) Subscribe(
 		var connectionAnnounced bool
 
 		for {
-
-			config, err := s.buildWSDialConfig("events", recursive)
-			if err != nil {
-				panic(err)
-			}
-
 			// Connect to the websocket.
 			lock.Lock()
-			ws, err = websocket.DialConfig(config)
+			ws, err := s.buildWS("events", recursive)
 			lock.Unlock()
 
 			// If we have an error, we first check if the user has asked to stop the sub.
@@ -512,7 +506,7 @@ func (s *websocketManipulator) Subscribe(
 
 			// if we have an initial filter, we send it.
 			if filter != nil {
-				if err := websocket.JSON.Send(ws, filter); err != nil {
+				if err := ws.WriteJSON(filter); err != nil {
 					handler(nil, err)
 					return
 				}
@@ -533,7 +527,7 @@ func (s *websocketManipulator) Subscribe(
 			// Now we start the main receive loop.
 			for {
 				event := &elemental.Event{}
-				err := websocket.JSON.Receive(ws, event)
+				err := ws.ReadJSON(event)
 
 				// Same here. If we have have an error, we first check if the user has asked to stop the sub.
 				// If so, we return, otherwise we call the handler, ask to call the reco handler, and  restart the main loop to reconnect.
@@ -562,13 +556,13 @@ func (s *websocketManipulator) connect() error {
 
 	s.unregisterAllResponseChannels()
 
-	config, err := s.buildWSDialConfig("wsapi", s.receiveAll)
+	ws, err := s.buildWS("wsapi", s.receiveAll)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	s.wsLock.Lock()
-	s.ws, err = websocket.DialConfig(config)
+	s.ws = ws
 	s.wsLock.Unlock()
 
 	if err != nil {
@@ -576,7 +570,7 @@ func (s *websocketManipulator) connect() error {
 	}
 
 	response := elemental.NewResponse()
-	if err := websocket.JSON.Receive(s.ws, &response); err != nil {
+	if err := s.ws.ReadJSON(&response); err != nil {
 		return handleCommunicationError(s, err)
 	}
 
@@ -592,7 +586,7 @@ func (s *websocketManipulator) listen() {
 	for {
 
 		response := elemental.NewResponse()
-		err := websocket.JSON.Receive(s.ws, &response)
+		err := s.ws.ReadJSON(&response)
 
 		if err == nil {
 			if ch := s.responseChannelForID(response.Request.RequestID); ch != nil {
@@ -642,7 +636,7 @@ func (s *websocketManipulator) send(request *elemental.Request, timeout time.Dur
 	ch := s.registerResponseChannel(request.RequestID)
 	defer s.unregisterResponseChannel(request.RequestID)
 
-	err := websocket.JSON.Send(s.ws, request)
+	err := s.ws.WriteJSON(request)
 	s.wsLock.Unlock()
 	if err != nil {
 		return nil, handleCommunicationError(s, err)
@@ -694,7 +688,7 @@ func (s *websocketManipulator) isConnected() bool {
 	return r
 }
 
-func (s *websocketManipulator) buildWSDialConfig(endpoint string, recursive bool) (*websocket.Config, error) {
+func (s *websocketManipulator) buildWS(endpoint string, recursive bool) (*websocket.Conn, error) {
 
 	u := strings.Replace(s.url, "http://", "ws://", 1)
 	u = strings.Replace(u, "https://", "wss://", 1)
@@ -708,14 +702,27 @@ func (s *websocketManipulator) buildWSDialConfig(endpoint string, recursive bool
 		u = u + "&mode=all"
 	}
 
-	// Build the initial ws config
-	config, err := websocket.NewConfig(u, u)
+	// url, err := url.Parse(u)
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
+
+	dialer := &websocket.Dialer{
+		Proxy:           http.ProxyFromEnvironment,
+		TLSClientConfig: s.tlsConfig,
+	}
+
+	conn, resp, err := dialer.Dial(u, nil)
+	fmt.Println(resp.Status)
 	if err != nil {
 		return nil, err
 	}
-	config.TlsConfig = s.tlsConfig
 
-	return config, nil
+	if resp.StatusCode != http.StatusSwitchingProtocols {
+		return nil, err
+	}
+
+	return conn, nil
 }
 
 func (s *websocketManipulator) registerResponseChannel(rid string) chan *elemental.Response {

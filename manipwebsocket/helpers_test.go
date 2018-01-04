@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"golang.org/x/net/websocket"
+	"github.com/gorilla/websocket"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
