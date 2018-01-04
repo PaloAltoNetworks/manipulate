@@ -14,7 +14,6 @@ import (
 type subscription struct {
 	events       chan *elemental.Event
 	errors       chan error
-	stopCh       chan struct{}
 	conn         *websocket.Conn
 	stoppedLock  *sync.Mutex
 	stopped      bool
