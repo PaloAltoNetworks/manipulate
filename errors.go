@@ -10,6 +10,12 @@ func NewErrCannotUnmarshal(message string) ErrCannotUnmarshal {
 
 func (e ErrCannotUnmarshal) Error() string { return "Unable to unmarshal data: " + e.message }
 
+// IsCannotUnmarshalError returns true if the given error is am ErrCannotUnmarshal.
+func IsCannotUnmarshalError(err error) bool {
+	_, ok := err.(ErrCannotUnmarshal)
+	return ok
+}
+
 // ErrCannotMarshal represents marshaling error.
 type ErrCannotMarshal struct{ message string }
 
@@ -19,6 +25,12 @@ func NewErrCannotMarshal(message string) ErrCannotMarshal {
 }
 
 func (e ErrCannotMarshal) Error() string { return "Unable to marshal data: " + e.message }
+
+// IsCannotMarshalError returns true if the given error is am ErrCannotMarshal.
+func IsCannotMarshalError(err error) bool {
+	_, ok := err.(ErrCannotMarshal)
+	return ok
+}
 
 // ErrObjectNotFound represents object not found error.
 type ErrObjectNotFound struct{ message string }
@@ -30,6 +42,12 @@ func NewErrObjectNotFound(message string) ErrObjectNotFound {
 
 func (e ErrObjectNotFound) Error() string { return "Object not found: " + e.message }
 
+// IsObjectNotFoundError returns true if the given error is am ErrObjectNotFound.
+func IsObjectNotFoundError(err error) bool {
+	_, ok := err.(ErrObjectNotFound)
+	return ok
+}
+
 // ErrMultipleObjectsFound represents too many object found error.
 type ErrMultipleObjectsFound struct{ message string }
 
@@ -39,6 +57,12 @@ func NewErrMultipleObjectsFound(message string) ErrMultipleObjectsFound {
 }
 
 func (e ErrMultipleObjectsFound) Error() string { return "Multiple objects found: " + e.message }
+
+// IsMultipleObjectsFoundError returns true if the given error is am ErrMultipleObjectsFound.
+func IsMultipleObjectsFoundError(err error) bool {
+	_, ok := err.(ErrMultipleObjectsFound)
+	return ok
+}
 
 // ErrCannotBuildQuery represents query building error.
 type ErrCannotBuildQuery struct{ message string }
@@ -50,6 +74,12 @@ func NewErrCannotBuildQuery(message string) ErrCannotBuildQuery {
 
 func (e ErrCannotBuildQuery) Error() string { return "Unable to build query: " + e.message }
 
+// IsCannotBuildQueryError returns true if the given error is am ErrCannotBuildQuery.
+func IsCannotBuildQueryError(err error) bool {
+	_, ok := err.(ErrCannotBuildQuery)
+	return ok
+}
+
 // ErrCannotExecuteQuery represents query execution error.
 type ErrCannotExecuteQuery struct{ message string }
 
@@ -59,6 +89,12 @@ func NewErrCannotExecuteQuery(message string) ErrCannotExecuteQuery {
 }
 
 func (e ErrCannotExecuteQuery) Error() string { return "Unable to execute query: " + e.message }
+
+// IsCannotExecuteQueryError returns true if the given error is am ErrCannotExecuteQuery.
+func IsCannotExecuteQueryError(err error) bool {
+	_, ok := err.(ErrCannotExecuteQuery)
+	return ok
+}
 
 // ErrCannotCommit represents commit execution error.
 type ErrCannotCommit struct{ message string }
@@ -70,6 +106,12 @@ func NewErrCannotCommit(message string) ErrCannotCommit {
 
 func (e ErrCannotCommit) Error() string { return "Unable to commit transaction: " + e.message }
 
+// IsCannotCommitError returns true if the given error is am ErrCannotCommit.
+func IsCannotCommitError(err error) bool {
+	_, ok := err.(ErrCannotCommit)
+	return ok
+}
+
 // ErrNotImplemented represents a non implemented function.
 type ErrNotImplemented struct{ message string }
 
@@ -79,6 +121,12 @@ func NewErrNotImplemented(message string) ErrNotImplemented {
 }
 
 func (e ErrNotImplemented) Error() string { return "Not implemented: " + e.message }
+
+// IsNotImplementedError returns true if the given error is am ErrNotImplemented.
+func IsNotImplementedError(err error) bool {
+	_, ok := err.(ErrNotImplemented)
+	return ok
+}
 
 // ErrCannotCommunicate represents a failure in backend communication.
 type ErrCannotCommunicate struct{ message string }
@@ -90,6 +138,12 @@ func NewErrCannotCommunicate(message string) ErrCannotCommunicate {
 
 func (e ErrCannotCommunicate) Error() string { return "Cannot communicate: " + e.message }
 
+// IsCannotCommunicateError returns true if the given error is am ErrCannotCommunicate.
+func IsCannotCommunicateError(err error) bool {
+	_, ok := err.(ErrCannotCommunicate)
+	return ok
+}
+
 // ErrLocked represents the error returned when the server api is locked..
 type ErrLocked struct{ message string }
 
@@ -99,6 +153,12 @@ func NewErrLocked(message string) ErrLocked {
 }
 
 func (e ErrLocked) Error() string { return "Cannot communicate: " + e.message }
+
+// IsLockedError returns true if the given error is am ErrLocked.
+func IsLockedError(err error) bool {
+	_, ok := err.(ErrLocked)
+	return ok
+}
 
 // ErrTransactionNotFound represents a failure to find a transaction.
 type ErrTransactionNotFound struct{ message string }
@@ -110,6 +170,12 @@ func NewErrTransactionNotFound(message string) ErrTransactionNotFound {
 
 func (e ErrTransactionNotFound) Error() string { return "Transaction not found: " + e.message }
 
+// IsTransactionNotFoundError returns true if the given error is am ErrTransactionNotFound.
+func IsTransactionNotFoundError(err error) bool {
+	_, ok := err.(ErrTransactionNotFound)
+	return ok
+}
+
 // ErrConstraintViolation represents a failure to find a transaction.
 type ErrConstraintViolation struct{ message string }
 
@@ -120,6 +186,12 @@ func NewErrConstraintViolation(message string) ErrConstraintViolation {
 
 func (e ErrConstraintViolation) Error() string { return "Constraint violation: " + e.message }
 
+// IsConstraintViolationError returns true if the given error is am ErrConstraintViolation.
+func IsConstraintViolationError(err error) bool {
+	_, ok := err.(ErrConstraintViolation)
+	return ok
+}
+
 // ErrDisconnected represents an error due user disconnection.
 type ErrDisconnected struct{ message string }
 
@@ -129,3 +201,9 @@ func NewErrDisconnected(message string) ErrDisconnected {
 }
 
 func (e ErrDisconnected) Error() string { return "Disconnected: " + e.message }
+
+// IsDisconnectedError returns true if the given error is am ErrDisconnected.
+func IsDisconnectedError(err error) bool {
+	_, ok := err.(ErrDisconnected)
+	return ok
+}
