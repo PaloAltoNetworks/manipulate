@@ -14,5 +14,5 @@ func NewSubscriber(manipulator manipulate.Manipulator, filter *elemental.PushFil
 		panic("You must pass a WebSocket manipulator to manipwebsocket.NewSubscriper")
 	}
 
-	return push.NewSubscriber(m.url, m.namespace, m.currentPassword(), m.tlsConfig, recursive, maxConnTry)
+	return push.NewSubscriber(m.url, m.namespace, m.currentPassword(), m.tlsConfig, filter, recursive, maxConnTry)
 }

@@ -28,6 +28,8 @@ type subscription struct {
 	tlsConfig         *tls.Config
 	maxConnRetry      int
 	disconnectionFunc func()
+	filter            *elemental.PushFilter
+	filterLock        *sync.Mutex
 }
 
 // NewSubscriber creates a new Subscription.
@@ -36,6 +38,7 @@ func NewSubscriber(
 	ns string,
 	token string,
 	tlsConfig *tls.Config,
+	filter *elemental.PushFilter,
 	recursive bool,
 	maxConnRetry int,
 ) (manipulate.Subscriber, error) {
@@ -44,7 +47,9 @@ func NewSubscriber(
 		endpoint:     wsutils.MakeURL(url, "events", ns, token, recursive),
 		maxConnRetry: maxConnRetry,
 		tlsConfig:    tlsConfig,
+		filter:       filter,
 		stoppedLock:  &sync.Mutex{},
+		filterLock:   &sync.Mutex{},
 		events:       make(chan *elemental.Event, eventChSize),
 		errors:       make(chan error, errorChSize),
 		status:       make(chan manipulate.SubscriberStatus, statusChSize),
@@ -80,6 +85,11 @@ func (s *subscription) Unsubscribe() error {
 
 // UpdateFilter updates the desired filter.
 func (s *subscription) UpdateFilter(filter *elemental.PushFilter) error {
+
+	s.filterLock.Lock()
+	s.filter = filter
+	s.filterLock.Unlock()
+
 	return s.conn.WriteJSON(filter)
 }
 
@@ -98,6 +108,14 @@ func (s *subscription) Status() chan manipulate.SubscriberStatus {
 	return s.status
 }
 
+func (s *subscription) currentFilter() *elemental.PushFilter {
+
+	s.filterLock.Lock()
+	defer s.filterLock.Unlock()
+
+	return s.filter
+}
+
 func (s *subscription) connect(initial bool) (err error) {
 
 	try := 0
@@ -109,6 +127,14 @@ func (s *subscription) connect(initial bool) (err error) {
 		)
 
 		if err == nil {
+
+			// If we have a filter we install it.
+			if filter := s.currentFilter(); filter != nil {
+				if err = s.conn.WriteJSON(filter); err != nil {
+					return err
+				}
+			}
+
 			return nil
 		}
 
