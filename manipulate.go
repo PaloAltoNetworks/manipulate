@@ -72,6 +72,7 @@ const (
 	SubscriberStatusInitialConnection SubscriberStatus = iota + 1
 	SubscriberStatusDisconnection
 	SubscriberStatusReconnection
+	SubscriberStatusFinalDisconnection
 )
 
 // A Subscriber is the interface to control a push event subscription.

@@ -50,6 +50,15 @@ func NewSubscriber(
 		status:       make(chan manipulate.SubscriberStatus, statusChSize),
 	}
 
+	if err := s.connect(true); err != nil {
+		return nil, err
+	}
+
+	select {
+	case s.status <- manipulate.SubscriberStatusInitialConnection:
+	default:
+	}
+
 	go s.listen()
 
 	return s, nil
@@ -89,7 +98,7 @@ func (s *subscription) Status() chan manipulate.SubscriberStatus {
 	return s.status
 }
 
-func (s *subscription) connect() (err error) {
+func (s *subscription) connect(initial bool) (err error) {
 
 	try := 0
 
@@ -99,8 +108,12 @@ func (s *subscription) connect() (err error) {
 			s.tlsConfig,
 		)
 
-		if err == nil || s.isStopped() {
+		if err == nil {
 			return nil
+		}
+
+		if initial && !manipulate.IsCannotCommunicateError(err) || s.isStopped() {
+			return err
 		}
 
 		try++
@@ -116,6 +129,10 @@ func (s *subscription) listen() {
 
 	var isReconnection bool
 	var isDisconnection bool
+
+	defer func() {
+		s.status <- manipulate.SubscriberStatusFinalDisconnection
+	}()
 
 	// Connection loop.
 	for {
@@ -133,23 +150,20 @@ func (s *subscription) listen() {
 			}
 		}
 
-		// If we can't connect we publish the error and we return.
-		// note: this will return the error only if it could not connect
-		// after the configured number of failed tries.
-		if err := s.connect(); err != nil {
-			s.errors <- err
-			return
+		// If we have been disconnected, we try to reconnect.
+		if isReconnection {
+			if err := s.connect(false); err != nil {
+				s.errors <- err
+				return
+			}
 		}
 
 		// If this is a reconnection we publish the reconnection event
-		// otherwise we publish the initial connection event.
-		event := manipulate.SubscriberStatusInitialConnection
 		if isReconnection {
-			event = manipulate.SubscriberStatusReconnection
-		}
-		select {
-		case s.status <- event:
-		default:
+			select {
+			case s.status <- manipulate.SubscriberStatusReconnection:
+			default:
+			}
 		}
 
 		isReconnection = true
@@ -159,6 +173,7 @@ func (s *subscription) listen() {
 		for {
 
 			event := &elemental.Event{}
+
 			err := s.conn.ReadJSON(event)
 
 			// If there is no error, we publish the event and  we continue the read loop.
@@ -168,6 +183,12 @@ func (s *subscription) listen() {
 				default:
 				}
 				continue
+			}
+
+			// If there is an error, but the user called Unsubscribe
+			// simply bail out.
+			if s.isStopped() {
+				return
 			}
 
 			// If the error is an abrupt connection close (server is gone)
