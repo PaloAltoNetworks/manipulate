@@ -415,10 +415,18 @@ func (s *httpManipulator) Delete(context *manipulate.Context, objects ...element
 			return err
 		}
 
-		_, err = s.send(request, context)
+		response, err := s.send(request, context)
 		if err != nil {
 			tracing.FinishTraceWithError(subSp, err)
 			return err
+		}
+
+		if response.StatusCode != http.StatusNoContent {
+			defer response.Body.Close() // nolint: errcheck
+			if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
+				tracing.FinishTraceWithError(subSp, err)
+				return manipulate.NewErrCannotUnmarshal(err.Error())
+			}
 		}
 
 		tracing.FinishTrace(subSp)
