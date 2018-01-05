@@ -11,15 +11,23 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const (
+	eventChSize  = 1024
+	errorChSize  = 64
+	statusChSize = 8
+)
+
 type subscription struct {
-	events       chan *elemental.Event
-	errors       chan error
-	conn         *websocket.Conn
-	stoppedLock  *sync.Mutex
-	stopped      bool
-	endpoint     string
-	tlsConfig    *tls.Config
-	maxConnRetry int
+	events            chan *elemental.Event
+	errors            chan error
+	status            chan manipulate.SubscriberStatus
+	conn              *websocket.Conn
+	stoppedLock       *sync.Mutex
+	stopped           bool
+	endpoint          string
+	tlsConfig         *tls.Config
+	maxConnRetry      int
+	disconnectionFunc func()
 }
 
 // NewSubscriber creates a new Subscription.
@@ -37,8 +45,9 @@ func NewSubscriber(
 		maxConnRetry: maxConnRetry,
 		tlsConfig:    tlsConfig,
 		stoppedLock:  &sync.Mutex{},
-		events:       make(chan *elemental.Event),
-		errors:       make(chan error),
+		events:       make(chan *elemental.Event, eventChSize),
+		errors:       make(chan error, errorChSize),
+		status:       make(chan manipulate.SubscriberStatus, statusChSize),
 	}
 
 	go s.listen()
@@ -75,6 +84,11 @@ func (s *subscription) Errors() chan error {
 	return s.errors
 }
 
+// Status returns the status channel.
+func (s *subscription) Status() chan manipulate.SubscriberStatus {
+	return s.status
+}
+
 func (s *subscription) connect() (err error) {
 
 	try := 0
@@ -100,12 +114,23 @@ func (s *subscription) connect() (err error) {
 
 func (s *subscription) listen() {
 
+	var isReconnection bool
+	var isDisconnection bool
+
 	// Connection loop.
 	for {
 
 		// If the subscriber is stopped, we return.
 		if s.isStopped() {
 			return
+		}
+
+		// If this is a disconnection, we publish the status event.
+		if isDisconnection {
+			select {
+			case s.status <- manipulate.SubscriberStatusDisconnection:
+			default:
+			}
 		}
 
 		// If we can't connect we publish the error and we return.
@@ -116,6 +141,20 @@ func (s *subscription) listen() {
 			return
 		}
 
+		// If this is a reconnection we publish the reconnection event
+		// otherwise we publish the initial connection event.
+		event := manipulate.SubscriberStatusInitialConnection
+		if isReconnection {
+			event = manipulate.SubscriberStatusReconnection
+		}
+		select {
+		case s.status <- event:
+		default:
+		}
+
+		isReconnection = true
+		isDisconnection = true
+
 		// Read loop.
 		for {
 
@@ -124,7 +163,10 @@ func (s *subscription) listen() {
 
 			// If there is no error, we publish the event and  we continue the read loop.
 			if err == nil {
-				s.events <- event
+				select {
+				case s.events <- event:
+				default:
+				}
 				continue
 			}
 
@@ -136,7 +178,10 @@ func (s *subscription) listen() {
 
 			// Otherwise it's a protocol error, we an publish the err
 			// and we continue the read loop.
-			s.errors <- err
+			select {
+			case s.errors <- err:
+			default:
+			}
 		}
 	}
 }

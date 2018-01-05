@@ -54,6 +54,26 @@ type TransactionalManipulator interface {
 	Abort(id TransactionID) bool
 }
 
+// TokenRetrieveManipulator is the interface of a manipulator that can retrieve a token.
+type TokenRetrieveManipulator interface {
+
+	// RetrieveToken starts a token retrieval operation.
+	RetrieveToken() error
+
+	// Validity returns the token validity.
+	Validity() time.Duration
+}
+
+// SubscriberStatus is the type of a subscriber status.
+type SubscriberStatus int
+
+// Various values of SubscriberEvent.
+const (
+	SubscriberStatusInitialConnection SubscriberStatus = iota + 1
+	SubscriberStatusDisconnection
+	SubscriberStatusReconnection
+)
+
 // A Subscriber is the interface to control a push event subscription.
 type Subscriber interface {
 	// UpdateFilter updates the current filter.
@@ -67,10 +87,7 @@ type Subscriber interface {
 
 	// Errors returns the errors channel.
 	Errors() chan error
-}
 
-// TokenRetrieveManipulator is the interface of a manipulator that can retrieve a token.
-type TokenRetrieveManipulator interface {
-	RetrieveToken() error
-	Validity() time.Duration
+	// Status returns the status channel.
+	Status() chan SubscriberStatus
 }
