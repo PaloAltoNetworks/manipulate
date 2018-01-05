@@ -18,18 +18,17 @@ const (
 )
 
 type subscription struct {
-	events            chan *elemental.Event
-	errors            chan error
-	status            chan manipulate.SubscriberStatus
-	conn              *websocket.Conn
-	stoppedLock       *sync.Mutex
-	stopped           bool
-	endpoint          string
-	tlsConfig         *tls.Config
-	maxConnRetry      int
-	disconnectionFunc func()
-	filter            *elemental.PushFilter
-	filterLock        *sync.Mutex
+	events       chan *elemental.Event
+	errors       chan error
+	status       chan manipulate.SubscriberStatus
+	conn         *websocket.Conn
+	stoppedLock  *sync.Mutex
+	stopped      bool
+	endpoint     string
+	tlsConfig    *tls.Config
+	maxConnRetry int
+	filter       *elemental.PushFilter
+	filterLock   *sync.Mutex
 }
 
 // NewSubscriber creates a new Subscription.
