@@ -2,6 +2,7 @@ package push
 
 import (
 	"crypto/tls"
+	"errors"
 	"sync"
 	"time"
 
@@ -89,7 +90,8 @@ func (s *subscription) UpdateFilter(filter *elemental.PushFilter) error {
 	s.filter = filter
 	s.filterLock.Unlock()
 
-	return s.conn.WriteJSON(filter)
+	return errors.New("UpdateFilter is not functional yet")
+	// return s.conn.WriteJSON(filter) // this causes concurrent writes
 }
 
 // Events returns the event channel.
@@ -126,14 +128,6 @@ func (s *subscription) connect(initial bool) (err error) {
 		)
 
 		if err == nil {
-
-			// If we have a filter we install it.
-			if filter := s.currentFilter(); filter != nil {
-				if err = s.conn.WriteJSON(filter); err != nil {
-					return err
-				}
-			}
-
 			return nil
 		}
 
@@ -178,6 +172,14 @@ func (s *subscription) listen() {
 		// If we have been disconnected, we try to reconnect.
 		if isReconnection {
 			if err := s.connect(false); err != nil {
+				s.errors <- err
+				return
+			}
+		}
+
+		// If we have a filter we install it.
+		if filter := s.currentFilter(); filter != nil {
+			if err := s.conn.WriteJSON(filter); err != nil {
 				s.errors <- err
 				return
 			}
