@@ -172,7 +172,10 @@ func (s *subscription) listen() {
 		// If we have been disconnected, we try to reconnect.
 		if isReconnection {
 			if err := s.connect(false); err != nil {
-				s.errors <- err
+				select {
+				case s.errors <- err:
+				default:
+				}
 				return
 			}
 		}
@@ -180,7 +183,10 @@ func (s *subscription) listen() {
 		// If we have a filter we install it.
 		if filter := s.currentFilter(); filter != nil {
 			if err := s.conn.WriteJSON(filter); err != nil {
-				s.errors <- err
+				select {
+				case s.errors <- err:
+				default:
+				}
 				return
 			}
 		}
@@ -201,33 +207,26 @@ func (s *subscription) listen() {
 
 			event := &elemental.Event{}
 
-			err := s.conn.ReadJSON(event)
+			if err := s.conn.ReadJSON(event); err != nil {
 
-			// If there is no error, we publish the event and  we continue the read loop.
-			if err == nil {
+				// If there is an error, but the user called Unsubscribe we simply return.
+				if s.isStopped() {
+					return
+				}
+
+				// We publish the error
 				select {
-				case s.events <- event:
+				case s.errors <- err:
 				default:
 				}
-				continue
-			}
 
-			// If there is an error, but the user called Unsubscribe
-			// simply bail out.
-			if s.isStopped() {
-				return
-			}
-
-			// If the error is an abrupt connection close (server is gone)
-			// we break the read loop, and continue the connection loop.
-			if websocket.IsCloseError(err, websocket.CloseAbnormalClosure) {
+				// We break the loop to try to reconnect.
 				break
 			}
 
-			// Otherwise it's a protocol error, we an publish the err
-			// and we continue the read loop.
+			// Otherwise we publish the event and  we continue the read loop.
 			select {
-			case s.errors <- err:
+			case s.events <- event:
 			default:
 			}
 		}
