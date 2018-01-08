@@ -64,7 +64,7 @@ func NewHTTPManipulatorWithRootCA(username, password, url, namespace string, roo
 		renewLock: &sync.Mutex{},
 		url:       url,
 		client: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 60 * time.Second,
 			Transport: &http.Transport{
 				IdleConnTimeout:     30 * time.Second,
 				MaxIdleConnsPerHost: 100,
