@@ -139,7 +139,7 @@ func TestHelpers_populateRequestFromContext(t *testing.T) {
 				WithKey("key").Equals(true).
 				Done(),
 		)
-		mctx.Parameters.KeyValues.Add("key", "value")
+		mctx.Parameters.Add("key", "value")
 
 		parent := testdata.NewList()
 		parent.ID = "xxx"

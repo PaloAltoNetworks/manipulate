@@ -13,8 +13,7 @@ func Test_addQueryParameters(t *testing.T) {
 
 	createTestData := func() (ctx *manipulate.Context, benchmark string) {
 		ctx = manipulate.NewContext()
-		ctx.Parameters = &manipulate.Parameters{}
-		ctx.Parameters.KeyValues = url.Values{
+		ctx.Parameters = url.Values{
 			"a":    []string{"1"},
 			"b b":  []string{"2 2"},
 			"c+&=": []string{"3;:/"},
@@ -63,7 +62,6 @@ func Test_addQueryParameters(t *testing.T) {
 		Convey("When I call the method addQueryParameters with a context with no KeyValues in Parameters", func() {
 
 			ctx := manipulate.NewContext()
-			ctx.Parameters = &manipulate.Parameters{}
 			err := addQueryParameters(request, ctx)
 
 			Convey("Then err should be nil", func() {
