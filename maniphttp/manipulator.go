@@ -66,9 +66,7 @@ func NewHTTPManipulatorWithRootCA(username, password, url, namespace string, roo
 		client: &http.Client{
 			Timeout: 60 * time.Second,
 			Transport: &http.Transport{
-				IdleConnTimeout:     30 * time.Second,
-				MaxIdleConnsPerHost: 100,
-				TLSClientConfig:     tlsConfig,
+				TLSClientConfig: tlsConfig,
 			},
 		},
 		namespace: namespace,
@@ -90,11 +88,9 @@ func NewHTTPManipulatorWithMTLS(url string, namespace string, rootCAPool *x509.C
 		namespace: namespace,
 		url:       url,
 		client: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 60 * time.Second,
 			Transport: &http.Transport{
-				IdleConnTimeout:     30 * time.Second,
-				MaxIdleConnsPerHost: 100,
-				TLSClientConfig:     tlsConfig,
+				TLSClientConfig: tlsConfig,
 			},
 		},
 		tlsConfig: tlsConfig,
