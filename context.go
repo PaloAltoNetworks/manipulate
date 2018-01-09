@@ -6,6 +6,7 @@ package manipulate
 
 import (
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -18,15 +19,14 @@ import (
 // to now the intended ID before actually creating the object.
 type FinalizerFunc func(o elemental.Identifiable) error
 
-// Context is a structure
+// A Context holds all information regarding a particular manipulate operation.
 type Context struct {
 	Page                 int
 	PageSize             int
 	Parent               elemental.Identifiable
 	CountTotal           int
 	Filter               *Filter
-	Parameters           *Parameters
-	Attributes           []string
+	Parameters           url.Values
 	TransactionID        TransactionID
 	Namespace            string
 	Recursive            bool
@@ -44,8 +44,7 @@ type Context struct {
 func NewContext() *Context {
 
 	return &Context{
-		Parameters: NewParameters(),
-		Attributes: []string{},
+		Parameters: url.Values{},
 		Timeout:    60 * time.Second,
 	}
 }

@@ -31,8 +31,8 @@ func StartTrace(rootSpan opentracing.Span, name string, mctx *manipulate.Context
 			sp.SetTag("manipulate.context.namespace", "manipulator-default")
 		}
 
-		if len(mctx.Parameters.KeyValues) >= 0 {
-			sp.SetTag("manipulate.context.parameters", mctx.Parameters.KeyValues)
+		if len(mctx.Parameters) >= 0 {
+			sp.SetTag("manipulate.context.parameters", mctx.Parameters)
 		}
 
 		if mctx.Filter != nil {
