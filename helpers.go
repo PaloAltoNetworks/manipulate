@@ -19,6 +19,8 @@ func writeString(buffer *bytes.Buffer, str string) {
 // operation at least maxTries if the error is a manipulate.ErrCannotCommunicate.
 // You can pass -1 to always retry. The function will retry immediately the first try,
 // then after 1s, 2s etc until a try every 5s.
+//
+// Deprecated: manipulate.RetryManipulation is deprecated. Please switch to manipulate.Retry instead.
 func RetryManipulation(manipulation func() error, onRetryFunc func(int), maxTries int) error {
 
 	zap.L().Warn("manipulate.RetryManipulation is deprecated. Please switch to manipulate.Retry")
