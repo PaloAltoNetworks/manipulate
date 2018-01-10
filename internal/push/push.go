@@ -3,6 +3,8 @@ package push
 import (
 	"crypto/tls"
 	"errors"
+	"os"
+	"os/signal"
 	"sync"
 	"time"
 
@@ -121,6 +123,9 @@ func (s *subscription) connect(initial bool) (err error) {
 
 	try := 0
 
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
 	for {
 		s.conn, err = wsutils.Dial(
 			s.endpoint,
@@ -140,7 +145,12 @@ func (s *subscription) connect(initial bool) (err error) {
 			return err
 		}
 
-		time.Sleep(3 * time.Second)
+		select {
+		case <-time.After(3 * time.Second):
+		case <-c:
+			return manipulate.NewErrDisconnected("Disconnected per signal")
+		}
+
 	}
 }
 
