@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/aporeto-inc/elemental"
+	"github.com/aporeto-inc/elemental/test/model"
 	"github.com/aporeto-inc/manipulate"
-	"github.com/aporeto-inc/manipulate/internal/testdata"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -141,7 +141,7 @@ func TestHelpers_populateRequestFromContext(t *testing.T) {
 		)
 		mctx.Parameters.Add("key", "value")
 
-		parent := testdata.NewList()
+		parent := testmodel.NewList()
 		parent.ID = "xxx"
 		mctx.Parent = parent
 
@@ -156,7 +156,7 @@ func TestHelpers_populateRequestFromContext(t *testing.T) {
 		mctx.Order = []string{"a", "b"}
 
 		req := elemental.NewRequest()
-		o := testdata.NewList()
+		o := testmodel.NewList()
 
 		Convey("When I call populateRequestFromContext", func() {
 
@@ -171,7 +171,7 @@ func TestHelpers_populateRequestFromContext(t *testing.T) {
 			})
 
 			Convey("Then request parent should be correct", func() {
-				So(req.ParentIdentity.Name, ShouldEqual, testdata.ListIdentity.Name)
+				So(req.ParentIdentity.Name, ShouldEqual, testmodel.ListIdentity.Name)
 				So(req.ParentID, ShouldEqual, "xxx")
 			})
 

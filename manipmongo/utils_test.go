@@ -3,10 +3,9 @@ package manipmongo
 import (
 	"testing"
 
-	mgo "gopkg.in/mgo.v2"
-
-	"github.com/aporeto-inc/manipulate/internal/testdata"
+	"github.com/aporeto-inc/elemental/test/model"
 	. "github.com/smartystreets/goconvey/convey"
+	mgo "gopkg.in/mgo.v2"
 )
 
 func TestUtils_collectionFromIdentity(t *testing.T) {
@@ -17,7 +16,7 @@ func TestUtils_collectionFromIdentity(t *testing.T) {
 
 			db := &mgo.Database{}
 
-			c := collectionFromIdentity(db, testdata.ListIdentity)
+			c := collectionFromIdentity(db, testmodel.ListIdentity)
 
 			Convey("Then collection should not be nil", func() {
 				So(c, ShouldNotBeNil)

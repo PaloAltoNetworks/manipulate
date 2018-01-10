@@ -3,8 +3,8 @@ package manipmemory
 import (
 	"testing"
 
+	"github.com/aporeto-inc/elemental/test/model"
 	"github.com/aporeto-inc/manipulate"
-	"github.com/aporeto-inc/manipulate/internal/testdata"
 
 	memdb "github.com/hashicorp/go-memdb"
 	. "github.com/smartystreets/goconvey/convey"
@@ -44,7 +44,7 @@ func TestMemManipulator_Create(t *testing.T) {
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
 		m := NewMemoryManipulator(Schema)
-		p := &testdata.List{
+		p := &testmodel.List{
 			Name: "Antoine",
 		}
 
@@ -62,7 +62,7 @@ func TestMemManipulator_Create(t *testing.T) {
 
 			Convey("When I retrieve the list in a second structure", func() {
 
-				l2 := &testdata.List{
+				l2 := &testmodel.List{
 					ID:   p.ID,
 					Name: "not good",
 				}
@@ -81,7 +81,7 @@ func TestMemManipulator_Create(t *testing.T) {
 
 		Convey("When I create an object that is not part of the schema", func() {
 
-			err := m.Create(nil, &testdata.Task{})
+			err := m.Create(nil, &testmodel.Task{})
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -95,7 +95,7 @@ func TestMemManipulator_Retrieve(t *testing.T) {
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
 		m := NewMemoryManipulator(Schema)
-		l1 := &testdata.List{
+		l1 := &testmodel.List{
 			Name: "Antoine1",
 		}
 
@@ -103,7 +103,7 @@ func TestMemManipulator_Retrieve(t *testing.T) {
 
 		Convey("When I retrieve the list", func() {
 
-			ps := &testdata.List{
+			ps := &testmodel.List{
 				ID: l1.ID,
 			}
 
@@ -120,7 +120,7 @@ func TestMemManipulator_Retrieve(t *testing.T) {
 
 		Convey("When I retrieve a non existing list", func() {
 
-			ps := &testdata.List{
+			ps := &testmodel.List{
 				ID: "not-good",
 			}
 
@@ -133,7 +133,7 @@ func TestMemManipulator_Retrieve(t *testing.T) {
 
 		Convey("When I retrieve an object that is not part of the schema", func() {
 
-			err := m.Retrieve(nil, &testdata.Task{})
+			err := m.Retrieve(nil, &testmodel.Task{})
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -148,10 +148,10 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
 		m := NewMemoryManipulator(Schema)
-		l1 := &testdata.List{
+		l1 := &testmodel.List{
 			Name: "Antoine1",
 		}
-		l2 := &testdata.List{
+		l2 := &testmodel.List{
 			Name: "Antoine2",
 		}
 
@@ -159,7 +159,7 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 		Convey("When I retrieve the lists", func() {
 
-			ps := testdata.ListsList{}
+			ps := testmodel.ListsList{}
 
 			err := m.RetrieveMany(nil, &ps)
 
@@ -175,7 +175,7 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 		Convey("When I retrieve the lists with a filter that matches l1", func() {
 
-			ps := testdata.ListsList{}
+			ps := testmodel.ListsList{}
 
 			ctx := manipulate.NewContextWithFilter(
 				manipulate.NewFilterComposer().WithKey("Name").Equals("Antoine1").Done(),
@@ -195,7 +195,7 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 		Convey("When I retrieve the lists with a bad filter", func() {
 
-			ps := testdata.ListsList{}
+			ps := testmodel.ListsList{}
 
 			ctx := manipulate.NewContextWithFilter(
 				manipulate.NewFilterComposer().WithKey("Bad").Equals("Antoine1").Done(),
@@ -216,7 +216,7 @@ func TestMemManipulator_Update(t *testing.T) {
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
 		m := NewMemoryManipulator(Schema)
-		p := &testdata.List{
+		p := &testmodel.List{
 			Name: "Antoine",
 		}
 
@@ -240,7 +240,7 @@ func TestMemManipulator_Update(t *testing.T) {
 
 				Convey("When I retrieve the list", func() {
 
-					l2 := &testdata.List{
+					l2 := &testmodel.List{
 						ID: p.ID,
 					}
 
@@ -258,7 +258,7 @@ func TestMemManipulator_Update(t *testing.T) {
 
 			Convey("When I update the a non existing list", func() {
 
-				pp := &testdata.List{
+				pp := &testmodel.List{
 					ID: "not-good",
 				}
 
@@ -277,7 +277,7 @@ func TestMemManipulator_Delete(t *testing.T) {
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
 		m := NewMemoryManipulator(Schema)
-		p := &testdata.List{
+		p := &testmodel.List{
 			Name: "Antoine",
 		}
 
@@ -299,11 +299,11 @@ func TestMemManipulator_Delete(t *testing.T) {
 
 				Convey("When I retrieve the lists using a wrapper", func() {
 
-					ps := testdata.ListsList{}
+					ps := testmodel.ListsList{}
 
 					var err error
 
-					func(zob *testdata.ListsList) {
+					func(zob *testmodel.ListsList) {
 						err = m.RetrieveMany(nil, zob)
 					}(&ps)
 
@@ -318,7 +318,7 @@ func TestMemManipulator_Delete(t *testing.T) {
 
 				Convey("When I retrieve the lists ", func() {
 
-					ps := testdata.ListsList{}
+					ps := testmodel.ListsList{}
 					err := m.RetrieveMany(nil, &ps)
 
 					Convey("Then err should be nil", func() {
@@ -333,7 +333,7 @@ func TestMemManipulator_Delete(t *testing.T) {
 
 			Convey("When I delete the a non existing list", func() {
 
-				pp := &testdata.List{
+				pp := &testmodel.List{
 					ID: "not-good",
 				}
 
@@ -352,11 +352,11 @@ func TestMemManipulator_Count(t *testing.T) {
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
 		m := NewMemoryManipulator(Schema)
-		l1 := &testdata.List{
+		l1 := &testmodel.List{
 			Name: "Antoine1",
 		}
 
-		l2 := &testdata.List{
+		l2 := &testmodel.List{
 			Name: "Antoine2",
 		}
 
@@ -432,7 +432,7 @@ func TestMemManipulator_Increment(t *testing.T) {
 
 		Convey("When I call Increment", func() {
 
-			err := m.Increment(nil, testdata.ListIdentity, "counter", 1)
+			err := m.Increment(nil, testmodel.ListIdentity, "counter", 1)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
