@@ -125,7 +125,10 @@ func (s *subscription) connect(initial bool) (err error) {
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
-	defer signal.Stop(c)
+	defer func() {
+		signal.Stop(c)
+		close(c)
+	}()
 
 	for {
 		s.conn, err = wsutils.Dial(

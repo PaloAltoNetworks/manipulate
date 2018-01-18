@@ -56,7 +56,10 @@ func retryManipulation(manipulation func() error, onRetryFunc func(int), onRetry
 		if c == nil {
 			c = make(chan os.Signal, 1)
 			signal.Notify(c, os.Interrupt)
-			defer signal.Stop(c)
+			defer func() {
+				signal.Stop(c)
+				close(c)
+			}()
 		}
 
 		switch err.(type) {
