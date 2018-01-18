@@ -54,7 +54,7 @@ func retryManipulation(manipulation func() error, onRetryFunc func(int), onRetry
 
 		// install the quit handler.
 		if c == nil {
-			c = make(chan os.Signal)
+			c = make(chan os.Signal, 1)
 			signal.Notify(c, os.Interrupt)
 			defer signal.Stop(c)
 		}

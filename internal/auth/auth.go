@@ -48,7 +48,7 @@ func IssueInitialToken(mclient *midgardclient.Client, certificates []tls.Certifi
 	var token string
 	var err error
 
-	c := make(chan os.Signal)
+	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	defer signal.Stop(c)
 
