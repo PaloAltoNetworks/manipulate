@@ -39,11 +39,9 @@ func Retry(manipulation func() error, onRetryFunc func(int, error) bool, maxTrie
 
 func retryManipulation(manipulation func() error, onRetryFunc func(int), onRetryCheckFunc func(int, error) bool, maxTries int) error {
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-
-	try := 0
-	waitTime := 0 * time.Second
+	var try int
+	var waitTime time.Duration
+	var c chan os.Signal
 
 	for {
 
@@ -52,6 +50,15 @@ func retryManipulation(manipulation func() error, onRetryFunc func(int), onRetry
 		// If the error is nil, its a success.
 		if err == nil {
 			break
+		}
+
+		// install the quit handler.
+		if c == nil {
+			c = make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt)
+			defer func() {
+				signal.Stop(c)
+			}()
 		}
 
 		switch err.(type) {
