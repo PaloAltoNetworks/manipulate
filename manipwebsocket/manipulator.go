@@ -469,6 +469,11 @@ func (s *websocketManipulator) listen() {
 		response := elemental.NewResponse()
 		err := s.ws.ReadJSON(&response)
 
+		// TODO: backward compat with previous golang/x/net/websocket bahamut implementation.
+		if response.Request == nil {
+			continue
+		}
+
 		if err == nil {
 			if ch := s.responseChannelForID(response.Request.RequestID); ch != nil {
 				ch <- response
