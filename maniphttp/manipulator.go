@@ -45,9 +45,9 @@ func NewHTTPManipulator(url, username, password, namespace string) manipulate.Ma
 	}
 
 	return NewHTTPManipulatorWithTLS(
+		url,
 		username,
 		password,
-		url,
 		namespace,
 		&tls.Config{
 			InsecureSkipVerify: true,
