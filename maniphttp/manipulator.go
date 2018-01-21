@@ -6,6 +6,7 @@ package maniphttp
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -20,132 +21,110 @@ import (
 	"github.com/aporeto-inc/addedeffect/tokensnip"
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
-	"github.com/aporeto-inc/manipulate/internal/auth"
 	"github.com/aporeto-inc/manipulate/internal/tracing"
 	"github.com/opentracing/opentracing-go"
-
-	midgardclient "github.com/aporeto-inc/midgard-lib/client"
 )
 
 type httpManipulator struct {
-	username      string
-	password      string
-	url           string
-	namespace     string
-	renewLock     *sync.Mutex
-	client        *http.Client
-	tlsConfig     *tls.Config
-	mclient       *midgardclient.Client
-	tokenValidity time.Duration
+	username     string
+	password     string
+	url          string
+	namespace    string
+	renewLock    *sync.Mutex
+	client       *http.Client
+	tlsConfig    *tls.Config
+	tokenManager manipulate.TokenManager
 }
 
 // NewHTTPManipulator returns a Manipulator backed by an ReST API.
-func NewHTTPManipulator(username, password, url, namespace string) manipulate.Manipulator {
+func NewHTTPManipulator(url, username, password, namespace string) manipulate.Manipulator {
 
 	CAPool, err := x509.SystemCertPool()
 	if err != nil {
 		zap.L().Fatal("Unable to load system root cert pool", zap.Error(err))
 	}
 
-	return NewHTTPManipulatorWithRootCA(username, password, url, namespace, CAPool, true)
-}
-
-// NewHTTPManipulatorWithRootCA returns a Manipulator backed by an ReST API using the given CAPool as root CA.
-func NewHTTPManipulatorWithRootCA(username, password, url, namespace string, rootCAPool *x509.CertPool, skipTLSVerify bool) manipulate.Manipulator {
-
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: skipTLSVerify,
-		RootCAs:            rootCAPool,
-	}
-
-	return &httpManipulator{
-		username:  username,
-		password:  password,
-		renewLock: &sync.Mutex{},
-		url:       url,
-		client: &http.Client{
-			Timeout: 60 * time.Second,
-			Transport: &http.Transport{
-				TLSClientConfig: tlsConfig,
-			},
+	return NewHTTPManipulatorWithTLS(
+		username,
+		password,
+		url,
+		namespace,
+		&tls.Config{
+			InsecureSkipVerify: true,
+			RootCAs:            CAPool,
 		},
-		namespace: namespace,
-		tlsConfig: tlsConfig,
-	}
+	)
 }
 
-// NewHTTPManipulatorWithMTLS returns a Manipulator backed by an ReST API using the given CAPool as root CA and client certificate.
-func NewHTTPManipulatorWithMTLS(url string, namespace string, rootCAPool *x509.CertPool, clientCertificates []tls.Certificate, skipTLSVerify bool) manipulate.Manipulator {
+// NewHTTPManipulatorWithTLS returns a Manipulator backed by an ReST API using the tls config.
+func NewHTTPManipulatorWithTLS(url, username, password, namespace string, tlsConfig *tls.Config) manipulate.Manipulator {
 
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: skipTLSVerify,
-		RootCAs:            rootCAPool,
-		Certificates:       clientCertificates,
-	}
-
-	return &httpManipulator{
-		renewLock: &sync.Mutex{},
-		namespace: namespace,
-		url:       url,
-		client: &http.Client{
-			Timeout: 60 * time.Second,
-			Transport: &http.Transport{
-				TLSClientConfig: tlsConfig,
-			},
-		},
-		tlsConfig: tlsConfig,
-	}
-}
-
-// NewHTTPManipulatorWithMidgardCertAuthentication returns a http backed manipulate.Manipulator
-// using a certificates to authenticate against a Midgard server.
-func NewHTTPManipulatorWithMidgardCertAuthentication(
-	url string,
-	midgardurl string,
-	rootCAPool *x509.CertPool,
-	certificates []tls.Certificate,
-	namespace string,
-	validity time.Duration,
-	skipInsecure bool,
-) (manipulate.Manipulator, func(), error) {
-
-	sp := opentracing.StartSpan("maniphttp.authenthication")
-	defer sp.Finish()
-
-	mclient := midgardclient.NewClientWithCAPool(midgardurl, rootCAPool, skipInsecure)
-	token, err := auth.IssueInitialToken(mclient, certificates, validity, sp)
+	m, err := NewHTTPManipulatorWithTokenManager(context.Background(), url, namespace, tlsConfig, nil)
 	if err != nil {
-		tracing.FinishTraceWithError(sp, err)
-		return nil, nil, err
+		panic(err)
 	}
 
-	tlsConfig := &tls.Config{
-		Certificates:       certificates,
-		InsecureSkipVerify: skipInsecure,
-		RootCAs:            rootCAPool,
+	m.(*httpManipulator).password = password
+	m.(*httpManipulator).username = username
+
+	return m
+}
+
+// NewHTTPManipulatorWithTokenManager returns a http backed manipulate.Manipulatorusing the given manipulate.TokenManager to manage the the token.
+func NewHTTPManipulatorWithTokenManager(ctx context.Context, url string, namespace string, tlsConfig *tls.Config, tokenManager manipulate.TokenManager) (manipulate.Manipulator, error) {
+
+	var username, password string
+
+	if tokenManager != nil {
+		sp := opentracing.StartSpan("maniphttp.authenthication")
+		defer sp.Finish()
+
+		issueCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+
+		token, err := tokenManager.Issue(issueCtx, sp)
+		if err != nil {
+			tracing.FinishTraceWithError(sp, err)
+			return nil, err
+		}
+
+		password = token
+		username = "Bearer"
 	}
 
 	m := &httpManipulator{
-		username:  "Bearer",
-		password:  token,
-		renewLock: &sync.Mutex{},
-		url:       url,
+		username:     username,
+		password:     password,
+		namespace:    namespace,
+		tokenManager: tokenManager,
+		renewLock:    &sync.Mutex{},
+		url:          url,
+		tlsConfig:    tlsConfig,
 		client: &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConfig,
 			},
 		},
-		namespace:     namespace,
-		tlsConfig:     tlsConfig,
-		mclient:       mclient,
-		tokenValidity: validity,
 	}
 
-	stopCh := make(chan bool)
+	if tokenManager != nil {
+		go func() {
+			tokenCh := make(chan string)
 
-	go auth.RenewMidgardToken(m, stopCh)
+			go tokenManager.Run(ctx, tokenCh)
 
-	return m, func() { stopCh <- true }, nil
+			for {
+				select {
+				case t := <-tokenCh:
+					m.setPassword(t)
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+	}
+
+	return m, nil
 }
 
 func (s *httpManipulator) RetrieveMany(context *manipulate.Context, dest elemental.ContentIdentifiable) error {
@@ -580,16 +559,6 @@ func (s *httpManipulator) send(request *http.Request, context *manipulate.Contex
 		return response, manipulate.NewErrLocked("The api has been locked down by the server.")
 	}
 
-	if response.StatusCode == http.StatusUnauthorized && s.mclient != nil {
-		zap.L().Warn("Authentication error. Trying to renew the token...")
-		for i := 0; i < 3; i++ {
-			if err := s.RetrieveToken(); err == nil {
-				return nil, manipulate.NewErrCannotCommunicate("Temporary authentication error. token renewed, please retry.")
-			}
-			<-time.After(10 * time.Second)
-		}
-	}
-
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 
 		es := []elemental.Error{}
@@ -624,25 +593,4 @@ func (s *httpManipulator) currentPassword() string {
 	p := s.password
 	s.renewLock.Unlock()
 	return p
-}
-
-func (s *httpManipulator) RetrieveToken() error {
-
-	if s.mclient == nil {
-		return fmt.Errorf("this manipulator is not configured to renew tokens")
-	}
-
-	token, err := s.mclient.IssueFromCertificateWithValidity(s.tlsConfig.Certificates, s.tokenValidity, nil)
-	if err != nil {
-		return err
-	}
-
-	s.setPassword(token)
-
-	return nil
-}
-
-func (s *httpManipulator) Validity() time.Duration {
-
-	return s.tokenValidity
 }
