@@ -5,9 +5,10 @@
 package manipulate
 
 import (
-	"time"
+	"context"
 
 	"github.com/aporeto-inc/elemental"
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 // Manipulator is the interface of a storage backend.
@@ -44,7 +45,6 @@ type Manipulator interface {
 
 // A TransactionalManipulator is a Manipulator that handles transactions.
 type TransactionalManipulator interface {
-	Manipulator
 
 	// Commit commits the given TransactionID.
 	Commit(id TransactionID) error
@@ -52,16 +52,8 @@ type TransactionalManipulator interface {
 	// Abort aborts the give TransactionID. It returns true if
 	// a transaction has been effectively aborted, otherwise it returns false.
 	Abort(id TransactionID) bool
-}
 
-// TokenRetrieveManipulator is the interface of a manipulator that can retrieve a token.
-type TokenRetrieveManipulator interface {
-
-	// RetrieveToken starts a token retrieval operation.
-	RetrieveToken() error
-
-	// Validity returns the token validity.
-	Validity() time.Duration
+	Manipulator
 }
 
 // SubscriberStatus is the type of a subscriber status.
@@ -91,4 +83,15 @@ type Subscriber interface {
 
 	// Status returns the status channel.
 	Status() chan SubscriberStatus
+}
+
+// A TokenManager issues an renew tokens periodically.
+type TokenManager interface {
+
+	// Issues isses a new token.
+	Issue(context.Context, opentracing.Span) (string, error)
+
+	// Run runs the token renewal job and published the new token in the
+	// given channel.
+	Run(ctx context.Context, tokenCh chan string)
 }

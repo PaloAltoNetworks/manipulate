@@ -2,8 +2,7 @@ package manipulate
 
 import (
 	"bytes"
-	"os"
-	"os/signal"
+	"context"
 	"time"
 
 	"go.uber.org/zap"
@@ -15,33 +14,15 @@ func writeString(buffer *bytes.Buffer, str string) {
 	}
 }
 
-// RetryManipulation will retry the given function that tries a manipulate
-// operation at least maxTries if the error is a manipulate.ErrCannotCommunicate.
-// You can pass -1 to always retry. The function will retry immediately the first try,
-// then after 1s, 2s etc until a try every 5s.
-//
-// Deprecated: manipulate.RetryManipulation is deprecated. Please switch to manipulate.Retry instead.
-func RetryManipulation(manipulation func() error, onRetryFunc func(int), maxTries int) error {
-
-	zap.L().Warn("manipulate.RetryManipulation is deprecated. Please switch to manipulate.Retry")
-	return retryManipulation(manipulation, onRetryFunc, nil, maxTries)
-}
-
 // Retry will retry the given function that tries a manipulate
 // operation at least maxTries if the error is a manipulate.ErrCannotCommunicate.
 // You can pass -1 to always retry. The function will retry immediately the first try,
 // then after 1s, 2s etc until a try every 5s. If the onRetryFunc is passed and it returns false,
 // the retrying process will be interrupted.
-func Retry(manipulation func() error, onRetryFunc func(int, error) bool, maxTries int) error {
-
-	return retryManipulation(manipulation, nil, onRetryFunc, maxTries)
-}
-
-func retryManipulation(manipulation func() error, onRetryFunc func(int), onRetryCheckFunc func(int, error) bool, maxTries int) error {
+func Retry(ctx context.Context, manipulation func() error, onRetryFunc func(int, error) bool, maxTries int) error {
 
 	var try int
 	var waitTime time.Duration
-	var c chan os.Signal
 
 	for {
 
@@ -50,16 +31,6 @@ func retryManipulation(manipulation func() error, onRetryFunc func(int), onRetry
 		// If the error is nil, its a success.
 		if err == nil {
 			break
-		}
-
-		// install the quit handler.
-		if c == nil {
-			c = make(chan os.Signal, 1)
-			signal.Notify(c, os.Interrupt)
-			defer func() {
-				signal.Stop(c)
-				close(c)
-			}()
 		}
 
 		switch err.(type) {
@@ -71,7 +42,7 @@ func retryManipulation(manipulation func() error, onRetryFunc func(int), onRetry
 			zap.L().Warn("API locked. Retrying in 10s", zap.Error(err))
 			select {
 			case <-time.After(10 * time.Second):
-			case <-c:
+			case <-ctx.Done():
 				return NewErrDisconnected("Disconnected per signal")
 			}
 
@@ -83,18 +54,14 @@ func retryManipulation(manipulation func() error, onRetryFunc func(int), onRetry
 				return err
 			}
 
-			if onRetryFunc != nil {
-				onRetryFunc(try)
-			}
-
-			if onRetryCheckFunc != nil && !onRetryCheckFunc(try, err) {
+			if onRetryFunc != nil && !onRetryFunc(try, err) {
 				return nil
 			}
 
 			// Otherwise wait, increase the time and try again.
 			select {
 			case <-time.After(waitTime):
-			case <-c:
+			case <-ctx.Done():
 				return NewErrDisconnected("Disconnected per signal")
 			}
 

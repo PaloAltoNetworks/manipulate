@@ -1,10 +1,9 @@
 package push
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
-	"os"
-	"os/signal"
 	"sync"
 	"time"
 
@@ -36,6 +35,7 @@ type subscription struct {
 
 // NewSubscriber creates a new Subscription.
 func NewSubscriber(
+	ctx context.Context,
 	url string,
 	ns string,
 	token string,
@@ -57,7 +57,7 @@ func NewSubscriber(
 		status:       make(chan manipulate.SubscriberStatus, statusChSize),
 	}
 
-	if err := s.connect(true); err != nil {
+	if err := s.connect(ctx, true); err != nil {
 		return nil, err
 	}
 
@@ -66,7 +66,7 @@ func NewSubscriber(
 	default:
 	}
 
-	go s.listen()
+	go s.listen(ctx)
 
 	return s, nil
 }
@@ -119,16 +119,9 @@ func (s *subscription) currentFilter() *elemental.PushFilter {
 	return s.filter
 }
 
-func (s *subscription) connect(initial bool) (err error) {
+func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 
 	try := 0
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	defer func() {
-		signal.Stop(c)
-		close(c)
-	}()
 
 	for {
 		s.conn, err = wsutils.Dial(
@@ -151,14 +144,14 @@ func (s *subscription) connect(initial bool) (err error) {
 
 		select {
 		case <-time.After(3 * time.Second):
-		case <-c:
+		case <-ctx.Done():
 			return manipulate.NewErrDisconnected("Disconnected per signal")
 		}
 
 	}
 }
 
-func (s *subscription) listen() {
+func (s *subscription) listen(ctx context.Context) {
 
 	var isReconnection bool
 	var isDisconnection bool
@@ -185,7 +178,7 @@ func (s *subscription) listen() {
 
 		// If we have been disconnected, we try to reconnect.
 		if isReconnection {
-			if err := s.connect(false); err != nil {
+			if err := s.connect(ctx, false); err != nil {
 				select {
 				case s.errors <- err:
 				default:
