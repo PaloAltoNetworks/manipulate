@@ -43,7 +43,7 @@ func Retry(ctx context.Context, manipulation func() error, onRetryFunc func(int,
 			select {
 			case <-time.After(10 * time.Second):
 			case <-ctx.Done():
-				return NewErrDisconnected("Disconnected per signal")
+				return NewErrDisconnected(ctx.Err().Error())
 			}
 
 		// If this is a ErrCannotCommunicate, we retry until the maxTries.
@@ -62,7 +62,7 @@ func Retry(ctx context.Context, manipulation func() error, onRetryFunc func(int,
 			select {
 			case <-time.After(waitTime):
 			case <-ctx.Done():
-				return NewErrDisconnected("Disconnected per signal")
+				return NewErrDisconnected(ctx.Err().Error())
 			}
 
 			if waitTime < 5*time.Second {
