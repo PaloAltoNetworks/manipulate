@@ -70,6 +70,7 @@ func FinishTraceWithError(span opentracing.Span, err error) {
 		return
 	}
 
+	span.SetTag("error", true)
 	span.LogFields(log.Error(err))
 	span.Finish()
 }
