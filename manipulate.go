@@ -13,6 +13,7 @@ import (
 
 // Manipulator is the interface of a storage backend.
 type Manipulator interface {
+
 	// RetrieveMany retrieves the a list of objects with the given elemental.Identity and put them in the given dest.
 	RetrieveMany(context *Context, dest elemental.ContentIdentifiable) error
 
@@ -65,6 +66,7 @@ const (
 
 // A Subscriber is the interface to control a push event subscription.
 type Subscriber interface {
+
 	// UpdateFilter updates the current filter.
 	UpdateFilter(*elemental.PushFilter) error
 
