@@ -17,23 +17,23 @@ type Manipulator interface {
 	// RetrieveMany retrieves the a list of objects with the given elemental.Identity and put them in the given dest.
 	RetrieveMany(context *Context, dest elemental.ContentIdentifiable) error
 
-	// Retrieve retrieves one or multiple elemental.Identifiables. In order to be retrievable,
-	// the elemental.Identifiable needs to have their Identifier correctly set.
+	// Retrieve retrieves one or multiple elemental.Identifiables.
+	// In order to be retrievable, the elemental.Identifiable needs to have their Identifier correctly set.
 	Retrieve(context *Context, objects ...elemental.Identifiable) error
 
-	// Create creates a the given elemental.Identifiables in the given parent elemental.Identifiable.
+	// Create creates a the given elemental.Identifiables.
 	Create(context *Context, objects ...elemental.Identifiable) error
 
-	// Update updates one or multiple elemental.Identifiables. In order to be updatable,
-	// the elemental.Identifiable needs to have their Identifier correctly set.
+	// Update updates one or multiple elemental.Identifiables.
+	// In order to be updatable, the elemental.Identifiable needs to have their Identifier correctly set.
 	Update(context *Context, objects ...elemental.Identifiable) error
 
-	// Delete deletes one or multiple elemental.Identifiables. In order to be deletable,
-	// the elemental.Identifiable needs to have their Identifier correctly set.
+	// Delete deletes one or multiple elemental.Identifiables.
+	// In order to be deletable, the elemental.Identifiable needs to have their Identifier correctly set.
 	Delete(context *Context, objects ...elemental.Identifiable) error
 
 	// DeleteMany deletes all objects of with the given identity or
-	// all the ones matching the filtet in the given context.
+	// all the ones matching the filter in the given context.
 	DeleteMany(context *Context, identity elemental.Identity) error
 
 	// Count returns the number of objects with the given identity.
