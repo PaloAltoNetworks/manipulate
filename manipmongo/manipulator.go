@@ -347,10 +347,6 @@ func (s *mongoManipulator) Count(context *manipulate.Context, identity elemental
 	return c, nil
 }
 
-func (s *mongoManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
-	return nil
-}
-
 func (s *mongoManipulator) Commit(id manipulate.TransactionID) error {
 
 	transaction := s.transactions.transactionWithID(id)
