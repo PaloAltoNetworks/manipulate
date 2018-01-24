@@ -424,24 +424,6 @@ func TestMemManipulator_Count(t *testing.T) {
 	})
 }
 
-func TestMemManipulator_Increment(t *testing.T) {
-
-	Convey("Given I have a memory manipulator", t, func() {
-
-		m := NewMemoryManipulator(Schema)
-
-		Convey("When I call Increment", func() {
-
-			err := m.Increment(nil, testmodel.ListIdentity, "counter", 1)
-
-			Convey("Then err should not be nil", func() {
-				So(err, ShouldNotBeNil)
-				So(err, ShouldHaveSameTypeAs, manipulate.ErrNotImplemented{})
-			})
-		})
-	})
-}
-
 func TestMemManipulator_Commit(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a transaction ID", t, func() {

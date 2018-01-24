@@ -16,7 +16,6 @@ type mockedMethods struct {
 	deleteMock       func(context *manipulate.Context, objects ...elemental.Identifiable) error
 	deleteManyMock   func(context *manipulate.Context, identity elemental.Identity) error
 	countMock        func(context *manipulate.Context, identity elemental.Identity) (int, error)
-	incrementMock    func(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error
 	commitMock       func(id manipulate.TransactionID) error
 	abortMock        func(id manipulate.TransactionID) bool
 }
@@ -31,7 +30,6 @@ type TestManipulator interface {
 	MockDelete(t *testing.T, impl func(ctx *manipulate.Context, objects ...elemental.Identifiable) error)
 	MockDeleteMany(t *testing.T, impl func(ctx *manipulate.Context, identity elemental.Identity) error)
 	MockCount(t *testing.T, impl func(ctx *manipulate.Context, identity elemental.Identity) (int, error))
-	MockIncrement(t *testing.T, impl func(ctx *manipulate.Context, identity elemental.Identity, counter string, inc int) error)
 	MockCommit(t *testing.T, impl func(tid manipulate.TransactionID) error)
 	MockAbort(t *testing.T, impl func(tid manipulate.TransactionID) bool)
 }
@@ -84,11 +82,6 @@ func (m *testManipulator) MockDeleteMany(t *testing.T, impl func(context *manipu
 func (m *testManipulator) MockCount(t *testing.T, impl func(context *manipulate.Context, identity elemental.Identity) (int, error)) {
 
 	m.currentMocks(t).countMock = impl
-}
-
-func (m *testManipulator) MockIncrement(t *testing.T, impl func(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error) {
-
-	m.currentMocks(t).incrementMock = impl
 }
 
 func (m *testManipulator) MockCommit(t *testing.T, impl func(id manipulate.TransactionID) error) {
@@ -163,15 +156,6 @@ func (m *testManipulator) Count(context *manipulate.Context, identity elemental.
 	}
 
 	return 0, nil
-}
-
-func (m *testManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
-
-	if mock := m.currentMocks(m.currentTest); mock != nil && mock.incrementMock != nil {
-		return mock.incrementMock(context, identity, counter, inc)
-	}
-
-	return nil
 }
 
 func (m *testManipulator) Commit(id manipulate.TransactionID) error {

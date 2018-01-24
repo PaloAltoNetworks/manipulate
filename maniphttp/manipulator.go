@@ -453,11 +453,6 @@ func (s *httpManipulator) Count(context *manipulate.Context, identity elemental.
 	return context.CountTotal, nil
 }
 
-func (s *httpManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
-
-	return manipulate.NewErrNotImplemented("Increment method not implemented in http manipulator")
-}
-
 func (s *httpManipulator) makeAuthorizationHeaders() string {
 
 	return s.username + " " + s.currentPassword()

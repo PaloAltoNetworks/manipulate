@@ -863,23 +863,6 @@ func TestHTTP_Count(t *testing.T) {
 	})
 }
 
-func TestHTTP_Increment(t *testing.T) {
-
-	Convey("Given I have a store", t, func() {
-
-		store := NewHTTPManipulator("username", "password", "", "")
-
-		Convey("When I call Count", func() {
-			err := store.Increment(nil, testmodel.ListIdentity, "counter", 1)
-
-			Convey("Then err should should not be nil", func() {
-				So(err, ShouldNotBeNil)
-				So(err, ShouldHaveSameTypeAs, manipulate.ErrNotImplemented{})
-			})
-		})
-	})
-}
-
 func TestHTTP_send(t *testing.T) {
 
 	Convey("Given I have a store with bad url", t, func() {

@@ -183,12 +183,6 @@ func (s *memdbManipulator) Count(context *manipulate.Context, identity elemental
 	return 0, nil
 }
 
-// Increment is part of the implementation of the Manipulator interface.
-func (*memdbManipulator) Increment(context *manipulate.Context, identity elemental.Identity, counter string, inc int) error {
-
-	return manipulate.NewErrNotImplemented("Increment not implemented in memory manipulator")
-}
-
 // Commit is part of the implementation of the TransactionalManipulator interface.
 func (s *memdbManipulator) Commit(id manipulate.TransactionID) error {
 

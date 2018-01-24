@@ -37,10 +37,6 @@ type Manipulator interface {
 
 	// Count returns the number of objects with the given identity.
 	Count(context *Context, identity elemental.Identity) (int, error)
-
-	// Increment increments the given counter filter by the given increment for the given identity.
-	// Filter should be set in the context to decide which element to increment.
-	Increment(context *Context, identity elemental.Identity, counter string, inc int) error
 }
 
 // A TransactionalManipulator is a Manipulator that handles transactions.
