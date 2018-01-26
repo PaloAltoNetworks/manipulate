@@ -22,7 +22,6 @@ import (
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 	"github.com/aporeto-inc/manipulate/internal/tracing"
-	"github.com/opentracing/opentracing-go"
 )
 
 type httpManipulator struct {
@@ -76,15 +75,12 @@ func NewHTTPManipulatorWithTokenManager(ctx context.Context, url string, namespa
 	var username, password string
 
 	if tokenManager != nil {
-		sp := opentracing.StartSpan("maniphttp.authenthication")
-		defer sp.Finish()
 
 		issueCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
 
-		token, err := tokenManager.Issue(issueCtx, sp)
+		token, err := tokenManager.Issue(issueCtx)
 		if err != nil {
-			tracing.FinishTraceWithError(sp, err)
 			return nil, err
 		}
 

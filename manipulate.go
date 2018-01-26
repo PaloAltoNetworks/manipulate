@@ -8,7 +8,6 @@ import (
 	"context"
 
 	"github.com/aporeto-inc/elemental"
-	opentracing "github.com/opentracing/opentracing-go"
 )
 
 // Manipulator is the interface of a storage backend.
@@ -87,7 +86,7 @@ type Subscriber interface {
 type TokenManager interface {
 
 	// Issues isses a new token.
-	Issue(context.Context, opentracing.Span) (string, error)
+	Issue(context.Context) (string, error)
 
 	// Run runs the token renewal job and published the new token in the
 	// given channel.
