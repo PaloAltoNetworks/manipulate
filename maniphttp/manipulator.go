@@ -180,49 +180,46 @@ func (s *httpManipulator) Retrieve(context *manipulate.Context, objects ...eleme
 		context = manipulate.NewContext()
 	}
 
-	sp := tracing.StartTrace(context.TrackingSpan, "maniphttp.retrieve", context)
-	defer tracing.FinishTrace(sp)
-
 	for _, object := range objects {
 
-		subSp := tracing.StartTrace(sp, fmt.Sprintf("maniphttp.retrieve.object.%s", object.Identity().Name), context)
-		tracing.SetTag(subSp, "maniphttp.retrieve.object.id", object.Identifier())
+		sp := tracing.StartTrace(context.TrackingSpan, fmt.Sprintf("maniphttp.retrieve.object.%s", object.Identity().Name), context)
+		tracing.SetTag(sp, "maniphttp.retrieve.object.id", object.Identifier())
 
 		url, err := s.getPersonalURL(object, context.Version)
 		if err != nil {
-			tracing.FinishTraceWithError(subSp, err)
+			tracing.FinishTraceWithError(sp, err)
 			return manipulate.NewErrCannotBuildQuery(err.Error())
 		}
 
 		request, err := http.NewRequest(http.MethodGet, url, nil)
 		if err != nil {
-			tracing.FinishTraceWithError(subSp, err)
+			tracing.FinishTraceWithError(sp, err)
 			return manipulate.NewErrCannotExecuteQuery(err.Error())
 		}
 		if err = addQueryParameters(request, context); err != nil {
 			return err
 		}
 
-		if err = tracing.InjectInHTTPRequest(subSp, request); err != nil {
-			tracing.FinishTraceWithError(subSp, err)
+		if err = tracing.InjectInHTTPRequest(sp, request); err != nil {
+			tracing.FinishTraceWithError(sp, err)
 			return err
 		}
 
 		response, err := s.send(request, context)
 		if err != nil {
-			tracing.FinishTraceWithError(subSp, err)
+			tracing.FinishTraceWithError(sp, err)
 			return err
 		}
 
 		if response.StatusCode != http.StatusNoContent {
 			defer response.Body.Close() // nolint: errcheck
 			if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
-				tracing.FinishTraceWithError(subSp, err)
+				tracing.FinishTraceWithError(sp, err)
 				return manipulate.NewErrCannotUnmarshal(err.Error())
 			}
 		}
 
-		tracing.FinishTrace(subSp)
+		tracing.FinishTrace(sp)
 	}
 
 	return nil
@@ -234,12 +231,9 @@ func (s *httpManipulator) Create(context *manipulate.Context, objects ...element
 		context = manipulate.NewContext()
 	}
 
-	sp := tracing.StartTrace(context.TrackingSpan, "maniphttp.create", context)
-	defer tracing.FinishTrace(sp)
-
 	for _, child := range objects {
 
-		subSp := tracing.StartTrace(sp, fmt.Sprintf("maniphttp.create.object.%s", child.Identity().Name), context)
+		subSp := tracing.StartTrace(context.TrackingSpan, fmt.Sprintf("maniphttp.create.object.%s", child.Identity().Name), context)
 		tracing.SetTag(subSp, "maniphttp.create.object.id", child.Identifier())
 
 		url, err := s.getURLForChildrenIdentity(context.Parent, child.Identity(), child.Version(), context.Version)
@@ -298,55 +292,52 @@ func (s *httpManipulator) Update(context *manipulate.Context, objects ...element
 		context = manipulate.NewContext()
 	}
 
-	sp := tracing.StartTrace(context.TrackingSpan, "maniphttp.update", context)
-	defer tracing.FinishTrace(sp)
-
 	for _, object := range objects {
 
-		subSp := tracing.StartTrace(sp, fmt.Sprintf("maniphttp.update.object.%s", object.Identity().Name), context)
-		tracing.SetTag(subSp, "maniphttp.update.object.id", object.Identifier())
+		sp := tracing.StartTrace(context.TrackingSpan, fmt.Sprintf("maniphttp.update.object.%s", object.Identity().Name), context)
+		tracing.SetTag(sp, "maniphttp.update.object.id", object.Identifier())
 
 		url, err := s.getPersonalURL(object, context.Version)
 		if err != nil {
-			tracing.FinishTraceWithError(subSp, err)
+			tracing.FinishTraceWithError(sp, err)
 			return manipulate.NewErrCannotBuildQuery(err.Error())
 		}
 
 		buffer := &bytes.Buffer{}
 		if err = json.NewEncoder(buffer).Encode(object); err != nil {
-			tracing.FinishTraceWithError(subSp, err)
+			tracing.FinishTraceWithError(sp, err)
 			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
 		request, err := http.NewRequest(http.MethodPut, url, buffer)
 		if err != nil {
-			tracing.FinishTraceWithError(subSp, err)
+			tracing.FinishTraceWithError(sp, err)
 			return manipulate.NewErrCannotExecuteQuery(err.Error())
 		}
 		if err = addQueryParameters(request, context); err != nil {
 			return err
 		}
 
-		if err = tracing.InjectInHTTPRequest(subSp, request); err != nil {
-			tracing.FinishTraceWithError(subSp, err)
+		if err = tracing.InjectInHTTPRequest(sp, request); err != nil {
+			tracing.FinishTraceWithError(sp, err)
 			return err
 		}
 
 		response, err := s.send(request, context)
 		if err != nil {
-			tracing.FinishTraceWithError(subSp, err)
+			tracing.FinishTraceWithError(sp, err)
 			return err
 		}
 
 		if response.StatusCode != http.StatusNoContent {
 			defer response.Body.Close() // nolint: errcheck
 			if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
-				tracing.FinishTraceWithError(subSp, err)
+				tracing.FinishTraceWithError(sp, err)
 				return manipulate.NewErrCannotUnmarshal(err.Error())
 			}
 		}
 
-		tracing.FinishTrace(subSp)
+		tracing.FinishTrace(sp)
 	}
 
 	return nil
@@ -358,49 +349,46 @@ func (s *httpManipulator) Delete(context *manipulate.Context, objects ...element
 		context = manipulate.NewContext()
 	}
 
-	sp := tracing.StartTrace(context.TrackingSpan, "maniphttp.delete", context)
-	defer tracing.FinishTrace(sp)
-
 	for _, object := range objects {
 
-		subSp := tracing.StartTrace(sp, fmt.Sprintf("maniphttp.delete.object.%s", object.Identity().Name), context)
-		tracing.SetTag(subSp, "maniphttp.delete.object.id", object.Identifier())
+		sp := tracing.StartTrace(context.TrackingSpan, fmt.Sprintf("maniphttp.delete.object.%s", object.Identity().Name), context)
+		tracing.SetTag(sp, "maniphttp.delete.object.id", object.Identifier())
 
 		url, err := s.getPersonalURL(object, context.Version)
 		if err != nil {
-			tracing.FinishTraceWithError(subSp, err)
+			tracing.FinishTraceWithError(sp, err)
 			return manipulate.NewErrCannotBuildQuery(err.Error())
 		}
 
 		request, err := http.NewRequest(http.MethodDelete, url, nil)
 		if err != nil {
-			tracing.FinishTraceWithError(subSp, err)
+			tracing.FinishTraceWithError(sp, err)
 			return manipulate.NewErrCannotExecuteQuery(err.Error())
 		}
 		if err = addQueryParameters(request, context); err != nil {
 			return err
 		}
 
-		if err = tracing.InjectInHTTPRequest(subSp, request); err != nil {
-			tracing.FinishTraceWithError(subSp, err)
+		if err = tracing.InjectInHTTPRequest(sp, request); err != nil {
+			tracing.FinishTraceWithError(sp, err)
 			return err
 		}
 
 		response, err := s.send(request, context)
 		if err != nil {
-			tracing.FinishTraceWithError(subSp, err)
+			tracing.FinishTraceWithError(sp, err)
 			return err
 		}
 
 		if response.StatusCode != http.StatusNoContent {
 			defer response.Body.Close() // nolint: errcheck
 			if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
-				tracing.FinishTraceWithError(subSp, err)
+				tracing.FinishTraceWithError(sp, err)
 				return manipulate.NewErrCannotUnmarshal(err.Error())
 			}
 		}
 
-		tracing.FinishTrace(subSp)
+		tracing.FinishTrace(sp)
 	}
 
 	return nil
