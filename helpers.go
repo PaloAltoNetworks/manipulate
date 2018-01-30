@@ -14,11 +14,9 @@ const maxBackoff = 8000
 //
 // It will retry with exponential backoff (up to 8s) until the provided context is canceled.
 //
-// If the onRetryFunc is not nil and returns an error, the retrying process will be interrupted.
-// In this case Retry will returned error.
-// The retry func gets the retry number that failed as well as the error produced by manipulateFunc.
-//
-// If the error returned by manipulateFunc is a manipulate.ErrLocked, it will wait 10s before retrying.
+// If the onRetryFunc is not nil and returns an error, the retrying process will be interrupted and
+// manipulate.Retry will return the provided error.
+// The retry function gets the retry number and the error produced by manipulateFunc.
 //
 // Example:
 //
