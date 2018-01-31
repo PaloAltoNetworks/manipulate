@@ -350,3 +350,10 @@ func translateOperator(operator FilterOperator) string {
 
 	return ""
 }
+
+func writeString(buffer *bytes.Buffer, str string) {
+
+	if _, err := buffer.WriteString(str); err != nil {
+		panic(err)
+	}
+}
