@@ -1,4 +1,0 @@
-package: github.com/aporeto-inc/manipulate
-import:
-- package: github.com/hashicorp/go-immutable-radix
-  version: 30664b879c9a771d8d50b137ab80ee0748cb2fcc
