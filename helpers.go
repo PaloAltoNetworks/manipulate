@@ -44,6 +44,8 @@ func Retry(ctx context.Context, manipulateFunc func() error, onRetryFunc func(in
 
 	for {
 
+		try++
+
 		err = manipulateFunc()
 		if err == nil {
 			return nil
