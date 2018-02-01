@@ -19,9 +19,9 @@ func genericErrorTest(
 
 		Convey("Then it should be correct", func() {
 			So(err.Error(), ShouldEqual, errorPrefix+"this is a an error")
+			So(verifierFunc(err), ShouldBeTrue)
 		})
 	})
-
 }
 
 func TestThing_Function(t *testing.T) {
