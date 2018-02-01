@@ -16,31 +16,31 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-func TestHTTP_NewSHTTPStore(t *testing.T) {
+func TestHTTP_NewSHTTPm(t *testing.T) {
 
-	Convey("When I create a new HTTPStore", t, func() {
+	Convey("When I create a new HTTP manipulator", t, func() {
 
-		store := NewHTTPManipulator("http://url.com", "username", "password", "myns").(*httpManipulator)
+		m := NewHTTPManipulator("http://url.com", "username", "password", "myns").(*httpManipulator)
 
 		Convey("Then the property Username should be 'username'", func() {
-			So(store.username, ShouldEqual, "username")
+			So(m.username, ShouldEqual, "username")
 		})
 
 		Convey("Then the property Password should be 'password'", func() {
-			So(store.password, ShouldEqual, "password")
+			So(m.password, ShouldEqual, "password")
 		})
 
 		Convey("Then the property URL should be 'http://url.com'", func() {
-			So(store.url, ShouldEqual, "http://url.com")
+			So(m.url, ShouldEqual, "http://url.com")
 		})
 
 		Convey("Then the property namespace should be 'myns'", func() {
-			So(store.namespace, ShouldEqual, "myns")
+			So(m.namespace, ShouldEqual, "myns")
 		})
 
 		Convey("Then the it should implement Manpilater interface", func() {
 
-			var i interface{} = store
+			var i interface{} = m
 			var ok bool
 			_, ok = i.(manipulate.Manipulator)
 			So(ok, ShouldBeTrue)
@@ -53,12 +53,12 @@ func TestHTTP_NewSHTTPStore(t *testing.T) {
 */
 func TestHTTP_makeAuthorizationHeaders(t *testing.T) {
 
-	Convey("Given I create a new HTTPStore", t, func() {
+	Convey("Given I create a new HTTP manipulator", t, func() {
 
 		Convey("When I prepare the Authorization", func() {
 
-			store := NewHTTPManipulator("http://url.com", "username", "password", "").(*httpManipulator)
-			h := store.makeAuthorizationHeaders()
+			m := NewHTTPManipulator("http://url.com", "username", "password", "").(*httpManipulator)
+			h := m.makeAuthorizationHeaders()
 
 			Convey("Then the header should be correct", func() {
 				So(h, ShouldEqual, "username password")
@@ -71,7 +71,7 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 
 	Convey("Given I create an authenticated session", t, func() {
 
-		store := NewHTTPManipulator("http://fake.com", "username", "password", "myns").(*httpManipulator)
+		m := NewHTTPManipulator("http://fake.com", "username", "password", "myns").(*httpManipulator)
 
 		Convey("Given I create a Request", func() {
 
@@ -79,7 +79,7 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 
 			Convey("When I prepareHeaders with a no context", func() {
 
-				store.prepareHeaders(req, manipulate.NewContext())
+				m.prepareHeaders(req, manipulate.NewContext())
 
 				Convey("Then I should have a the X-Namespace set to 'myns'", func() {
 					So(req.Header.Get("X-Namespace"), ShouldEqual, "myns")
@@ -89,21 +89,38 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 					So(req.Header.Get("X-Count-Total"), ShouldEqual, "")
 				})
 			})
+
+			Convey("When I prepareHeaders with a no tracked context", func() {
+
+				ctx := manipulate.NewContext()
+				ctx.ExternalTrackingID = "tid"
+				ctx.ExternalTrackingType = "type"
+
+				m.prepareHeaders(req, ctx)
+
+				Convey("Then I should have a the X-Namespace set to 'myns'", func() {
+					So(req.Header.Get("X-External-Tracking-ID"), ShouldEqual, "tid")
+				})
+
+				Convey("Then I should not have a value for X-Count-Total", func() {
+					So(req.Header.Get("X-External-Tracking-Type"), ShouldEqual, "type")
+				})
+			})
 		})
 	})
 }
 
 func TestHTTP_readHeaders(t *testing.T) {
 
-	Convey("Given I create a new HTTPStore an a Context", t, func() {
+	Convey("Given I create a new HTTP manipulator and a Context", t, func() {
 
-		store := NewHTTPManipulator("http://fake.com", "username", "password", "").(*httpManipulator)
+		m := NewHTTPManipulator("http://fake.com", "username", "password", "").(*httpManipulator)
 		ctx := manipulate.NewContext()
 		req := &http.Response{Header: http.Header{}}
 
 		Convey("When I readHeaders with a no context", func() {
 
-			store.readHeaders(req, nil)
+			m.readHeaders(req, nil)
 
 			Convey("Then nothing should happen", func() {
 			})
@@ -113,7 +130,7 @@ func TestHTTP_readHeaders(t *testing.T) {
 
 			req.Header.Set("X-Count-Total", "456")
 
-			store.readHeaders(req, ctx)
+			m.readHeaders(req, ctx)
 
 			Convey("Then Context.X-Count-Total should be 456", func() {
 				So(ctx.CountTotal, ShouldEqual, 456)
@@ -124,11 +141,11 @@ func TestHTTP_readHeaders(t *testing.T) {
 
 func TestHTTP_standardURI(t *testing.T) {
 
-	Convey("Given I create a new Session and an object", t, func() {
+	Convey("Given I create a new manipulator and an object", t, func() {
 
 		list := testmodel.NewList()
 
-		store := NewHTTPManipulator("http://url.com", "username", "password", "").(*httpManipulator)
+		m := NewHTTPManipulator("http://url.com", "username", "password", "").(*httpManipulator)
 
 		Convey("When I check personal URI of a standard object with an ID", func() {
 
@@ -136,7 +153,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 			Convey("When I use no version", func() {
 
-				url, err := store.getPersonalURL(list, 0)
+				url, err := m.getPersonalURL(list, 0)
 
 				Convey("Then it should be http://url.com/v/1/lists/xxx", func() {
 					So(url, ShouldEqual, "http://url.com/v/1/lists/xxx")
@@ -149,7 +166,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 			Convey("When I use a version", func() {
 
-				url, err := store.getPersonalURL(list, 12)
+				url, err := m.getPersonalURL(list, 12)
 
 				Convey("Then it should be http://url.com/v/12/lists/xxx", func() {
 					So(url, ShouldEqual, "http://url.com/v/12/lists/xxx")
@@ -167,7 +184,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 			Convey("When I use no version", func() {
 
-				url := store.getGeneralURL(list, 0)
+				url := m.getGeneralURL(list, 0)
 
 				Convey("Then it should be http://url.com/v/1/lists", func() {
 					So(url, ShouldEqual, "http://url.com/v/1/lists")
@@ -176,7 +193,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 			Convey("When I use a version", func() {
 
-				url := store.getGeneralURL(list, 12)
+				url := m.getGeneralURL(list, 12)
 
 				Convey("Then it should be http://url.com/v/12/lists", func() {
 					So(url, ShouldEqual, "http://url.com/v/12/lists")
@@ -190,7 +207,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 			Convey("When I use no version", func() {
 
-				url, err := store.getURLForChildrenIdentity(nil, testmodel.ListIdentity, 0, 0)
+				url, err := m.getURLForChildrenIdentity(nil, testmodel.ListIdentity, 0, 0)
 
 				Convey("Then URL of the children with ListIdentity should be http://url.com/lists", func() {
 					So(url, ShouldEqual, "http://url.com/lists")
@@ -203,7 +220,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 			Convey("When I use a version", func() {
 
-				url, err := store.getURLForChildrenIdentity(nil, testmodel.ListIdentity, 0, 12)
+				url, err := m.getURLForChildrenIdentity(nil, testmodel.ListIdentity, 0, 12)
 
 				Convey("Then URL of the children with ListIdentity should be http://url.com/v/12/lists", func() {
 					So(url, ShouldEqual, "http://url.com/v/12/lists")
@@ -221,7 +238,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 			Convey("When I use no version", func() {
 
-				url, err := store.getURLForChildrenIdentity(list, testmodel.TaskIdentity, 0, 0)
+				url, err := m.getURLForChildrenIdentity(list, testmodel.TaskIdentity, 0, 0)
 
 				Convey("Then URL of the children with FakeRootIdentity should be http://url.com/v/1/lists/xxx/tasks", func() {
 					So(url, ShouldEqual, "http://url.com/v/1/lists/xxx/tasks")
@@ -234,7 +251,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 			Convey("When I use a version", func() {
 
-				url, err := store.getURLForChildrenIdentity(list, testmodel.TaskIdentity, 0, 12)
+				url, err := m.getURLForChildrenIdentity(list, testmodel.TaskIdentity, 0, 12)
 
 				Convey("Then URL of the children with FakeRootIdentity should be http://url.com/v/12/lists/xxx/tasks", func() {
 					So(url, ShouldEqual, "http://url.com/v/12/lists/xxx/tasks")
@@ -249,7 +266,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 		Convey("When I check the general URL of a standard object without an ID", func() {
 
-			url, err := store.getURLForChildrenIdentity(list, testmodel.TaskIdentity, 0, 0)
+			url, err := m.getURLForChildrenIdentity(list, testmodel.TaskIdentity, 0, 0)
 
 			Convey("Then it should be ''", func() {
 				So(url, ShouldEqual, "")
@@ -262,7 +279,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 		Convey("When I check the children URL for a standard object without an ID", func() {
 
-			url, err := store.getURLForChildrenIdentity(list, testmodel.TaskIdentity, 0, 0)
+			url, err := m.getURLForChildrenIdentity(list, testmodel.TaskIdentity, 0, 0)
 
 			Convey("Then it should be ''", func() {
 				So(url, ShouldEqual, "")
@@ -277,7 +294,7 @@ func TestHTTP_standardURI(t *testing.T) {
 
 func TestHTTP_Retrieve(t *testing.T) {
 
-	Convey("Given I have a session and a and working server", t, func() {
+	Convey("Given I have an http manipulator and a and working server", t, func() {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -285,13 +302,13 @@ func TestHTTP_Retrieve(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPManipulator(ts.URL, "username", "password", "")
+		m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 		Convey("When I fetch an entity", func() {
 
 			list := testmodel.NewList()
 			list.ID = "xxx"
-			errs := store.Retrieve(nil, list)
+			errs := m.Retrieve(nil, list)
 
 			Convey("Then err should be nil", func() {
 				So(errs, ShouldBeNil)
@@ -305,7 +322,7 @@ func TestHTTP_Retrieve(t *testing.T) {
 		Convey("When I fetch an entity with no ID", func() {
 
 			list := testmodel.NewList()
-			err := store.Retrieve(nil, list)
+			err := m.Retrieve(nil, list)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -314,7 +331,7 @@ func TestHTTP_Retrieve(t *testing.T) {
 		})
 	})
 
-	Convey("Given I have a session and a and the server will return an error", t, func() {
+	Convey("Given I have an http manipulator and a and the server will return an error", t, func() {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(422)
@@ -322,13 +339,13 @@ func TestHTTP_Retrieve(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPManipulator(ts.URL, "username", "password", "")
+		m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 		Convey("When I fetch an entity", func() {
 
 			list := testmodel.NewList()
 			list.ID = "x"
-			err := store.Retrieve(nil, list)
+			err := m.Retrieve(nil, list)
 
 			Convey("Then error should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -338,7 +355,7 @@ func TestHTTP_Retrieve(t *testing.T) {
 		})
 	})
 
-	Convey("Given I have a session and a and the server will return bad json", t, func() {
+	Convey("Given I have an http manipulator and a and the server will return bad json", t, func() {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -346,13 +363,13 @@ func TestHTTP_Retrieve(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPManipulator(ts.URL, "username", "password", "")
+		m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 		Convey("When I fetch an entity", func() {
 
 			list := testmodel.NewList()
 			list.ID = "x"
-			err := store.Retrieve(nil, list)
+			err := m.Retrieve(nil, list)
 
 			Convey("Then error should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -364,7 +381,7 @@ func TestHTTP_Retrieve(t *testing.T) {
 
 func TestHTTP_Update(t *testing.T) {
 
-	Convey("Given I have a session and a and working server", t, func() {
+	Convey("Given I have an http manipulator and a and working server", t, func() {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -372,13 +389,13 @@ func TestHTTP_Update(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPManipulator(ts.URL, "username", "password", "")
+		m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 		Convey("When I save an entity", func() {
 
 			list := testmodel.NewList()
 			list.ID = "yyy"
-			errs := store.Update(nil, list)
+			errs := m.Update(nil, list)
 
 			Convey("Then err should be nil", func() {
 				So(errs, ShouldBeNil)
@@ -392,7 +409,7 @@ func TestHTTP_Update(t *testing.T) {
 		Convey("When I save an entity with no ID", func() {
 
 			list := testmodel.NewList()
-			errs := store.Update(nil, list)
+			errs := m.Update(nil, list)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -403,7 +420,7 @@ func TestHTTP_Update(t *testing.T) {
 
 			list := testmodel.NewUnmarshalableList()
 			list.ID = "yyy"
-			errs := store.Update(nil, list)
+			errs := m.Update(nil, list)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -411,7 +428,7 @@ func TestHTTP_Update(t *testing.T) {
 		})
 	})
 
-	Convey("Given I have a session and the server returns an error", t, func() {
+	Convey("Given I have an http manipulator and the server returns an error", t, func() {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -419,13 +436,13 @@ func TestHTTP_Update(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPManipulator(ts.URL, "username", "password", "")
+		m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 		Convey("When I save an entity", func() {
 
 			list := testmodel.NewList()
 			list.ID = "ddd"
-			err := store.Update(nil, list)
+			err := m.Update(nil, list)
 
 			Convey("Then error should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -433,7 +450,7 @@ func TestHTTP_Update(t *testing.T) {
 		})
 	})
 
-	Convey("Given I have a session and the server returns a bad json", t, func() {
+	Convey("Given I have an http manipulator and the server returns a bad json", t, func() {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -441,13 +458,13 @@ func TestHTTP_Update(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPManipulator(ts.URL, "username", "password", "")
+		m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 		Convey("When I save an entity", func() {
 
 			list := testmodel.NewList()
 			list.ID = "x"
-			err := store.Update(nil, list)
+			err := m.Update(nil, list)
 
 			Convey("Then the error should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -456,21 +473,21 @@ func TestHTTP_Update(t *testing.T) {
 		})
 	})
 
-	Convey("Given I have a session and the server returns no data", t, func() {
+	Convey("Given I have an http manipulator and the server returns no data", t, func() {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 		}))
 		defer ts.Close()
 
-		store := NewHTTPManipulator(ts.URL, "username", "password", "")
+		m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 		Convey("When I save an entity", func() {
 
 			list := testmodel.NewList()
 
 			Convey("Then it not should panic", func() {
-				So(func() { _ = store.Update(nil, list) }, ShouldNotPanic)
+				So(func() { _ = m.Update(nil, list) }, ShouldNotPanic)
 			})
 		})
 	})
@@ -478,7 +495,7 @@ func TestHTTP_Update(t *testing.T) {
 
 func TestHTTP_Delete(t *testing.T) {
 
-	Convey("Given I have a session and a and working server", t, func() {
+	Convey("Given I have an http manipulator and a and working server", t, func() {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -486,14 +503,14 @@ func TestHTTP_Delete(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPManipulator(ts.URL, "username", "password", "")
+		m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 		Convey("When I delete an entity", func() {
 
 			list := testmodel.NewList()
 			list.ID = "xxx"
 
-			_ = store.Delete(nil, list)
+			_ = m.Delete(nil, list)
 
 			Convey("Then ID should 'xxx'", func() {
 				So(list.Identifier(), ShouldEqual, "xxx")
@@ -502,10 +519,10 @@ func TestHTTP_Delete(t *testing.T) {
 
 		Convey("When I delete an entity with no ID", func() {
 
-			store := NewHTTPManipulator("username", "password", "http://fake.com", "")
+			m := NewHTTPManipulator("username", "password", "http://fake.com", "")
 
 			list := testmodel.NewList()
-			err := store.Delete(nil, list)
+			err := m.Delete(nil, list)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -513,7 +530,7 @@ func TestHTTP_Delete(t *testing.T) {
 		})
 	})
 
-	Convey("Given I have a session and the server returns an error", t, func() {
+	Convey("Given I have an http manipulator and the server returns an error", t, func() {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -521,14 +538,14 @@ func TestHTTP_Delete(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		store := NewHTTPManipulator(ts.URL, "username", "password", "")
+		m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 		Convey("When I delete an entity", func() {
 
 			list := testmodel.NewList()
 			list.ID = "xxx"
 
-			err := store.Delete(nil, list)
+			err := m.Delete(nil, list)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -552,12 +569,12 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPManipulator(ts.URL, "username", "password", "")
+			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 			var l testmodel.TasksList
 			ctx := manipulate.NewContext()
 			ctx.Parent = list
-			errs := store.RetrieveMany(ctx, &l)
+			errs := m.RetrieveMany(ctx, &l)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldBeNil)
@@ -585,7 +602,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 
 		Convey("When I fetch its children but the parent has no ID", func() {
 
-			store := NewHTTPManipulator("username", "password", "http://fake.com", "")
+			m := NewHTTPManipulator("username", "password", "http://fake.com", "")
 
 			list2 := testmodel.NewList()
 			var l testmodel.TasksList
@@ -593,7 +610,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			ctx := manipulate.NewContext()
 			ctx.Parent = list2
 
-			errs := store.RetrieveMany(ctx, &l)
+			errs := m.RetrieveMany(ctx, &l)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -607,7 +624,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPManipulator(ts.URL, "username", "password", "")
+			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 			e := testmodel.NewTask()
 			var l testmodel.TasksList
@@ -615,7 +632,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			ctx := manipulate.NewContext()
 			ctx.Parent = e
 
-			errs := store.RetrieveMany(ctx, &l)
+			errs := m.RetrieveMany(ctx, &l)
 
 			Convey("Then the length of the children list should be 0", func() {
 				So(l, ShouldBeNil)
@@ -634,14 +651,14 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 				fmt.Fprint(w, `[]`)
 			}))
 			defer ts.Close()
-			store := NewHTTPManipulator(ts.URL, "username", "password", "")
+			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 			var l testmodel.TasksList
 
 			ctx := manipulate.NewContext()
 			ctx.Parent = list
 
-			_ = store.RetrieveMany(ctx, &l)
+			_ = m.RetrieveMany(ctx, &l)
 
 			Convey("Then the length of the children list should be 0", func() {
 				So(len(l), ShouldEqual, 0)
@@ -656,13 +673,13 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPManipulator(ts.URL, "username", "password", "")
+			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 			ctx := manipulate.NewContext()
 			ctx.Parent = list
 
 			var l testmodel.TasksList
-			errs := store.RetrieveMany(ctx, &l)
+			errs := m.RetrieveMany(ctx, &l)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -677,13 +694,13 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPManipulator(ts.URL, "username", "password", "")
+			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 			ctx := manipulate.NewContext()
 			ctx.Parent = list
 
 			var l testmodel.TasksList
-			errs := store.RetrieveMany(ctx, &l)
+			errs := m.RetrieveMany(ctx, &l)
 
 			Convey("Then the error should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -708,9 +725,9 @@ func TestHTTP_Create(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPManipulator(ts.URL, "username", "password", "")
+			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 			task := testmodel.NewTask()
-			errs := store.Create(nil, list, task)
+			errs := m.Create(nil, list, task)
 
 			Convey("Then the error should not be nil", func() {
 				So(errs, ShouldBeNil)
@@ -723,13 +740,13 @@ func TestHTTP_Create(t *testing.T) {
 
 		Convey("When I create a child for a parent that has no ID", func() {
 
-			store := NewHTTPManipulator("username", "password", "url.com", "")
+			m := NewHTTPManipulator("username", "password", "url.com", "")
 			list2 := testmodel.NewList()
 			task := testmodel.NewTask()
 			ctx := manipulate.NewContext()
 			ctx.Parent = list2
 
-			errs := store.Create(ctx, task)
+			errs := m.Create(ctx, task)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -738,9 +755,9 @@ func TestHTTP_Create(t *testing.T) {
 
 		Convey("When I create a child that is nil", func() {
 
-			store := NewHTTPManipulator("username", "password", "http://fake.com", "")
-			task := testmodel.NewUnmarshalableList() // c'mon, that's fine..
-			errs := store.Create(nil, list, task)
+			m := NewHTTPManipulator("username", "password", "http://fake.com", "")
+			task := testmodel.NewUnmarshalableList()
+			errs := m.Create(nil, list, task)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -754,9 +771,9 @@ func TestHTTP_Create(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPManipulator(ts.URL, "username", "password", "")
+			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 			task := testmodel.NewTask()
-			errs := store.Create(nil, list, task)
+			errs := m.Create(nil, list, task)
 
 			Convey("Then error should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -772,9 +789,9 @@ func TestHTTP_Create(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPManipulator(ts.URL, "username", "password", "")
+			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 			task := testmodel.NewTask()
-			errs := store.Create(nil, list, task)
+			errs := m.Create(nil, list, task)
 
 			Convey("Then the error should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -783,10 +800,10 @@ func TestHTTP_Create(t *testing.T) {
 
 		Convey("When I create an unmarshalable entity", func() {
 
-			store := NewHTTPManipulator("username", "password", "", "")
+			m := NewHTTPManipulator("username", "password", "", "")
 			list := testmodel.NewUnmarshalableList()
 			list.ID = "yyy"
-			err := store.Create(nil, list)
+			err := m.Create(nil, list)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -810,11 +827,11 @@ func TestHTTP_Count(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPManipulator(ts.URL, "username", "password", "")
+			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 			ctx := manipulate.NewContext()
 			ctx.Parent = list
-			num, errs := store.Count(ctx, testmodel.TaskIdentity)
+			num, errs := m.Count(ctx, testmodel.TaskIdentity)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldBeNil)
@@ -827,14 +844,14 @@ func TestHTTP_Count(t *testing.T) {
 
 		Convey("When I fetch its children but the parent has no ID", func() {
 
-			store := NewHTTPManipulator("username", "password", "http://fake.com", "")
+			m := NewHTTPManipulator("username", "password", "http://fake.com", "")
 
 			list2 := testmodel.NewList()
 
 			ctx := manipulate.NewContext()
 			ctx.Parent = list2
 
-			_, errs := store.Count(ctx, testmodel.TaskIdentity)
+			_, errs := m.Count(ctx, testmodel.TaskIdentity)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -849,12 +866,12 @@ func TestHTTP_Count(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			store := NewHTTPManipulator(ts.URL, "username", "password", "")
+			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 			ctx := manipulate.NewContext()
 			ctx.Parent = list
 
-			_, errs := store.Count(ctx, testmodel.TaskIdentity)
+			_, errs := m.Count(ctx, testmodel.TaskIdentity)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -865,18 +882,35 @@ func TestHTTP_Count(t *testing.T) {
 
 func TestHTTP_send(t *testing.T) {
 
-	Convey("Given I have a store with bad url", t, func() {
+	Convey("Given I have a m with bad url", t, func() {
 
-		store := NewHTTPManipulator("username", "password", "", "")
+		m := NewHTTPManipulator("username", "password", "", "")
 
-		Convey("When I call send ", func() {
+		Convey("When I call send", func() {
 
 			req, _ := http.NewRequest(http.MethodPost, "nop", nil)
-			_, err := store.(*httpManipulator).send(req, manipulate.NewContext())
+			_, err := m.(*httpManipulator).send(req, manipulate.NewContext())
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+			})
+		})
+	})
+}
+
+func TestHTTP_setPassword(t *testing.T) {
+
+	Convey("Given I have an http manipulator", t, func() {
+
+		m := NewHTTPManipulator("username", "password", "", "")
+
+		Convey("When I call setPassword", func() {
+
+			m.(*httpManipulator).setPassword("secret")
+
+			Convey("Then it should set the password", func() {
+				So(m.(*httpManipulator).currentPassword(), ShouldEqual, "secret")
 			})
 		})
 	})
