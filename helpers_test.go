@@ -122,12 +122,6 @@ func TestManipulate_Retry(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		var tryN int
-		r := func(t int, e error) error {
-			tryN = t
-			return nil
-		}
-
 		m := func() error {
 			return NewErrCannotCommunicate("where are you?")
 		}
@@ -139,7 +133,7 @@ func TestManipulate_Retry(t *testing.T) {
 				cancel()
 			}()
 
-			err := Retry(ctx, m, r)
+			err := Retry(ctx, m, nil)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
