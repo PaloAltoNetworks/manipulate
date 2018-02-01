@@ -10,7 +10,7 @@ inputs:
   path: go/src/github.com/aporeto-inc/manipulate
 
 run:
-  path: sh
+  path: bash
   args:
     - -exc
     - |
@@ -23,3 +23,4 @@ run:
       cd go/src/github.com/aporeto-inc/manipulate
       mage init || exit 1
       mage test || exit 1
+      bash <(curl -s https://codecov.io/bash) || exit 0
