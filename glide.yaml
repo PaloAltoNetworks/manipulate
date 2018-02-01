@@ -1,4 +1,4 @@
-package: github.com/aporeto-inc/addedeffect
+package: github.com/aporeto-inc/manipulate
 import:
 - package: github.com/hashicorp/go-immutable-radix
   version: 8aac2701530899b64bdea735a1de8da899815220
