@@ -6,5 +6,5 @@ codegen
 *.pyc
 *.egg-info
 vendor/
-vendor.lock/
+*.lock
 testresults.xml
