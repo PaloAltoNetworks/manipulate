@@ -889,7 +889,7 @@ func TestHTTP_send(t *testing.T) {
 		Convey("When I call send", func() {
 
 			req, _ := http.NewRequest(http.MethodPost, "nop", nil)
-			_, err := m.(*httpManipulator).send(req, manipulate.NewContext())
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(), req)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)

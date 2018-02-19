@@ -1,33 +1,33 @@
 package manipmongo
 
 import (
+	"context"
 	"sync"
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
-	"github.com/opentracing/opentracing-go"
 
 	mgo "gopkg.in/mgo.v2"
 )
 
 type transaction struct {
-	bulks      map[elemental.Identity]*mgo.Bulk
-	db         *mgo.Database
-	id         manipulate.TransactionID
-	lock       *sync.Mutex
-	session    *mgo.Session
-	rootTracer opentracing.Span
+	bulks   map[elemental.Identity]*mgo.Bulk
+	db      *mgo.Database
+	id      manipulate.TransactionID
+	lock    *sync.Mutex
+	session *mgo.Session
+	ctx     context.Context
 }
 
-func newTransaction(id manipulate.TransactionID, session *mgo.Session, dbName string, rootTracer opentracing.Span) *transaction {
+func newTransaction(ctx context.Context, id manipulate.TransactionID, session *mgo.Session, dbName string) *transaction {
 
 	return &transaction{
-		bulks:      map[elemental.Identity]*mgo.Bulk{},
-		db:         session.DB(dbName),
-		id:         id,
-		lock:       &sync.Mutex{},
-		session:    session,
-		rootTracer: rootTracer,
+		bulks:   map[elemental.Identity]*mgo.Bulk{},
+		db:      session.DB(dbName),
+		id:      id,
+		lock:    &sync.Mutex{},
+		session: session,
+		ctx:     ctx,
 	}
 }
 

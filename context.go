@@ -5,11 +5,9 @@
 package manipulate
 
 import (
+	"context"
 	"fmt"
 	"net/url"
-	"time"
-
-	"github.com/opentracing/opentracing-go"
 
 	"github.com/aporeto-inc/elemental"
 )
@@ -33,11 +31,11 @@ type Context struct {
 	OverrideProtection   bool
 	CreateFinalizer      FinalizerFunc
 	Version              int
-	TrackingSpan         opentracing.Span
 	ExternalTrackingID   string
 	ExternalTrackingType string
 	Order                []string
-	Timeout              time.Duration
+
+	ctx context.Context
 }
 
 // NewContext returns a new *Context
@@ -45,7 +43,6 @@ func NewContext() *Context {
 
 	return &Context{
 		Parameters: url.Values{},
-		Timeout:    60 * time.Second,
 	}
 }
 
@@ -58,15 +55,6 @@ func NewContextWithFilter(filter *Filter) *Context {
 	return ctx
 }
 
-// NewContextWithTrackingSpan returns a new *Context with the given tracer.
-func NewContextWithTrackingSpan(span opentracing.Span) *Context {
-
-	ctx := NewContext()
-	ctx.TrackingSpan = span
-
-	return ctx
-}
-
 // NewContextWithTransactionID returns a new *Context with the given transactionID.
 func NewContextWithTransactionID(tid TransactionID) *Context {
 
@@ -74,6 +62,32 @@ func NewContextWithTransactionID(tid TransactionID) *Context {
 	ctx.TransactionID = tid
 
 	return ctx
+}
+
+// WithContext returns a shallow copy of the manipulate.Context
+// with it's internal context changed to the given context.Context.
+func (c *Context) WithContext(ctx context.Context) *Context {
+
+	if ctx == nil {
+		panic("nil context")
+	}
+
+	c2 := &Context{}
+	*c2 = *c
+	c2.ctx = ctx
+
+	return c2
+}
+
+// Context returns the internal context.Context of the
+// manipulate.Context.
+func (c *Context) Context() context.Context {
+
+	if c.ctx != nil {
+		return c.ctx
+	}
+
+	return context.Background()
 }
 
 // String returns the string representation of the Context.

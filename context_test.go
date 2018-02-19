@@ -5,6 +5,7 @@
 package manipulate
 
 import (
+	"context"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -19,6 +20,38 @@ func TestMethodNewContext(t *testing.T) {
 		Convey("Then my context should be initiliazed", func() {
 			So(context.Page, ShouldEqual, 0)
 			So(context.PageSize, ShouldEqual, 0)
+		})
+	})
+}
+
+func TestMethodWithContext(t *testing.T) {
+
+	Convey("Given I create a new context with a context", t, func() {
+
+		ctx := context.Background()
+		context := NewContext()
+		context.Page = 1
+		context = context.WithContext(ctx)
+
+		Convey("Then my context should be initiliazed", func() {
+			So(context.Page, ShouldEqual, 1)
+			So(context.Context(), ShouldEqual, ctx)
+		})
+	})
+
+	Convey("Given I create a new context with a nil context", t, func() {
+
+		Convey("Then it should panic", func() {
+			So(func() { NewContext().WithContext(nil) }, ShouldPanicWith, "nil context") // nolint
+		})
+	})
+
+	Convey("Given I create a new context without context", t, func() {
+
+		context := NewContext()
+
+		Convey("Then it should panic", func() {
+			So(context.Context(), ShouldNotBeNil)
 		})
 	})
 }

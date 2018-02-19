@@ -177,11 +177,10 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 			ps := testmodel.ListsList{}
 
-			ctx := manipulate.NewContextWithFilter(
-				manipulate.NewFilterComposer().WithKey("Name").Equals("Antoine1").Done(),
-			)
+			mctx := manipulate.NewContext()
+			mctx.Filter = manipulate.NewFilterComposer().WithKey("Name").Equals("Antoine1").Done()
 
-			err := m.RetrieveMany(ctx, &ps)
+			err := m.RetrieveMany(mctx, &ps)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
@@ -197,11 +196,10 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 			ps := testmodel.ListsList{}
 
-			ctx := manipulate.NewContextWithFilter(
-				manipulate.NewFilterComposer().WithKey("Bad").Equals("Antoine1").Done(),
-			)
+			mctx := manipulate.NewContext()
+			mctx.Filter = manipulate.NewFilterComposer().WithKey("Bad").Equals("Antoine1").Done()
 
-			err := m.RetrieveMany(ctx, &ps)
+			err := m.RetrieveMany(mctx, &ps)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
