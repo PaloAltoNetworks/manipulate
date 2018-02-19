@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/opentracing/opentracing-go"
-
 	"github.com/aporeto-inc/elemental"
 )
 
@@ -33,7 +31,6 @@ type Context struct {
 	OverrideProtection   bool
 	CreateFinalizer      FinalizerFunc
 	Version              int
-	TrackingSpan         opentracing.Span
 	ExternalTrackingID   string
 	ExternalTrackingType string
 	Order                []string
