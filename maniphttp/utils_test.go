@@ -1,6 +1,7 @@
 package maniphttp
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"testing"
@@ -14,7 +15,7 @@ func Test_addQueryParameters(t *testing.T) {
 	Convey("Given I have a request and a context", t, func() {
 
 		request, _ := http.NewRequest(http.MethodGet, "http://test.com", nil)
-		ctx := manipulate.NewContext()
+		ctx := manipulate.NewContext(context.Background())
 
 		Convey("When I call the method addQueryParameters with parameters", func() {
 
@@ -118,7 +119,7 @@ func Test_addQueryParameters(t *testing.T) {
 
 		Convey("When I call the method addQueryParameters with a context with no Parameters", func() {
 
-			err := addQueryParameters(request, manipulate.NewContext())
+			err := addQueryParameters(request, manipulate.NewContext(context.Background()))
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)

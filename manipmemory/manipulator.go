@@ -1,6 +1,7 @@
 package manipmemory
 
 import (
+	"context"
 	"reflect"
 	"sync"
 
@@ -36,19 +37,19 @@ func NewMemoryManipulator(schema *memdb.DBSchema) manipulate.TransactionalManipu
 }
 
 // RetrieveMany is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) RetrieveMany(context *manipulate.Context, dest elemental.ContentIdentifiable) error {
+func (s *memdbManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.ContentIdentifiable) error {
 
-	if context == nil {
-		context = manipulate.NewContext()
+	if mctx == nil {
+		mctx = manipulate.NewContext(context.Background())
 	}
 
 	txn := s.db.Txn(false)
 
 	index := "id"
 	args := []interface{}{}
-	if context.Filter != nil {
-		index = context.Filter.Keys()[0][0]
-		args = context.Filter.Values()[0]
+	if mctx.Filter != nil {
+		index = mctx.Filter.Keys()[0][0]
+		args = mctx.Filter.Values()[0]
 	}
 
 	iterator, err := txn.Get(dest.ContentIdentity().Category, index, args...)
@@ -69,7 +70,7 @@ func (s *memdbManipulator) RetrieveMany(context *manipulate.Context, dest elemen
 }
 
 // Retrieve is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Retrieve(context *manipulate.Context, objects ...elemental.Identifiable) error {
+func (s *memdbManipulator) Retrieve(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	txn := s.db.Txn(false)
 
@@ -91,13 +92,13 @@ func (s *memdbManipulator) Retrieve(context *manipulate.Context, objects ...elem
 }
 
 // Create is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Create(context *manipulate.Context, objects ...elemental.Identifiable) error {
+func (s *memdbManipulator) Create(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
 
-	if context == nil {
-		context = manipulate.NewContext()
+	if mctx == nil {
+		mctx = manipulate.NewContext(context.Background())
 	}
 
-	tid := context.TransactionID
+	tid := mctx.TransactionID
 	txn := s.txnForID(tid)
 	defer txn.Abort()
 
@@ -118,13 +119,13 @@ func (s *memdbManipulator) Create(context *manipulate.Context, objects ...elemen
 }
 
 // Update is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Update(context *manipulate.Context, objects ...elemental.Identifiable) error {
+func (s *memdbManipulator) Update(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
 
-	if context == nil {
-		context = manipulate.NewContext()
+	if mctx == nil {
+		mctx = manipulate.NewContext(context.Background())
 	}
 
-	tid := context.TransactionID
+	tid := mctx.TransactionID
 	txn := s.txnForID(tid)
 	defer txn.Abort()
 
@@ -142,13 +143,13 @@ func (s *memdbManipulator) Update(context *manipulate.Context, objects ...elemen
 }
 
 // Delete is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Delete(context *manipulate.Context, objects ...elemental.Identifiable) error {
+func (s *memdbManipulator) Delete(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
 
-	if context == nil {
-		context = manipulate.NewContext()
+	if mctx == nil {
+		mctx = manipulate.NewContext(context.Background())
 	}
 
-	tid := context.TransactionID
+	tid := mctx.TransactionID
 	txn := s.txnForID(tid)
 	defer txn.Abort()
 
@@ -166,15 +167,15 @@ func (s *memdbManipulator) Delete(context *manipulate.Context, objects ...elemen
 }
 
 // DeleteMany is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) DeleteMany(context *manipulate.Context, identity elemental.Identity) error {
+func (s *memdbManipulator) DeleteMany(mctx *manipulate.Context, identity elemental.Identity) error {
 	return manipulate.NewErrNotImplemented("DeleteMany not implemented in manipmemory")
 }
 
 // Count is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Count(context *manipulate.Context, identity elemental.Identity) (int, error) {
+func (s *memdbManipulator) Count(mctx *manipulate.Context, identity elemental.Identity) (int, error) {
 
 	// out := elemental.IdentifiablesList{}
-	// if err := s.RetrieveMany(context, &out); err != nil {
+	// if err := s.RetrieveMany(mctx, &out); err != nil {
 	// 	return -1, err
 	// }
 	//

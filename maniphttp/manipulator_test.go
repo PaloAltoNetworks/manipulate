@@ -5,6 +5,7 @@
 package maniphttp
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -79,7 +80,7 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 
 			Convey("When I prepareHeaders with a no context", func() {
 
-				m.prepareHeaders(req, manipulate.NewContext())
+				m.prepareHeaders(req, manipulate.NewContext(context.Background()))
 
 				Convey("Then I should have a the X-Namespace set to 'myns'", func() {
 					So(req.Header.Get("X-Namespace"), ShouldEqual, "myns")
@@ -92,7 +93,7 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 
 			Convey("When I prepareHeaders with a no tracked context", func() {
 
-				ctx := manipulate.NewContext()
+				ctx := manipulate.NewContext(context.Background())
 				ctx.ExternalTrackingID = "tid"
 				ctx.ExternalTrackingType = "type"
 
@@ -115,7 +116,7 @@ func TestHTTP_readHeaders(t *testing.T) {
 	Convey("Given I create a new HTTP manipulator and a Context", t, func() {
 
 		m := NewHTTPManipulator("http://fake.com", "username", "password", "").(*httpManipulator)
-		ctx := manipulate.NewContext()
+		ctx := manipulate.NewContext(context.Background())
 		req := &http.Response{Header: http.Header{}}
 
 		Convey("When I readHeaders with a no context", func() {
@@ -572,7 +573,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 			var l testmodel.TasksList
-			ctx := manipulate.NewContext()
+			ctx := manipulate.NewContext(context.Background())
 			ctx.Parent = list
 			errs := m.RetrieveMany(ctx, &l)
 
@@ -607,7 +608,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			list2 := testmodel.NewList()
 			var l testmodel.TasksList
 
-			ctx := manipulate.NewContext()
+			ctx := manipulate.NewContext(context.Background())
 			ctx.Parent = list2
 
 			errs := m.RetrieveMany(ctx, &l)
@@ -629,7 +630,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			e := testmodel.NewTask()
 			var l testmodel.TasksList
 
-			ctx := manipulate.NewContext()
+			ctx := manipulate.NewContext(context.Background())
 			ctx.Parent = e
 
 			errs := m.RetrieveMany(ctx, &l)
@@ -655,7 +656,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 
 			var l testmodel.TasksList
 
-			ctx := manipulate.NewContext()
+			ctx := manipulate.NewContext(context.Background())
 			ctx.Parent = list
 
 			_ = m.RetrieveMany(ctx, &l)
@@ -675,7 +676,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
-			ctx := manipulate.NewContext()
+			ctx := manipulate.NewContext(context.Background())
 			ctx.Parent = list
 
 			var l testmodel.TasksList
@@ -696,7 +697,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
-			ctx := manipulate.NewContext()
+			ctx := manipulate.NewContext(context.Background())
 			ctx.Parent = list
 
 			var l testmodel.TasksList
@@ -743,7 +744,7 @@ func TestHTTP_Create(t *testing.T) {
 			m := NewHTTPManipulator("username", "password", "url.com", "")
 			list2 := testmodel.NewList()
 			task := testmodel.NewTask()
-			ctx := manipulate.NewContext()
+			ctx := manipulate.NewContext(context.Background())
 			ctx.Parent = list2
 
 			errs := m.Create(ctx, task)
@@ -829,7 +830,7 @@ func TestHTTP_Count(t *testing.T) {
 
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
-			ctx := manipulate.NewContext()
+			ctx := manipulate.NewContext(context.Background())
 			ctx.Parent = list
 			num, errs := m.Count(ctx, testmodel.TaskIdentity)
 
@@ -848,7 +849,7 @@ func TestHTTP_Count(t *testing.T) {
 
 			list2 := testmodel.NewList()
 
-			ctx := manipulate.NewContext()
+			ctx := manipulate.NewContext(context.Background())
 			ctx.Parent = list2
 
 			_, errs := m.Count(ctx, testmodel.TaskIdentity)
@@ -868,7 +869,7 @@ func TestHTTP_Count(t *testing.T) {
 
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
-			ctx := manipulate.NewContext()
+			ctx := manipulate.NewContext(context.Background())
 			ctx.Parent = list
 
 			_, errs := m.Count(ctx, testmodel.TaskIdentity)
@@ -889,7 +890,7 @@ func TestHTTP_send(t *testing.T) {
 		Convey("When I call send", func() {
 
 			req, _ := http.NewRequest(http.MethodPost, "nop", nil)
-			_, err := m.(*httpManipulator).send(req, manipulate.NewContext())
+			_, err := m.(*httpManipulator).send(req, manipulate.NewContext(context.Background()))
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)

@@ -5,6 +5,7 @@
 package manipulate
 
 import (
+	"context"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -14,7 +15,7 @@ func TestMethodNewContext(t *testing.T) {
 
 	Convey("Given I create a new context", t, func() {
 
-		context := NewContext()
+		context := NewContext(context.Background())
 
 		Convey("Then my context should be initiliazed", func() {
 			So(context.Page, ShouldEqual, 0)
@@ -23,37 +24,11 @@ func TestMethodNewContext(t *testing.T) {
 	})
 }
 
-func TestMethodNewContextWithFilter(t *testing.T) {
-
-	Convey("Given I create a new context with filter", t, func() {
-
-		filter := NewFilter()
-		context := NewContextWithFilter(filter)
-
-		Convey("Then my context should be initiliazed", func() {
-			So(context.Filter, ShouldEqual, filter)
-		})
-	})
-}
-
-func TestMethodNewContextWithTransactionID(t *testing.T) {
-
-	Convey("Given I create a new context with transactionID", t, func() {
-
-		tid := NewTransactionID()
-		context := NewContextWithTransactionID(tid)
-
-		Convey("Then my context should be initiliazed", func() {
-			So(context.TransactionID, ShouldEqual, tid)
-		})
-	})
-}
-
 func TestMethodString(t *testing.T) {
 
 	Convey("Given I create a new context and calle the method string", t, func() {
 
-		context := NewContext()
+		context := NewContext(context.Background())
 		context.Page = 1
 		context.PageSize = 100
 		context.Version = 12

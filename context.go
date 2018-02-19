@@ -5,6 +5,7 @@
 package manipulate
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"time"
@@ -37,43 +38,16 @@ type Context struct {
 	ExternalTrackingID   string
 	ExternalTrackingType string
 	Order                []string
-	Timeout              time.Duration
+	ctx                  context.Context
 }
 
 // NewContext returns a new *Context
-func NewContext() *Context {
+func NewContext(ctx context.Context) *Context {
 
 	return &Context{
 		Parameters: url.Values{},
-		Timeout:    60 * time.Second,
+		ctx:        ctx,
 	}
-}
-
-// NewContextWithFilter returns a new *Context with the given filter.
-func NewContextWithFilter(filter *Filter) *Context {
-
-	ctx := NewContext()
-	ctx.Filter = filter
-
-	return ctx
-}
-
-// NewContextWithTrackingSpan returns a new *Context with the given tracer.
-func NewContextWithTrackingSpan(span opentracing.Span) *Context {
-
-	ctx := NewContext()
-	ctx.TrackingSpan = span
-
-	return ctx
-}
-
-// NewContextWithTransactionID returns a new *Context with the given transactionID.
-func NewContextWithTransactionID(tid TransactionID) *Context {
-
-	ctx := NewContext()
-	ctx.TransactionID = tid
-
-	return ctx
 }
 
 // String returns the string representation of the Context.
@@ -81,3 +55,15 @@ func (c *Context) String() string {
 
 	return fmt.Sprintf("<Context page:%d pagesize:%d filter:%v version:%d>", c.Page, c.PageSize, c.Filter, c.Version)
 }
+
+// Done implements the context.Context interface.
+func (c *Context) Done() <-chan struct{} { return c.ctx.Done() }
+
+// Err implements the context.Context interface.
+func (c *Context) Err() error { return c.ctx.Err() }
+
+// Deadline implements the context.Context interface.
+func (c *Context) Deadline() (time.Time, bool) { return c.ctx.Deadline() }
+
+// Value implements the context.Context interface.
+func (c *Context) Value(key interface{}) interface{} { return c.ctx.Value(key) }
