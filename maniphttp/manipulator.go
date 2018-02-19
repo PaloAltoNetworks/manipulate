@@ -558,14 +558,14 @@ func (s *httpManipulator) send(mctx *manipulate.Context, request *http.Request) 
 
 	s.prepareHeaders(request, mctx)
 
-	ctx := mctx.Context()
-	if _, ok := ctx.Deadline(); ok {
-		request = request.WithContext(ctx)
-	} else {
-		tctx, cancel := context.WithTimeout(ctx, 60*time.Second)
-		defer cancel()
-		request = request.WithContext(tctx)
-	}
+	// // if _, ok := ctx.Deadline(); ok {
+	// // 	request = request.WithContext(ctx)
+	// // } else {
+	// tctx, cancel := context.WithTimeout(mctx.Context(), 60*time.Second)
+	// defer cancel()
+
+	// request = request.WithContext(tctx)
+	// // }
 
 	response, err := s.client.Do(request)
 	if err != nil {

@@ -73,6 +73,8 @@ func NewMongoManipulator(connectionString string, dbName string, user string, pa
 		)
 	}
 
+	session.SetSocketTimeout(60 * time.Second)
+
 	return &mongoManipulator{
 		dbName:       dbName,
 		rootSession:  session,

@@ -39,35 +39,3 @@ func StartTrace(mctx *manipulate.Context, name string) opentracing.Span {
 
 	return sp
 }
-
-// // InjectInElementalRequest injects the span info into the given elemental.Request.
-// func InjectInElementalRequest(span opentracing.Span, request *elemental.Request) error {
-
-// 	if span == nil {
-// 		return nil
-// 	}
-
-// 	tracer := span.Tracer()
-
-// 	if tracer == nil {
-// 		return nil
-// 	}
-
-// 	return tracer.Inject(span.Context(), opentracing.TextMap, request.TrackingData)
-// }
-
-// // InjectInHTTPRequest injects the span info into the given http.Request.
-// func InjectInHTTPRequest(span opentracing.Span, request *http.Request) error {
-
-// 	if span == nil {
-// 		return nil
-// 	}
-
-// 	tracer := span.Tracer()
-
-// 	if tracer == nil {
-// 		return nil
-// 	}
-
-// 	return tracer.Inject(span.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(request.Header))
-// }
