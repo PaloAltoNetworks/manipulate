@@ -1,7 +1,6 @@
 package manipmemory
 
 import (
-	"context"
 	"reflect"
 	"sync"
 
@@ -40,7 +39,7 @@ func NewMemoryManipulator(schema *memdb.DBSchema) manipulate.TransactionalManipu
 func (s *memdbManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.ContentIdentifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		mctx = manipulate.NewContext()
 	}
 
 	txn := s.db.Txn(false)
@@ -95,7 +94,7 @@ func (s *memdbManipulator) Retrieve(mctx *manipulate.Context, objects ...element
 func (s *memdbManipulator) Create(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		mctx = manipulate.NewContext()
 	}
 
 	tid := mctx.TransactionID
@@ -122,7 +121,7 @@ func (s *memdbManipulator) Create(mctx *manipulate.Context, objects ...elemental
 func (s *memdbManipulator) Update(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		mctx = manipulate.NewContext()
 	}
 
 	tid := mctx.TransactionID
@@ -146,7 +145,7 @@ func (s *memdbManipulator) Update(mctx *manipulate.Context, objects ...elemental
 func (s *memdbManipulator) Delete(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		mctx = manipulate.NewContext()
 	}
 
 	tid := mctx.TransactionID

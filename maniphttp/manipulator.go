@@ -129,7 +129,7 @@ func NewHTTPManipulatorWithTokenManager(ctx context.Context, url string, namespa
 func (s *httpManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.ContentIdentifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		mctx = manipulate.NewContext()
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.retrieve_many.%s", dest.ContentIdentity().Category))
@@ -184,7 +184,7 @@ func (s *httpManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.
 func (s *httpManipulator) Retrieve(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		mctx = manipulate.NewContext()
 	}
 
 	for _, object := range objects {
@@ -238,7 +238,7 @@ func (s *httpManipulator) Retrieve(mctx *manipulate.Context, objects ...elementa
 func (s *httpManipulator) Create(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		mctx = manipulate.NewContext()
 	}
 
 	for _, child := range objects {
@@ -304,7 +304,7 @@ func (s *httpManipulator) Update(mctx *manipulate.Context, objects ...elemental.
 	}
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		mctx = manipulate.NewContext()
 	}
 
 	for _, object := range objects {
@@ -366,7 +366,7 @@ func (s *httpManipulator) Update(mctx *manipulate.Context, objects ...elemental.
 func (s *httpManipulator) Delete(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		mctx = manipulate.NewContext()
 	}
 
 	for _, object := range objects {
@@ -425,7 +425,7 @@ func (s *httpManipulator) DeleteMany(mctx *manipulate.Context, identity elementa
 func (s *httpManipulator) Count(mctx *manipulate.Context, identity elemental.Identity) (int, error) {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		mctx = manipulate.NewContext()
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.count.%s", identity.Category))
@@ -557,7 +557,15 @@ func (s *httpManipulator) getURLForChildrenIdentity(
 func (s *httpManipulator) send(mctx *manipulate.Context, request *http.Request) (*http.Response, error) {
 
 	s.prepareHeaders(request, mctx)
-	request = request.WithContext(mctx)
+
+	ctx := mctx.Context()
+	if _, ok := ctx.Deadline(); ok {
+		request = request.WithContext(ctx)
+	} else {
+		tctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+		defer cancel()
+		request = request.WithContext(tctx)
+	}
 
 	response, err := s.client.Do(request)
 	if err != nil {

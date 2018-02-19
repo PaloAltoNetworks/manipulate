@@ -15,7 +15,7 @@ func StartTrace(mctx *manipulate.Context, name string) opentracing.Span {
 		return sp
 	}
 
-	sp, _ := opentracing.StartSpanFromContext(mctx, name)
+	sp, _ := opentracing.StartSpanFromContext(mctx.Context(), name)
 
 	sp.SetTag("manipulate.context.api_version", mctx.Version)
 	sp.SetTag("manipulate.context.page", mctx.Page)

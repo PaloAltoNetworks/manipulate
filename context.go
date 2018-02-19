@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"time"
 
 	"github.com/opentracing/opentracing-go"
 
@@ -38,16 +37,60 @@ type Context struct {
 	ExternalTrackingID   string
 	ExternalTrackingType string
 	Order                []string
-	ctx                  context.Context
+
+	ctx context.Context
 }
 
 // NewContext returns a new *Context
-func NewContext(ctx context.Context) *Context {
+func NewContext() *Context {
 
 	return &Context{
 		Parameters: url.Values{},
-		ctx:        ctx,
 	}
+}
+
+// NewContextWithFilter returns a new *Context with the given filter.
+func NewContextWithFilter(filter *Filter) *Context {
+
+	ctx := NewContext()
+	ctx.Filter = filter
+
+	return ctx
+}
+
+// NewContextWithTransactionID returns a new *Context with the given transactionID.
+func NewContextWithTransactionID(tid TransactionID) *Context {
+
+	ctx := NewContext()
+	ctx.TransactionID = tid
+
+	return ctx
+}
+
+// WithContext returns a shallow copy of the manipulate.Context
+// with it's internal context changed to the given context.Context.
+func (c *Context) WithContext(ctx context.Context) *Context {
+
+	if ctx == nil {
+		panic("nil context")
+	}
+
+	c2 := &Context{}
+	*c2 = *c
+	c2.ctx = ctx
+
+	return c2
+}
+
+// Context returns the internal context.Context of the
+// manipulate.Context.
+func (c *Context) Context() context.Context {
+
+	if c.ctx != nil {
+		return c.ctx
+	}
+
+	return context.Background()
 }
 
 // String returns the string representation of the Context.
@@ -55,15 +98,3 @@ func (c *Context) String() string {
 
 	return fmt.Sprintf("<Context page:%d pagesize:%d filter:%v version:%d>", c.Page, c.PageSize, c.Filter, c.Version)
 }
-
-// Done implements the context.Context interface.
-func (c *Context) Done() <-chan struct{} { return c.ctx.Done() }
-
-// Err implements the context.Context interface.
-func (c *Context) Err() error { return c.ctx.Err() }
-
-// Deadline implements the context.Context interface.
-func (c *Context) Deadline() (time.Time, bool) { return c.ctx.Deadline() }
-
-// Value implements the context.Context interface.
-func (c *Context) Value(key interface{}) interface{} { return c.ctx.Value(key) }

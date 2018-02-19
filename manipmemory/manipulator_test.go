@@ -1,7 +1,6 @@
 package manipmemory
 
 import (
-	"context"
 	"testing"
 
 	"github.com/aporeto-inc/elemental/test/model"
@@ -178,7 +177,7 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 			ps := testmodel.ListsList{}
 
-			mctx := manipulate.NewContext(context.Background())
+			mctx := manipulate.NewContext()
 			mctx.Filter = manipulate.NewFilterComposer().WithKey("Name").Equals("Antoine1").Done()
 
 			err := m.RetrieveMany(mctx, &ps)
@@ -197,7 +196,7 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 			ps := testmodel.ListsList{}
 
-			mctx := manipulate.NewContext(context.Background())
+			mctx := manipulate.NewContext()
 			mctx.Filter = manipulate.NewFilterComposer().WithKey("Bad").Equals("Antoine1").Done()
 
 			err := m.RetrieveMany(mctx, &ps)
