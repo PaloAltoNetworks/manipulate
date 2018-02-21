@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/aporeto-inc/manipulate"
-	"github.com/aporeto-inc/manipulate/maniphttp/compiler"
+	"github.com/aporeto-inc/manipulate/maniphttp/internal/compiler"
 )
 
 // AddQueryParameters appends each key-value pair from ctx.Parameters
