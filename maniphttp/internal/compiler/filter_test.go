@@ -13,8 +13,8 @@ func TestFilter_CompileFilter(t *testing.T) {
 
 		f := manipulate.NewFilterComposer().
 			WithKey("name").Equals("thename").
-			AndKey("ID").Equals("xxx").
-			AndKey("associatedTags").Contains("yy=zz").
+			WithKey("ID").Equals("xxx").
+			WithKey("associatedTags").Contains("yy=zz").
 			Done()
 
 		Convey("When I call CompileFilter on it", func() {
@@ -33,56 +33,12 @@ func TestFilter_CompileFilter(t *testing.T) {
 		})
 	})
 
-	Convey("Given I create filter with multiple values", t, func() {
-
-		f := manipulate.NewFilterComposer().
-			WithKey("name").Equals("thename", "thedesc").
-			AndKey("ID").Equals("xxx").
-			AndKey("associatedTags").Contains("yy=zz").
-			Done()
-
-		Convey("When I call CompileFilter on it", func() {
-
-			v, err := CompileFilter(f)
-
-			Convey("Then err should not be nil", func() {
-				So(err, ShouldNotBeNil)
-			})
-
-			Convey("Then v should be nil", func() {
-				So(v, ShouldBeNil)
-			})
-		})
-	})
-
-	Convey("Given I create filter with or operator", t, func() {
-
-		f := manipulate.NewFilterComposer().
-			WithKey("name").Equals("thename").
-			OrKey("ID").Equals("xxx").
-			AndKey("associatedTags").Contains("yy=zz").
-			Done()
-
-		Convey("When I call CompileFilter on it", func() {
-
-			v, err := CompileFilter(f)
-
-			Convey("Then err should not be nil", func() {
-				So(err, ShouldNotBeNil)
-			})
-
-			Convey("Then v should be nil", func() {
-				So(v, ShouldBeNil)
-			})
-		})
-	})
-
 	Convey("Given I create filter with bad comparator", t, func() {
 
 		f := manipulate.NewFilterComposer().
 			WithKey("name").Equals("thename").
-			AndKey("ID").GreaterThan("x").
-			AndKey("associatedTags").Contains("yy=zz").
+			WithKey("ID").GreaterThan("x").
+			WithKey("associatedTags").Contains("yy=zz").
 			Done()
 
 		Convey("When I call CompileFilter on it", func() {
@@ -103,8 +59,8 @@ func TestFilter_CompileFilter(t *testing.T) {
 
 		f := manipulate.NewFilterComposer().
 			WithKey("name").Equals("thename").
-			AndKey("ID").Equals("x").
-			AndKey("associatedTags").Contains("yy").
+			WithKey("ID").Equals("x").
+			WithKey("associatedTags").Contains("yy").
 			Done()
 
 		Convey("When I call CompileFilter on it", func() {
