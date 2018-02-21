@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/aporeto-inc/manipulate"
-	"github.com/aporeto-inc/manipulate/internal/sharedcompiler"
+	"github.com/aporeto-inc/manipulate/maniphttp/compiler"
 )
 
 // AddQueryParameters appends each key-value pair from ctx.Parameters
@@ -15,7 +15,7 @@ func addQueryParameters(req *http.Request, ctx *manipulate.Context) error {
 	q := req.URL.Query()
 
 	if ctx.Filter != nil {
-		query, err := sharedcompiler.CompileFilter(ctx.Filter)
+		query, err := compiler.CompileFilter(ctx.Filter)
 		if err != nil {
 			return err
 		}

@@ -1,4 +1,4 @@
-package sharedcompiler
+package compiler
 
 import (
 	"testing"
@@ -29,28 +29,6 @@ func TestFilter_CompileFilter(t *testing.T) {
 				So(v["tag"][0], ShouldEqual, "$name=thename")
 				So(v["tag"][1], ShouldEqual, "$id=xxx")
 				So(v["tag"][2], ShouldEqual, "yy=zz")
-			})
-		})
-	})
-
-	Convey("Given I create filter with multiple keys", t, func() {
-
-		f := manipulate.NewFilterComposer().
-			WithKey("name", "description").Equals("thename", "thedesc").
-			AndKey("ID").Equals("xxx").
-			AndKey("associatedTags").Contains("yy=zz").
-			Done()
-
-		Convey("When I call CompileFilter on it", func() {
-
-			v, err := CompileFilter(f)
-
-			Convey("Then err should not be nil", func() {
-				So(err, ShouldNotBeNil)
-			})
-
-			Convey("Then v should be nil", func() {
-				So(v, ShouldBeNil)
 			})
 		})
 	})

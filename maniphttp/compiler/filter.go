@@ -1,4 +1,4 @@
-package sharedcompiler
+package compiler
 
 import (
 	"fmt"
@@ -15,10 +15,6 @@ func CompileFilter(f *manipulate.Filter) (url.Values, error) {
 
 	for index, key := range f.Keys() {
 
-		if len(key) != 1 {
-			return nil, fmt.Errorf("Invalid filter. Only single filter key is supported")
-		}
-
 		if len(f.Values()[index]) != 1 {
 			return nil, fmt.Errorf("Invalid filter. Only single filter value is supported")
 		}
@@ -30,7 +26,7 @@ func CompileFilter(f *manipulate.Filter) (url.Values, error) {
 		switch f.Comparators()[index] {
 
 		case manipulate.EqualComparator:
-			ret.Add("tag", fmt.Sprintf("$%s=%v", strings.ToLower(key[0]), f.Values()[index][0]))
+			ret.Add("tag", fmt.Sprintf("$%s=%v", strings.ToLower(key), f.Values()[index][0]))
 
 		case manipulate.ContainComparator:
 			value := fmt.Sprintf("%s", f.Values()[index][0])

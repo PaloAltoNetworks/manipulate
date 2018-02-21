@@ -16,15 +16,14 @@ import (
 	"sync"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/log"
-
-	"go.uber.org/zap"
-
 	"github.com/aporeto-inc/addedeffect/tokensnip"
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 	"github.com/aporeto-inc/manipulate/internal/tracing"
+	"github.com/opentracing/opentracing-go/log"
+	"go.uber.org/zap"
+
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 type httpManipulator struct {
