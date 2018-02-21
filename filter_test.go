@@ -52,8 +52,8 @@ func TestFilter_NewFilter(t *testing.T) {
 			So(f.values, ShouldResemble, FilterValues{})
 			So(f.operators, ShouldResemble, FilterOperators{})
 			So(f.comparators, ShouldResemble, FilterComparators{})
-			So(f.ands, ShouldResemble, [][]*Filter(nil))
-			So(f.ors, ShouldResemble, [][]*Filter(nil))
+			So(f.ands, ShouldResemble, SubFilters{})
+			So(f.ors, ShouldResemble, SubFilters{})
 		})
 	})
 }
@@ -66,18 +66,18 @@ func TestFilter_NewComposer(t *testing.T) {
 
 		Convey("When I add the initial Equals statement", func() {
 
-			f.WithKey("hello").Equals(1, 2)
+			f.WithKey("hello").Equals(1)
 
 			Convey("Then the filter should be correctly populated", func() {
 				So(f.keys, ShouldResemble, FilterKeys{"hello"})
-				So(f.values, ShouldResemble, FilterValues{FilterValue{1, 2}})
-				So(f.operators, ShouldResemble, FilterOperators{InitialOperator})
+				So(f.values, ShouldResemble, FilterValues{FilterValue{1}})
+				So(f.operators, ShouldResemble, FilterOperators{AndOperator})
 				So(f.comparators, ShouldResemble, FilterComparators{EqualComparator})
 			})
 
 			Convey("When I add a new GreaterThan statement", func() {
 
-				f.AndKey("gt").GreaterThan(12)
+				f.WithKey("gt").GreaterThan(12)
 
 				Convey("Then the filter should be correctly populated", func() {
 
@@ -86,11 +86,11 @@ func TestFilter_NewComposer(t *testing.T) {
 						"gt",
 					})
 					So(f.values, ShouldResemble, FilterValues{
-						FilterValue{1, 2},
+						FilterValue{1},
 						FilterValue{12},
 					})
 					So(f.operators, ShouldResemble, FilterOperators{
-						InitialOperator,
+						AndOperator,
 						AndOperator,
 					})
 					So(f.comparators, ShouldResemble, FilterComparators{
@@ -100,7 +100,7 @@ func TestFilter_NewComposer(t *testing.T) {
 
 					Convey("When I add a new LesserThan statement", func() {
 
-						f.OrKey("lt").LesserThan(13)
+						f.WithKey("lt").LesserThan(13)
 
 						Convey("Then the filter should be correctly populated", func() {
 							So(f.keys, ShouldResemble, FilterKeys{
@@ -109,14 +109,14 @@ func TestFilter_NewComposer(t *testing.T) {
 								"lt",
 							})
 							So(f.values, ShouldResemble, FilterValues{
-								FilterValue{1, 2},
+								FilterValue{1},
 								FilterValue{12},
 								FilterValue{13},
 							})
 							So(f.operators, ShouldResemble, FilterOperators{
-								InitialOperator,
 								AndOperator,
-								OrOperator,
+								AndOperator,
+								AndOperator,
 							})
 							So(f.comparators, ShouldResemble, FilterComparators{
 								EqualComparator,
@@ -126,7 +126,7 @@ func TestFilter_NewComposer(t *testing.T) {
 						})
 
 						Convey("Then the string representation should be correct", func() {
-							So(f.String(), ShouldEqual, "hello = [1 2] and gt >= [12] or lt <= [13]")
+							So(f.String(), ShouldEqual, "hello = 1 and gt >= 12 and lt <= 13")
 						})
 					})
 				})
@@ -134,7 +134,7 @@ func TestFilter_NewComposer(t *testing.T) {
 
 			Convey("When I add a new In statement", func() {
 
-				f.AndKey("in").In("a", "b", "c")
+				f.WithKey("in").In("a", "b", "c")
 
 				Convey("Then the filter should be correctly populated", func() {
 					So(f.keys, ShouldResemble, FilterKeys{
@@ -142,11 +142,11 @@ func TestFilter_NewComposer(t *testing.T) {
 						"in",
 					})
 					So(f.values, ShouldResemble, FilterValues{
-						FilterValue{1, 2},
+						FilterValue{1},
 						FilterValue{"a", "b", "c"},
 					})
 					So(f.operators, ShouldResemble, FilterOperators{
-						InitialOperator,
+						AndOperator,
 						AndOperator,
 					})
 					So(f.comparators, ShouldResemble, FilterComparators{
@@ -156,7 +156,7 @@ func TestFilter_NewComposer(t *testing.T) {
 
 					Convey("When I add a new Contains statement", func() {
 
-						f.AndKey("ctn").Contains(false)
+						f.WithKey("ctn").Contains(false)
 
 						Convey("Then the filter should be correctly populated", func() {
 							So(f.keys, ShouldResemble, FilterKeys{
@@ -165,12 +165,12 @@ func TestFilter_NewComposer(t *testing.T) {
 								"ctn",
 							})
 							So(f.values, ShouldResemble, FilterValues{
-								FilterValue{1, 2},
+								FilterValue{1},
 								FilterValue{"a", "b", "c"},
 								FilterValue{false},
 							})
 							So(f.operators, ShouldResemble, FilterOperators{
-								InitialOperator,
+								AndOperator,
 								AndOperator,
 								AndOperator,
 							})
@@ -181,7 +181,7 @@ func TestFilter_NewComposer(t *testing.T) {
 							})
 
 							Convey("Then the string representation should be correct", func() {
-								So(f.String(), ShouldEqual, "hello = [1 2] and in in [a b c] and ctn contains [false]")
+								So(f.String(), ShouldEqual, "hello = 1 and in in [a b c] and ctn contains false")
 							})
 						})
 					})
@@ -189,7 +189,7 @@ func TestFilter_NewComposer(t *testing.T) {
 			})
 
 			Convey("When I add a new difference comparator", func() {
-				f.AndKey("x").NotEquals(true)
+				f.WithKey("x").NotEquals(true)
 
 				Convey("Then the filter should be correctly populated", func() {
 					So(f.keys, ShouldResemble, FilterKeys{
@@ -197,18 +197,18 @@ func TestFilter_NewComposer(t *testing.T) {
 						"x",
 					})
 					So(f.values, ShouldResemble, FilterValues{
-						FilterValue{1, 2},
+						FilterValue{1},
 						FilterValue{true},
 					})
 					So(f.operators, ShouldResemble, FilterOperators{
-						InitialOperator,
+						AndOperator,
 						AndOperator,
 					})
 					So(f.comparators, ShouldResemble, FilterComparators{
 						EqualComparator,
 						NotEqualComparator,
 					})
-					So(f.String(), ShouldEqual, "hello = [1 2] and x != [true]")
+					So(f.String(), ShouldEqual, "hello = 1 and x != true")
 				})
 			})
 		})
@@ -224,7 +224,7 @@ func TestFilter_SubFilters(t *testing.T) {
 			And(
 				NewFilterComposer().
 					WithKey("name").Equals("toto").
-					AndKey("surname").Equals("titi").
+					WithKey("surname").Equals("titi").
 					Done(),
 				NewFilterComposer().
 					WithKey("color").Equals("blue").
@@ -242,7 +242,7 @@ func TestFilter_SubFilters(t *testing.T) {
 
 		Convey("When I call string it should be correct ", func() {
 
-			So(f.String(), ShouldEqual, "namespace = [coucou] and ((name = [toto] and surname = [titi]) and (color = [blue] or ((size = [big]) or (size = [medium]))))")
+			So(f.String(), ShouldEqual, "namespace = coucou and ((name = toto and surname = titi) and (color = blue or ((size = big) or (size = medium))))")
 		})
 	})
 }

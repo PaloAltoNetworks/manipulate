@@ -19,7 +19,7 @@ func CompileFilter(f *manipulate.Filter) (url.Values, error) {
 			return nil, fmt.Errorf("Invalid filter. Only single filter value is supported")
 		}
 
-		if f.Operators()[index] != manipulate.AndOperator && f.Operators()[index] != manipulate.InitialOperator {
+		if f.Operators()[index] != manipulate.AndOperator {
 			return nil, fmt.Errorf("Invalid filter. Only AND operator is supported %v", f.Operators()[index])
 		}
 

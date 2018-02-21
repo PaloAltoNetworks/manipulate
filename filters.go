@@ -14,7 +14,7 @@ type FilterComparators []FilterComparator
 
 // Comparators represent various comparison operations.
 const (
-	EqualComparator FilterComparator = iota + 1
+	EqualComparator FilterComparator = iota
 	NotEqualComparator
 	GreaterComparator
 	LesserComparator
@@ -43,9 +43,7 @@ type FilterOperators []FilterOperator
 
 // Operators represent various operators.
 const (
-	InitialOperator FilterOperator = iota + 1
-	OrOperator
-	AndOperator
+	AndOperator FilterOperator = iota
 	OrFilterOperator
 	AndFilterOperator
 )
@@ -70,12 +68,18 @@ func (f FilterValues) add(values ...interface{}) FilterValues {
 	return append(f, fv)
 }
 
+// SubFilter is the type of subfilter
+type SubFilter []*Filter
+
+// SubFilters is is a list SubFilter,
+type SubFilters []SubFilter
+
 // FilterValueComposer adds values and operators.
 type FilterValueComposer interface {
-	Equals(...interface{}) FilterKeyComposer
-	NotEquals(...interface{}) FilterKeyComposer
-	GreaterThan(...interface{}) FilterKeyComposer
-	LesserThan(...interface{}) FilterKeyComposer
+	Equals(interface{}) FilterKeyComposer
+	NotEquals(interface{}) FilterKeyComposer
+	GreaterThan(interface{}) FilterKeyComposer
+	LesserThan(interface{}) FilterKeyComposer
 	In(...interface{}) FilterKeyComposer
 	Contains(...interface{}) FilterKeyComposer
 	Matches(...interface{}) FilterKeyComposer
@@ -84,8 +88,6 @@ type FilterValueComposer interface {
 // FilterKeyComposer composes a filter.
 type FilterKeyComposer interface {
 	WithKey(string) FilterValueComposer
-	AndKey(string) FilterValueComposer
-	OrKey(string) FilterValueComposer
 
 	And(...*Filter) FilterKeyComposer
 	Or(...*Filter) FilterKeyComposer
@@ -99,8 +101,8 @@ type Filter struct {
 	values      FilterValues
 	comparators FilterComparators
 	operators   FilterOperators
-	ands        [][]*Filter
-	ors         [][]*Filter
+	ands        SubFilters
+	ors         SubFilters
 }
 
 // NewFilter returns a new filter.
@@ -111,6 +113,8 @@ func NewFilter() *Filter {
 		values:      FilterValues{},
 		comparators: FilterComparators{},
 		operators:   FilterOperators{},
+		ands:        SubFilters{},
+		ors:         SubFilters{},
 	}
 }
 
@@ -122,48 +126,58 @@ func NewFilterComposer() FilterKeyComposer {
 
 // Keys returns the current keys.
 func (f *Filter) Keys() FilterKeys {
-	return f.keys
+	return append(FilterKeys{}, f.keys...)
 }
 
 // Values returns the current values.
 func (f *Filter) Values() FilterValues {
-	return f.values
+	return append(FilterValues{}, f.values...)
 }
 
 // Operators returns the current operators.
 func (f *Filter) Operators() FilterOperators {
-	return f.operators
+	return append(FilterOperators{}, f.operators...)
 }
 
 // Comparators returns the current comparators.
 func (f *Filter) Comparators() FilterComparators {
-	return f.comparators
+	return append(FilterComparators{}, f.comparators...)
+}
+
+// OrFilters returns the current ors sub filters.
+func (f *Filter) OrFilters() SubFilters {
+	return append(SubFilters{}, f.ors...)
+}
+
+// AndFilters returns the current and sub filters.
+func (f *Filter) AndFilters() SubFilters {
+	return append(SubFilters{}, f.ands...)
 }
 
 // Equals adds a an equality comparator to the FilterComposer.
-func (f *Filter) Equals(values ...interface{}) FilterKeyComposer {
-	f.values = f.values.add(values...)
+func (f *Filter) Equals(value interface{}) FilterKeyComposer {
+	f.values = f.values.add(value)
 	f.comparators = f.comparators.add(EqualComparator)
 	return f
 }
 
 // NotEquals adds a an non equality comparator to the FilterComposer.
-func (f *Filter) NotEquals(values ...interface{}) FilterKeyComposer {
-	f.values = f.values.add(values...)
+func (f *Filter) NotEquals(value interface{}) FilterKeyComposer {
+	f.values = f.values.add(value)
 	f.comparators = f.comparators.add(NotEqualComparator)
 	return f
 }
 
 // GreaterThan adds a greater than comparator to the FilterComposer.
-func (f *Filter) GreaterThan(values ...interface{}) FilterKeyComposer {
-	f.values = f.values.add(values...)
+func (f *Filter) GreaterThan(value interface{}) FilterKeyComposer {
+	f.values = f.values.add(value)
 	f.comparators = f.comparators.add(GreaterComparator)
 	return f
 }
 
 // LesserThan adds a lesser than comparator to the FilterComposer.
-func (f *Filter) LesserThan(values ...interface{}) FilterKeyComposer {
-	f.values = f.values.add(values...)
+func (f *Filter) LesserThan(value interface{}) FilterKeyComposer {
+	f.values = f.values.add(value)
 	f.comparators = f.comparators.add(LesserComparator)
 	return f
 }
@@ -189,23 +203,9 @@ func (f *Filter) Matches(values ...interface{}) FilterKeyComposer {
 	return f
 }
 
-// AndKey adds a and operator to the FilterComposer.
-func (f *Filter) AndKey(key string) FilterValueComposer {
-	f.operators = append(f.operators, AndOperator)
-	f.keys = append(f.keys, key)
-	return f
-}
-
-// OrKey adds a or operator to the FilterComposer.
-func (f *Filter) OrKey(key string) FilterValueComposer {
-	f.operators = append(f.operators, OrOperator)
-	f.keys = append(f.keys, key)
-	return f
-}
-
 // WithKey adds a key to FilterComposer.
 func (f *Filter) WithKey(key string) FilterValueComposer {
-	f.operators = append(f.operators, InitialOperator)
+	f.operators = append(f.operators, AndOperator)
 	f.keys = append(f.keys, key)
 	f.ands = append(f.ands, nil)
 	f.ors = append(f.ors, nil)
@@ -247,12 +247,16 @@ func (f *Filter) String() string {
 
 		switch operator {
 
-		case InitialOperator, AndOperator, OrOperator:
+		case AndOperator:
 			writeString(&buffer, fmt.Sprintf("%v", f.keys[i]))
 			writeString(&buffer, " ")
 			writeString(&buffer, translateComparator(f.comparators[i]))
 			writeString(&buffer, " ")
-			writeString(&buffer, fmt.Sprintf("%v", f.values[i]))
+			if len(f.values[i]) == 1 {
+				writeString(&buffer, fmt.Sprintf("%v", f.values[i][0]))
+			} else {
+				writeString(&buffer, fmt.Sprintf("%v", f.values[i]))
+			}
 
 		case AndFilterOperator:
 			var strs []string
@@ -302,7 +306,7 @@ func translateOperator(operator FilterOperator) string {
 	switch operator {
 	case AndOperator, AndFilterOperator:
 		return "and"
-	case OrOperator, OrFilterOperator:
+	case OrFilterOperator:
 		return "or"
 	}
 

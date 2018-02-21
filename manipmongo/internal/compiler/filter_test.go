@@ -14,14 +14,14 @@ func TestUtils_compiler(t *testing.T) {
 
 	Convey("Given I have a simple manipulate.Filter", t, func() {
 
-		f := manipulate.NewFilterComposer().WithKey("x").Equals(1).Done()
+		f := manipulate.NewFilterComposer().WithKey("id").Equals(1).Done()
 
 		Convey("When I compile the filter", func() {
 
 			b, _ := bson.MarshalJSON(CompileFilter(f))
 
 			Convey("Then the bson should be correct", func() {
-				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$eq":1}}]}`)
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"_id":{"$eq":1}}]}`)
 			})
 		})
 	})
@@ -42,7 +42,7 @@ func TestUtils_compiler(t *testing.T) {
 
 	Convey("Given I have a simple and manipulate.Filter", t, func() {
 
-		f := manipulate.NewFilterComposer().WithKey("x").Equals(1).AndKey("y").Equals(2).Done()
+		f := manipulate.NewFilterComposer().WithKey("x").Equals(1).WithKey("y").Equals(2).Done()
 
 		Convey("When I compile the filter", func() {
 
@@ -56,7 +56,7 @@ func TestUtils_compiler(t *testing.T) {
 
 	Convey("Given I have a simple multiple key and manipulate.Filter", t, func() {
 
-		f := manipulate.NewFilterComposer().WithKey("x").NotEquals(1).AndKey("x").NotEquals(2).Done()
+		f := manipulate.NewFilterComposer().WithKey("x").NotEquals(1).WithKey("x").NotEquals(2).Done()
 
 		Convey("When I compile the filter", func() {
 
@@ -70,39 +70,11 @@ func TestUtils_compiler(t *testing.T) {
 
 	Convey("Given I have a simple a complex and manipulate.Filter", t, func() {
 
-		f := manipulate.NewFilterComposer().WithKey("x").Equals(1).AndKey("z").Contains("a", "b").Done()
-
-		Convey("When I compile the filter", func() {
-
-			b, _ := bson.MarshalJSON(CompileFilter(f))
-
-			Convey("Then the bson should be correct", func() {
-				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$eq":1}},{"z":{"$in":["a","b"]}}]}`)
-			})
-		})
-	})
-
-	Convey("Given I have a simple a simple or manipulate.Filter", t, func() {
-
-		f := manipulate.NewFilterComposer().WithKey("x").Equals(1).OrKey("x").Equals(100).Done()
-
-		Convey("When I compile the filter", func() {
-
-			b, _ := bson.MarshalJSON(CompileFilter(f))
-
-			Convey("Then the bson should be correct", func() {
-				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$or":[{"$and":[{"x":{"$eq":1}}]},{"$and":[{"x":{"$eq":100}}]}]}`)
-			})
-		})
-	})
-
-	Convey("Given I have a simple a complex or manipulate.Filter", t, func() {
-
 		f := manipulate.NewFilterComposer().
 			WithKey("x").Equals(1).
-			AndKey("z").Contains("a", "b").
-			OrKey("x").Equals(100).
-			AndKey("z").Contains("aa", "bb").
+			WithKey("z").Contains("a", "b").
+			WithKey("a").GreaterThan(1).
+			WithKey("b").LesserThan(1).
 			Done()
 
 		Convey("When I compile the filter", func() {
@@ -110,12 +82,13 @@ func TestUtils_compiler(t *testing.T) {
 			b, _ := bson.MarshalJSON(CompileFilter(f))
 
 			Convey("Then the bson should be correct", func() {
-				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$or":[{"$and":[{"x":{"$eq":1}},{"z":{"$in":["a","b"]}}]},{"$and":[{"x":{"$eq":100}},{"z":{"$in":["aa","bb"]}}]}]}`)
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$eq":1}},{"z":{"$in":["a","b"]}},{"a":{"$gte":1}},{"b":{"$lte":1}}]}`)
 			})
 		})
 	})
 
 	Convey("Given I have filter that contains Match", t, func() {
+
 		f := manipulate.NewFilterComposer().
 			WithKey("x").Matches("$abc^", ".*").
 			Done()
@@ -125,6 +98,38 @@ func TestUtils_compiler(t *testing.T) {
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"$or":[{"x":{"$options":"m","$regex":"$abc^"}},{"x":{"$options":"m","$regex":".*"}}]}]}`)
+			})
+		})
+	})
+
+	Convey("Given I have a composed filters", t, func() {
+
+		f := manipulate.NewFilterComposer().
+			WithKey("namespace").Equals("coucou").
+			And(
+				manipulate.NewFilterComposer().
+					WithKey("name").Equals("toto").
+					WithKey("surname").Equals("titi").
+					Done(),
+				manipulate.NewFilterComposer().
+					WithKey("color").Equals("blue").
+					Or(
+						manipulate.NewFilterComposer().
+							WithKey("size").Equals("big").
+							Done(),
+						manipulate.NewFilterComposer().
+							WithKey("size").Equals("medium").
+							Done(),
+					).
+					Done(),
+			).
+			Done()
+
+		Convey("When I compile the filter", func() {
+			b, _ := bson.MarshalJSON(CompileFilter(f))
+
+			Convey("Then the bson should be correct", func() {
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"namespace":{"$eq":"coucou"}},{"$and":[{"$and":[{"name":{"$eq":"toto"}},{"surname":{"$eq":"titi"}}]},{"$and":[{"color":{"$eq":"blue"}},{"$or":[{"$and":[{"size":{"$eq":"big"}}]},{"$and":[{"size":{"$eq":"medium"}}]}]}]}]}]}`)
 			})
 		})
 	})

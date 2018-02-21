@@ -7,72 +7,79 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+func massageKey(key string) string {
+
+	var k string
+	if path := strings.SplitN(key, ".", 2); len(path) > 1 {
+		path[0] = strings.ToLower(path[0])
+		k = strings.Join(path, ".")
+	} else {
+		k = strings.ToLower(key)
+	}
+
+	if k == "id" {
+		k = "_id"
+	}
+
+	return k
+}
+
 // CompileFilter compiles the given manipulate Filter into a mongo filter.
 func CompileFilter(f *manipulate.Filter) bson.M {
 
-	ands := []bson.M{bson.M{}}
+	ands := []bson.M{}
 
-	for index, key := range f.Keys() {
+	for i, operator := range f.Operators() {
 
-		var k string
-		if path := strings.SplitN(key, ".", 2); len(path) > 1 {
-			path[0] = strings.ToLower(path[0])
-			k = strings.Join(path, ".")
-		} else {
-			k = strings.ToLower(key)
-		}
+		switch operator {
 
-		op := f.Operators()[index]
+		case manipulate.AndOperator:
 
-		if k == "id" {
-			k = "_id"
-		}
+			items := []bson.M{}
+			k := massageKey(f.Keys()[i])
 
-		var dst bson.M
+			switch f.Comparators()[i] {
 
-		if op == manipulate.OrOperator {
-			ands = append(ands, bson.M{})
-		}
+			case manipulate.EqualComparator:
+				items = append(items, bson.M{k: bson.M{"$eq": f.Values()[i][0]}})
 
-		dst = ands[len(ands)-1]
+			case manipulate.NotEqualComparator:
+				items = append(items, bson.M{k: bson.M{"$ne": f.Values()[i][0]}})
 
-		if _, ok := dst["$and"]; !ok {
-			dst["$and"] = []bson.M{}
-		}
+			case manipulate.InComparator, manipulate.ContainComparator:
+				items = append(items, bson.M{k: bson.M{"$in": f.Values()[i]}})
 
-		b := dst["$and"].([]bson.M)
+			case manipulate.GreaterComparator:
+				items = append(items, bson.M{k: bson.M{"$gte": f.Values()[i][0]}})
 
-		switch f.Comparators()[index] {
+			case manipulate.LesserComparator:
+				items = append(items, bson.M{k: bson.M{"$lte": f.Values()[i][0]}})
 
-		case manipulate.EqualComparator:
-			b = append(b, bson.M{k: bson.M{"$eq": f.Values()[index][0]}})
-
-		case manipulate.NotEqualComparator:
-			b = append(b, bson.M{k: bson.M{"$ne": f.Values()[index][0]}})
-
-		case manipulate.InComparator, manipulate.ContainComparator:
-			b = append(b, bson.M{k: bson.M{"$in": f.Values()[index]}})
-
-		case manipulate.GreaterComparator:
-			b = append(b, bson.M{k: bson.M{"$gte": f.Values()[index][0]}})
-
-		case manipulate.LesserComparator:
-			b = append(b, bson.M{k: bson.M{"$lte": f.Values()[index][0]}})
-
-		case manipulate.MatchComparator:
-			dest := []bson.M{}
-			for _, v := range f.Values()[index] {
-				dest = append(dest, bson.M{k: bson.M{"$regex": v, "$options": "m"}})
+			case manipulate.MatchComparator:
+				dest := []bson.M{}
+				for _, v := range f.Values()[i] {
+					dest = append(dest, bson.M{k: bson.M{"$regex": v, "$options": "m"}})
+				}
+				items = append(items, bson.M{"$or": dest})
 			}
-			b = append(b, bson.M{"$or": dest})
+
+			ands = append(ands, items...)
+
+		case manipulate.AndFilterOperator:
+			subs := []bson.M{}
+			for _, sub := range f.AndFilters()[i] {
+				subs = append(subs, CompileFilter(sub))
+			}
+			ands = append(ands, bson.M{"$and": subs})
+
+		case manipulate.OrFilterOperator:
+			subs := []bson.M{}
+			for _, sub := range f.OrFilters()[i] {
+				subs = append(subs, CompileFilter(sub))
+			}
+			ands = append(ands, bson.M{"$or": subs})
 		}
-
-		dst["$and"] = b
 	}
 
-	if len(ands) == 1 {
-		return ands[0]
-	}
-
-	return bson.M{"$or": ands}
+	return bson.M{"$and": ands}
 }
