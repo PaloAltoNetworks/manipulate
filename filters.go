@@ -300,8 +300,6 @@ func translateComparator(comparator FilterComparator) string {
 func translateOperator(operator FilterOperator) string {
 
 	switch operator {
-	case InitialOperator:
-		return ""
 	case AndOperator, AndFilterOperator:
 		return "and"
 	case OrOperator, OrFilterOperator:
