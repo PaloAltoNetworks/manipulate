@@ -269,7 +269,7 @@ func (f *Filter) String() string {
 			writeString(&buffer, " ")
 			writeString(&buffer, translateComparator(f.comparators[i]))
 			writeString(&buffer, " ")
-			writeString(&buffer, fmt.Sprintf("%s", translateValue(f.comparators[i], f.values[i])))
+			writeString(&buffer, translateValue(f.comparators[i], f.values[i]))
 
 		case AndFilterOperator:
 			var strs []string
