@@ -3,6 +3,7 @@ package manipulate
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"strings"
 )
 
@@ -248,14 +249,14 @@ func (f *Filter) String() string {
 		switch operator {
 
 		case AndOperator:
-			writeString(&buffer, fmt.Sprintf("%v", f.keys[i]))
+			writeString(&buffer, fmt.Sprintf(`"%s"`, f.keys[i]))
 			writeString(&buffer, " ")
 			writeString(&buffer, translateComparator(f.comparators[i]))
 			writeString(&buffer, " ")
 			if len(f.values[i]) == 1 {
-				writeString(&buffer, fmt.Sprintf("%v", f.values[i][0]))
+				writeString(&buffer, fmt.Sprintf("%s", translateValue(f.values[i][0])))
 			} else {
-				writeString(&buffer, fmt.Sprintf("%v", f.values[i]))
+				writeString(&buffer, fmt.Sprintf("%s", translateValue(f.values[i])))
 			}
 
 		case AndFilterOperator:
@@ -296,6 +297,8 @@ func translateComparator(comparator FilterComparator) string {
 		return "in"
 	case ContainComparator:
 		return "contains"
+	case MatchComparator:
+		return "matches"
 	}
 
 	return ""
@@ -311,6 +314,39 @@ func translateOperator(operator FilterOperator) string {
 	}
 
 	return ""
+}
+
+func translateValue(value interface{}) string {
+
+	v := reflect.ValueOf(value)
+
+	switch v.Kind() {
+
+	case reflect.String:
+		return fmt.Sprintf(`"%s"`, value)
+
+	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Int8, reflect.Uint, reflect.Uint16, reflect.Uint32,
+		reflect.Uint64, reflect.Uint8:
+		return fmt.Sprintf(`%d`, value)
+
+	case reflect.Float32, reflect.Float64:
+		return fmt.Sprintf(`%f`, value)
+
+	case reflect.Bool:
+		return fmt.Sprintf(`%t`, value)
+
+	case reflect.Slice, reflect.Array:
+		var final []string
+		for i := 0; i < v.Len(); i++ {
+
+			final = append(final, translateValue(v.Index(i).Interface()))
+		}
+		return fmt.Sprintf(`[%s]`, strings.Join(final, ", "))
+
+	default:
+		return fmt.Sprintf(`%v`, value)
+	}
 }
 
 func writeString(buffer *bytes.Buffer, str string) {

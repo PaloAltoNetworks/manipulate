@@ -126,7 +126,7 @@ func TestFilter_NewComposer(t *testing.T) {
 						})
 
 						Convey("Then the string representation should be correct", func() {
-							So(f.String(), ShouldEqual, "hello = 1 and gt >= 12 and lt <= 13")
+							So(f.String(), ShouldEqual, `"hello" = 1 and "gt" >= 12 and "lt" <= 13`)
 						})
 					})
 				})
@@ -181,7 +181,7 @@ func TestFilter_NewComposer(t *testing.T) {
 							})
 
 							Convey("Then the string representation should be correct", func() {
-								So(f.String(), ShouldEqual, "hello = 1 and in in [a b c] and ctn contains false")
+								So(f.String(), ShouldEqual, `"hello" = 1 and "in" in ["a", "b", "c"] and "ctn" contains false`)
 							})
 						})
 					})
@@ -208,7 +208,7 @@ func TestFilter_NewComposer(t *testing.T) {
 						EqualComparator,
 						NotEqualComparator,
 					})
-					So(f.String(), ShouldEqual, "hello = 1 and x != true")
+					So(f.String(), ShouldEqual, `"hello" = 1 and "x" != true`)
 				})
 			})
 		})
@@ -224,16 +224,17 @@ func TestFilter_SubFilters(t *testing.T) {
 			And(
 				NewFilterComposer().
 					WithKey("name").Equals("toto").
-					WithKey("surname").Equals("titi").
+					WithKey("value").Equals(1).
 					Done(),
 				NewFilterComposer().
-					WithKey("color").Equals("blue").
+					WithKey("color").Contains("red", "green", "blue", 43).
 					Or(
 						NewFilterComposer().
-							WithKey("size").Equals("big").
+							WithKey("size").Matches(".*").
 							Done(),
 						NewFilterComposer().
 							WithKey("size").Equals("medium").
+							WithKey("fat").Equals(false).
 							Done(),
 					).
 					Done(),
@@ -242,7 +243,7 @@ func TestFilter_SubFilters(t *testing.T) {
 
 		Convey("When I call string it should be correct ", func() {
 
-			So(f.String(), ShouldEqual, "namespace = coucou and ((name = toto and surname = titi) and (color = blue or ((size = big) or (size = medium))))")
+			So(f.String(), ShouldEqual, `"namespace" = "coucou" and (("name" = "toto" and "value" = 1) and ("color" contains ["red", "green", "blue", 43] or (("size" matches ".*") or ("size" = "medium" and "fat" = false))))`)
 		})
 	})
 }
