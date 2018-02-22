@@ -82,7 +82,9 @@ type FilterValueComposer interface {
 	GreaterThan(interface{}) FilterKeyComposer
 	LesserThan(interface{}) FilterKeyComposer
 	In(...interface{}) FilterKeyComposer
+	NotIn(...interface{}) FilterKeyComposer
 	Contains(...interface{}) FilterKeyComposer
+	NotContains(...interface{}) FilterKeyComposer
 	Matches(...interface{}) FilterKeyComposer
 }
 
@@ -190,10 +192,24 @@ func (f *Filter) In(values ...interface{}) FilterKeyComposer {
 	return f
 }
 
+// NotIn adds a not in comparator to the FilterComposer.
+func (f *Filter) NotIn(values ...interface{}) FilterKeyComposer {
+	f.values = f.values.add(values...)
+	f.comparators = f.comparators.add(NotInComparator)
+	return f
+}
+
 // Contains adds a contains comparator to the FilterComposer.
 func (f *Filter) Contains(values ...interface{}) FilterKeyComposer {
 	f.values = f.values.add(values...)
 	f.comparators = f.comparators.add(ContainComparator)
+	return f
+}
+
+// NotContains adds a contains comparator to the FilterComposer.
+func (f *Filter) NotContains(values ...interface{}) FilterKeyComposer {
+	f.values = f.values.add(values...)
+	f.comparators = f.comparators.add(NotContainComparator)
 	return f
 }
 
@@ -253,11 +269,7 @@ func (f *Filter) String() string {
 			writeString(&buffer, " ")
 			writeString(&buffer, translateComparator(f.comparators[i]))
 			writeString(&buffer, " ")
-			if len(f.values[i]) == 1 {
-				writeString(&buffer, fmt.Sprintf("%s", translateValue(f.values[i][0])))
-			} else {
-				writeString(&buffer, fmt.Sprintf("%s", translateValue(f.values[i])))
-			}
+			writeString(&buffer, fmt.Sprintf("%s", translateValue(f.comparators[i], f.values[i])))
 
 		case AndFilterOperator:
 			var strs []string
@@ -286,22 +298,23 @@ func translateComparator(comparator FilterComparator) string {
 
 	switch comparator {
 	case EqualComparator:
-		return "="
+		return "=="
 	case NotEqualComparator:
 		return "!="
 	case GreaterComparator:
 		return ">="
 	case LesserComparator:
 		return "<="
-	case InComparator:
+	case InComparator, ContainComparator:
 		return "in"
-	case ContainComparator:
-		return "contains"
+	case NotContainComparator, NotInComparator:
+		return "nin"
+
 	case MatchComparator:
 		return "matches"
+	default:
+		panic(fmt.Sprintf("Unknown comparator: %d", comparator))
 	}
-
-	return ""
 }
 
 func translateOperator(operator FilterOperator) string {
@@ -311,41 +324,46 @@ func translateOperator(operator FilterOperator) string {
 		return "and"
 	case OrFilterOperator:
 		return "or"
+	default:
+		panic(fmt.Sprintf("Unknown operator: %d", operator))
 	}
-
-	return ""
 }
 
-func translateValue(value interface{}) string {
+func translateValue(comparator FilterComparator, value interface{}) string {
 
 	v := reflect.ValueOf(value)
+	if comparator != ContainComparator && comparator != InComparator {
+		if v.Kind() == reflect.Slice || v.Kind() == reflect.Array {
+			v = reflect.ValueOf(v.Index(0).Interface())
+		}
+	}
 
 	switch v.Kind() {
 
 	case reflect.String:
-		return fmt.Sprintf(`"%s"`, value)
+		return fmt.Sprintf(`"%s"`, v.Interface())
 
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Int8, reflect.Uint, reflect.Uint16, reflect.Uint32,
 		reflect.Uint64, reflect.Uint8:
-		return fmt.Sprintf(`%d`, value)
+		return fmt.Sprintf(`%d`, v.Interface())
 
 	case reflect.Float32, reflect.Float64:
-		return fmt.Sprintf(`%f`, value)
+		return fmt.Sprintf(`%f`, v.Interface())
 
 	case reflect.Bool:
-		return fmt.Sprintf(`%t`, value)
+		return fmt.Sprintf(`%t`, v.Interface())
 
 	case reflect.Slice, reflect.Array:
 		var final []string
 		for i := 0; i < v.Len(); i++ {
 
-			final = append(final, translateValue(v.Index(i).Interface()))
+			final = append(final, translateValue(comparator, v.Index(i).Interface()))
 		}
 		return fmt.Sprintf(`[%s]`, strings.Join(final, ", "))
 
 	default:
-		return fmt.Sprintf(`%v`, value)
+		return fmt.Sprintf(`%v`, v.Interface())
 	}
 }
 

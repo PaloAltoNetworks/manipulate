@@ -120,6 +120,9 @@ func TestUtils_compiler(t *testing.T) {
 						manipulate.NewFilterComposer().
 							WithKey("size").Equals("medium").
 							Done(),
+						manipulate.NewFilterComposer().
+							WithKey("list").NotIn("a", "b", "c").
+							Done(),
 					).
 					Done(),
 			).
@@ -129,7 +132,7 @@ func TestUtils_compiler(t *testing.T) {
 			b, _ := bson.MarshalJSON(CompileFilter(f))
 
 			Convey("Then the bson should be correct", func() {
-				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"namespace":{"$eq":"coucou"}},{"$and":[{"$and":[{"name":{"$eq":"toto"}},{"surname":{"$eq":"titi"}}]},{"$and":[{"color":{"$eq":"blue"}},{"$or":[{"$and":[{"size":{"$eq":"big"}}]},{"$and":[{"size":{"$eq":"medium"}}]}]}]}]}]}`)
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"namespace":{"$eq":"coucou"}},{"$and":[{"$and":[{"name":{"$eq":"toto"}},{"surname":{"$eq":"titi"}}]},{"$and":[{"color":{"$eq":"blue"}},{"$or":[{"$and":[{"size":{"$eq":"big"}}]},{"$and":[{"size":{"$eq":"medium"}}]},{"$and":[{"list":{"$nin":["a","b","c"]}}]}]}]}]}]}`)
 			})
 		})
 	})
