@@ -37,7 +37,7 @@ func Test_addQueryParameters(t *testing.T) {
 
 		Convey("When I call the method addQueryParameters with a filter", func() {
 
-			ctx.Filter = manipulate.NewFilterComposer().WithKey("name").Equals("toto").AndKey("description").Equals("hello").Done()
+			ctx.Filter = manipulate.NewFilterComposer().WithKey("name").Equals("toto").WithKey("description").Equals("hello").Done()
 
 			err := addQueryParameters(request, ctx)
 

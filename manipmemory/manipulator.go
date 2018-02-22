@@ -47,7 +47,7 @@ func (s *memdbManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental
 	index := "id"
 	args := []interface{}{}
 	if mctx.Filter != nil {
-		index = mctx.Filter.Keys()[0][0]
+		index = mctx.Filter.Keys()[0]
 		args = mctx.Filter.Values()[0]
 	}
 

@@ -7,16 +7,13 @@ import (
 	"net"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
-
-	"github.com/opentracing/opentracing-go/log"
-
-	"go.uber.org/zap"
-
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 	"github.com/aporeto-inc/manipulate/internal/tracing"
-	"github.com/aporeto-inc/manipulate/manipmongo/compiler"
+	"github.com/aporeto-inc/manipulate/manipmongo/internal/compiler"
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/log"
+	"go.uber.org/zap"
 	"gopkg.in/mgo.v2/bson"
 
 	mgo "gopkg.in/mgo.v2"
