@@ -27,6 +27,10 @@ func massageKey(key string) string {
 // CompileFilter compiles the given manipulate Filter into a mongo filter.
 func CompileFilter(f *manipulate.Filter) bson.M {
 
+	if len(f.Operators()) == 0 {
+		return bson.M{}
+	}
+
 	ands := []bson.M{}
 
 	for i, operator := range f.Operators() {
