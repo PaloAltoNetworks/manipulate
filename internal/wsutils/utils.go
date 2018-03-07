@@ -2,7 +2,6 @@ package wsutils
 
 import (
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,6 +12,8 @@ import (
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 	"github.com/gorilla/websocket"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 // DecodeErrors decodes the error in the given data.
@@ -25,7 +26,7 @@ func decodeErrors(r io.Reader) error {
 		return manipulate.NewErrCannotUnmarshal(err.Error())
 	}
 
-	if err := json.Unmarshal(data, &es); err != nil {
+	if err := jsoniter.Unmarshal(data, &es); err != nil {
 		return manipulate.NewErrCannotUnmarshal(err.Error())
 	}
 

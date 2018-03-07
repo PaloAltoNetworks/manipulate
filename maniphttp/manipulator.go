@@ -9,7 +9,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -23,6 +22,7 @@ import (
 	"github.com/opentracing/opentracing-go/log"
 	"go.uber.org/zap"
 
+	jsoniter "github.com/json-iterator/go"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
@@ -170,7 +170,7 @@ func (s *httpManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.
 
 	if response.StatusCode != http.StatusNoContent {
 		defer response.Body.Close() // nolint: errcheck
-		if err := json.NewDecoder(response.Body).Decode(dest); err != nil {
+		if err := jsoniter.NewDecoder(response.Body).Decode(dest); err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
 			return manipulate.NewErrCannotUnmarshal(err.Error())
@@ -223,7 +223,7 @@ func (s *httpManipulator) Retrieve(mctx *manipulate.Context, objects ...elementa
 
 		if response.StatusCode != http.StatusNoContent {
 			defer response.Body.Close() // nolint: errcheck
-			if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
+			if err := jsoniter.NewDecoder(response.Body).Decode(&object); err != nil {
 				sp.SetTag("error", true)
 				sp.LogFields(log.Error(err))
 				return manipulate.NewErrCannotUnmarshal(err.Error())
@@ -254,7 +254,7 @@ func (s *httpManipulator) Create(mctx *manipulate.Context, objects ...elemental.
 		}
 
 		buffer := &bytes.Buffer{}
-		if err = json.NewEncoder(buffer).Encode(&child); err != nil {
+		if err = jsoniter.NewEncoder(buffer).Encode(&child); err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
 			return manipulate.NewErrCannotMarshal(err.Error())
@@ -285,7 +285,7 @@ func (s *httpManipulator) Create(mctx *manipulate.Context, objects ...elemental.
 
 		if response.StatusCode != http.StatusNoContent {
 			defer response.Body.Close() // nolint: errcheck
-			if err := json.NewDecoder(response.Body).Decode(&child); err != nil {
+			if err := jsoniter.NewDecoder(response.Body).Decode(&child); err != nil {
 				sp.SetTag("error", true)
 				sp.LogFields(log.Error(err))
 				return manipulate.NewErrCannotUnmarshal(err.Error())
@@ -320,7 +320,7 @@ func (s *httpManipulator) Update(mctx *manipulate.Context, objects ...elemental.
 		}
 
 		buffer := &bytes.Buffer{}
-		if err = json.NewEncoder(buffer).Encode(object); err != nil {
+		if err = jsoniter.NewEncoder(buffer).Encode(object); err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
 			return manipulate.NewErrCannotMarshal(err.Error())
@@ -351,7 +351,7 @@ func (s *httpManipulator) Update(mctx *manipulate.Context, objects ...elemental.
 
 		if response.StatusCode != http.StatusNoContent {
 			defer response.Body.Close() // nolint: errcheck
-			if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
+			if err := jsoniter.NewDecoder(response.Body).Decode(&object); err != nil {
 				sp.SetTag("error", true)
 				sp.LogFields(log.Error(err))
 				return manipulate.NewErrCannotUnmarshal(err.Error())
@@ -406,7 +406,7 @@ func (s *httpManipulator) Delete(mctx *manipulate.Context, objects ...elemental.
 
 		if response.StatusCode != http.StatusNoContent {
 			defer response.Body.Close() // nolint: errcheck
-			if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
+			if err := jsoniter.NewDecoder(response.Body).Decode(&object); err != nil {
 				sp.SetTag("error", true)
 				sp.LogFields(log.Error(err))
 				return manipulate.NewErrCannotUnmarshal(err.Error())
@@ -580,7 +580,7 @@ func (s *httpManipulator) send(mctx *manipulate.Context, request *http.Request) 
 		es := []elemental.Error{}
 
 		defer response.Body.Close() // nolint: errcheck
-		if err := json.NewDecoder(response.Body).Decode(&es); err != nil {
+		if err := jsoniter.NewDecoder(response.Body).Decode(&es); err != nil {
 			return nil, manipulate.NewErrCannotUnmarshal(err.Error())
 		}
 
