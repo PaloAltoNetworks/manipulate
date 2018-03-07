@@ -26,7 +26,7 @@ func decodeErrors(r io.Reader) error {
 		return manipulate.NewErrCannotUnmarshal(err.Error())
 	}
 
-	if err := jsoniter.Unmarshal(data, &es); err != nil {
+	if err := jsoniter.ConfigCompatibleWithStandardLibrary.Unmarshal(data, &es); err != nil {
 		return manipulate.NewErrCannotUnmarshal(err.Error())
 	}
 
