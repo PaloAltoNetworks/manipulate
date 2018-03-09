@@ -248,7 +248,7 @@ func TestFilter_SubFilters(t *testing.T) {
 
 		Convey("When I call string it should be correct ", func() {
 
-			So(f.String(), ShouldEqual, `"namespace" == "coucou" and "number" == 32.900000 and (("name" == "toto" and "value" == 1) and ("color" in ["red", "green", "blue", 43] and "something" in ["stuff"] or (("size" matches ".*") or ("size" == "medium" and "fat" == false) or ("size" in [true, false]))))`)
+			So(f.String(), ShouldEqual, `"namespace" == "coucou" and "number" == 32.900000 and (("name" == "toto" and "value" == 1) and ("color" in ["red", "green", "blue", 43] and "something" in ["stuff"] or (("size" matches [".*"]) or ("size" == "medium" and "fat" == false) or ("size" in [true, false]))))`)
 		})
 	})
 }

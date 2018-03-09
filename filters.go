@@ -332,7 +332,7 @@ func translateOperator(operator FilterOperator) string {
 func translateValue(comparator FilterComparator, value interface{}) string {
 
 	v := reflect.ValueOf(value)
-	if comparator != ContainComparator && comparator != InComparator {
+	if comparator != ContainComparator && comparator != InComparator && comparator != MatchComparator {
 		if v.Kind() == reflect.Slice || v.Kind() == reflect.Array {
 			v = reflect.ValueOf(v.Index(0).Interface())
 		}
