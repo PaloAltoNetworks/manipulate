@@ -557,18 +557,13 @@ func (s *httpManipulator) send(mctx *manipulate.Context, request *http.Request) 
 
 	s.prepareHeaders(request, mctx)
 
-	// // if _, ok := ctx.Deadline(); ok {
-	// // 	request = request.WithContext(ctx)
-	// // } else {
-	// tctx, cancel := context.WithTimeout(mctx.Context(), 60*time.Second)
-	// defer cancel()
-
-	// request = request.WithContext(tctx)
-	// // }
-
 	response, err := s.client.Do(request)
 	if err != nil {
 		return response, manipulate.NewErrCannotCommunicate(tokensnip.Snip(err, s.currentPassword()).Error())
+	}
+
+	if response.StatusCode == http.StatusBadGateway {
+		return response, manipulate.NewErrCannotCommunicate("Service unavailable")
 	}
 
 	if response.StatusCode == http.StatusLocked {
