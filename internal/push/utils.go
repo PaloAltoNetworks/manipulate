@@ -1,7 +1,6 @@
-package wsutils
+package push
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,10 +11,8 @@ import (
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
-	"github.com/gorilla/websocket"
 )
 
-// DecodeErrors decodes the error in the given data.
 func decodeErrors(r io.Reader) error {
 
 	es := []elemental.Error{}
@@ -37,8 +34,7 @@ func decodeErrors(r io.Reader) error {
 	return errs
 }
 
-// MakeURL makes the websocket url from the given information.
-func MakeURL(u string, endpoint string, namespace string, password string, recursive bool) string {
+func makeURL(u string, endpoint string, namespace string, password string, recursive bool) string {
 
 	u = strings.Replace(u, "http://", "ws://", 1)
 	u = strings.Replace(u, "https://", "wss://", 1)
@@ -55,25 +51,16 @@ func MakeURL(u string, endpoint string, namespace string, password string, recur
 	return u
 }
 
-// Dial returns a connected websocket.
-func Dial(u string, tlsConfig *tls.Config) (*websocket.Conn, error) {
+func isCommError(resp *http.Response) bool {
 
-	dialer := &websocket.Dialer{
-		Proxy:           http.ProxyFromEnvironment,
-		TLSClientConfig: tlsConfig,
+	if resp == nil {
+		return true
 	}
 
-	conn, resp, err := dialer.Dial(u, nil)
-	// this is a com error.
-	if err != nil && resp == nil {
-		return nil, manipulate.NewErrCannotCommunicate(err.Error())
+	switch resp.StatusCode {
+	case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return true
+	default:
+		return false
 	}
-
-	// this has been rejected for a reason. let's decode it.
-	if err != nil {
-		defer resp.Body.Close() // nolint: errcheck
-		return nil, decodeErrors(resp.Body)
-	}
-
-	return conn, nil
 }
