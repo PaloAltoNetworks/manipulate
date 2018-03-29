@@ -3,34 +3,31 @@ package push
 import (
 	"context"
 	"crypto/tls"
-	"errors"
-	"sync"
+	"encoding/json"
+	"net/http"
 	"time"
 
+	"github.com/aporeto-inc/addedeffect/wsc"
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
-	"github.com/aporeto-inc/manipulate/internal/wsutils"
-	"github.com/gorilla/websocket"
 )
 
 const (
 	eventChSize  = 1024
 	errorChSize  = 64
 	statusChSize = 8
+	filterChSize = 2
 )
 
 type subscription struct {
-	events       chan *elemental.Event
-	errors       chan error
-	status       chan manipulate.SubscriberStatus
-	conn         *websocket.Conn
-	stoppedLock  *sync.Mutex
-	stopped      bool
-	endpoint     string
-	tlsConfig    *tls.Config
-	maxConnRetry int
-	filter       *elemental.PushFilter
-	filterLock   *sync.Mutex
+	events   chan *elemental.Event
+	errors   chan error
+	status   chan manipulate.SubscriberStatus
+	filters  chan *elemental.PushFilter
+	conn     wsc.Websocket
+	endpoint string
+	cancel   context.CancelFunc
+	config   wsc.Config
 }
 
 // NewSubscriber creates a new Subscription.
@@ -42,104 +39,67 @@ func NewSubscriber(
 	tlsConfig *tls.Config,
 	filter *elemental.PushFilter,
 	recursive bool,
-	maxConnRetry int,
 ) (manipulate.Subscriber, error) {
 
+	subctx, cancel := context.WithCancel(ctx)
+
+	config := wsc.Config{
+		PongWait:   10 * time.Second,
+		WriteWait:  10 * time.Second,
+		PingPeriod: 5 * time.Second,
+		TLSConfig:  tlsConfig,
+	}
+
 	s := &subscription{
-		endpoint:     wsutils.MakeURL(url, "events", ns, token, recursive),
-		maxConnRetry: maxConnRetry,
-		tlsConfig:    tlsConfig,
-		filter:       filter,
-		stoppedLock:  &sync.Mutex{},
-		filterLock:   &sync.Mutex{},
-		events:       make(chan *elemental.Event, eventChSize),
-		errors:       make(chan error, errorChSize),
-		status:       make(chan manipulate.SubscriberStatus, statusChSize),
+		endpoint: makeURL(url, "events", ns, token, recursive),
+		events:   make(chan *elemental.Event, eventChSize),
+		errors:   make(chan error, errorChSize),
+		status:   make(chan manipulate.SubscriberStatus, statusChSize),
+		filters:  make(chan *elemental.PushFilter, filterChSize),
+		cancel:   cancel,
+		config:   config,
 	}
 
-	if err := s.connect(ctx, true); err != nil {
-		return nil, err
+	if filter != nil {
+		s.filters <- filter
 	}
 
-	select {
-	case s.status <- manipulate.SubscriberStatusInitialConnection:
-	default:
-	}
-
-	go s.listen(ctx)
+	go s.listen(subctx)
 
 	return s, nil
 }
 
-// Unsubscribe stop the subscription. After this, the Subscription must not be reused.
-func (s *subscription) Unsubscribe() error {
-
-	s.stoppedLock.Lock()
-	s.stopped = true
-	s.stoppedLock.Unlock()
-
-	if s.conn == nil {
-		return nil
-	}
-
-	return s.conn.Close()
-}
-
-// UpdateFilter updates the desired filter.
-func (s *subscription) UpdateFilter(filter *elemental.PushFilter) error {
-
-	s.filterLock.Lock()
-	s.filter = filter
-	s.filterLock.Unlock()
-
-	return errors.New("UpdateFilter is not functional yet")
-	// return s.conn.WriteJSON(filter) // this causes concurrent writes
-}
-
-// Events returns the event channel.
-func (s *subscription) Events() chan *elemental.Event {
-	return s.events
-}
-
-// Errors returns the error channel.
-func (s *subscription) Errors() chan error {
-	return s.errors
-}
-
-// Status returns the status channel.
-func (s *subscription) Status() chan manipulate.SubscriberStatus {
-	return s.status
-}
-
-func (s *subscription) currentFilter() *elemental.PushFilter {
-
-	s.filterLock.Lock()
-	defer s.filterLock.Unlock()
-
-	return s.filter
-}
+func (s *subscription) Unsubscribe() error                        { s.cancel(); return nil }
+func (s *subscription) UpdateFilter(filter *elemental.PushFilter) { s.filters <- filter }
+func (s *subscription) Events() chan *elemental.Event             { return s.events }
+func (s *subscription) Errors() chan error                        { return s.errors }
+func (s *subscription) Status() chan manipulate.SubscriberStatus  { return s.status }
 
 func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 
-	try := 0
+	var resp *http.Response
 
 	for {
-		s.conn, err = wsutils.Dial(
-			s.endpoint,
-			s.tlsConfig,
-		)
 
-		if err == nil {
+		if s.conn, resp, err = wsc.NewWebsocket(ctx, s.endpoint, s.config); err == nil {
+
+			if initial {
+				s.publishStatus(manipulate.SubscriberStatusInitialConnection)
+			} else {
+				s.publishStatus(manipulate.SubscriberStatusReconnection)
+			}
+
 			return nil
 		}
 
-		if initial && !manipulate.IsCannotCommunicateError(err) || s.isStopped() {
-			return err
+		if !isCommError(resp) {
+			return decodeErrors(resp.Body)
 		}
 
-		try++
-		if s.maxConnRetry != -1 && try >= s.maxConnRetry {
-			return err
+		if initial {
+			s.publishStatus(manipulate.SubscriberStatusInitialConnectionFailure)
+		} else {
+			s.publishStatus(manipulate.SubscriberStatusReconnectionFailure)
 		}
 
 		select {
@@ -147,104 +107,86 @@ func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 		case <-ctx.Done():
 			return manipulate.NewErrDisconnected("Disconnected per signal")
 		}
-
 	}
 }
 
 func (s *subscription) listen(ctx context.Context) {
 
+	var err error
 	var isReconnection bool
-	var isDisconnection bool
+	var filterData []byte
 
-	defer func() {
-		s.status <- manipulate.SubscriberStatusFinalDisconnection
-	}()
-
-	// Connection loop.
 	for {
 
-		// If the subscriber is stopped, we return.
-		if s.isStopped() {
+		if err = s.connect(ctx, !isReconnection); err != nil {
+			s.publishError(err)
 			return
 		}
-
-		// If this is a disconnection, we publish the status event.
-		if isDisconnection {
-			select {
-			case s.status <- manipulate.SubscriberStatusDisconnection:
-			default:
-			}
-		}
-
-		// If we have been disconnected, we try to reconnect.
-		if isReconnection {
-			if err := s.connect(ctx, false); err != nil {
-				select {
-				case s.errors <- err:
-				default:
-				}
-				return
-			}
-		}
-
-		// If we have a filter we install it.
-		if filter := s.currentFilter(); filter != nil {
-			if err := s.conn.WriteJSON(filter); err != nil {
-				select {
-				case s.errors <- err:
-				default:
-				}
-				return
-			}
-		}
-
-		// If this is a reconnection we publish the reconnection event
-		if isReconnection {
-			select {
-			case s.status <- manipulate.SubscriberStatusReconnection:
-			default:
-			}
-		}
-
 		isReconnection = true
-		isDisconnection = true
 
-		// Read loop.
+	processingLoop:
 		for {
 
-			event := &elemental.Event{}
-
-			if err := s.conn.ReadJSON(event); err != nil {
-
-				// If there is an error, but the user called Unsubscribe we simply return.
-				if s.isStopped() {
-					return
-				}
-
-				// We publish the error
-				select {
-				case s.errors <- err:
-				default:
-				}
-
-				// We break the loop to try to reconnect.
-				break
-			}
-
-			// Otherwise we publish the event and  we continue the read loop.
 			select {
-			case s.events <- event:
-			default:
+
+			case filter := <-s.filters:
+
+				filterData, err = json.Marshal(filter)
+				if err != nil {
+					s.publishError(err)
+					continue
+				}
+
+				s.conn.Write(filterData)
+
+			case data := <-s.conn.Read():
+
+				event := &elemental.Event{}
+				if err = json.Unmarshal(data, event); err != nil {
+					s.publishError(err)
+					continue
+				}
+
+				s.publishEvent(event)
+
+			case err = <-s.conn.Done():
+
+				if err != nil {
+					s.publishError(err)
+					continue
+				}
+
+				break processingLoop
+
+			case <-ctx.Done():
+
+				s.conn.Close() // nolint: errcheck
+				s.publishStatus(manipulate.SubscriberStatusFinalDisconnection)
+				return
 			}
 		}
+
+		s.publishStatus(manipulate.SubscriberStatusDisconnection)
 	}
 }
 
-func (s *subscription) isStopped() bool {
+func (s *subscription) publishError(err error) {
+	select {
+	case s.errors <- err:
+	default:
+	}
+}
 
-	s.stoppedLock.Lock()
-	stopped := s.stopped
-	s.stoppedLock.Unlock()
+func (s *subscription) publishEvent(evt *elemental.Event) {
+	select {
+	case s.events <- evt:
+	default:
+	}
+}
 
-	return stopped
+func (s *subscription) publishStatus(st manipulate.SubscriberStatus) {
+	select {
+	case s.status <- st:
+	default:
+	}
 }

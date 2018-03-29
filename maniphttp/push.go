@@ -16,5 +16,5 @@ func NewSubscriber(ctx context.Context, manipulator manipulate.Manipulator, filt
 		panic("You must pass a HTTP manipulator to maniphttp.NewSubscriper")
 	}
 
-	return push.NewSubscriber(ctx, m.url, m.namespace, m.currentPassword(), m.tlsConfig, filter, recursive, maxConnTry)
+	return push.NewSubscriber(ctx, m.url, m.namespace, m.currentPassword(), m.tlsConfig, filter, recursive)
 }

@@ -58,8 +58,10 @@ type SubscriberStatus int
 // Various values of SubscriberEvent.
 const (
 	SubscriberStatusInitialConnection SubscriberStatus = iota + 1
-	SubscriberStatusDisconnection
+	SubscriberStatusInitialConnectionFailure
 	SubscriberStatusReconnection
+	SubscriberStatusReconnectionFailure
+	SubscriberStatusDisconnection
 	SubscriberStatusFinalDisconnection
 )
 
@@ -67,7 +69,7 @@ const (
 type Subscriber interface {
 
 	// UpdateFilter updates the current filter.
-	UpdateFilter(*elemental.PushFilter) error
+	UpdateFilter(*elemental.PushFilter)
 
 	// Unsubscribe terminate the subscription.
 	Unsubscribe() error
