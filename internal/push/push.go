@@ -153,7 +153,6 @@ func (s *subscription) listen(ctx context.Context) {
 
 				if err != nil {
 					s.publishError(err)
-					continue
 				}
 
 				break processingLoop
