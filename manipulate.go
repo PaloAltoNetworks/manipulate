@@ -68,11 +68,14 @@ const (
 // A Subscriber is the interface to control a push event subscription.
 type Subscriber interface {
 
+	// Start connects to the websocket and starts collecting events
+	// until the given context is canceled or any non communication error is
+	// received. The eventual error will be received in the Errors() channel.
+	// If not nil, the given filter will be applied right away.
+	Start(context.Context, *elemental.PushFilter)
+
 	// UpdateFilter updates the current filter.
 	UpdateFilter(*elemental.PushFilter)
-
-	// Unsubscribe terminate the subscription.
-	Unsubscribe() error
 
 	// Events returns the events channel.
 	Events() chan *elemental.Event

@@ -26,22 +26,17 @@ type subscription struct {
 	filters  chan *elemental.PushFilter
 	conn     wsc.Websocket
 	endpoint string
-	cancel   context.CancelFunc
 	config   wsc.Config
 }
 
 // NewSubscriber creates a new Subscription.
 func NewSubscriber(
-	ctx context.Context,
 	url string,
 	ns string,
 	token string,
 	tlsConfig *tls.Config,
-	filter *elemental.PushFilter,
 	recursive bool,
-) (manipulate.Subscriber, error) {
-
-	subctx, cancel := context.WithCancel(ctx)
+) manipulate.Subscriber {
 
 	config := wsc.Config{
 		PongWait:   10 * time.Second,
@@ -56,24 +51,25 @@ func NewSubscriber(
 		errors:   make(chan error, errorChSize),
 		status:   make(chan manipulate.SubscriberStatus, statusChSize),
 		filters:  make(chan *elemental.PushFilter, filterChSize),
-		cancel:   cancel,
 		config:   config,
 	}
+
+	return s
+}
+
+func (s *subscription) UpdateFilter(filter *elemental.PushFilter) { s.filters <- filter }
+func (s *subscription) Events() chan *elemental.Event             { return s.events }
+func (s *subscription) Errors() chan error                        { return s.errors }
+func (s *subscription) Status() chan manipulate.SubscriberStatus  { return s.status }
+
+func (s *subscription) Start(ctx context.Context, filter *elemental.PushFilter) {
 
 	if filter != nil {
 		s.filters <- filter
 	}
 
-	go s.listen(subctx)
-
-	return s, nil
+	go s.listen(ctx)
 }
-
-func (s *subscription) Unsubscribe() error                        { s.cancel(); return nil }
-func (s *subscription) UpdateFilter(filter *elemental.PushFilter) { s.filters <- filter }
-func (s *subscription) Events() chan *elemental.Event             { return s.events }
-func (s *subscription) Errors() chan error                        { return s.errors }
-func (s *subscription) Status() chan manipulate.SubscriberStatus  { return s.status }
 
 func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 
