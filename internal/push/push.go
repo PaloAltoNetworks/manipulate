@@ -77,7 +77,7 @@ func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 
 	for {
 
-		if s.conn, resp, err = wsc.NewWebsocket(ctx, s.endpoint, s.config); err == nil {
+		if s.conn, resp, err = wsc.Connect(ctx, s.endpoint, s.config); err == nil {
 
 			if initial {
 				s.publishStatus(manipulate.SubscriberStatusInitialConnection)
