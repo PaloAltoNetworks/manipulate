@@ -10,6 +10,7 @@ import (
 	"github.com/aporeto-inc/addedeffect/wsc"
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
+	"github.com/gorilla/websocket"
 )
 
 const (
@@ -155,7 +156,7 @@ func (s *subscription) listen(ctx context.Context) {
 
 			case <-ctx.Done():
 
-				s.conn.Close() // nolint: errcheck
+				s.conn.Close(websocket.CloseGoingAway)
 				s.publishStatus(manipulate.SubscriberStatusFinalDisconnection)
 				return
 			}
