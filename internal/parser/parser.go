@@ -89,7 +89,10 @@ func (p *FilterParser) Parse() (*manipulate.Filter, error) {
 
 		if token == parserTokenEOF || token == parserTokenRIGHTPARENTHESE {
 			// In case of EOF or ")", we need to finalize the filter.
-			if len(stack) > 0 {
+			if len(stack) == 1 {
+				finalFilter = stack[0]
+
+			} else if len(stack) > 1 {
 				if conjunction == parserTokenOR {
 					finalFilter.Or(stack...)
 				} else {
@@ -183,7 +186,8 @@ func (p *FilterParser) Parse() (*manipulate.Filter, error) {
 				if err != nil {
 					return nil, err
 				}
-				finalFilter = subFilter
+				// finalFilter = subFilter
+				stack = append(stack, subFilter)
 
 			} else {
 				subFilter, err := p.Parse()
@@ -192,12 +196,12 @@ func (p *FilterParser) Parse() (*manipulate.Filter, error) {
 				}
 
 				stack = append(stack, subFilter)
-				if conjunction == parserTokenOR {
-					finalFilter.Or(stack...)
-				} else {
-					finalFilter.And(stack...)
-				}
-				stack = []*manipulate.Filter{}
+				// if conjunction == parserTokenOR {
+				// 	finalFilter.Or(stack...)
+				// } else {
+				// 	finalFilter.And(stack...)
+				// }
+				// stack = []*manipulate.Filter{}
 			}
 		}
 	}
