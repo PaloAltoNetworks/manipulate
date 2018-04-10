@@ -10,8 +10,8 @@ import (
 func Test_Parser(t *testing.T) {
 
 	// Valid cases
-	Convey("Given the filter: namespace = chris and test = true", t, func() {
-		parser := NewFilterParser("namespace = chris and test = true")
+	Convey("Given the filter: namespace == chris and test == true", t, func() {
+		parser := NewFilterParser("namespace == chris and test == true")
 		filter, err := parser.Parse()
 
 		expectedFilter := manipulate.NewFilterComposer().And(
@@ -24,8 +24,8 @@ func Test_Parser(t *testing.T) {
 		So(filter.String(), ShouldEqual, expectedFilter.String())
 	})
 
-	Convey("Given the filter: \"namespace\"=\"chris\" and \"test\"= true", t, func() {
-		parser := NewFilterParser("\"namespace\"=\"chris\" and \"test\"= true")
+	Convey(`Given the filter: "namespace"=="chris" and "test"== true`, t, func() {
+		parser := NewFilterParser(`"namespace"=="chris" and "test"== true`)
 		filter, err := parser.Parse()
 
 		expectedFilter := manipulate.NewFilterComposer().And(
@@ -38,8 +38,8 @@ func Test_Parser(t *testing.T) {
 		So(filter.String(), ShouldEqual, expectedFilter.String())
 	})
 
-	Convey("Given the filter: \"namespace\" = \"chris\" and \"test\" = true ", t, func() {
-		parser := NewFilterParser("\"namespace\" = \"chris\" and \"test\" = true")
+	Convey(`Given the filter: "namespace" == "chris" and "test" == true`, t, func() {
+		parser := NewFilterParser(`"namespace" == "chris" and "test" == true`)
 		filter, err := parser.Parse()
 
 		expectedFilter := manipulate.NewFilterComposer().And(
@@ -52,8 +52,8 @@ func Test_Parser(t *testing.T) {
 		So(filter.String(), ShouldEqual, expectedFilter.String())
 	})
 
-	Convey("Given the filter: \"age\" <= 32 or \"age\" > 50", t, func() {
-		parser := NewFilterParser("\"age\" <= 32 or \"age\" > 50")
+	Convey(`Given the filter: "age" <= 32 or "age" > 50`, t, func() {
+		parser := NewFilterParser(`"age" <= 32 or "age" > 50`)
 		filter, err := parser.Parse()
 
 		expectedFilter := manipulate.NewFilterComposer().Or(
@@ -66,8 +66,8 @@ func Test_Parser(t *testing.T) {
 		So(filter.String(), ShouldEqual, expectedFilter.String())
 	})
 
-	Convey("Given the filter: (\"file\" matches \"*.txt\" and \"file\" contains \"search\")", t, func() {
-		parser := NewFilterParser("(\"file\" matches \"*.txt\" and \"file\" contains \"search\")")
+	Convey(`Given the filter: ("file" matches "*.txt" and "file" in "search")`, t, func() {
+		parser := NewFilterParser(`("file" matches "*.txt" and "file" in "search")`)
 		filter, err := parser.Parse()
 
 		expectedFilter := manipulate.NewFilterComposer().And(
@@ -80,8 +80,8 @@ func Test_Parser(t *testing.T) {
 		So(filter.String(), ShouldEqual, expectedFilter.String())
 	})
 
-	Convey("Given the filter: \"namespace\" = \"/chris\"", t, func() {
-		parser := NewFilterParser("\"namespace\" = \"/chris\"")
+	Convey(`Given the filter: "namespace" == "/chris"`, t, func() {
+		parser := NewFilterParser(`"namespace" == "/chris"`)
 
 		expectedFilter := manipulate.NewFilterComposer().WithKey("namespace").Equals("/chris").Done()
 
@@ -91,8 +91,8 @@ func Test_Parser(t *testing.T) {
 		So(filter.String(), ShouldEqual, expectedFilter.String())
 	})
 
-	Convey("Given the filter: \"namespace\" = \"/chris\" and test = true and (\"name\" = toto or \"name\" = tata)", t, func() {
-		parser := NewFilterParser("\"namespace\" = \"/chris\" and test = true (\"name\" = toto or \"name\" = tata)")
+	Convey(`Given the filter: "namespace" == "/chris" and test == true and ("name" == toto or "name" == tata)`, t, func() {
+		parser := NewFilterParser(`"namespace" == "/chris" and test == true ("name" == toto or "name" == tata)`)
 
 		expectedFilter := manipulate.NewFilterComposer().And(
 			manipulate.NewFilterComposer().WithKey("namespace").Equals("/chris").Done(),
@@ -109,8 +109,8 @@ func Test_Parser(t *testing.T) {
 		So(filter.String(), ShouldEqual, expectedFilter.String())
 	})
 
-	Convey("Given the filter: (name = toto or name = tata) and age == 31", t, func() {
-		parser := NewFilterParser("(name = toto or name = tata) and age = 31")
+	Convey(`Given the filter: (name == toto or name == tata) and age == 31`, t, func() {
+		parser := NewFilterParser("(name == toto or name == tata) and age == 31")
 
 		expectedFilter := manipulate.NewFilterComposer().And(
 			manipulate.NewFilterComposer().Or(
@@ -126,8 +126,8 @@ func Test_Parser(t *testing.T) {
 		So(filter.String(), ShouldEqual, expectedFilter.String())
 	})
 
-	Convey("Given the filter: (name = toto and name = tata) or (age = 31 and age = 32)", t, func() {
-		parser := NewFilterParser("(name = toto and name = tata) or (age = 31 and age = 32)")
+	Convey(`Given the filter: (name == toto and name == tata) or (age == 31 and age == 32)`, t, func() {
+		parser := NewFilterParser("(name == toto and name == tata) or (age == 31 and age == 32)")
 
 		expectedFilter := manipulate.NewFilterComposer().Or(
 			manipulate.NewFilterComposer().And(
@@ -146,71 +146,70 @@ func Test_Parser(t *testing.T) {
 		So(filter.String(), ShouldEqual, expectedFilter.String())
 	})
 
-	// Error cases
-	Convey("Given the filter: namespace = chris and test = true or age = 31", t, func() {
-		parser := NewFilterParser("namespace = chris and test = true or age = 31")
+	// // Error cases
+	Convey(`Given the filter: namespace == chris and test == true or age == 31`, t, func() {
+		parser := NewFilterParser("namespace == chris and test == true or age == 31")
 		_, err := parser.Parse()
 
 		So(err, ShouldNotEqual, nil)
 		So(err.Error(), ShouldEqual, `misleading "or" condition. please add parentheses`)
 	})
 
-	Convey("Given the filter: \"namespace = chris", t, func() {
-		parser := NewFilterParser("\"namespace = chris")
+	Convey(`Given the filter: "namespace == chris`, t, func() {
+		parser := NewFilterParser(`"namespace == chris`)
 		_, err := parser.Parse()
 
 		So(err, ShouldNotEqual, nil)
 		So(err.Error(), ShouldEqual, `missing quote after the word namespace`)
 	})
 
-	Convey("Given the filter: namespace\" = chris", t, func() {
-		parser := NewFilterParser("namespace\" = chris")
+	Convey(`Given the filter: namespace" == chris`, t, func() {
+		parser := NewFilterParser(`namespace" == chris`)
 		_, err := parser.Parse()
 
 		So(err, ShouldNotEqual, nil)
 		So(err.Error(), ShouldEqual, `invalid operator. found "`)
 	})
 
-	Convey("Given the filter: namespace = \"chris", t, func() {
-		parser := NewFilterParser("namespace = \"chris")
+	Convey(`Given the filter: namespace == "chris`, t, func() {
+		parser := NewFilterParser(`namespace == "chris`)
 		_, err := parser.Parse()
 
 		So(err, ShouldNotEqual, nil)
 		So(err.Error(), ShouldEqual, `missing quote after the value chris`)
 	})
 
-	Convey("Given the filter: namespace = chris\"", t, func() {
-		parser := NewFilterParser("namespace = chris\"")
+	Convey(`Given the filter: namespace == chris"`, t, func() {
+		parser := NewFilterParser(`namespace == chris"`)
 		_, err := parser.Parse()
 
 		So(err, ShouldNotEqual, nil)
 		So(err.Error(), ShouldEqual, `missing quote before the value chris`)
 	})
 
-	Convey("Given the filter: namespace and chris\"", t, func() {
-		parser := NewFilterParser("namespace and chris\"")
+	Convey(`Given the filter: namespace and chris"`, t, func() {
+		parser := NewFilterParser(`namespace and chris"`)
 		_, err := parser.Parse()
 
 		So(err, ShouldNotEqual, nil)
 		So(err.Error(), ShouldEqual, `invalid operator. found and`)
 	})
 
-	Convey("Given the filter: namespace = and\"", t, func() {
-		parser := NewFilterParser("namespace = and\"")
+	Convey(`Given the filter: namespace == and"`, t, func() {
+		parser := NewFilterParser(`namespace == and"`)
 		_, err := parser.Parse()
 
 		So(err, ShouldNotEqual, nil)
 		So(err.Error(), ShouldEqual, `invalid value. found and`)
 	})
 
-	Convey("Given the filter: namespace=toto", t, func() {
-		parser := NewFilterParser("namespace=toto")
+	Convey(`Given the filter: namespace==toto`, t, func() {
+		parser := NewFilterParser("namespace==toto")
 		_, err := parser.Parse()
 
 		So(err, ShouldNotEqual, nil)
 		So(err.Error(), ShouldContainSubstring, `invalid operator`) // Note: Not sure about this case.
 	})
-
 }
 
 func Test_isLetter(t *testing.T) {
@@ -219,4 +218,55 @@ func Test_isLetter(t *testing.T) {
 		So(isLetter('b'), ShouldEqual, true)
 		So(isLetter(4), ShouldEqual, false)
 	})
+}
+
+func TestFilter_AdvancedFilter(t *testing.T) {
+
+	Convey(`Given I have and advanced complex filter and a parser`, t, func() {
+
+		parser := NewFilterParser(`"namespace" == "coucou" and "number" == 32.900000 and (("name" == "toto" and "value" == 1) and ("color" in ["red", "green", "blue", 43] and "something" in ["stuff"] or (("size" matches [".*"]) or ("size" == "medium" and "fat" == false) or ("size" in [true, false]))))`)
+
+		expectedFilter := manipulate.NewFilterComposer().
+			WithKey("namespace").Equals("coucou").
+			WithKey("number").Equals(32.9).
+			And(
+				manipulate.NewFilterComposer().
+					WithKey("name").Equals("toto").
+					WithKey("value").Equals(1).
+					Done(),
+				manipulate.NewFilterComposer().
+					WithKey("color").Contains("red", "green", "blue", 43).
+					WithKey("something").Contains("stuff").
+					Or(
+						manipulate.NewFilterComposer().
+							WithKey("size").Matches(".*").
+							Done(),
+						manipulate.NewFilterComposer().
+							WithKey("size").Equals("medium").
+							WithKey("fat").Equals(false).
+							Done(),
+						manipulate.NewFilterComposer().
+							WithKey("size").In(true, false).
+							Done(),
+					).
+					Done(),
+			).
+			Done()
+
+		Convey("When I run parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldEqual, nil)
+			})
+
+			Convey("Then the filter should be correct", func() {
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+
+	})
+
 }
