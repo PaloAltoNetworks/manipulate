@@ -89,18 +89,21 @@ func (p *FilterParser) Parse() (*manipulate.Filter, error) {
 
 		if token == parserTokenEOF || token == parserTokenRIGHTPARENTHESE {
 			// In case of EOF or ")", we need to finalize the filter.
-			if len(stack) == 1 {
-				finalFilter = stack[0]
 
-			} else if len(stack) > 1 {
+			switch len(stack) {
+			case 0:
+				// Nothing to do here.
+			case 1:
+				// No specific combination
+				finalFilter = stack[0]
+			default:
+				// Combination depending on the conjunction
 				if conjunction == parserTokenOR {
 					finalFilter.Or(stack...)
 				} else {
 					finalFilter.And(stack...)
 				}
-				stack = []*manipulate.Filter{}
 			}
-
 			break
 		}
 
@@ -179,30 +182,11 @@ func (p *FilterParser) Parse() (*manipulate.Filter, error) {
 			// In case of "(", a subfilter needs to be computed
 			// and stacked to the previously found filters.
 
-			if len(stack) == 0 {
-				// If there are no previously found filters,
-				// start with the subfilter.
-				subFilter, err := p.Parse()
-				if err != nil {
-					return nil, err
-				}
-				// finalFilter = subFilter
-				stack = append(stack, subFilter)
-
-			} else {
-				subFilter, err := p.Parse()
-				if err != nil {
-					return nil, err
-				}
-
-				stack = append(stack, subFilter)
-				// if conjunction == parserTokenOR {
-				// 	finalFilter.Or(stack...)
-				// } else {
-				// 	finalFilter.And(stack...)
-				// }
-				// stack = []*manipulate.Filter{}
+			subFilter, err := p.Parse()
+			if err != nil {
+				return nil, err
 			}
+			stack = append(stack, subFilter)
 		}
 	}
 

@@ -26,8 +26,6 @@ const (
 	parserTokenFALSE                              // 18
 )
 
-type word string
-
 const (
 	wordAND      = "AND"
 	wordOR       = "OR"
@@ -47,10 +45,7 @@ const (
 	runeEOF             = rune(0)
 	runeLEFTPARENTHESE  = '('
 	runeRIGHTPARENTHESE = ')'
-	runeSPACE           = ' '
 	runeQUOTE           = '"'
-	runeTAB             = '\t'
-	runeNEWLINE         = '\n'
 )
 
 var stringToToken = map[string]parserToken{
