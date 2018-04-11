@@ -212,7 +212,11 @@ func makeFilter(key string, operator parserToken, value interface{}) (*manipulat
 	case parserTokenGTE:
 		filter.WithKey(key).GreaterThan(value)
 	case parserTokenCONTAINS:
-		filter.WithKey(key).Contains(value)
+		if values, ok := value.([]interface{}); ok {
+			filter.WithKey(key).In(values...)
+		} else {
+			filter.WithKey(key).In(value)
+		}
 	case parserTokenMATCHES:
 		filter.WithKey(key).Matches(value)
 	default:
@@ -220,6 +224,60 @@ func makeFilter(key string, operator parserToken, value interface{}) (*manipulat
 	}
 
 	return filter.Done(), nil
+}
+
+func (p *FilterParser) parseOperator() (parserToken, error) {
+
+	token, literal := p.scanIgnoreWhitespace()
+
+	if token != parserTokenEQUAL &&
+		token != parserTokenNOTEQUAL &&
+		token != parserTokenLT &&
+		token != parserTokenLTE &&
+		token != parserTokenGT &&
+		token != parserTokenGTE &&
+		token != parserTokenCONTAINS &&
+		token != parserTokenMATCHES {
+		return parserTokenILLEGAL, fmt.Errorf("invalid operator. found %s", literal)
+	}
+
+	return token, nil
+}
+
+func (p *FilterParser) parseValue() (interface{}, error) {
+
+	token, literal := p.scanIgnoreWhitespace()
+
+	if token == parserTokenQUOTE {
+		return p.parseStringValue()
+	}
+
+	if token == parserTokenLEFTSQUAREPARENTHESE {
+		return p.parseArrayValue()
+	}
+
+	if token == parserTokenTRUE {
+		return true, nil
+	}
+
+	if token == parserTokenFALSE {
+		return false, nil
+	}
+
+	if i, err := strconv.ParseInt(literal, 10, 0); err == nil {
+		return i, nil
+	}
+
+	if f, err := strconv.ParseFloat(literal, 0); err == nil {
+		return f, nil
+	}
+
+	v, err := p.parseStringValue()
+	if err != nil {
+		return nil, err
+	}
+
+	return v, nil
 }
 
 func (p *FilterParser) parseStringValue() (string, error) {
@@ -250,52 +308,41 @@ func (p *FilterParser) parseStringValue() (string, error) {
 	return literal, nil
 }
 
-func (p *FilterParser) parseOperator() (parserToken, error) {
+func (p *FilterParser) parseArrayValue() ([]interface{}, error) {
 
+	p.unscan()
 	token, literal := p.scanIgnoreWhitespace()
-
-	if token != parserTokenEQUAL &&
-		token != parserTokenNOTEQUAL &&
-		token != parserTokenLT &&
-		token != parserTokenLTE &&
-		token != parserTokenGT &&
-		token != parserTokenGTE &&
-		token != parserTokenCONTAINS &&
-		token != parserTokenMATCHES {
-		return parserTokenILLEGAL, fmt.Errorf("invalid operator. found %s", literal)
+	if token != parserTokenLEFTSQUAREPARENTHESE {
+		return nil, fmt.Errorf("invalid start of list. found %s", literal)
 	}
 
-	return token, nil
-}
+	values := []interface{}{}
 
-func (p *FilterParser) parseValue() (interface{}, error) {
+	for {
+		token, literal := p.scanIgnoreWhitespace()
 
-	token, literal := p.scanIgnoreWhitespace()
+		if token == parserTokenEOF ||
+			token == parserTokenLEFTPARENTHESE ||
+			token == parserTokenRIGHTPARENTHESE {
+			return nil, fmt.Errorf("invalid end of array. found %s", literal)
+		}
 
-	if token == parserTokenQUOTE {
-		return p.parseStringValue()
+		if token == parserTokenRIGHTSQUAREPARENTHESE {
+			break
+		}
+
+		if token == parserTokenCOMMA {
+			continue
+		}
+
+		p.unscan()
+		value, err := p.parseValue()
+		if err != nil {
+			return nil, err
+		}
+
+		values = append(values, value)
 	}
 
-	if token == parserTokenTRUE {
-		return true, nil
-	}
-
-	if token == parserTokenFALSE {
-		return false, nil
-	}
-
-	if i, err := strconv.ParseInt(literal, 10, 0); err == nil {
-		return i, nil
-	}
-
-	if f, err := strconv.ParseFloat(literal, 0); err == nil {
-		return f, nil
-	}
-
-	v, err := p.parseStringValue()
-	if err != nil {
-		return nil, err
-	}
-
-	return v, nil
+	return values, nil
 }

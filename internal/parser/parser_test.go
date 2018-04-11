@@ -146,7 +146,32 @@ func Test_Parser(t *testing.T) {
 		So(filter.String(), ShouldEqual, expectedFilter.String())
 	})
 
-	// // Error cases
+	Convey(`Given the filter: name == toto and value == 38.9000 and ((name == toto and name == tata) or (age == 31 and age == 32) or protected in [true, false])`, t, func() {
+		parser := NewFilterParser("name == toto and value == 38.9000 and ((name == toto and name == tata) or (age == 31 and age == 32) or protected in [true, false])")
+
+		expectedFilter := manipulate.NewFilterComposer().And(
+			manipulate.NewFilterComposer().WithKey("name").Equals("toto").Done(),
+			manipulate.NewFilterComposer().WithKey("value").Equals(38.9).Done(),
+			manipulate.NewFilterComposer().Or(
+				manipulate.NewFilterComposer().And(
+					manipulate.NewFilterComposer().WithKey("name").Equals("toto").Done(),
+					manipulate.NewFilterComposer().WithKey("name").Equals("tata").Done(),
+				).Done(),
+				manipulate.NewFilterComposer().And(
+					manipulate.NewFilterComposer().WithKey("age").Equals(31).Done(),
+					manipulate.NewFilterComposer().WithKey("age").Equals(32).Done(),
+				).Done(),
+				manipulate.NewFilterComposer().WithKey("protected").In(true, false).Done(),
+			).Done(),
+		).Done()
+
+		filter, err := parser.Parse()
+		So(err, ShouldEqual, nil)
+		So(filter, ShouldNotEqual, nil)
+		So(filter.String(), ShouldEqual, expectedFilter.String())
+	})
+
+	// Error cases
 	Convey(`Given the filter: namespace == chris and test == true or age == 31`, t, func() {
 		parser := NewFilterParser("namespace == chris and test == true or age == 31")
 		_, err := parser.Parse()
@@ -218,55 +243,4 @@ func Test_isLetter(t *testing.T) {
 		So(isLetter('b'), ShouldEqual, true)
 		So(isLetter(4), ShouldEqual, false)
 	})
-}
-
-func TestFilter_AdvancedFilter(t *testing.T) {
-
-	Convey(`Given I have and advanced complex filter and a parser`, t, func() {
-
-		parser := NewFilterParser(`"namespace" == "coucou" and "number" == 32.900000 and (("name" == "toto" and "value" == 1) and ("color" in ["red", "green", "blue", 43] and "something" in ["stuff"] or (("size" matches [".*"]) or ("size" == "medium" and "fat" == false) or ("size" in [true, false]))))`)
-
-		expectedFilter := manipulate.NewFilterComposer().
-			WithKey("namespace").Equals("coucou").
-			WithKey("number").Equals(32.9).
-			And(
-				manipulate.NewFilterComposer().
-					WithKey("name").Equals("toto").
-					WithKey("value").Equals(1).
-					Done(),
-				manipulate.NewFilterComposer().
-					WithKey("color").Contains("red", "green", "blue", 43).
-					WithKey("something").Contains("stuff").
-					Or(
-						manipulate.NewFilterComposer().
-							WithKey("size").Matches(".*").
-							Done(),
-						manipulate.NewFilterComposer().
-							WithKey("size").Equals("medium").
-							WithKey("fat").Equals(false).
-							Done(),
-						manipulate.NewFilterComposer().
-							WithKey("size").In(true, false).
-							Done(),
-					).
-					Done(),
-			).
-			Done()
-
-		Convey("When I run parse", func() {
-
-			filter, err := parser.Parse()
-
-			Convey("Then err should be nil", func() {
-				So(err, ShouldEqual, nil)
-			})
-
-			Convey("Then the filter should be correct", func() {
-				So(filter, ShouldNotEqual, nil)
-				So(filter.String(), ShouldEqual, expectedFilter.String())
-			})
-		})
-
-	})
-
 }

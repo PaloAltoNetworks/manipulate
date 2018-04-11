@@ -5,25 +5,28 @@ type checkRuneFunc = func(ch rune) bool
 type parserToken int
 
 const (
-	parserTokenILLEGAL         parserToken = iota // 0
-	parserTokenEOF                                // 1
-	parserTokenWHITESPACE                         // 2
-	parserTokenWORD                               // 3
-	parserTokenLEFTPARENTHESE                     // 4
-	parserTokenRIGHTPARENTHESE                    // 5
-	parserTokenAND                                // 6
-	parserTokenOR                                 // 7
-	parserTokenQUOTE                              // 8
-	parserTokenEQUAL                              // 9
-	parserTokenNOTEQUAL                           // 10
-	parserTokenLT                                 // 11
-	parserTokenLTE                                // 12
-	parserTokenGT                                 // 13
-	parserTokenGTE                                // 14
-	parserTokenCONTAINS                           // 15
-	parserTokenMATCHES                            // 16
-	parserTokenTRUE                               // 17
-	parserTokenFALSE                              // 18
+	parserTokenILLEGAL               parserToken = iota // 0
+	parserTokenEOF                                      // 1
+	parserTokenWHITESPACE                               // 2
+	parserTokenWORD                                     // 3
+	parserTokenLEFTPARENTHESE                           // 4
+	parserTokenRIGHTPARENTHESE                          // 5
+	parserTokenAND                                      // 6
+	parserTokenOR                                       // 7
+	parserTokenQUOTE                                    // 8
+	parserTokenEQUAL                                    // 9
+	parserTokenNOTEQUAL                                 // 10
+	parserTokenLT                                       // 11
+	parserTokenLTE                                      // 12
+	parserTokenGT                                       // 13
+	parserTokenGTE                                      // 14
+	parserTokenCONTAINS                                 // 15
+	parserTokenMATCHES                                  // 16
+	parserTokenTRUE                                     // 17
+	parserTokenFALSE                                    // 18
+	parserTokenLEFTSQUAREPARENTHESE                     // 19
+	parserTokenRIGHTSQUAREPARENTHESE                    // 20
+	parserTokenCOMMA                                    // 21
 )
 
 const (
@@ -42,10 +45,13 @@ const (
 )
 
 const (
-	runeEOF             = rune(0)
-	runeLEFTPARENTHESE  = '('
-	runeRIGHTPARENTHESE = ')'
-	runeQUOTE           = '"'
+	runeEOF                   = rune(0)
+	runeLEFTPARENTHESE        = '('
+	runeRIGHTPARENTHESE       = ')'
+	runeQUOTE                 = '"'
+	runeLEFTSQUAREPARENTHESE  = '['
+	runeRIGHTSQUAREPARENTHESE = ']'
+	runeCOMMA                 = ','
 )
 
 var stringToToken = map[string]parserToken{
@@ -64,10 +70,13 @@ var stringToToken = map[string]parserToken{
 }
 
 var runeToToken = map[rune]parserToken{
-	runeEOF:             parserTokenEOF,
-	runeLEFTPARENTHESE:  parserTokenLEFTPARENTHESE,
-	runeRIGHTPARENTHESE: parserTokenRIGHTPARENTHESE,
-	runeQUOTE:           parserTokenQUOTE,
+	runeEOF:                   parserTokenEOF,
+	runeLEFTPARENTHESE:        parserTokenLEFTPARENTHESE,
+	runeRIGHTPARENTHESE:       parserTokenRIGHTPARENTHESE,
+	runeQUOTE:                 parserTokenQUOTE,
+	runeLEFTSQUAREPARENTHESE:  parserTokenLEFTSQUAREPARENTHESE,
+	runeRIGHTSQUAREPARENTHESE: parserTokenRIGHTSQUAREPARENTHESE,
+	runeCOMMA:                 parserTokenCOMMA,
 }
 
 // isWhitespace returns true if the given rune is a whitespace
