@@ -281,7 +281,7 @@ func (f *Filter) String() string {
 		switch operator {
 
 		case AndOperator:
-			writeString(&buffer, fmt.Sprintf(`%s`, f.keys[i]))
+			writeString(&buffer, f.keys[i])
 			writeString(&buffer, " ")
 			writeString(&buffer, translateComparator(f.comparators[i]))
 			writeString(&buffer, " ")
