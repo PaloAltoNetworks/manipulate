@@ -10,33 +10,33 @@ type checkRuneFunc = func(ch rune) bool
 type parserToken int
 
 const (
-	parserTokenILLEGAL               parserToken = iota // 0
-	parserTokenEOF                                      // 1
-	parserTokenWHITESPACE                               // 2
-	parserTokenWORD                                     // 3
-	parserTokenLEFTPARENTHESE                           // 4
-	parserTokenRIGHTPARENTHESE                          // 5
-	parserTokenAND                                      // 6
-	parserTokenOR                                       // 7
-	parserTokenQUOTE                                    // 8
-	parserTokenEQUAL                                    // 9
-	parserTokenNOTEQUAL                                 // 10
-	parserTokenLT                                       // 11
-	parserTokenLTE                                      // 12
-	parserTokenGT                                       // 13
-	parserTokenGTE                                      // 14
-	parserTokenCONTAINS                                 // 15
-	parserTokenMATCHES                                  // 16
-	parserTokenTRUE                                     // 17
-	parserTokenFALSE                                    // 18
-	parserTokenLEFTSQUAREPARENTHESE                     // 19
-	parserTokenRIGHTSQUAREPARENTHESE                    // 20
-	parserTokenCOMMA                                    // 21
-	parserTokenNOTCONTAINS                              // 22
-	parserTokenNOTMATCHES                               // 23
-	parserTokenIN                                       // 24
-	parserTokenNOTIN                                    // 25
-	parserTokenNOT                                      // 26
+	parserTokenILLEGAL parserToken = iota
+	parserTokenEOF
+	parserTokenWHITESPACE
+	parserTokenWORD
+	parserTokenLEFTPARENTHESE
+	parserTokenRIGHTPARENTHESE
+	parserTokenAND
+	parserTokenOR
+	parserTokenQUOTE
+	parserTokenEQUAL
+	parserTokenNOTEQUAL
+	parserTokenLT
+	parserTokenLTE
+	parserTokenGT
+	parserTokenGTE
+	parserTokenCONTAINS
+	parserTokenMATCHES
+	parserTokenTRUE
+	parserTokenFALSE
+	parserTokenLEFTSQUAREPARENTHESE
+	parserTokenRIGHTSQUAREPARENTHESE
+	parserTokenCOMMA
+	parserTokenNOTCONTAINS
+	// parserTokenNOTMATCHES not implemented yet in filters.
+	parserTokenIN
+	parserTokenNOTIN
+	parserTokenNOT
 )
 
 const (
