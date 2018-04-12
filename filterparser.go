@@ -194,7 +194,7 @@ func (p *FilterParser) Parse() (*Filter, error) {
 				return nil, err
 			}
 
-			filter, err := makeFilter(literal, operator, value)
+			filter, err := p.makeFilter(literal, operator, value)
 			if err != nil {
 				return nil, err
 			}
@@ -216,7 +216,7 @@ func (p *FilterParser) Parse() (*Filter, error) {
 				return nil, err
 			}
 
-			filter, err := makeFilter(literal, operator, value)
+			filter, err := p.makeFilter(literal, operator, value)
 			if err != nil {
 				return nil, err
 			}
@@ -302,7 +302,7 @@ func (p *FilterParser) scanIgnoreWhitespace() (tok parserToken, lit string) {
 	return
 }
 
-func makeFilter(key string, operator parserToken, value interface{}) (*Filter, error) {
+func (p *FilterParser) makeFilter(key string, operator parserToken, value interface{}) (*Filter, error) {
 
 	filter := NewFilterComposer()
 
@@ -352,6 +352,14 @@ func makeFilter(key string, operator parserToken, value interface{}) (*Filter, e
 		}
 	default:
 		return nil, fmt.Errorf("unsupported operator")
+	}
+
+	token, _ := p.peekIgnoreWhitespace()
+	if token != parserTokenAND &&
+		token != parserTokenOR &&
+		token != parserTokenRIGHTPARENTHESE &&
+		token != parserTokenEOF {
+		return nil, fmt.Errorf("invalid keyword after: %s", filter.Done().String())
 	}
 
 	return filter.Done(), nil

@@ -324,7 +324,6 @@ func translateComparator(comparator FilterComparator) string {
 		return "contains"
 	case NotContainComparator:
 		return "not contains"
-
 	case MatchComparator:
 		return "matches"
 	default:

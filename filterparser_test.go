@@ -279,6 +279,21 @@ func TestParser_Operators_Errors(t *testing.T) {
 			})
 		})
 	})
+	Convey(`Given the wrong operator: name == 0 and toto contains "1" an contains "@hello=2"`, t, func() {
+
+		parser := NewFilterParser(`name == 0 and toto contains "1" an contains "@hello=2"`)
+
+		Convey("When I run Parse", func() {
+
+			_, err := parser.Parse()
+
+			Convey("Then there should be an error", func() {
+				So(err, ShouldNotEqual, nil)
+				So(err.Error(), ShouldContainSubstring, `invalid keyword after: toto contains ["1"]`)
+			})
+		})
+	})
+
 }
 
 func TestParser_Values_StringType(t *testing.T) {
@@ -456,7 +471,6 @@ func TestParser_Values_BoolType(t *testing.T) {
 
 func Test_Parser(t *testing.T) {
 
-	// Valid cases
 	Convey("Given the filter: namespace == chris and test == true", t, func() {
 
 		parser := NewFilterParser("namespace == chris and test == true")
@@ -624,7 +638,7 @@ func Test_Parser(t *testing.T) {
 
 	Convey(`Given the filter: "namespace" == "/chris" and test == true and ("name" == toto or "name" == tata)`, t, func() {
 
-		parser := NewFilterParser(`"namespace" == "/chris" and test == true ("name" == toto or "name" == tata)`)
+		parser := NewFilterParser(`"namespace" == "/chris" and test == true and ("name" == toto or "name" == tata)`)
 
 		Convey("When I run Parse", func() {
 
