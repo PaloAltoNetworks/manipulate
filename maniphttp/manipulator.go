@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aporeto-inc/addedeffect/tokensnip"
+	"github.com/aporeto-inc/addedeffect/tokenutils"
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
 	"github.com/aporeto-inc/manipulate/internal/tracing"
@@ -559,7 +559,7 @@ func (s *httpManipulator) send(mctx *manipulate.Context, request *http.Request) 
 
 	response, err := s.client.Do(request)
 	if err != nil {
-		return response, manipulate.NewErrCannotCommunicate(tokensnip.Snip(err, s.currentPassword()).Error())
+		return response, manipulate.NewErrCannotCommunicate(tokenutils.Snip(err, s.currentPassword()).Error())
 	}
 
 	if response.StatusCode == http.StatusBadGateway {
