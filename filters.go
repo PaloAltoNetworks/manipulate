@@ -276,7 +276,7 @@ func (f *Filter) String() string {
 		switch operator {
 
 		case AndOperator:
-			writeString(&buffer, fmt.Sprintf(`"%s"`, f.keys[i]))
+			writeString(&buffer, fmt.Sprintf(`%s`, f.keys[i]))
 			writeString(&buffer, " ")
 			writeString(&buffer, translateComparator(f.comparators[i]))
 			writeString(&buffer, " ")
@@ -316,10 +316,14 @@ func translateComparator(comparator FilterComparator) string {
 		return ">="
 	case LesserComparator:
 		return "<="
-	case InComparator, ContainComparator:
+	case InComparator:
 		return "in"
-	case NotContainComparator, NotInComparator:
-		return "nin"
+	case NotInComparator:
+		return "not in"
+	case ContainComparator:
+		return "contains"
+	case NotContainComparator:
+		return "not contains"
 
 	case MatchComparator:
 		return "matches"

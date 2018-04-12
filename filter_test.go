@@ -126,7 +126,7 @@ func TestFilter_NewComposer(t *testing.T) {
 						})
 
 						Convey("Then the string representation should be correct", func() {
-							So(f.String(), ShouldEqual, `"hello" == 1 and "gt" >= 12 and "lt" <= 13`)
+							So(f.String(), ShouldEqual, `hello == 1 and gt >= 12 and lt <= 13`)
 						})
 					})
 				})
@@ -181,7 +181,7 @@ func TestFilter_NewComposer(t *testing.T) {
 							})
 
 							Convey("Then the string representation should be correct", func() {
-								So(f.String(), ShouldEqual, `"hello" == 1 and "in" in ["a", "b", "c"] and "ctn" in [false]`)
+								So(f.String(), ShouldEqual, `hello == 1 and in in ["a", "b", "c"] and ctn contains [false]`)
 							})
 						})
 					})
@@ -208,7 +208,7 @@ func TestFilter_NewComposer(t *testing.T) {
 						EqualComparator,
 						NotEqualComparator,
 					})
-					So(f.String(), ShouldEqual, `"hello" == 1 and "x" != true`)
+					So(f.String(), ShouldEqual, `hello == 1 and x != true`)
 				})
 			})
 		})
@@ -229,7 +229,7 @@ func TestFilter_SubFilters(t *testing.T) {
 					Done(),
 				NewFilterComposer().
 					WithKey("color").Contains("red", "green", "blue", 43).
-					WithKey("something").Contains("stuff").
+					WithKey("something").NotContains("stuff").
 					Or(
 						NewFilterComposer().
 							WithKey("size").Matches(".*").
@@ -240,6 +240,7 @@ func TestFilter_SubFilters(t *testing.T) {
 							Done(),
 						NewFilterComposer().
 							WithKey("size").In(true, false).
+							WithKey("size").NotIn(1).
 							Done(),
 					).
 					Done(),
@@ -248,7 +249,7 @@ func TestFilter_SubFilters(t *testing.T) {
 
 		Convey("When I call string it should be correct ", func() {
 
-			So(f.String(), ShouldEqual, `"namespace" == "coucou" and "number" == 32.900000 and (("name" == "toto" and "value" == 1) and ("color" in ["red", "green", "blue", 43] and "something" in ["stuff"] or (("size" matches [".*"]) or ("size" == "medium" and "fat" == false) or ("size" in [true, false]))))`)
+			So(f.String(), ShouldEqual, `namespace == "coucou" and number == 32.900000 and ((name == "toto" and value == 1) and (color contains ["red", "green", "blue", 43] and something not contains "stuff" or ((size matches [".*"]) or (size == "medium" and fat == false) or (size in [true, false] and size not in 1))))`)
 		})
 	})
 }

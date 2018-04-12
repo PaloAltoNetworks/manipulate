@@ -695,9 +695,9 @@ func Test_Parser(t *testing.T) {
 		})
 	})
 
-	Convey(`Given the filter: name == toto and value == 38.9000 and ((name == toto and name == tata) or (age == 31 and age == 32) or protected contains [true, false])`, t, func() {
+	Convey(`Given the filter: name == toto and value == 38.9000 and ((name == toto and name == tata) or (age == 31 and age == 32) or protected in [true, false])`, t, func() {
 
-		parser := NewFilterParser("name == toto and value == 38.9000 and ((name == toto and name == tata) or (age == 31 and age == 32) or protected contains [true, false])")
+		parser := NewFilterParser("name == toto and value == 38.9000 and ((name == toto and name == tata) or (age == 31 and age == 32) or protected in [true, false])")
 
 		Convey("When I run Parse", func() {
 
@@ -730,7 +730,7 @@ func Test_Parser(t *testing.T) {
 
 func TestParser_AdvancedFilter(t *testing.T) {
 
-	advancedFilter := `"namespace" == "coucou" and "number" == 32.900000 and (("name" == "toto" and "value" == 1) and ("color" in ["red", "green", "blue", 43] and "something" in ["stuff"] or (("size" matches [".*"]) or ("size" == "medium" and "fat" == false) or ("size" in [true, false]))))`
+	advancedFilter := `"namespace" == "coucou" and "number" == 32.900000 and (("name" == "toto" and "value" == 1) and ("color" contains ["red", "green", "blue", 43] and "something" in ["stuff"] or (("size" matches [".*"]) or ("size" == "medium" and "fat" == false) or ("size" in [true, false]))))`
 
 	Convey(`Given I have an advanced complex filter and a parser`, t, func() {
 
@@ -748,7 +748,7 @@ func TestParser_AdvancedFilter(t *testing.T) {
 				NewFilterComposer().Or(
 					NewFilterComposer().And(
 						NewFilterComposer().WithKey("color").Contains("red", "green", "blue", 43).Done(),
-						NewFilterComposer().WithKey("something").Contains("stuff").Done(),
+						NewFilterComposer().WithKey("something").In("stuff").Done(),
 					).Done(),
 
 					NewFilterComposer().Or(
