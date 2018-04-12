@@ -110,7 +110,7 @@ func (p *FilterParser) Parse() (*manipulate.Filter, error) {
 		if token == parserTokenQUOTE {
 			// Handle expression starting with QUOTE like "a" operator b
 			token, literal = p.scanIgnoreWhitespace()
-			fmt.Println(token, literal)
+
 			if token != parserTokenWORD {
 				return nil, fmt.Errorf("invalid word after the quote. found %s", literal)
 			}
@@ -162,8 +162,9 @@ func (p *FilterParser) Parse() (*manipulate.Filter, error) {
 
 		if token == parserTokenAND {
 			// Switch the conjunction to an AND
-			if conjunction != -1 && conjunction != parserTokenAND {
-				return nil, fmt.Errorf("misleading \"and\" condition. please add parentheses")
+			if conjunction != -1 && conjunction == parserTokenOR && len(stack) > 1 {
+				filter := manipulate.NewFilterComposer().Or(stack...).Done()
+				stack = []*manipulate.Filter{filter}
 			}
 			conjunction = token
 			continue
@@ -171,8 +172,9 @@ func (p *FilterParser) Parse() (*manipulate.Filter, error) {
 
 		if token == parserTokenOR {
 			// Switch the conjunction to an OR
-			if conjunction != -1 && conjunction != parserTokenOR {
-				return nil, fmt.Errorf("misleading \"or\" condition. please add parentheses")
+			if conjunction != -1 && conjunction == parserTokenAND && len(stack) > 1 {
+				filter := manipulate.NewFilterComposer().And(stack...).Done()
+				stack = []*manipulate.Filter{filter}
 			}
 			conjunction = token
 			continue
@@ -213,12 +215,34 @@ func makeFilter(key string, operator parserToken, value interface{}) (*manipulat
 		filter.WithKey(key).GreaterThan(value)
 	case parserTokenCONTAINS:
 		if values, ok := value.([]interface{}); ok {
+			filter.WithKey(key).Contains(values...)
+		} else {
+			filter.WithKey(key).Contains(value)
+		}
+	case parserTokenNOTCONTAINS:
+		if values, ok := value.([]interface{}); ok {
+			filter.WithKey(key).NotContains(values...)
+		} else {
+			filter.WithKey(key).NotContains(value)
+		}
+	case parserTokenIN:
+		if values, ok := value.([]interface{}); ok {
 			filter.WithKey(key).In(values...)
 		} else {
 			filter.WithKey(key).In(value)
 		}
+	case parserTokenNOTIN:
+		if values, ok := value.([]interface{}); ok {
+			filter.WithKey(key).NotIn(values...)
+		} else {
+			filter.WithKey(key).NotIn(value)
+		}
 	case parserTokenMATCHES:
-		filter.WithKey(key).Matches(value)
+		if values, ok := value.([]interface{}); ok {
+			filter.WithKey(key).Matches(values...)
+		} else {
+			filter.WithKey(key).Matches(value)
+		}
 	default:
 		return nil, fmt.Errorf("unsupported operator")
 	}
@@ -230,6 +254,12 @@ func (p *FilterParser) parseOperator() (parserToken, error) {
 
 	token, literal := p.scanIgnoreWhitespace()
 
+	operatorNot := false
+	if token == parserTokenNOT {
+		operatorNot = true
+		token, literal = p.scanIgnoreWhitespace()
+	}
+
 	if token != parserTokenEQUAL &&
 		token != parserTokenNOTEQUAL &&
 		token != parserTokenLT &&
@@ -237,8 +267,20 @@ func (p *FilterParser) parseOperator() (parserToken, error) {
 		token != parserTokenGT &&
 		token != parserTokenGTE &&
 		token != parserTokenCONTAINS &&
+		token != parserTokenIN &&
 		token != parserTokenMATCHES {
 		return parserTokenILLEGAL, fmt.Errorf("invalid operator. found %s", literal)
+	}
+
+	if operatorNot {
+		switch token {
+		case parserTokenCONTAINS:
+			return parserTokenNOTCONTAINS, nil
+		case parserTokenIN:
+			return parserTokenNOTIN, nil
+		default:
+			return parserTokenILLEGAL, fmt.Errorf("invalid usage of operator NOT before %s", literal)
+		}
 	}
 
 	return token, nil
@@ -295,17 +337,39 @@ func (p *FilterParser) parseStringValue() (string, error) {
 		return "", fmt.Errorf("invalid value. found %s", literal)
 	}
 
+	word := literal
+	for {
+		token, literal = p.scan()
+		if token == parserTokenWORD {
+			word += literal
+			continue
+		}
+
+		if token == parserTokenWHITESPACE {
+			token, _ = p.peekIgnoreWhitespace()
+			if token != parserTokenWORD {
+				break
+			}
+
+			word += literal
+			continue
+		}
+
+		p.unscan()
+		break
+	}
+
 	if isQuoted {
 		if token, _ = p.scanIgnoreWhitespace(); token != parserTokenQUOTE {
-			return "", fmt.Errorf("missing quote after the value %s", literal)
+			return "", fmt.Errorf("missing quote after the value %s", word)
 		}
 	} else {
 		if token, _ = p.peekIgnoreWhitespace(); token == parserTokenQUOTE {
-			return "", fmt.Errorf("missing quote before the value %s", literal)
+			return "", fmt.Errorf("missing quote before the value %s", word)
 		}
 	}
 
-	return literal, nil
+	return word, nil
 }
 
 func (p *FilterParser) parseArrayValue() ([]interface{}, error) {

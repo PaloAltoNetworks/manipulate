@@ -27,21 +27,30 @@ const (
 	parserTokenLEFTSQUAREPARENTHESE                     // 19
 	parserTokenRIGHTSQUAREPARENTHESE                    // 20
 	parserTokenCOMMA                                    // 21
+	parserTokenNOTCONTAINS                              // 22
+	parserTokenNOTMATCHES                               // 23
+	parserTokenIN                                       // 24
+	parserTokenNOTIN                                    // 25
+	parserTokenNOT                                      // 26
 )
 
 const (
-	wordAND      = "AND"
-	wordOR       = "OR"
-	wordEQUAL    = "=="
-	wordNOTEQUAL = "!="
-	wordLT       = "<"
-	wordLTE      = "<="
-	wordGT       = ">"
-	wordGTE      = ">="
-	wordCONTAINS = "IN"
-	wordMATCHES  = "MATCHES"
-	wordTRUE     = "TRUE"
-	wordFALSE    = "FALSE"
+	wordAND         = "AND"
+	wordCONTAINS    = "CONTAINS"
+	wordEQUAL       = "=="
+	wordFALSE       = "FALSE"
+	wordGT          = ">"
+	wordGTE         = ">="
+	wordIN          = "IN"
+	wordLT          = "<"
+	wordLTE         = "<="
+	wordMATCHES     = "MATCHES"
+	wordNOTCONTAINS = "NOT CONTAINS"
+	wordNOTEQUAL    = "!="
+	wordNOTIN       = "NOT IN"
+	wordOR          = "OR"
+	wordTRUE        = "TRUE"
+	wordNOT         = "NOT"
 )
 
 const (
@@ -55,18 +64,22 @@ const (
 )
 
 var stringToToken = map[string]parserToken{
-	wordAND:      parserTokenAND,
-	wordOR:       parserTokenOR,
-	wordEQUAL:    parserTokenEQUAL,
-	wordNOTEQUAL: parserTokenNOTEQUAL,
-	wordLT:       parserTokenLT,
-	wordLTE:      parserTokenLTE,
-	wordGT:       parserTokenGT,
-	wordGTE:      parserTokenGTE,
-	wordCONTAINS: parserTokenCONTAINS,
-	wordMATCHES:  parserTokenMATCHES,
-	wordTRUE:     parserTokenTRUE,
-	wordFALSE:    parserTokenFALSE,
+	wordAND:         parserTokenAND,
+	wordOR:          parserTokenOR,
+	wordEQUAL:       parserTokenEQUAL,
+	wordNOTEQUAL:    parserTokenNOTEQUAL,
+	wordLT:          parserTokenLT,
+	wordLTE:         parserTokenLTE,
+	wordGT:          parserTokenGT,
+	wordGTE:         parserTokenGTE,
+	wordCONTAINS:    parserTokenCONTAINS,
+	wordNOTCONTAINS: parserTokenNOTCONTAINS,
+	wordMATCHES:     parserTokenMATCHES,
+	wordTRUE:        parserTokenTRUE,
+	wordFALSE:       parserTokenFALSE,
+	wordIN:          parserTokenIN,
+	wordNOTIN:       parserTokenNOTIN,
+	wordNOT:         parserTokenNOT,
 }
 
 var runeToToken = map[rune]parserToken{
@@ -85,19 +98,20 @@ func isWhitespace(ch rune) bool {
 }
 
 var specialLetters = map[rune]interface{}{
-	'-': nil,
-	'_': nil,
-	'@': nil,
-	':': nil,
-	'$': nil,
-	'#': nil,
-	'.': nil,
-	'/': nil,
-	'<': nil,
-	'>': nil,
-	'=': nil,
-	'!': nil,
-	'*': nil,
+	'-':  nil,
+	'_':  nil,
+	'@':  nil,
+	':':  nil,
+	'$':  nil,
+	'#':  nil,
+	'.':  nil,
+	'/':  nil,
+	'\\': nil,
+	'<':  nil,
+	'>':  nil,
+	'=':  nil,
+	'!':  nil,
+	'*':  nil,
 }
 
 // isLetter returns true if the given rune is a letter.

@@ -98,6 +98,10 @@ func (s *scanner) scanWord() (parserToken, string) {
 			s.unread()
 			break
 		} else {
+			if ch == '\\' {
+				// Move forward
+				ch = s.read()
+			}
 			buf.WriteRune(ch)
 		}
 	}
