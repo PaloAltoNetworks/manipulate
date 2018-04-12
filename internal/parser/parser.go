@@ -326,50 +326,40 @@ func (p *FilterParser) parseStringValue() (string, error) {
 
 	p.unscan()
 	token, literal := p.scanIgnoreWhitespace()
-	isQuoted := false
+	var value string
 
+	// Quoted string
 	if token == parserTokenQUOTE {
-		isQuoted = true
-		token, literal = p.scanIgnoreWhitespace()
+		// Scan everything until the next quote or the end of the input
+		for {
+			token, literal = p.scan()
+			if token == parserTokenEOF {
+				return "", fmt.Errorf("unable to find quote after value: %s", value)
+			}
+
+			if token == parserTokenQUOTE {
+				return value, nil
+			}
+
+			// Add anything to the value
+			value += literal
+		}
 	}
 
+	// Unquoted string can have only one word
 	if token != parserTokenWORD {
 		return "", fmt.Errorf("invalid value. found %s", literal)
 	}
 
-	word := literal
-	for {
-		token, literal = p.scan()
-		if token == parserTokenWORD {
-			word += literal
-			continue
-		}
-
-		if token == parserTokenWHITESPACE {
-			token, _ = p.peekIgnoreWhitespace()
-			if token != parserTokenWORD {
-				break
-			}
-
-			word += literal
-			continue
-		}
-
-		p.unscan()
-		break
+	token, next := p.peekIgnoreWhitespace()
+	switch token {
+	case parserTokenQUOTE:
+		return "", fmt.Errorf("missing quote before the value: %s", literal)
+	case parserTokenWORD:
+		return "", fmt.Errorf("missing parenthese to protect value: %s %s", literal, next)
 	}
 
-	if isQuoted {
-		if token, _ = p.scanIgnoreWhitespace(); token != parserTokenQUOTE {
-			return "", fmt.Errorf("missing quote after the value %s", word)
-		}
-	} else {
-		if token, _ = p.peekIgnoreWhitespace(); token == parserTokenQUOTE {
-			return "", fmt.Errorf("missing quote before the value %s", word)
-		}
-	}
-
-	return word, nil
+	return literal, nil
 }
 
 func (p *FilterParser) parseArrayValue() ([]interface{}, error) {
