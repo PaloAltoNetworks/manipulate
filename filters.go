@@ -127,6 +127,17 @@ func NewFilterComposer() FilterKeyComposer {
 	return NewFilter()
 }
 
+// NewFilterFromString returns a new filter computed from the given string.
+func NewFilterFromString(filter string) (*Filter, error) {
+
+	f, err := NewFilterParser(filter).Parse()
+	if err != nil {
+		return nil, err
+	}
+
+	return f.Done(), nil
+}
+
 // Keys returns the current keys.
 func (f *Filter) Keys() FilterKeys {
 	return append(FilterKeys{}, f.keys...)
