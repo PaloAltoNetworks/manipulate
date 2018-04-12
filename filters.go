@@ -25,6 +25,7 @@ const (
 	NotContainComparator
 	MatchComparator
 	NotMatchComparator
+	emptyComparator
 )
 
 func (f FilterComparators) add(comparators ...FilterComparator) FilterComparators {
@@ -243,7 +244,9 @@ func (f *Filter) WithKey(key string) FilterValueComposer {
 // And adds a new sub filter to FilterComposer.
 func (f *Filter) And(filters ...*Filter) FilterKeyComposer {
 	f.operators = append(f.operators, AndFilterOperator)
+	f.comparators = append(f.comparators, emptyComparator)
 	f.keys = append(f.keys, "")
+	f.values = append(f.values, nil)
 	f.ands = append(f.ands, filters)
 	f.ors = append(f.ors, nil)
 	return f
@@ -252,7 +255,9 @@ func (f *Filter) And(filters ...*Filter) FilterKeyComposer {
 // Or adds a new sub filter to FilterComposer.
 func (f *Filter) Or(filters ...*Filter) FilterKeyComposer {
 	f.operators = append(f.operators, OrFilterOperator)
+	f.comparators = append(f.comparators, emptyComparator)
 	f.keys = append(f.keys, "")
+	f.values = append(f.values, nil)
 	f.ands = append(f.ands, nil)
 	f.ors = append(f.ors, filters)
 	return f
