@@ -1,6 +1,7 @@
 package manipulate
 
 import (
+	"fmt"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -126,7 +127,7 @@ func TestFilter_NewComposer(t *testing.T) {
 						})
 
 						Convey("Then the string representation should be correct", func() {
-							So(f.String(), ShouldEqual, `"hello" == 1 and "gt" >= 12 and "lt" <= 13`)
+							So(f.String(), ShouldEqual, `hello == 1 and gt >= 12 and lt <= 13`)
 						})
 					})
 				})
@@ -181,7 +182,7 @@ func TestFilter_NewComposer(t *testing.T) {
 							})
 
 							Convey("Then the string representation should be correct", func() {
-								So(f.String(), ShouldEqual, `"hello" == 1 and "in" in ["a", "b", "c"] and "ctn" in [false]`)
+								So(f.String(), ShouldEqual, `hello == 1 and in in ["a", "b", "c"] and ctn contains [false]`)
 							})
 						})
 					})
@@ -208,8 +209,46 @@ func TestFilter_NewComposer(t *testing.T) {
 						EqualComparator,
 						NotEqualComparator,
 					})
-					So(f.String(), ShouldEqual, `"hello" == 1 and "x" != true`)
+					So(f.String(), ShouldEqual, `hello == 1 and x != true`)
 				})
+			})
+		})
+	})
+}
+
+func TestFilter_AppendToExisting(t *testing.T) {
+
+	Convey("Given I have a simple filter", t, func() {
+
+		f := NewFilterComposer().WithKey("a").Equals("b").Done()
+
+		Convey("When I append mode", func() {
+
+			f = f.WithKey("b").Equals("c").Done()
+
+			Convey("Then f should be correct", func() {
+				So(f.String(), ShouldEqual, `a == "b" and b == "c"`)
+			})
+		})
+	})
+
+	Convey("Given I have a composed filter", t, func() {
+
+		f := NewFilterComposer().And(
+			NewFilterComposer().WithKey("a").Equals("b").Done(),
+		).Done()
+
+		Convey("When I append mode", func() {
+
+			f = f.WithKey("b").Equals("c").Done()
+
+			fmt.Println(f.operators)
+			fmt.Println(f.keys)
+			fmt.Println(f.ands)
+			fmt.Println(f.ors)
+
+			Convey("Then f should be correct", func() {
+				So(f.String(), ShouldEqual, `((a == "b")) and b == "c"`)
 			})
 		})
 	})
@@ -229,7 +268,7 @@ func TestFilter_SubFilters(t *testing.T) {
 					Done(),
 				NewFilterComposer().
 					WithKey("color").Contains("red", "green", "blue", 43).
-					WithKey("something").Contains("stuff").
+					WithKey("something").NotContains("stuff").
 					Or(
 						NewFilterComposer().
 							WithKey("size").Matches(".*").
@@ -240,6 +279,7 @@ func TestFilter_SubFilters(t *testing.T) {
 							Done(),
 						NewFilterComposer().
 							WithKey("size").In(true, false).
+							WithKey("size").NotIn(1).
 							Done(),
 					).
 					Done(),
@@ -248,7 +288,7 @@ func TestFilter_SubFilters(t *testing.T) {
 
 		Convey("When I call string it should be correct ", func() {
 
-			So(f.String(), ShouldEqual, `"namespace" == "coucou" and "number" == 32.900000 and (("name" == "toto" and "value" == 1) and ("color" in ["red", "green", "blue", 43] and "something" in ["stuff"] or (("size" matches [".*"]) or ("size" == "medium" and "fat" == false) or ("size" in [true, false]))))`)
+			So(f.String(), ShouldEqual, `namespace == "coucou" and number == 32.900000 and ((name == "toto" and value == 1) and (color contains ["red", "green", "blue", 43] and something not contains "stuff" or ((size matches [".*"]) or (size == "medium" and fat == false) or (size in [true, false] and size not in 1))))`)
 		})
 	})
 }

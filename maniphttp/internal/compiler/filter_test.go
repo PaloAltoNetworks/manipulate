@@ -26,53 +26,7 @@ func TestFilter_CompileFilter(t *testing.T) {
 			})
 
 			Convey("Then the filter should be correct", func() {
-				So(v["tag"][0], ShouldEqual, "$name=thename")
-				So(v["tag"][1], ShouldEqual, "$id=xxx")
-				So(v["tag"][2], ShouldEqual, "yy=zz")
-			})
-		})
-	})
-
-	Convey("Given I create filter with bad comparator", t, func() {
-
-		f := manipulate.NewFilterComposer().
-			WithKey("name").Equals("thename").
-			WithKey("ID").GreaterThan("x").
-			WithKey("associatedTags").Contains("yy=zz").
-			Done()
-
-		Convey("When I call CompileFilter on it", func() {
-
-			v, err := CompileFilter(f)
-
-			Convey("Then err should not be nil", func() {
-				So(err, ShouldNotBeNil)
-			})
-
-			Convey("Then v should be nil", func() {
-				So(v, ShouldBeNil)
-			})
-		})
-	})
-
-	Convey("Given I create filter with bad contains value", t, func() {
-
-		f := manipulate.NewFilterComposer().
-			WithKey("name").Equals("thename").
-			WithKey("ID").Equals("x").
-			WithKey("associatedTags").Contains("yy").
-			Done()
-
-		Convey("When I call CompileFilter on it", func() {
-
-			v, err := CompileFilter(f)
-
-			Convey("Then err should not be nil", func() {
-				So(err, ShouldNotBeNil)
-			})
-
-			Convey("Then v should be nil", func() {
-				So(v, ShouldBeNil)
+				So(v.Get("q"), ShouldEqual, `name == "thename" and ID == "xxx" and associatedTags contains ["yy=zz"]`)
 			})
 		})
 	})

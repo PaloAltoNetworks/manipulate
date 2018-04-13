@@ -46,7 +46,7 @@ func Test_addQueryParameters(t *testing.T) {
 			})
 
 			Convey("Then the query string should be correct ", func() {
-				So(request.URL.RawQuery, ShouldEqual, "tag=%24name%3Dtoto&tag=%24description%3Dhello")
+				So(request.URL.RawQuery, ShouldEqual, "q=name+%3D%3D+%22toto%22+and+description+%3D%3D+%22hello%22")
 			})
 		})
 

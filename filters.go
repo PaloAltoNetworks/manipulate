@@ -25,6 +25,7 @@ const (
 	NotContainComparator
 	MatchComparator
 	NotMatchComparator
+	emptyComparator
 )
 
 func (f FilterComparators) add(comparators ...FilterComparator) FilterComparators {
@@ -125,6 +126,17 @@ func NewFilter() *Filter {
 func NewFilterComposer() FilterKeyComposer {
 
 	return NewFilter()
+}
+
+// NewFilterFromString returns a new filter computed from the given string.
+func NewFilterFromString(filter string) (*Filter, error) {
+
+	f, err := NewFilterParser(filter).Parse()
+	if err != nil {
+		return nil, err
+	}
+
+	return f.Done(), nil
 }
 
 // Keys returns the current keys.
@@ -232,7 +244,9 @@ func (f *Filter) WithKey(key string) FilterValueComposer {
 // And adds a new sub filter to FilterComposer.
 func (f *Filter) And(filters ...*Filter) FilterKeyComposer {
 	f.operators = append(f.operators, AndFilterOperator)
+	f.comparators = append(f.comparators, emptyComparator)
 	f.keys = append(f.keys, "")
+	f.values = append(f.values, nil)
 	f.ands = append(f.ands, filters)
 	f.ors = append(f.ors, nil)
 	return f
@@ -241,7 +255,9 @@ func (f *Filter) And(filters ...*Filter) FilterKeyComposer {
 // Or adds a new sub filter to FilterComposer.
 func (f *Filter) Or(filters ...*Filter) FilterKeyComposer {
 	f.operators = append(f.operators, OrFilterOperator)
+	f.comparators = append(f.comparators, emptyComparator)
 	f.keys = append(f.keys, "")
+	f.values = append(f.values, nil)
 	f.ands = append(f.ands, nil)
 	f.ors = append(f.ors, filters)
 	return f
@@ -265,7 +281,7 @@ func (f *Filter) String() string {
 		switch operator {
 
 		case AndOperator:
-			writeString(&buffer, fmt.Sprintf(`"%s"`, f.keys[i]))
+			writeString(&buffer, f.keys[i])
 			writeString(&buffer, " ")
 			writeString(&buffer, translateComparator(f.comparators[i]))
 			writeString(&buffer, " ")
@@ -305,11 +321,14 @@ func translateComparator(comparator FilterComparator) string {
 		return ">="
 	case LesserComparator:
 		return "<="
-	case InComparator, ContainComparator:
+	case InComparator:
 		return "in"
-	case NotContainComparator, NotInComparator:
-		return "nin"
-
+	case NotInComparator:
+		return "not in"
+	case ContainComparator:
+		return "contains"
+	case NotContainComparator:
+		return "not contains"
 	case MatchComparator:
 		return "matches"
 	default:
