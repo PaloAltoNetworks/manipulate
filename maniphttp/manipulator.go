@@ -177,6 +177,13 @@ func (s *httpManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.
 		}
 	}
 
+	// backport all default values that are empty.
+	for _, o := range dest.List() {
+		if a, ok := o.(elemental.AttributeSpecifiable); ok {
+			elemental.ResetDefaultForZeroValues(a)
+		}
+	}
+
 	return nil
 }
 
@@ -229,6 +236,11 @@ func (s *httpManipulator) Retrieve(mctx *manipulate.Context, objects ...elementa
 				return err
 			}
 		}
+
+		// backport all default values that are empty.
+		if a, ok := object.(elemental.AttributeSpecifiable); ok {
+			elemental.ResetDefaultForZeroValues(a)
+		}
 	}
 
 	return nil
@@ -240,13 +252,13 @@ func (s *httpManipulator) Create(mctx *manipulate.Context, objects ...elemental.
 		mctx = manipulate.NewContext()
 	}
 
-	for _, child := range objects {
+	for _, object := range objects {
 
-		sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.create.object.%s", child.Identity().Name))
-		sp.LogFields(log.String("object_id", child.Identifier()))
+		sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.create.object.%s", object.Identity().Name))
+		sp.LogFields(log.String("object_id", object.Identifier()))
 		defer sp.Finish()
 
-		url, err := s.getURLForChildrenIdentity(mctx.Parent, child.Identity(), child.Version(), mctx.Version)
+		url, err := s.getURLForChildrenIdentity(mctx.Parent, object.Identity(), object.Version(), mctx.Version)
 		if err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
@@ -254,7 +266,7 @@ func (s *httpManipulator) Create(mctx *manipulate.Context, objects ...elemental.
 		}
 
 		buffer := &bytes.Buffer{}
-		if err = json.NewEncoder(buffer).Encode(&child); err != nil {
+		if err = json.NewEncoder(buffer).Encode(&object); err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
 			return manipulate.NewErrCannotMarshal(err.Error())
@@ -285,11 +297,16 @@ func (s *httpManipulator) Create(mctx *manipulate.Context, objects ...elemental.
 
 		if response.StatusCode != http.StatusNoContent {
 			defer response.Body.Close() // nolint: errcheck
-			if err := decodeData(response.Body, &child); err != nil {
+			if err := decodeData(response.Body, &object); err != nil {
 				sp.SetTag("error", true)
 				sp.LogFields(log.Error(err))
 				return err
 			}
+		}
+
+		// backport all default values that are empty.
+		if a, ok := object.(elemental.AttributeSpecifiable); ok {
+			elemental.ResetDefaultForZeroValues(a)
 		}
 	}
 
@@ -357,6 +374,11 @@ func (s *httpManipulator) Update(mctx *manipulate.Context, objects ...elemental.
 				return err
 			}
 		}
+
+		// backport all default values that are empty.
+		if a, ok := object.(elemental.AttributeSpecifiable); ok {
+			elemental.ResetDefaultForZeroValues(a)
+		}
 	}
 
 	return nil
@@ -411,6 +433,11 @@ func (s *httpManipulator) Delete(mctx *manipulate.Context, objects ...elemental.
 				sp.LogFields(log.Error(err))
 				return err
 			}
+		}
+
+		// backport all default values that are empty.
+		if a, ok := object.(elemental.AttributeSpecifiable); ok {
+			elemental.ResetDefaultForZeroValues(a)
 		}
 	}
 
