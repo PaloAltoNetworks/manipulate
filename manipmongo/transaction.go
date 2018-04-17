@@ -41,7 +41,7 @@ func (t *transaction) closeSession() {
 	t.session = nil
 }
 
-func (t *transaction) bulkForIdentity(identity elemental.Identity) *mgo.Bulk {
+func (t *transaction) bulkForIdentity(identity elemental.Identity, prefix string) *mgo.Bulk {
 
 	t.lock.Lock()
 	defer t.lock.Unlock()
@@ -51,7 +51,7 @@ func (t *transaction) bulkForIdentity(identity elemental.Identity) *mgo.Bulk {
 		return bulk
 	}
 
-	t.bulks[identity] = t.db.C(identity.Name).Bulk()
+	t.bulks[identity] = collectionFromIdentity(t.db, identity, prefix).Bulk()
 
 	return t.bulks[identity]
 }

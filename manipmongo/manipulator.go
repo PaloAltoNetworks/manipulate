@@ -92,7 +92,7 @@ func (s *mongoManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental
 	defer session.Close()
 
 	db := session.DB(s.dbName)
-	collection := collectionFromIdentity(db, dest.ContentIdentity())
+	collection := collectionFromIdentity(db, dest.ContentIdentity(), "")
 	filter := bson.M{}
 
 	if mctx.Filter != nil {
@@ -154,7 +154,7 @@ func (s *mongoManipulator) Retrieve(mctx *manipulate.Context, objects ...element
 	defer session.Close()
 
 	db := session.DB(s.dbName)
-	collection := collectionFromIdentity(db, objects[0].Identity())
+	collection := collectionFromIdentity(db, objects[0].Identity(), "")
 	filter := bson.M{}
 
 	if mctx.Filter != nil {
@@ -199,7 +199,7 @@ func (s *mongoManipulator) Create(mctx *manipulate.Context, children ...elementa
 	}
 
 	transaction, commit := s.retrieveTransaction(mctx)
-	bulk := transaction.bulkForIdentity(children[0].Identity())
+	bulk := transaction.bulkForIdentity(children[0].Identity(), "")
 
 	for _, child := range children {
 
@@ -238,7 +238,7 @@ func (s *mongoManipulator) Update(mctx *manipulate.Context, objects ...elemental
 	}
 
 	transaction, commit := s.retrieveTransaction(mctx)
-	bulk := transaction.bulkForIdentity(objects[0].Identity())
+	bulk := transaction.bulkForIdentity(objects[0].Identity(), "")
 
 	for _, o := range objects {
 
@@ -267,7 +267,7 @@ func (s *mongoManipulator) Delete(mctx *manipulate.Context, objects ...elemental
 	}
 
 	transaction, commit := s.retrieveTransaction(mctx)
-	bulk := transaction.bulkForIdentity(objects[0].Identity())
+	bulk := transaction.bulkForIdentity(objects[0].Identity(), "")
 
 	for _, o := range objects {
 
@@ -300,7 +300,7 @@ func (s *mongoManipulator) DeleteMany(mctx *manipulate.Context, identity element
 	defer sp.Finish()
 
 	transaction, commit := s.retrieveTransaction(mctx)
-	bulk := transaction.bulkForIdentity(identity)
+	bulk := transaction.bulkForIdentity(identity, "")
 
 	bulk.RemoveAll(compiler.CompileFilter(mctx.Filter))
 
@@ -321,7 +321,7 @@ func (s *mongoManipulator) Count(mctx *manipulate.Context, identity elemental.Id
 	defer session.Close()
 
 	db := session.DB(s.dbName)
-	collection := collectionFromIdentity(db, identity)
+	collection := collectionFromIdentity(db, identity, "")
 	filter := bson.M{}
 
 	if mctx.Filter != nil {

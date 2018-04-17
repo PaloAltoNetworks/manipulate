@@ -10,7 +10,11 @@ import (
 
 // collectionFromIdentity returns the mgo*.Collection associated to the given Identity from the
 // given *mgo.Database.
-func collectionFromIdentity(db *mgo.Database, identity elemental.Identity) *mgo.Collection {
+func collectionFromIdentity(db *mgo.Database, identity elemental.Identity, prefix string) *mgo.Collection {
+
+	if prefix != "" {
+		return db.C(prefix + "-" + identity.Name)
+	}
 
 	return db.C(identity.Name)
 }
