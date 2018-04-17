@@ -1,6 +1,8 @@
 package maniphttp
 
 import (
+	"bytes"
+	"errors"
 	"net/http"
 	"net/url"
 	"testing"
@@ -126,6 +128,92 @@ func Test_addQueryParameters(t *testing.T) {
 
 			Convey("The query string should not change", func() {
 				So(request.URL.RawQuery, ShouldEqual, "x=1&y=2")
+			})
+		})
+	})
+}
+
+type fakeReader struct{}
+
+func (r *fakeReader) Read(p []byte) (n int, err error) { return 0, errors.New("boom") }
+
+func Test_decodeData(t *testing.T) {
+
+	Convey("Given I have valid json data in a reader", t, func() {
+
+		buf := bytes.NewBuffer([]byte(`{"name":"thename","age": 2}`))
+
+		Convey("When I call decodeData", func() {
+
+			dest := map[string]interface{}{}
+			err := decodeData(buf, &dest)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then the dest should be correct", func() {
+				So(len(dest), ShouldEqual, 2)
+				So(dest["name"].(string), ShouldEqual, "thename")
+				So(dest["age"].(float64), ShouldEqual, 2)
+			})
+		})
+	})
+
+	Convey("Given I have invalid valid json data in a reader", t, func() {
+
+		buf := bytes.NewBuffer([]byte(`<html><body>not json</body></html>`))
+
+		Convey("When I call decodeData", func() {
+
+			dest := map[string]interface{}{}
+			err := decodeData(buf, &dest)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "Unable to unmarshal data: invalid character '<' looking for beginning of value. original data:\n<html><body>not json</body></html>")
+			})
+
+			Convey("Then the dest should be empty", func() {
+				So(len(dest), ShouldEqual, 0)
+			})
+		})
+	})
+
+	Convey("Given I have a nil reader", t, func() {
+
+		Convey("When I call decodeData", func() {
+
+			dest := map[string]interface{}{}
+			err := decodeData(nil, &dest)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, `Unable to unmarshal data: nil reader`)
+			})
+
+			Convey("Then the dest should be empty", func() {
+				So(len(dest), ShouldEqual, 0)
+			})
+		})
+	})
+
+	Convey("Given I have a reader that returns an errpr", t, func() {
+
+		buf := &fakeReader{}
+
+		Convey("When I call decodeData", func() {
+
+			dest := map[string]interface{}{}
+			err := decodeData(buf, &dest)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, `Unable to unmarshal data: unable to read data: boom`)
+			})
+
+			Convey("Then the dest should be empty", func() {
+				So(len(dest), ShouldEqual, 0)
 			})
 		})
 	})

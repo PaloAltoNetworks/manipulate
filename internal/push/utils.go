@@ -19,11 +19,11 @@ func decodeErrors(r io.Reader) error {
 
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
-		return manipulate.NewErrCannotUnmarshal(err.Error())
+		return manipulate.NewErrCannotUnmarshal(fmt.Sprintf("%s: %s", err.Error(), string(data)))
 	}
 
 	if err := json.Unmarshal(data, &es); err != nil {
-		return manipulate.NewErrCannotUnmarshal(err.Error())
+		return manipulate.NewErrCannotUnmarshal(fmt.Sprintf("%s: %s", err.Error(), string(data)))
 	}
 
 	errs := elemental.NewErrors()

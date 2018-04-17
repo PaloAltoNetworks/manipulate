@@ -1,6 +1,10 @@
 package maniphttp
 
 import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 
@@ -49,6 +53,25 @@ func addQueryParameters(req *http.Request, ctx *manipulate.Context) error {
 	}
 
 	req.URL.RawQuery = q.Encode()
+
+	return nil
+}
+
+func decodeData(dataReader io.Reader, dest interface{}) (err error) {
+
+	var data []byte
+
+	if dataReader == nil {
+		return manipulate.NewErrCannotUnmarshal("nil reader")
+	}
+
+	if data, err = ioutil.ReadAll(dataReader); err != nil {
+		return manipulate.NewErrCannotUnmarshal(fmt.Sprintf("unable to read data: %s", err.Error()))
+	}
+
+	if err = json.Unmarshal(data, dest); err != nil {
+		return manipulate.NewErrCannotUnmarshal(fmt.Sprintf("%s. original data:\n%s", err.Error(), string(data)))
+	}
 
 	return nil
 }

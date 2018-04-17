@@ -170,10 +170,10 @@ func (s *httpManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.
 
 	if response.StatusCode != http.StatusNoContent {
 		defer response.Body.Close() // nolint: errcheck
-		if err := json.NewDecoder(response.Body).Decode(dest); err != nil {
+		if err := decodeData(response.Body, dest); err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
-			return manipulate.NewErrCannotUnmarshal(err.Error())
+			return err
 		}
 	}
 
@@ -223,10 +223,10 @@ func (s *httpManipulator) Retrieve(mctx *manipulate.Context, objects ...elementa
 
 		if response.StatusCode != http.StatusNoContent {
 			defer response.Body.Close() // nolint: errcheck
-			if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
+			if err := decodeData(response.Body, &object); err != nil {
 				sp.SetTag("error", true)
 				sp.LogFields(log.Error(err))
-				return manipulate.NewErrCannotUnmarshal(err.Error())
+				return err
 			}
 		}
 	}
@@ -285,10 +285,10 @@ func (s *httpManipulator) Create(mctx *manipulate.Context, objects ...elemental.
 
 		if response.StatusCode != http.StatusNoContent {
 			defer response.Body.Close() // nolint: errcheck
-			if err := json.NewDecoder(response.Body).Decode(&child); err != nil {
+			if err := decodeData(response.Body, &child); err != nil {
 				sp.SetTag("error", true)
 				sp.LogFields(log.Error(err))
-				return manipulate.NewErrCannotUnmarshal(err.Error())
+				return err
 			}
 		}
 	}
@@ -351,10 +351,10 @@ func (s *httpManipulator) Update(mctx *manipulate.Context, objects ...elemental.
 
 		if response.StatusCode != http.StatusNoContent {
 			defer response.Body.Close() // nolint: errcheck
-			if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
+			if err := decodeData(response.Body, &object); err != nil {
 				sp.SetTag("error", true)
 				sp.LogFields(log.Error(err))
-				return manipulate.NewErrCannotUnmarshal(err.Error())
+				return err
 			}
 		}
 	}
@@ -406,10 +406,10 @@ func (s *httpManipulator) Delete(mctx *manipulate.Context, objects ...elemental.
 
 		if response.StatusCode != http.StatusNoContent {
 			defer response.Body.Close() // nolint: errcheck
-			if err := json.NewDecoder(response.Body).Decode(&object); err != nil {
+			if err := decodeData(response.Body, &object); err != nil {
 				sp.SetTag("error", true)
 				sp.LogFields(log.Error(err))
-				return manipulate.NewErrCannotUnmarshal(err.Error())
+				return err
 			}
 		}
 	}
@@ -575,8 +575,8 @@ func (s *httpManipulator) send(mctx *manipulate.Context, request *http.Request) 
 		es := []elemental.Error{}
 
 		defer response.Body.Close() // nolint: errcheck
-		if err := json.NewDecoder(response.Body).Decode(&es); err != nil {
-			return nil, manipulate.NewErrCannotUnmarshal(err.Error())
+		if err := decodeData(response.Body, &es); err != nil {
+			return nil, err
 		}
 
 		errs := elemental.NewErrors()
