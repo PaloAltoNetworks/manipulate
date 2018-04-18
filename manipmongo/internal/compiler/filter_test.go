@@ -4,9 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"gopkg.in/mgo.v2/bson"
-
 	"github.com/aporeto-inc/manipulate"
+	"github.com/globalsign/mgo/bson"
 	. "github.com/smartystreets/goconvey/convey"
 )
 

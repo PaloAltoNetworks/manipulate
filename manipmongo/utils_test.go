@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/aporeto-inc/elemental/test/model"
+	"github.com/globalsign/mgo"
 	. "github.com/smartystreets/goconvey/convey"
-	mgo "gopkg.in/mgo.v2"
 )
 
 func TestUtils_collectionFromIdentity(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 
 	"github.com/aporeto-inc/elemental"
 	"github.com/aporeto-inc/manipulate"
-	mgo "gopkg.in/mgo.v2"
+	"github.com/globalsign/mgo"
 )
 
 // DoesDatabaseExist checks if the database used by the given manipulator exists.

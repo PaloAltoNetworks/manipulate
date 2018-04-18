@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/aporeto-inc/manipulate"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/globalsign/mgo/bson"
 )
 
 func massageKey(key string) string {

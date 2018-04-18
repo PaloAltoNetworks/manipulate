@@ -4,8 +4,7 @@ import (
 	"strings"
 
 	"github.com/aporeto-inc/elemental"
-
-	mgo "gopkg.in/mgo.v2"
+	"github.com/globalsign/mgo"
 )
 
 // collectionFromIdentity returns the mgo*.Collection associated to the given Identity from the
