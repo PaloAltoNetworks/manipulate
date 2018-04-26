@@ -699,9 +699,9 @@ func Test_Parser(t *testing.T) {
 		})
 	})
 
-	Convey(`Given the filter: "namespace" == "chris" and "test" == true`, t, func() {
+	Convey(`Given the filter: "namespace" == "chris" and "test" == true and date > date("2016-03-12")`, t, func() {
 
-		parser := NewFilterParser(`"namespace" == "chris" and "test" == true`)
+		parser := NewFilterParser(`"namespace" == "chris" and "test" == true and date > date("2016-03-12")`)
 
 		Convey("When I run Parse", func() {
 
@@ -709,6 +709,7 @@ func Test_Parser(t *testing.T) {
 			expectedFilter := NewFilterComposer().And(
 				NewFilterComposer().WithKey("namespace").Equals("chris").Done(),
 				NewFilterComposer().WithKey("test").Equals(true).Done(),
+				NewFilterComposer().WithKey("date").GreaterThan(time.Date(2016, time.March, 12, 0, 0, 0, 0, time.UTC)).Done(),
 			).Done()
 
 			Convey("Then there should be no error and the filter should as expected", func() {
