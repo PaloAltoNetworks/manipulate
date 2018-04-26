@@ -117,8 +117,8 @@ var runeToToken = map[rune]parserToken{
 	runeCOMMA:                 parserTokenCOMMA,
 }
 
-var datePattern = regexp.MustCompile("^date\\((.*)\\)$")
-var nowPattern = regexp.MustCompile("^now\\((.*)\\)$")
+var datePattern = regexp.MustCompile(`^date\((.*)\)$`)
+var nowPattern = regexp.MustCompile(`^now\((.*)\)$`)
 var dateLayout = "2006-01-02"
 var dateTimeLayout = "2006-01-02 15:04"
 var errorNotADate = "not a date"
