@@ -2,7 +2,10 @@ package manipulate
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
+	"strings"
+	"time"
 )
 
 type checkRuneFunc = func(ch rune) bool
@@ -113,6 +116,12 @@ var runeToToken = map[rune]parserToken{
 	runeRIGHTSQUAREPARENTHESE: parserTokenRIGHTSQUAREPARENTHESE,
 	runeCOMMA:                 parserTokenCOMMA,
 }
+
+var datePattern = regexp.MustCompile("^date\\((.*)\\)$")
+var nowPattern = regexp.MustCompile("^now\\((.*)\\)$")
+var dateLayout = "2006-01-02"
+var dateTimeLayout = "2006-01-02 15:04"
+var errorNotADate = "not a date"
 
 // FilterParser represents a Parser
 type FilterParser struct {
@@ -354,12 +363,12 @@ func (p *FilterParser) makeFilter(key string, operator parserToken, value interf
 		return nil, fmt.Errorf("unsupported operator")
 	}
 
-	token, _ := p.peekIgnoreWhitespace()
+	token, literal := p.peekIgnoreWhitespace()
 	if token != parserTokenAND &&
 		token != parserTokenOR &&
 		token != parserTokenRIGHTPARENTHESE &&
 		token != parserTokenEOF {
-		return nil, fmt.Errorf("invalid keyword after: %s", filter.Done().String())
+		return nil, fmt.Errorf("invalid keyword after %s. Found %s", filter.Done().String(), literal)
 	}
 
 	return filter.Done(), nil
@@ -429,12 +438,94 @@ func (p *FilterParser) parseValue() (interface{}, error) {
 		return f, nil
 	}
 
+	t, err := p.parseDateValue()
+	if err == nil {
+		return t, nil
+	}
+
+	if err.Error() != errorNotADate {
+		return nil, err
+	}
+
 	v, err := p.parseStringValue()
 	if err != nil {
 		return nil, err
 	}
 
 	return v, nil
+}
+
+func (p *FilterParser) parseDateValue() (time.Time, error) {
+
+	p.unscan()
+	token, literal := p.scanIgnoreWhitespace()
+
+	if !strings.HasPrefix(literal, "date") && !strings.HasPrefix(literal, "now") {
+		return time.Time{}, fmt.Errorf(errorNotADate)
+	}
+
+	expression := literal
+	token, literal = p.scanIgnoreWhitespace()
+	if token != parserTokenLEFTPARENTHESE {
+		p.unscan()
+		return time.Time{}, fmt.Errorf(errorNotADate)
+	}
+
+	expression += literal
+
+	for { // Read the expression until the next )
+		token, literal = p.scan()
+		expression += literal
+
+		if token == parserTokenLEFTPARENTHESE ||
+			token == parserTokenEOF {
+			return time.Time{}, fmt.Errorf("invalid date format. Found %s", literal)
+		}
+
+		if token == parserTokenRIGHTPARENTHESE {
+			break
+		}
+	}
+
+	// Scan for a format date("...")
+	matches := datePattern.FindStringSubmatch(expression)
+	if len(matches) == 2 {
+		inputValue := strings.Trim(strings.TrimSpace(matches[1]), "\"")
+
+		// Attempt multiple format...
+		t, err := time.Parse(time.RFC3339, inputValue)
+		if err == nil {
+			return t, nil
+		}
+		t, err = time.Parse(dateLayout, inputValue)
+		if err == nil {
+			return t, nil
+		}
+		t, err = time.Parse(dateTimeLayout, inputValue)
+		if err == nil {
+			return t, nil
+		}
+
+		return t, fmt.Errorf("unable to parse date format %s", matches[1])
+	}
+
+	// Scan for a format now() or now(-1h)
+	matches = nowPattern.FindStringSubmatch(expression)
+	if len(matches) == 2 {
+		inputValue := strings.Trim(strings.TrimSpace(matches[1]), "\"")
+
+		if inputValue == "" {
+			return time.Now(), nil
+		}
+
+		d, err := time.ParseDuration(inputValue)
+		if err != nil {
+			return time.Time{}, fmt.Errorf("unable to parse duration %s: %s", matches[1], err.Error())
+		}
+		return time.Now().Add(d), nil
+	}
+
+	return time.Time{}, fmt.Errorf("invalid date format %s", expression)
 }
 
 func (p *FilterParser) parseStringValue() (string, error) {

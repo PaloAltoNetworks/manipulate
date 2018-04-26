@@ -2,6 +2,7 @@ package manipulate
 
 import (
 	"testing"
+	"time"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -289,7 +290,7 @@ func TestParser_Operators_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldContainSubstring, `invalid keyword after: toto contains ["1"]`)
+				So(err.Error(), ShouldContainSubstring, `invalid keyword after toto contains ["1"]. Found an`)
 			})
 		})
 	})
@@ -467,6 +468,146 @@ func TestParser_Values_BoolType(t *testing.T) {
 		})
 	})
 
+}
+
+func TestParser_Values_DateType(t *testing.T) {
+	Convey("Given the date value: '2018-04-26'", t, func() {
+		parser := NewFilterParser(`key == date("2018-04-26")`)
+		expectedValue := time.Date(2018, time.April, 26, 0, 0, 0, 0, time.UTC)
+		expectedFilter := NewFilterComposer().WithKey("key").Equals(expectedValue).Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+
+	Convey("Given the date value: '2018-04-26 23:50'", t, func() {
+		parser := NewFilterParser(`key == date("2018-04-26 23:50")`)
+		expectedValue := time.Date(2018, time.April, 26, 23, 50, 0, 0, time.UTC)
+		expectedFilter := NewFilterComposer().WithKey("key").Equals(expectedValue).Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+
+	Convey("Given the date value: '2018-04-26T23:50:30.0Z'", t, func() {
+		parser := NewFilterParser(`key > date("2018-04-26T23:50:30.0Z")`)
+		expectedValue := time.Date(2018, time.April, 26, 23, 50, 30, 0, time.UTC)
+		expectedFilter := NewFilterComposer().WithKey("key").GreaterThan(expectedValue).Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+
+	Convey("Given the date value: 'now()'", t, func() {
+		parser := NewFilterParser(`key > now()`)
+		expectedValue := time.Now()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+
+				actualValue := filter.Values()[0][0].(time.Time)
+				So(actualValue.Year(), ShouldEqual, expectedValue.Year())
+				So(actualValue.Month(), ShouldEqual, expectedValue.Month())
+				So(actualValue.Day(), ShouldEqual, expectedValue.Day())
+				So(actualValue.Hour(), ShouldEqual, expectedValue.Hour())
+			})
+		})
+	})
+
+	Convey("Given the date value: '-1h'", t, func() {
+		parser := NewFilterParser(`key > now("-1h")`)
+		expectedValue := time.Now().Add(-1 * time.Hour)
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+
+				actualValue := filter.Values()[0][0].(time.Time)
+				So(actualValue.Year(), ShouldEqual, expectedValue.Year())
+				So(actualValue.Month(), ShouldEqual, expectedValue.Month())
+				So(actualValue.Day(), ShouldEqual, expectedValue.Day())
+				So(actualValue.Hour(), ShouldEqual, expectedValue.Hour())
+			})
+		})
+	})
+}
+
+func TestParser_Values_DateType_Errors(t *testing.T) {
+
+	Convey("Given the invalid date: 'invalid-date'", t, func() {
+		parser := NewFilterParser(`key == date("invalid-date")`)
+
+		Convey("When I run Parse", func() {
+
+			_, err := parser.Parse()
+
+			Convey("Then there should be an error", func() {
+				So(err, ShouldNotEqual, nil)
+				So(err.Error(), ShouldEqual, `unable to parse date format "invalid-date"`)
+			})
+		})
+	})
+
+	Convey("Given the invalid date: '2012-24-2'", t, func() {
+		parser := NewFilterParser(`key == date("2012-24-2")`)
+
+		Convey("When I run Parse", func() {
+
+			_, err := parser.Parse()
+
+			Convey("Then there should be an error", func() {
+				So(err, ShouldNotEqual, nil)
+				So(err.Error(), ShouldEqual, `unable to parse date format "2012-24-2"`)
+			})
+		})
+	})
+
+	Convey("Given the invalid date: '2012-24-2' (missing quote)", t, func() {
+		parser := NewFilterParser(`key == date(2012-24-2")`)
+
+		Convey("When I run Parse", func() {
+
+			_, err := parser.Parse()
+
+			Convey("Then there should be an error", func() {
+				So(err, ShouldNotEqual, nil)
+				So(err.Error(), ShouldEqual, `unable to parse date format 2012-24-2"`)
+			})
+		})
+	})
 }
 
 func Test_Parser(t *testing.T) {
