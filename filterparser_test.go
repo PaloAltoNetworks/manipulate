@@ -350,6 +350,40 @@ func TestParser_Values_StringType(t *testing.T) {
 		})
 	})
 
+	Convey("Given the string value: 'nowadays'", t, func() {
+
+		parser := NewFilterParser("key == nowadays")
+		expectedFilter := NewFilterComposer().WithKey("key").Equals("nowadays").Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+
+	Convey("Given the string value: 'datetime'", t, func() {
+
+		parser := NewFilterParser("key == datetime")
+		expectedFilter := NewFilterComposer().WithKey("key").Equals("datetime").Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+
 }
 
 func TestParser_Values_Errors(t *testing.T) {
@@ -521,48 +555,6 @@ func TestParser_Values_DateType(t *testing.T) {
 			})
 		})
 	})
-
-	Convey("Given the date value: 'now()'", t, func() {
-		parser := NewFilterParser(`key > now()`)
-		expectedValue := time.Now()
-
-		Convey("When I run Parse", func() {
-
-			filter, err := parser.Parse()
-
-			Convey("Then there should be no error and the filter should as expected", func() {
-				So(err, ShouldEqual, nil)
-				So(filter, ShouldNotEqual, nil)
-
-				actualValue := filter.Values()[0][0].(time.Time)
-				So(actualValue.Year(), ShouldEqual, expectedValue.Year())
-				So(actualValue.Month(), ShouldEqual, expectedValue.Month())
-				So(actualValue.Day(), ShouldEqual, expectedValue.Day())
-				So(actualValue.Hour(), ShouldEqual, expectedValue.Hour())
-			})
-		})
-	})
-
-	Convey("Given the date value: '-1h'", t, func() {
-		parser := NewFilterParser(`key > now("-1h")`)
-		expectedValue := time.Now().Add(-1 * time.Hour)
-
-		Convey("When I run Parse", func() {
-
-			filter, err := parser.Parse()
-
-			Convey("Then there should be no error and the filter should as expected", func() {
-				So(err, ShouldEqual, nil)
-				So(filter, ShouldNotEqual, nil)
-
-				actualValue := filter.Values()[0][0].(time.Time)
-				So(actualValue.Year(), ShouldEqual, expectedValue.Year())
-				So(actualValue.Month(), ShouldEqual, expectedValue.Month())
-				So(actualValue.Day(), ShouldEqual, expectedValue.Day())
-				So(actualValue.Hour(), ShouldEqual, expectedValue.Hour())
-			})
-		})
-	})
 }
 
 func TestParser_Values_DateType_Errors(t *testing.T) {
@@ -576,7 +568,7 @@ func TestParser_Values_DateType_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `unable to parse date format "invalid-date"`)
+				So(err.Error(), ShouldEqual, `unable to parse date format invalid-date`)
 			})
 		})
 	})
@@ -590,7 +582,7 @@ func TestParser_Values_DateType_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `unable to parse date format "2012-24-2"`)
+				So(err.Error(), ShouldEqual, `unable to parse date format 2012-24-2`)
 			})
 		})
 	})
@@ -604,7 +596,43 @@ func TestParser_Values_DateType_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `unable to parse date format 2012-24-2"`)
+				So(err.Error(), ShouldEqual, `unable to parse date format 2012-24-2`)
+			})
+		})
+	})
+}
+
+func TestParser_Values_DurationType(t *testing.T) {
+	Convey("Given the duration value: 'now()'", t, func() {
+		parser := NewFilterParser(`key == now()`)
+		expectedValue := time.Duration(0)
+		expectedFilter := NewFilterComposer().WithKey("key").Equals(expectedValue).Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+
+	Convey("Given the duration value: '-1h'", t, func() {
+		parser := NewFilterParser(`key == now("-1h")`)
+		expectedValue := -1 * time.Hour
+		expectedFilter := NewFilterComposer().WithKey("key").Equals(expectedValue).Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
 			})
 		})
 	})

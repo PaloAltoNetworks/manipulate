@@ -367,6 +367,9 @@ func translateValue(comparator FilterComparator, value interface{}) string {
 		reflect.Int8, reflect.Uint, reflect.Uint16, reflect.Uint32,
 		reflect.Uint64, reflect.Uint8:
 		if v.Type().Name() == "Duration" {
+			if v.Interface() == time.Duration(0) {
+				return `now()`
+			}
 			return fmt.Sprintf(`now("%s")`, v.Interface())
 		}
 

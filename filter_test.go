@@ -1,7 +1,6 @@
 package manipulate
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -242,11 +241,6 @@ func TestFilter_AppendToExisting(t *testing.T) {
 		Convey("When I append mode", func() {
 
 			f = f.WithKey("b").Equals("c").Done()
-
-			fmt.Println(f.operators)
-			fmt.Println(f.keys)
-			fmt.Println(f.ands)
-			fmt.Println(f.ors)
 
 			Convey("Then f should be correct", func() {
 				So(f.String(), ShouldEqual, `((a == "b")) and b == "c"`)
