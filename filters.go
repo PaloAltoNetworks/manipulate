@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 )
 
 // An FilterComparator is the type of a operator used by a filter.
@@ -365,13 +366,14 @@ func translateValue(comparator FilterComparator, value interface{}) string {
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Int8, reflect.Uint, reflect.Uint16, reflect.Uint32,
 		reflect.Uint64, reflect.Uint8:
+		if v.Type().Name() == "Duration" {
+			return fmt.Sprintf(`now("%s")`, v.Interface())
+		}
+
 		return fmt.Sprintf(`%d`, v.Interface())
 
 	case reflect.Float32, reflect.Float64:
 		return fmt.Sprintf(`%f`, v.Interface())
-
-	case reflect.Bool:
-		return fmt.Sprintf(`%t`, v.Interface())
 
 	case reflect.Slice, reflect.Array:
 		var final []string
@@ -382,6 +384,9 @@ func translateValue(comparator FilterComparator, value interface{}) string {
 		return fmt.Sprintf(`[%s]`, strings.Join(final, ", "))
 
 	default:
+		if v.Type().Name() == "Time" {
+			return fmt.Sprintf(`date("%s")`, v.Interface().(time.Time).Format(time.RFC3339))
+		}
 		return fmt.Sprintf(`%v`, v.Interface())
 	}
 }

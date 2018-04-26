@@ -3,6 +3,7 @@ package manipulate
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -249,6 +250,37 @@ func TestFilter_AppendToExisting(t *testing.T) {
 
 			Convey("Then f should be correct", func() {
 				So(f.String(), ShouldEqual, `((a == "b")) and b == "c"`)
+			})
+		})
+	})
+}
+
+func TestFilter_Date(t *testing.T) {
+
+	Convey("Given I have a filter with date", t, func() {
+
+		f := NewFilterComposer().WithKey("date").Equals(time.Time{}).Done()
+
+		Convey("When I call String", func() {
+
+			s := f.String()
+
+			Convey("Then the string should be correct", func() {
+				So(s, ShouldEqual, `date == date("0001-01-01T00:00:00Z")`)
+			})
+		})
+	})
+
+	Convey("Given I have a filter with duration", t, func() {
+
+		f := NewFilterComposer().WithKey("duration").Equals(-2 * time.Second).Done()
+
+		Convey("When I call String", func() {
+
+			s := f.String()
+
+			Convey("Then the string should be correct", func() {
+				So(s, ShouldEqual, `duration == now("-2s")`)
 			})
 		})
 	})
