@@ -458,14 +458,14 @@ func (p *FilterParser) parseValue() (interface{}, error) {
 func (p *FilterParser) parseDateValue() (time.Time, error) {
 
 	p.unscan()
-	token, literal := p.scanIgnoreWhitespace()
+	_, literal := p.scanIgnoreWhitespace()
 
 	if !strings.HasPrefix(literal, "date") && !strings.HasPrefix(literal, "now") {
 		return time.Time{}, fmt.Errorf(errorNotADate)
 	}
 
 	expression := literal
-	token, literal = p.scanIgnoreWhitespace()
+	token, literal := p.scanIgnoreWhitespace()
 	if token != parserTokenLEFTPARENTHESE {
 		p.unscan()
 		return time.Time{}, fmt.Errorf(errorNotADate)
