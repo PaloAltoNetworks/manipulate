@@ -121,6 +121,7 @@ var datePattern = regexp.MustCompile(`^date\((.*)\)$`)
 var nowPattern = regexp.MustCompile(`^now\((.*)\)$`)
 var dateLayout = "2006-01-02"
 var dateTimeLayout = "2006-01-02 15:04"
+var errorPrefix = "filter parsing failure:"
 var errorInvalidExpression = fmt.Errorf("invalid expression")
 
 // FilterParser represents a Parser
@@ -149,7 +150,7 @@ func (p *FilterParser) Parse() (*Filter, error) {
 	if token != parserTokenWORD &&
 		token != parserTokenQUOTE &&
 		token != parserTokenLEFTPARENTHESE {
-		return nil, fmt.Errorf("invalid start of expression. found %s", literal)
+		return nil, fmt.Errorf("%s invalid start of expression. found %s", errorPrefix, literal)
 	}
 
 	// Stack all discovered the filters
@@ -186,11 +187,11 @@ func (p *FilterParser) Parse() (*Filter, error) {
 			token, literal = p.scanIgnoreWhitespace()
 
 			if token != parserTokenWORD {
-				return nil, fmt.Errorf("invalid word after the quote. found %s", literal)
+				return nil, fmt.Errorf("%s invalid word after the quote. found %s", errorPrefix, literal)
 			}
 			quote, _ := p.scanIgnoreWhitespace()
 			if quote != parserTokenQUOTE {
-				return nil, fmt.Errorf("missing quote after the word %s", literal)
+				return nil, fmt.Errorf("%s missing quote after the word %s", errorPrefix, literal)
 			}
 
 			operator, err := p.parseOperator()
@@ -360,7 +361,7 @@ func (p *FilterParser) makeFilter(key string, operator parserToken, value interf
 			filter.WithKey(key).Matches(value)
 		}
 	default:
-		return nil, fmt.Errorf("unsupported operator")
+		return nil, fmt.Errorf("%s unsupported operator", errorPrefix)
 	}
 
 	token, literal := p.peekIgnoreWhitespace()
@@ -368,7 +369,11 @@ func (p *FilterParser) makeFilter(key string, operator parserToken, value interf
 		token != parserTokenOR &&
 		token != parserTokenRIGHTPARENTHESE &&
 		token != parserTokenEOF {
-		return nil, fmt.Errorf("invalid keyword after %s. Found %s", filter.Done().String(), literal)
+
+		if token == parserTokenEOF {
+			literal = "EOF"
+		}
+		return nil, fmt.Errorf("%s invalid keyword after %s. found %s", errorPrefix, filter.Done().String(), literal)
 	}
 
 	return filter.Done(), nil
@@ -393,7 +398,7 @@ func (p *FilterParser) parseOperator() (parserToken, error) {
 		token != parserTokenCONTAINS &&
 		token != parserTokenIN &&
 		token != parserTokenMATCHES {
-		return parserTokenILLEGAL, fmt.Errorf("invalid operator. found %s", literal)
+		return parserTokenILLEGAL, fmt.Errorf("%s invalid operator. found %s", errorPrefix, literal)
 	}
 
 	if operatorNot {
@@ -403,7 +408,7 @@ func (p *FilterParser) parseOperator() (parserToken, error) {
 		case parserTokenIN:
 			return parserTokenNOTIN, nil
 		default:
-			return parserTokenILLEGAL, fmt.Errorf("invalid usage of operator NOT before %s", literal)
+			return parserTokenILLEGAL, fmt.Errorf("%s invalid usage of operator NOT before %s", errorPrefix, literal)
 		}
 	}
 
@@ -516,7 +521,7 @@ func (p *FilterParser) parseDurationValue() (time.Duration, error) {
 
 	d, err := time.ParseDuration(expression)
 	if err != nil {
-		return -1, fmt.Errorf("unable to parse duration %s: %s", expression, err.Error())
+		return -1, fmt.Errorf("%s unable to parse duration %s: %s", errorPrefix, expression, err.Error())
 	}
 	return d, nil
 }
@@ -544,7 +549,7 @@ func (p *FilterParser) parseDateValue() (time.Time, error) {
 		return t, nil
 	}
 
-	return t, fmt.Errorf("unable to parse date format %s", expression)
+	return t, fmt.Errorf("%s unable to parse date format %s", errorPrefix, expression)
 }
 
 func (p *FilterParser) parseStringValue() (string, error) {
@@ -559,7 +564,7 @@ func (p *FilterParser) parseStringValue() (string, error) {
 		for {
 			token, literal = p.scan()
 			if token == parserTokenEOF {
-				return "", fmt.Errorf("unable to find quote after value: %s", value)
+				return "", fmt.Errorf("%s unable to find quote after value: %s. found EOF", errorPrefix, value)
 			}
 
 			if token == parserTokenQUOTE {
@@ -573,15 +578,18 @@ func (p *FilterParser) parseStringValue() (string, error) {
 
 	// Unquoted string can have only one word
 	if token != parserTokenWORD {
-		return "", fmt.Errorf("invalid value. found %s", literal)
+		if token == parserTokenEOF {
+			literal = "EOF"
+		}
+		return "", fmt.Errorf("%s invalid value. found %s", errorPrefix, literal)
 	}
 
 	token, next := p.peekIgnoreWhitespace()
 	switch token {
 	case parserTokenQUOTE:
-		return "", fmt.Errorf("missing quote before the value: %s", literal)
+		return "", fmt.Errorf("%s missing quote before the value: %s", errorPrefix, literal)
 	case parserTokenWORD:
-		return "", fmt.Errorf("missing parenthese to protect value: %s %s", literal, next)
+		return "", fmt.Errorf("%s missing parenthese to protect value: %s %s", errorPrefix, literal, next)
 	}
 
 	return literal, nil
@@ -593,7 +601,7 @@ func (p *FilterParser) parseArrayValue() ([]interface{}, error) {
 
 	token, literal := p.scanIgnoreWhitespace()
 	if token != parserTokenLEFTSQUAREPARENTHESE {
-		return nil, fmt.Errorf("invalid start of list. found %s", literal)
+		return nil, fmt.Errorf("%s invalid start of list. found %s", errorPrefix, literal)
 	}
 
 	values := []interface{}{}
@@ -605,7 +613,7 @@ func (p *FilterParser) parseArrayValue() ([]interface{}, error) {
 		if token == parserTokenEOF ||
 			token == parserTokenLEFTPARENTHESE ||
 			token == parserTokenRIGHTPARENTHESE {
-			return nil, fmt.Errorf("invalid end of array. found %s", literal)
+			return nil, fmt.Errorf("%s invalid end of array. found %s", errorPrefix, literal)
 		}
 
 		if token == parserTokenRIGHTSQUAREPARENTHESE {
