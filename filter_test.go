@@ -1,8 +1,8 @@
 package manipulate
 
 import (
-	"fmt"
 	"testing"
+	"time"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -102,19 +102,27 @@ func TestFilter_NewComposer(t *testing.T) {
 					Convey("When I add a new LesserThan statement", func() {
 
 						f.WithKey("lt").LesserThan(13)
+						f.WithKey("gte").GreaterOrEqualThan(22)
+						f.WithKey("lte").LesserOrEqualThan(23)
 
 						Convey("Then the filter should be correctly populated", func() {
 							So(f.Keys(), ShouldResemble, FilterKeys{
 								"hello",
 								"gt",
 								"lt",
+								"gte",
+								"lte",
 							})
 							So(f.Values(), ShouldResemble, FilterValues{
 								FilterValue{1},
 								FilterValue{12},
 								FilterValue{13},
+								FilterValue{22},
+								FilterValue{23},
 							})
 							So(f.Operators(), ShouldResemble, FilterOperators{
+								AndOperator,
+								AndOperator,
 								AndOperator,
 								AndOperator,
 								AndOperator,
@@ -123,11 +131,13 @@ func TestFilter_NewComposer(t *testing.T) {
 								EqualComparator,
 								GreaterComparator,
 								LesserComparator,
+								GreaterOrEqualComparator,
+								LesserOrEqualComparator,
 							})
 						})
 
 						Convey("Then the string representation should be correct", func() {
-							So(f.String(), ShouldEqual, `hello == 1 and gt >= 12 and lt <= 13`)
+							So(f.String(), ShouldEqual, `hello == 1 and gt > 12 and lt < 13 and gte >= 22 and lte <= 23`)
 						})
 					})
 				})
@@ -242,13 +252,39 @@ func TestFilter_AppendToExisting(t *testing.T) {
 
 			f = f.WithKey("b").Equals("c").Done()
 
-			fmt.Println(f.operators)
-			fmt.Println(f.keys)
-			fmt.Println(f.ands)
-			fmt.Println(f.ors)
-
 			Convey("Then f should be correct", func() {
 				So(f.String(), ShouldEqual, `((a == "b")) and b == "c"`)
+			})
+		})
+	})
+}
+
+func TestFilter_Date(t *testing.T) {
+
+	Convey("Given I have a filter with date", t, func() {
+
+		f := NewFilterComposer().WithKey("date").Equals(time.Time{}).Done()
+
+		Convey("When I call String", func() {
+
+			s := f.String()
+
+			Convey("Then the string should be correct", func() {
+				So(s, ShouldEqual, `date == date("0001-01-01T00:00:00Z")`)
+			})
+		})
+	})
+
+	Convey("Given I have a filter with duration", t, func() {
+
+		f := NewFilterComposer().WithKey("duration").Equals(-2 * time.Second).Done()
+
+		Convey("When I call String", func() {
+
+			s := f.String()
+
+			Convey("Then the string should be correct", func() {
+				So(s, ShouldEqual, `duration == now("-2s")`)
 			})
 		})
 	})
@@ -287,7 +323,6 @@ func TestFilter_SubFilters(t *testing.T) {
 			Done()
 
 		Convey("When I call string it should be correct ", func() {
-
 			So(f.String(), ShouldEqual, `namespace == "coucou" and number == 32.900000 and ((name == "toto" and value == 1) and (color contains ["red", "green", "blue", 43] and something not contains "stuff" or ((size matches [".*"]) or (size == "medium" and fat == false) or (size in [true, false] and size not in 1))))`)
 		})
 	})

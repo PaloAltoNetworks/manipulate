@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 )
 
 // An FilterComparator is the type of a operator used by a filter.
@@ -18,7 +19,9 @@ const (
 	EqualComparator FilterComparator = iota
 	NotEqualComparator
 	GreaterComparator
+	GreaterOrEqualComparator
 	LesserComparator
+	LesserOrEqualComparator
 	InComparator
 	NotInComparator
 	ContainComparator
@@ -80,7 +83,9 @@ type SubFilters []SubFilter
 type FilterValueComposer interface {
 	Equals(interface{}) FilterKeyComposer
 	NotEquals(interface{}) FilterKeyComposer
+	GreaterOrEqualThan(interface{}) FilterKeyComposer
 	GreaterThan(interface{}) FilterKeyComposer
+	LesserOrEqualThan(interface{}) FilterKeyComposer
 	LesserThan(interface{}) FilterKeyComposer
 	In(...interface{}) FilterKeyComposer
 	NotIn(...interface{}) FilterKeyComposer
@@ -183,17 +188,31 @@ func (f *Filter) NotEquals(value interface{}) FilterKeyComposer {
 	return f
 }
 
-// GreaterThan adds a greater than comparator to the FilterComposer.
+// GreaterThan adds a greater than (exclusive) comparator to the FilterComposer.
 func (f *Filter) GreaterThan(value interface{}) FilterKeyComposer {
 	f.values = f.values.add(value)
 	f.comparators = f.comparators.add(GreaterComparator)
 	return f
 }
 
-// LesserThan adds a lesser than comparator to the FilterComposer.
+// GreaterOrEqualThan adds a greater than (inclusive) comparator to the FilterComposer.
+func (f *Filter) GreaterOrEqualThan(value interface{}) FilterKeyComposer {
+	f.values = f.values.add(value)
+	f.comparators = f.comparators.add(GreaterOrEqualComparator)
+	return f
+}
+
+// LesserThan adds a lesser than (exclusive) comparator to the FilterComposer.
 func (f *Filter) LesserThan(value interface{}) FilterKeyComposer {
 	f.values = f.values.add(value)
 	f.comparators = f.comparators.add(LesserComparator)
+	return f
+}
+
+// LesserOrEqualThan adds a lesser than (inclusive) comparator to the FilterComposer.
+func (f *Filter) LesserOrEqualThan(value interface{}) FilterKeyComposer {
+	f.values = f.values.add(value)
+	f.comparators = f.comparators.add(LesserOrEqualComparator)
 	return f
 }
 
@@ -317,10 +336,14 @@ func translateComparator(comparator FilterComparator) string {
 		return "=="
 	case NotEqualComparator:
 		return "!="
-	case GreaterComparator:
+	case GreaterOrEqualComparator:
 		return ">="
-	case LesserComparator:
+	case GreaterComparator:
+		return ">"
+	case LesserOrEqualComparator:
 		return "<="
+	case LesserComparator:
+		return "<"
 	case InComparator:
 		return "in"
 	case NotInComparator:
@@ -365,6 +388,13 @@ func translateValue(comparator FilterComparator, value interface{}) string {
 	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Int8, reflect.Uint, reflect.Uint16, reflect.Uint32,
 		reflect.Uint64, reflect.Uint8:
+		if v.Type().Name() == "Duration" {
+			if v.Interface() == time.Duration(0) {
+				return `now()`
+			}
+			return fmt.Sprintf(`now("%s")`, v.Interface())
+		}
+
 		return fmt.Sprintf(`%d`, v.Interface())
 
 	case reflect.Float32, reflect.Float64:
@@ -382,6 +412,9 @@ func translateValue(comparator FilterComparator, value interface{}) string {
 		return fmt.Sprintf(`[%s]`, strings.Join(final, ", "))
 
 	default:
+		if v.Type().Name() == "Time" {
+			return fmt.Sprintf(`date("%s")`, v.Interface().(time.Time).Format(time.RFC3339))
+		}
 		return fmt.Sprintf(`%v`, v.Interface())
 	}
 }
