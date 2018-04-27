@@ -378,6 +378,9 @@ func translateValue(comparator FilterComparator, value interface{}) string {
 	case reflect.Float32, reflect.Float64:
 		return fmt.Sprintf(`%f`, v.Interface())
 
+	case reflect.Bool:
+		return fmt.Sprintf(`%t`, v.Interface())
+
 	case reflect.Slice, reflect.Array:
 		var final []string
 		for i := 0; i < v.Len(); i++ {
