@@ -106,7 +106,7 @@ func TestParser_Keys_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `filter parsing failure: missing quote after the word key`)
+				So(err.Error(), ShouldEqual, `missing quote after the word key`)
 			})
 		})
 	})
@@ -246,7 +246,7 @@ func TestParser_Operators_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `filter parsing failure: invalid operator. found "`)
+				So(err.Error(), ShouldEqual, `invalid operator. found " instead of (==, !=, <, <=, >, >=, contains, in, matches)`)
 			})
 		})
 	})
@@ -261,7 +261,7 @@ func TestParser_Operators_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `filter parsing failure: invalid operator. found and`)
+				So(err.Error(), ShouldEqual, `invalid operator. found and instead of (==, !=, <, <=, >, >=, contains, in, matches)`)
 			})
 		})
 	})
@@ -276,7 +276,7 @@ func TestParser_Operators_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldContainSubstring, `invalid operator`) // Note: Not sure about this case.
+				So(err.Error(), ShouldContainSubstring, `invalid operator. found EOF instead of (==, !=, <, <=, >, >=, contains, in, matches)`) // Note: Not sure about this case.
 			})
 		})
 	})
@@ -398,7 +398,7 @@ func TestParser_Values_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, "filter parsing failure: missing parenthese to protect value: hello world")
+				So(err.Error(), ShouldEqual, "missing parenthese to protect value: hello world")
 			})
 		})
 	})
@@ -413,7 +413,7 @@ func TestParser_Values_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `filter parsing failure: unable to find quote after value: hello. found EOF`)
+				So(err.Error(), ShouldEqual, `unable to find quote after value: hello. found EOF`)
 			})
 		})
 	})
@@ -428,7 +428,7 @@ func TestParser_Values_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `filter parsing failure: missing quote before the value: hello`)
+				So(err.Error(), ShouldEqual, `missing quote before the value: hello`)
 			})
 		})
 	})
@@ -443,7 +443,7 @@ func TestParser_Values_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `filter parsing failure: invalid value. found and`)
+				So(err.Error(), ShouldEqual, `invalid value. found and`)
 			})
 		})
 	})
@@ -568,7 +568,7 @@ func TestParser_Values_DateType_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `filter parsing failure: unable to parse date format invalid-date`)
+				So(err.Error(), ShouldEqual, `unable to parse date format invalid-date`)
 			})
 		})
 	})
@@ -582,7 +582,7 @@ func TestParser_Values_DateType_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `filter parsing failure: unable to parse date format 2012-24-2`)
+				So(err.Error(), ShouldEqual, `unable to parse date format 2012-24-2`)
 			})
 		})
 	})
@@ -596,7 +596,7 @@ func TestParser_Values_DateType_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `filter parsing failure: unable to parse date format 2012-24-2`)
+				So(err.Error(), ShouldEqual, `unable to parse date format 2012-24-2`)
 			})
 		})
 	})
