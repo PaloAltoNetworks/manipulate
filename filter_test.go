@@ -102,19 +102,27 @@ func TestFilter_NewComposer(t *testing.T) {
 					Convey("When I add a new LesserThan statement", func() {
 
 						f.WithKey("lt").LesserThan(13)
+						f.WithKey("gte").GreaterOrEqualThan(22)
+						f.WithKey("lte").LesserOrEqualThan(23)
 
 						Convey("Then the filter should be correctly populated", func() {
 							So(f.Keys(), ShouldResemble, FilterKeys{
 								"hello",
 								"gt",
 								"lt",
+								"gte",
+								"lte",
 							})
 							So(f.Values(), ShouldResemble, FilterValues{
 								FilterValue{1},
 								FilterValue{12},
 								FilterValue{13},
+								FilterValue{22},
+								FilterValue{23},
 							})
 							So(f.Operators(), ShouldResemble, FilterOperators{
+								AndOperator,
+								AndOperator,
 								AndOperator,
 								AndOperator,
 								AndOperator,
@@ -123,11 +131,13 @@ func TestFilter_NewComposer(t *testing.T) {
 								EqualComparator,
 								GreaterComparator,
 								LesserComparator,
+								GreaterOrEqualComparator,
+								LesserOrEqualComparator,
 							})
 						})
 
 						Convey("Then the string representation should be correct", func() {
-							So(f.String(), ShouldEqual, `hello == 1 and gt >= 12 and lt <= 13`)
+							So(f.String(), ShouldEqual, `hello == 1 and gt > 12 and lt < 13 and gte >= 22 and lte <= 23`)
 						})
 					})
 				})

@@ -324,11 +324,11 @@ func (p *FilterParser) makeFilter(key string, operator parserToken, value interf
 	case parserTokenLT:
 		filter.WithKey(key).LesserThan(value)
 	case parserTokenLTE:
-		filter.WithKey(key).LesserThan(value)
+		filter.WithKey(key).LesserOrEqualThan(value)
 	case parserTokenGT:
 		filter.WithKey(key).GreaterThan(value)
 	case parserTokenGTE:
-		filter.WithKey(key).GreaterThan(value)
+		filter.WithKey(key).GreaterOrEqualThan(value)
 	case parserTokenCONTAINS:
 		if values, ok := value.([]interface{}); ok {
 			filter.WithKey(key).Contains(values...)

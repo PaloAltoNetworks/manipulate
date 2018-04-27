@@ -756,8 +756,28 @@ func Test_Parser(t *testing.T) {
 
 			filter, err := parser.Parse()
 			expectedFilter := NewFilterComposer().Or(
-				NewFilterComposer().WithKey("age").LesserThan(32).Done(),
+				NewFilterComposer().WithKey("age").LesserOrEqualThan(32).Done(),
 				NewFilterComposer().WithKey("age").GreaterThan(50).Done(),
+			).Done()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+
+	Convey(`Given the filter: "age" < 32 or "age" >= 50`, t, func() {
+
+		parser := NewFilterParser(`"age" < 32 or "age" >= 50`)
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+			expectedFilter := NewFilterComposer().Or(
+				NewFilterComposer().WithKey("age").LesserThan(32).Done(),
+				NewFilterComposer().WithKey("age").GreaterOrEqualThan(50).Done(),
 			).Done()
 
 			Convey("Then there should be no error and the filter should as expected", func() {

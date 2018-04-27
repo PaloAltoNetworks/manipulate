@@ -19,7 +19,9 @@ const (
 	EqualComparator FilterComparator = iota
 	NotEqualComparator
 	GreaterComparator
+	GreaterOrEqualComparator
 	LesserComparator
+	LesserOrEqualComparator
 	InComparator
 	NotInComparator
 	ContainComparator
@@ -81,7 +83,9 @@ type SubFilters []SubFilter
 type FilterValueComposer interface {
 	Equals(interface{}) FilterKeyComposer
 	NotEquals(interface{}) FilterKeyComposer
+	GreaterOrEqualThan(interface{}) FilterKeyComposer
 	GreaterThan(interface{}) FilterKeyComposer
+	LesserOrEqualThan(interface{}) FilterKeyComposer
 	LesserThan(interface{}) FilterKeyComposer
 	In(...interface{}) FilterKeyComposer
 	NotIn(...interface{}) FilterKeyComposer
@@ -184,17 +188,31 @@ func (f *Filter) NotEquals(value interface{}) FilterKeyComposer {
 	return f
 }
 
-// GreaterThan adds a greater than comparator to the FilterComposer.
+// GreaterThan adds a greater than (exclusive) comparator to the FilterComposer.
 func (f *Filter) GreaterThan(value interface{}) FilterKeyComposer {
 	f.values = f.values.add(value)
 	f.comparators = f.comparators.add(GreaterComparator)
 	return f
 }
 
-// LesserThan adds a lesser than comparator to the FilterComposer.
+// GreaterOrEqualThan adds a greater than (inclusive) comparator to the FilterComposer.
+func (f *Filter) GreaterOrEqualThan(value interface{}) FilterKeyComposer {
+	f.values = f.values.add(value)
+	f.comparators = f.comparators.add(GreaterOrEqualComparator)
+	return f
+}
+
+// LesserThan adds a lesser than (exclusive) comparator to the FilterComposer.
 func (f *Filter) LesserThan(value interface{}) FilterKeyComposer {
 	f.values = f.values.add(value)
 	f.comparators = f.comparators.add(LesserComparator)
+	return f
+}
+
+// LesserOrEqualThan adds a lesser than (inclusive) comparator to the FilterComposer.
+func (f *Filter) LesserOrEqualThan(value interface{}) FilterKeyComposer {
+	f.values = f.values.add(value)
+	f.comparators = f.comparators.add(LesserOrEqualComparator)
 	return f
 }
 
@@ -318,10 +336,14 @@ func translateComparator(comparator FilterComparator) string {
 		return "=="
 	case NotEqualComparator:
 		return "!="
-	case GreaterComparator:
+	case GreaterOrEqualComparator:
 		return ">="
-	case LesserComparator:
+	case GreaterComparator:
+		return ">"
+	case LesserOrEqualComparator:
 		return "<="
+	case LesserComparator:
+		return "<"
 	case InComparator:
 		return "in"
 	case NotInComparator:
