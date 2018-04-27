@@ -72,8 +72,10 @@ func TestUtils_compiler(t *testing.T) {
 		f := manipulate.NewFilterComposer().
 			WithKey("x").Equals(1).
 			WithKey("z").Contains("a", "b").
-			WithKey("a").GreaterThan(1).
-			WithKey("b").LesserThan(1).
+			WithKey("a").GreaterOrEqualThan(1).
+			WithKey("b").LesserOrEqualThan(1).
+			WithKey("c").GreaterThan(1).
+			WithKey("d").LesserThan(1).
 			Done()
 
 		Convey("When I compile the filter", func() {
@@ -81,7 +83,7 @@ func TestUtils_compiler(t *testing.T) {
 			b, _ := bson.MarshalJSON(CompileFilter(f))
 
 			Convey("Then the bson should be correct", func() {
-				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$eq":1}},{"z":{"$in":["a","b"]}},{"a":{"$gte":1}},{"b":{"$lte":1}}]}`)
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$eq":1}},{"z":{"$in":["a","b"]}},{"a":{"$gte":1}},{"b":{"$lte":1}},{"c":{"$gt":1}},{"d":{"$lt":1}}]}`)
 			})
 		})
 	})

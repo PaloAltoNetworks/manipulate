@@ -1,7 +1,9 @@
 package compiler
 
 import (
+	"reflect"
 	"strings"
+	"time"
 
 	"github.com/aporeto-inc/manipulate"
 	"github.com/globalsign/mgo/bson"
@@ -22,6 +24,15 @@ func massageKey(key string) string {
 	}
 
 	return k
+}
+
+func massageValue(v interface{}) interface{} {
+
+	if reflect.TypeOf(v).Name() == "Duration" {
+		return time.Now().Add(v.(time.Duration))
+	}
+
+	return v
 }
 
 // CompileFilter compiles the given manipulate Filter into a mongo filter.
@@ -45,10 +56,10 @@ func CompileFilter(f *manipulate.Filter) bson.M {
 			switch f.Comparators()[i] {
 
 			case manipulate.EqualComparator:
-				items = append(items, bson.M{k: bson.M{"$eq": f.Values()[i][0]}})
+				items = append(items, bson.M{k: bson.M{"$eq": massageValue(f.Values()[i][0])}})
 
 			case manipulate.NotEqualComparator:
-				items = append(items, bson.M{k: bson.M{"$ne": f.Values()[i][0]}})
+				items = append(items, bson.M{k: bson.M{"$ne": massageValue(f.Values()[i][0])}})
 
 			case manipulate.InComparator, manipulate.ContainComparator:
 				items = append(items, bson.M{k: bson.M{"$in": f.Values()[i]}})
@@ -56,11 +67,17 @@ func CompileFilter(f *manipulate.Filter) bson.M {
 			case manipulate.NotInComparator, manipulate.NotContainComparator:
 				items = append(items, bson.M{k: bson.M{"$nin": f.Values()[i]}})
 
+			case manipulate.GreaterOrEqualComparator:
+				items = append(items, bson.M{k: bson.M{"$gte": massageValue(f.Values()[i][0])}})
+
 			case manipulate.GreaterComparator:
-				items = append(items, bson.M{k: bson.M{"$gte": f.Values()[i][0]}})
+				items = append(items, bson.M{k: bson.M{"$gt": massageValue(f.Values()[i][0])}})
+
+			case manipulate.LesserOrEqualComparator:
+				items = append(items, bson.M{k: bson.M{"$lte": massageValue(f.Values()[i][0])}})
 
 			case manipulate.LesserComparator:
-				items = append(items, bson.M{k: bson.M{"$lte": f.Values()[i][0]}})
+				items = append(items, bson.M{k: bson.M{"$lt": massageValue(f.Values()[i][0])}})
 
 			case manipulate.MatchComparator:
 				dest := []bson.M{}
