@@ -21,42 +21,24 @@ const (
 )
 
 type subscription struct {
-	events       chan *elemental.Event
-	errors       chan error
-	status       chan manipulate.SubscriberStatus
-	filters      chan *elemental.PushFilter
-	conn         wsc.Websocket
-	tokenManager manipulate.TokenManager
-	token        string
-	config       wsc.Config
-	url          string
-	ns           string
-	recursive    bool
+	events    chan *elemental.Event
+	errors    chan error
+	status    chan manipulate.SubscriberStatus
+	filters   chan *elemental.PushFilter
+	conn      wsc.Websocket
+	tokenFunc func() string
+	config    wsc.Config
+	url       string
+	ns        string
+	recursive bool
 }
 
-// NewSubscriberWithTokenManager creates a new Subscription using a manioulate.TokenManager.
-// The Subscription will get a new token before each reconnection.
-func NewSubscriberWithTokenManager(url string, ns string, tokenManager manipulate.TokenManager, tlsConfig *tls.Config, recursive bool) manipulate.Subscriber {
+// NewSubscriber creates a new Subscription.
+func NewSubscriber(url string, ns string, tokenFunc func() string, tlsConfig *tls.Config, recursive bool) manipulate.Subscriber {
 
-	return newSubscriber(url, ns, "", tokenManager, tlsConfig, recursive)
-}
-
-// NewSubscriberWithToken creates a new Subscription using a one time token.
-// If the token expires, the subscriber will continue to work until disconnection.
-// It is strongly advised to use NewSubscriberWithTokenManager for long running operation.
-func NewSubscriberWithToken(url string, ns string, token string, tlsConfig *tls.Config, recursive bool) manipulate.Subscriber {
-
-	return newSubscriber(url, ns, token, nil, tlsConfig, recursive)
-}
-
-func newSubscriber(
-	url string,
-	ns string,
-	token string,
-	tokenManager manipulate.TokenManager,
-	tlsConfig *tls.Config,
-	recursive bool,
-) manipulate.Subscriber {
+	if tokenFunc == nil {
+		panic("tokenFunc must not be nil")
+	}
 
 	config := wsc.Config{
 		PongWait:   10 * time.Second,
@@ -66,16 +48,15 @@ func newSubscriber(
 	}
 
 	s := &subscription{
-		url:          url,
-		ns:           ns,
-		recursive:    recursive,
-		token:        token,
-		tokenManager: tokenManager,
-		events:       make(chan *elemental.Event, eventChSize),
-		errors:       make(chan error, errorChSize),
-		status:       make(chan manipulate.SubscriberStatus, statusChSize),
-		filters:      make(chan *elemental.PushFilter, filterChSize),
-		config:       config,
+		url:       url,
+		ns:        ns,
+		recursive: recursive,
+		tokenFunc: tokenFunc,
+		events:    make(chan *elemental.Event, eventChSize),
+		errors:    make(chan error, errorChSize),
+		status:    make(chan manipulate.SubscriberStatus, statusChSize),
+		filters:   make(chan *elemental.PushFilter, filterChSize),
+		config:    config,
 	}
 
 	return s
@@ -101,12 +82,7 @@ func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 
 	for {
 
-		endpoint, err := s.computeEndpoint(ctx)
-		if err != nil {
-			return err
-		}
-
-		if s.conn, resp, err = wsc.Connect(ctx, endpoint, s.config); err == nil {
+		if s.conn, resp, err = wsc.Connect(ctx, makeURL(s.url, "events", s.ns, s.tokenFunc(), s.recursive), s.config); err == nil {
 
 			if initial {
 				s.publishStatus(manipulate.SubscriberStatusInitialConnection)
@@ -213,18 +189,4 @@ func (s *subscription) publishStatus(st manipulate.SubscriberStatus) {
 	case s.status <- st:
 	default:
 	}
-}
-
-func (s *subscription) computeEndpoint(ctx context.Context) (url string, err error) {
-
-	token := s.token
-
-	if s.tokenManager != nil {
-		token, err = s.tokenManager.Issue(ctx)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	return makeURL(s.url, "events", s.ns, token, s.recursive), nil
 }

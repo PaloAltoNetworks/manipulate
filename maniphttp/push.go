@@ -13,9 +13,5 @@ func NewSubscriber(manipulator manipulate.Manipulator, recursive bool) manipulat
 		panic("You must pass a HTTP manipulator to maniphttp.NewSubscriper")
 	}
 
-	if m.tokenManager != nil {
-		return push.NewSubscriberWithTokenManager(m.url, m.namespace, m.tokenManager, m.tlsConfig, recursive)
-	}
-
-	return push.NewSubscriberWithToken(m.url, m.namespace, m.currentPassword(), m.tlsConfig, recursive)
+	return push.NewSubscriber(m.url, m.namespace, m.currentPassword, m.tlsConfig, recursive)
 }
