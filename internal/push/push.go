@@ -35,7 +35,7 @@ type subscription struct {
 }
 
 // NewSubscriberWithTokenManager creates a new Subscription using a manioulate.TokenManager.
-// The Subscribtion will get a new token before each reconnection.
+// The Subscription will get a new token before each reconnection.
 func NewSubscriberWithTokenManager(url string, ns string, tokenManager manipulate.TokenManager, tlsConfig *tls.Config, recursive bool) manipulate.Subscriber {
 
 	return newSubscriber(url, ns, "", tokenManager, tlsConfig, recursive)
