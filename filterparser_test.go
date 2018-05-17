@@ -496,6 +496,36 @@ func TestParser_Values_Errors(t *testing.T) {
 		})
 	})
 
+	Convey(`Given the string value: key == 'hello"`, t, func() {
+
+		parser := NewFilterParser(`key == 'hello"`)
+
+		Convey("When I run Parse", func() {
+
+			_, err := parser.Parse()
+
+			Convey("Then there should be an error", func() {
+				So(err, ShouldNotEqual, nil)
+				So(err.Error(), ShouldEqual, `unable to find quote after value: hello"`)
+			})
+		})
+	})
+
+	Convey(`Given the string value: key == "hello'`, t, func() {
+
+		parser := NewFilterParser(`key == "hello'`)
+
+		Convey("When I run Parse", func() {
+
+			_, err := parser.Parse()
+
+			Convey("Then there should be an error", func() {
+				So(err, ShouldNotEqual, nil)
+				So(err.Error(), ShouldEqual, `unable to find quote after value: hello'`)
+			})
+		})
+	})
+
 	Convey(`Given the wrong value and: key == and"`, t, func() {
 
 		parser := NewFilterParser(`key == and"`)
