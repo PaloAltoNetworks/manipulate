@@ -316,10 +316,44 @@ func TestParser_Values_StringType(t *testing.T) {
 		})
 	})
 
+	Convey("Given the string value with single quote: 'hello world'", t, func() {
+
+		parser := NewFilterParser("key == 'hello world'")
+		expectedFilter := NewFilterComposer().WithKey("key").Equals("hello world").Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+
 	Convey("Given the string value: '\"hello\"word\"'", t, func() {
 
 		parser := NewFilterParser("key == \"hello\\\"world\"")
 		expectedFilter := NewFilterComposer().WithKey("key").Equals("hello\"world").Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+
+	Convey("Given the string value: 'hello\\'word'", t, func() {
+
+		parser := NewFilterParser("key == 'hello\\'world'")
+		expectedFilter := NewFilterComposer().WithKey("key").Equals("hello'world").Done()
 
 		Convey("When I run Parse", func() {
 
@@ -418,9 +452,38 @@ func TestParser_Values_Errors(t *testing.T) {
 		})
 	})
 
+	Convey(`Given the single quoted string value: key == 'hello`, t, func() {
+
+		parser := NewFilterParser(`key == 'hello`)
+
+		Convey("When I run Parse", func() {
+
+			_, err := parser.Parse()
+
+			Convey("Then there should be an error", func() {
+				So(err, ShouldNotEqual, nil)
+				So(err.Error(), ShouldEqual, `unable to find quote after value: hello`)
+			})
+		})
+	})
+
 	Convey(`Given the string value: key == hello"`, t, func() {
 
 		parser := NewFilterParser(`key == hello"`)
+
+		Convey("When I run Parse", func() {
+
+			_, err := parser.Parse()
+
+			Convey("Then there should be an error", func() {
+				So(err, ShouldNotEqual, nil)
+				So(err.Error(), ShouldEqual, `missing quote before the value: hello`)
+			})
+		})
+	})
+	Convey(`Given the string value: key == hello'`, t, func() {
+
+		parser := NewFilterParser(`key == hello'`)
 
 		Convey("When I run Parse", func() {
 
