@@ -7,6 +7,36 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+func TestParser_Spaces(t *testing.T) {
+
+	Convey("Given the operator is not separated by spaces", t, func() {
+
+		parser := NewFilterParser("a==b and a ==b and a== b and c!=d and c>d and c<d and e<=f and g>=h")
+		expectedFilter := NewFilterComposer().And(
+			NewFilterComposer().WithKey("a").Equals("b").Done(),
+			NewFilterComposer().WithKey("a").Equals("b").Done(),
+			NewFilterComposer().WithKey("a").Equals("b").Done(),
+			NewFilterComposer().WithKey("c").NotEquals("d").Done(),
+			NewFilterComposer().WithKey("c").GreaterThan("d").Done(),
+			NewFilterComposer().WithKey("c").LesserThan("d").Done(),
+			NewFilterComposer().WithKey("e").LesserOrEqualThan("f").Done(),
+			NewFilterComposer().WithKey("g").GreaterOrEqualThan("h").Done(),
+		).Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+
+}
+
 func TestParser_Keys(t *testing.T) {
 
 	Convey("Given the quoted expression", t, func() {
@@ -266,20 +296,6 @@ func TestParser_Operators_Errors(t *testing.T) {
 		})
 	})
 
-	Convey(`Given the wrong operator: key==chris`, t, func() {
-
-		parser := NewFilterParser("key==chris")
-
-		Convey("When I run Parse", func() {
-
-			_, err := parser.Parse()
-
-			Convey("Then there should be an error", func() {
-				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldContainSubstring, `invalid operator`) // Note: Not sure about this case.
-			})
-		})
-	})
 	Convey(`Given the wrong operator: name == 0 and toto contains "1" an contains "@hello=2"`, t, func() {
 
 		parser := NewFilterParser(`name == 0 and toto contains "1" an contains "@hello=2"`)

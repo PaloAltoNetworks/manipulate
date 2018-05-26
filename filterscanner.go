@@ -2,6 +2,7 @@ package manipulate
 
 import (
 	"bytes"
+	"regexp"
 	"strings"
 )
 
@@ -13,12 +14,17 @@ type scanner struct {
 	isDigit      checkRuneFunc
 }
 
+var operatorRegex = regexp.MustCompile(`<=|<|>=|>|==|!=`)
+
 // newScanner returns an instance of a Scanner.
 func newScanner(
 	input string,
 ) *scanner {
 	var buf bytes.Buffer
-	buf.WriteString(input)
+
+	buf.WriteString(operatorRegex.ReplaceAllStringFunc(input, func(op string) string {
+		return " " + op + " "
+	}))
 
 	return &scanner{
 		buf:          buf,
