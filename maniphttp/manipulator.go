@@ -51,8 +51,7 @@ func NewHTTPManipulator(url, username, password, namespace string) manipulate.Ma
 		password,
 		namespace,
 		&tls.Config{
-			InsecureSkipVerify: true,
-			RootCAs:            CAPool,
+			RootCAs: CAPool,
 		},
 	)
 }

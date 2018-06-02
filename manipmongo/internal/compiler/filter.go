@@ -79,6 +79,12 @@ func CompileFilter(f *manipulate.Filter) bson.M {
 			case manipulate.LesserComparator:
 				items = append(items, bson.M{k: bson.M{"$lt": massageValue(f.Values()[i][0])}})
 
+			case manipulate.ExistsComparator:
+				items = append(items, bson.M{k: bson.M{"$exists": true}})
+
+			case manipulate.NotExistsComparator:
+				items = append(items, bson.M{k: bson.M{"$exists": false}})
+
 			case manipulate.MatchComparator:
 				dest := []bson.M{}
 				for _, v := range f.Values()[i] {

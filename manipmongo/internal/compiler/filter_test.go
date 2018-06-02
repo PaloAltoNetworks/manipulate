@@ -103,6 +103,36 @@ func TestUtils_compiler(t *testing.T) {
 		})
 	})
 
+	Convey("Given I have filter that contains Exists", t, func() {
+
+		f := manipulate.NewFilterComposer().
+			WithKey("x").Exists().
+			Done()
+
+		Convey("When I compile the filter", func() {
+			b, _ := bson.MarshalJSON(CompileFilter(f))
+
+			Convey("Then the bson should be correct", func() {
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$exists":true}}]}`)
+			})
+		})
+	})
+
+	Convey("Given I have filter that contains NotExists", t, func() {
+
+		f := manipulate.NewFilterComposer().
+			WithKey("x").NotExists().
+			Done()
+
+		Convey("When I compile the filter", func() {
+			b, _ := bson.MarshalJSON(CompileFilter(f))
+
+			Convey("Then the bson should be correct", func() {
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$exists":false}}]}`)
+			})
+		})
+	})
+
 	Convey("Given I have a composed filters", t, func() {
 
 		f := manipulate.NewFilterComposer().
