@@ -82,7 +82,7 @@ func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 
 	for {
 
-		if s.conn, resp, err = wsc.Connect(ctx, makeURL(s.url, "events", s.ns, s.tokenFunc(), s.recursive), s.config); err == nil {
+		if s.conn, resp, err = wsc.Connect(ctx, makeURL(s.url, s.ns, s.tokenFunc(), s.recursive), s.config); err == nil {
 
 			if initial {
 				s.publishStatus(manipulate.SubscriberStatusInitialConnection)
