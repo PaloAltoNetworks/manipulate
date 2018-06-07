@@ -9,7 +9,7 @@ import (
 )
 
 type mockedMethods struct {
-	retrieveManyMock func(context *manipulate.Context, dest elemental.ContentIdentifiable) error
+	retrieveManyMock func(context *manipulate.Context, dest elemental.Identifiables) error
 	retrieveMock     func(context *manipulate.Context, objects ...elemental.Identifiable) error
 	createMock       func(context *manipulate.Context, objects ...elemental.Identifiable) error
 	updateMock       func(context *manipulate.Context, objects ...elemental.Identifiable) error
@@ -23,7 +23,7 @@ type mockedMethods struct {
 // A TestManipulator is the interface of mockable test manipulator.
 type TestManipulator interface {
 	manipulate.TransactionalManipulator
-	MockRetrieveMany(t *testing.T, impl func(ctx *manipulate.Context, dest elemental.ContentIdentifiable) error)
+	MockRetrieveMany(t *testing.T, impl func(ctx *manipulate.Context, dest elemental.Identifiables) error)
 	MockRetrieve(t *testing.T, impl func(ctx *manipulate.Context, objects ...elemental.Identifiable) error)
 	MockCreate(t *testing.T, impl func(ctx *manipulate.Context, objects ...elemental.Identifiable) error)
 	MockUpdate(t *testing.T, impl func(ctx *manipulate.Context, objects ...elemental.Identifiable) error)
@@ -49,7 +49,7 @@ func NewTestManipulator() TestManipulator {
 	}
 }
 
-func (m *testManipulator) MockRetrieveMany(t *testing.T, impl func(context *manipulate.Context, dest elemental.ContentIdentifiable) error) {
+func (m *testManipulator) MockRetrieveMany(t *testing.T, impl func(context *manipulate.Context, dest elemental.Identifiables) error) {
 
 	m.currentMocks(t).retrieveManyMock = impl
 }
@@ -94,7 +94,7 @@ func (m *testManipulator) MockAbort(t *testing.T, impl func(id manipulate.Transa
 	m.currentMocks(t).abortMock = impl
 }
 
-func (m *testManipulator) RetrieveMany(context *manipulate.Context, dest elemental.ContentIdentifiable) error {
+func (m *testManipulator) RetrieveMany(context *manipulate.Context, dest elemental.Identifiables) error {
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.retrieveManyMock != nil {
 		return mock.retrieveManyMock(context, dest)

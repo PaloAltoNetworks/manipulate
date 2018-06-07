@@ -36,7 +36,7 @@ func NewMemoryManipulator(schema *memdb.DBSchema) manipulate.TransactionalManipu
 }
 
 // RetrieveMany is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.ContentIdentifiable) error {
+func (s *memdbManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.Identifiables) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext()
@@ -51,7 +51,7 @@ func (s *memdbManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental
 		args = mctx.Filter.Values()[0]
 	}
 
-	iterator, err := txn.Get(dest.ContentIdentity().Category, index, args...)
+	iterator, err := txn.Get(dest.Identity().Category, index, args...)
 
 	if err != nil {
 		return manipulate.NewErrCannotExecuteQuery(err.Error())
