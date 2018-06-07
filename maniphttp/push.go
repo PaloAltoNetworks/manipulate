@@ -11,7 +11,7 @@ import (
 // NewSubscriber returns a new subscription.
 func NewSubscriber(manipulator manipulate.Manipulator, recursive bool) manipulate.Subscriber {
 
-	return NewSubscriberWithEndpoint(manipulator, "/highwind/events", recursive)
+	return NewSubscriberWithEndpoint(manipulator, "/events", recursive)
 }
 
 // NewSubscriberWithEndpoint returns a new subscription connecting to specific endpoint.
