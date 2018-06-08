@@ -14,7 +14,7 @@ import (
 type Manipulator interface {
 
 	// RetrieveMany retrieves the a list of objects with the given elemental.Identity and put them in the given dest.
-	RetrieveMany(context *Context, dest elemental.ContentIdentifiable) error
+	RetrieveMany(context *Context, dest elemental.Identifiables) error
 
 	// Retrieve retrieves one or multiple elemental.Identifiables.
 	// In order to be retrievable, the elemental.Identifiable needs to have their Identifier correctly set.

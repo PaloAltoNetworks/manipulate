@@ -78,20 +78,20 @@ func NewMongoManipulator(connectionString string, dbName string, user string, pa
 	}
 }
 
-func (s *mongoManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.ContentIdentifiable) error {
+func (s *mongoManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.Identifiables) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext()
 	}
 
-	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve_many.%s", dest.ContentIdentity().Category))
+	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve_many.%s", dest.Identity().Category))
 	defer sp.Finish()
 
 	session := s.rootSession.Copy()
 	defer session.Close()
 
 	db := session.DB(s.dbName)
-	collection := collectionFromIdentity(db, dest.ContentIdentity(), "")
+	collection := collectionFromIdentity(db, dest.Identity(), "")
 	filter := bson.M{}
 
 	if mctx.Filter != nil {

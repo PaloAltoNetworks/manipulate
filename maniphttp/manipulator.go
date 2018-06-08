@@ -124,16 +124,16 @@ func NewHTTPManipulatorWithTokenManager(ctx context.Context, url string, namespa
 	return m, nil
 }
 
-func (s *httpManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.ContentIdentifiable) error {
+func (s *httpManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.Identifiables) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext()
 	}
 
-	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.retrieve_many.%s", dest.ContentIdentity().Category))
+	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.retrieve_many.%s", dest.Identity().Category))
 	defer sp.Finish()
 
-	url, err := s.getURLForChildrenIdentity(mctx.Parent, dest.ContentIdentity(), dest.Version(), mctx.Version)
+	url, err := s.getURLForChildrenIdentity(mctx.Parent, dest.Identity(), dest.Version(), mctx.Version)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))

@@ -11,7 +11,7 @@ import (
 
 type fakeManipulator struct{}
 
-func (*fakeManipulator) RetrieveMany(*manipulate.Context, elemental.ContentIdentifiable) error {
+func (*fakeManipulator) RetrieveMany(*manipulate.Context, elemental.Identifiables) error {
 	return nil
 }
 func (*fakeManipulator) Retrieve(*manipulate.Context, ...elemental.Identifiable) error { return nil }

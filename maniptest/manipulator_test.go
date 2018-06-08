@@ -27,7 +27,7 @@ func TestTestManipulator_MockRetrieveMany(t *testing.T) {
 
 			Convey("When I mock it to return an error", func() {
 
-				m.MockRetrieveMany(t, func(context *manipulate.Context, dest elemental.ContentIdentifiable) error {
+				m.MockRetrieveMany(t, func(context *manipulate.Context, dest elemental.Identifiables) error {
 					return fmt.Errorf("wow such error")
 				})
 
