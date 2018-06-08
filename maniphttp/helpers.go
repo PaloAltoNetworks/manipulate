@@ -3,7 +3,7 @@ package maniphttp
 import (
 	"crypto/tls"
 
-	"github.com/aporeto-inc/manipulate"
+	"go.aporeto.io/manipulate"
 )
 
 // ExtractCredentials extracts the username and password from the given manipulator.

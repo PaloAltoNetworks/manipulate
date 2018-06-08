@@ -59,9 +59,9 @@ import (
     "fmt"
     "os"
 
-    "github.com/aporeto-inc/gaia/squallmodels/v1/golang"
-    "github.com/aporeto-inc/manipulate"
-    "github.com/aporeto-inc/manipulate/manipwebsocket"
+    "go.aporeto.io/gaia/squallmodels/v1/golang"
+    "go.aporeto.io/manipulate"
+    "go.aporeto.io/manipulate/manipwebsocket"
 )
 
 const aporetoAPIURL = "https://squall.console.aporeto.com"

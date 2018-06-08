@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aporeto-inc/manipulate"
+	"go.aporeto.io/manipulate"
 	"github.com/globalsign/mgo/bson"
 )
 

@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/aporeto-inc/addedeffect/wsc"
-	"github.com/aporeto-inc/elemental"
-	"github.com/aporeto-inc/manipulate"
+	"go.aporeto.io/addedeffect/wsc"
+	"go.aporeto.io/elemental"
+	"go.aporeto.io/manipulate"
 	"github.com/gorilla/websocket"
 )
 

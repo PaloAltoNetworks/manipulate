@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/aporeto-inc/elemental"
+	"go.aporeto.io/elemental"
 )
 
 // A FinalizerFunc is the type of a function that can be used as a creation finalizer.

@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/aporeto-inc/elemental"
-	"github.com/aporeto-inc/manipulate"
+	"go.aporeto.io/elemental"
+	"go.aporeto.io/manipulate"
 	"github.com/globalsign/mgo"
 )
 

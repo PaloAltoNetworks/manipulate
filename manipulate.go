@@ -7,7 +7,7 @@ package manipulate
 import (
 	"context"
 
-	"github.com/aporeto-inc/elemental"
+	"go.aporeto.io/elemental"
 )
 
 // Manipulator is the interface of a storage backend.

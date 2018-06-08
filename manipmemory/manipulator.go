@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/aporeto-inc/elemental"
-	"github.com/aporeto-inc/manipulate"
+	"go.aporeto.io/elemental"
+	"go.aporeto.io/manipulate"
 
 	memdb "github.com/hashicorp/go-memdb"
 	uuid "github.com/satori/go.uuid"

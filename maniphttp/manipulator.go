@@ -16,10 +16,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aporeto-inc/addedeffect/tokenutils"
-	"github.com/aporeto-inc/elemental"
-	"github.com/aporeto-inc/manipulate"
-	"github.com/aporeto-inc/manipulate/internal/tracing"
+	"go.aporeto.io/addedeffect/tokenutils"
+	"go.aporeto.io/elemental"
+	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/internal/tracing"
 	"github.com/opentracing/opentracing-go/log"
 	"go.uber.org/zap"
 

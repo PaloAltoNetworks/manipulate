@@ -3,7 +3,7 @@ package tracing
 import (
 	"context"
 
-	"github.com/aporeto-inc/manipulate"
+	"go.aporeto.io/manipulate"
 	"github.com/opentracing/opentracing-go"
 )
 

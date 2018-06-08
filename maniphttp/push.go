@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/aporeto-inc/manipulate"
-	"github.com/aporeto-inc/manipulate/internal/push"
+	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/internal/push"
 )
 
 // NewSubscriber returns a new subscription.

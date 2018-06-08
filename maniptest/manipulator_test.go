@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/aporeto-inc/elemental"
-	"github.com/aporeto-inc/elemental/test/model"
-	"github.com/aporeto-inc/manipulate"
+	"go.aporeto.io/elemental"
+	"go.aporeto.io/elemental/test/model"
+	"go.aporeto.io/manipulate"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
