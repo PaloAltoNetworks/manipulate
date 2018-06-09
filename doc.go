@@ -1,5 +1,5 @@
 // Package manipulate provides everything needed to perform CRUD operations
-// on an https://github.com/aporeto-inc/elemental based data model.
+// on an https://go.aporeto.io/elemental based data model.
 //
 // The main interface is Manipulator. This interface provides various
 // methods for creation, modification, retrieval and so on. TransactionalManipulator,
