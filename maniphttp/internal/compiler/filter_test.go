@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"go.aporeto.io/manipulate"
+
 	. "github.com/smartystreets/goconvey/convey"
 )
 

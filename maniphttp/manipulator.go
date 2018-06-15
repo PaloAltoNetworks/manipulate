@@ -16,11 +16,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/opentracing/opentracing-go/log"
 	"go.aporeto.io/addedeffect/tokenutils"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/tracing"
-	"github.com/opentracing/opentracing-go/log"
 	"go.uber.org/zap"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -101,6 +101,7 @@ func NewHTTPManipulatorWithTokenManager(ctx context.Context, url string, namespa
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConfig,
 			},
+			Timeout: 30 * time.Second,
 		},
 	}
 
@@ -582,6 +583,8 @@ func (s *httpManipulator) getURLForChildrenIdentity(
 func (s *httpManipulator) send(mctx *manipulate.Context, request *http.Request) (*http.Response, error) {
 
 	s.prepareHeaders(request, mctx)
+
+	request = request.WithContext(mctx.Context())
 
 	response, err := s.client.Do(request)
 	if err != nil {
