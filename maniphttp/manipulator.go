@@ -584,6 +584,8 @@ func (s *httpManipulator) send(mctx *manipulate.Context, request *http.Request) 
 
 	s.prepareHeaders(request, mctx)
 
+	request = request.WithContext(mctx.Context())
+
 	response, err := s.client.Do(request)
 	if err != nil {
 		return response, manipulate.NewErrCannotCommunicate(tokenutils.Snip(err, s.currentPassword()).Error())
