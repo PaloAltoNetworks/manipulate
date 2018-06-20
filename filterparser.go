@@ -41,6 +41,8 @@ const (
 	parserTokenIN
 	parserTokenNOTIN
 	parserTokenNOT
+	parserTokenEXISTS
+	parserTokenNOTEXISTS
 )
 
 const (
@@ -60,6 +62,8 @@ const (
 	wordOR          = "OR"
 	wordTRUE        = "TRUE"
 	wordNOT         = "NOT"
+	wordEXISTS      = "EXISTS"
+	wordNOTEXISTS   = "NOTEXISTS"
 	wordEOF         = "EOF"
 )
 
@@ -108,6 +112,8 @@ var stringToToken = map[string]parserToken{
 	wordIN:          parserTokenIN,
 	wordNOTIN:       parserTokenNOTIN,
 	wordNOT:         parserTokenNOT,
+	wordEXISTS:      parserTokenEXISTS,
+	wordNOTEXISTS:   parserTokenNOTEXISTS,
 }
 
 var runeToToken = map[rune]parserToken{
@@ -199,12 +205,7 @@ func (p *FilterParser) Parse() (*Filter, error) {
 				return nil, fmt.Errorf("missing quote after the word %s", literal)
 			}
 
-			operator, err := p.parseOperator()
-			if err != nil {
-				return nil, err
-			}
-
-			value, err := p.parseValue()
+			operator, value, err := p.parseOperatorAndValue()
 			if err != nil {
 				return nil, err
 			}
@@ -221,12 +222,7 @@ func (p *FilterParser) Parse() (*Filter, error) {
 		if token == parserTokenWORD {
 			// Handle expression without QUOTE like a operator b
 			// In that case, the literal is the word scanned.
-			operator, err := p.parseOperator()
-			if err != nil {
-				return nil, err
-			}
-
-			value, err := p.parseValue()
+			operator, value, err := p.parseOperatorAndValue()
 			if err != nil {
 				return nil, err
 			}
@@ -317,6 +313,25 @@ func (p *FilterParser) scanIgnoreWhitespace() (tok parserToken, lit string) {
 	return
 }
 
+func (p *FilterParser) parseOperatorAndValue() (parserToken, interface{}, error) {
+
+	operator, err := p.parseOperator()
+	if err != nil {
+		return parserTokenILLEGAL, nil, err
+	}
+
+	if operator == parserTokenEXISTS || operator == parserTokenNOTEXISTS {
+		return operator, nil, nil
+	}
+
+	value, err := p.parseValue()
+	if err != nil {
+		return parserTokenILLEGAL, nil, err
+	}
+
+	return operator, value, nil
+}
+
 func (p *FilterParser) makeFilter(key string, operator parserToken, value interface{}) (*Filter, error) {
 
 	filter := NewFilterComposer()
@@ -365,6 +380,10 @@ func (p *FilterParser) makeFilter(key string, operator parserToken, value interf
 		} else {
 			filter.WithKey(key).Matches(value)
 		}
+	case parserTokenEXISTS:
+		filter.WithKey(key).Exists()
+	case parserTokenNOTEXISTS:
+		filter.WithKey(key).NotExists()
 	default:
 		return nil, fmt.Errorf("unsupported operator")
 	}
@@ -402,12 +421,15 @@ func (p *FilterParser) parseOperator() (parserToken, error) {
 		token != parserTokenGTE &&
 		token != parserTokenCONTAINS &&
 		token != parserTokenIN &&
-		token != parserTokenMATCHES {
+		token != parserTokenMATCHES &&
+		token != parserTokenEXISTS &&
+		token != parserTokenNOTEXISTS {
 
 		if token == parserTokenEOF {
 			literal = wordEOF
 		}
-		return parserTokenILLEGAL, fmt.Errorf("invalid operator. found %s instead of (==, !=, <, <=, >, >=, contains, in, matches)", literal)
+
+		return parserTokenILLEGAL, fmt.Errorf("invalid operator. found %s instead of (==, !=, <, <=, >, >=, contains, in, matches, exists)", literal)
 	}
 
 	if operatorNot {
@@ -416,6 +438,8 @@ func (p *FilterParser) parseOperator() (parserToken, error) {
 			return parserTokenNOTCONTAINS, nil
 		case parserTokenIN:
 			return parserTokenNOTIN, nil
+		case parserTokenEXISTS:
+			return parserTokenNOTEXISTS, nil
 		default:
 			return parserTokenILLEGAL, fmt.Errorf("invalid usage of operator NOT before %s", literal)
 		}
