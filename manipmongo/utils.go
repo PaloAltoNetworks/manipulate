@@ -3,7 +3,7 @@ package manipmongo
 import (
 	"strings"
 
-	"github.com/aporeto-inc/elemental"
+	"go.aporeto.io/elemental"
 	"github.com/globalsign/mgo"
 )
 

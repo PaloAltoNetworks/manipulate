@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/aporeto-inc/elemental"
-	"github.com/aporeto-inc/manipulate"
+	"go.aporeto.io/elemental"
+	"go.aporeto.io/manipulate"
 )
 
 func decodeErrors(r io.Reader) error {
@@ -34,11 +34,11 @@ func decodeErrors(r io.Reader) error {
 	return errs
 }
 
-func makeURL(u string, endpoint string, namespace string, password string, recursive bool) string {
+func makeURL(u string, namespace string, password string, recursive bool) string {
 
 	u = strings.Replace(u, "http://", "ws://", 1)
 	u = strings.Replace(u, "https://", "wss://", 1)
-	u = fmt.Sprintf("%s/%s?token=%s", u, endpoint, password)
+	u = fmt.Sprintf("%s?token=%s", u, password)
 
 	if namespace != "" {
 		u += "&namespace=" + url.QueryEscape(namespace)

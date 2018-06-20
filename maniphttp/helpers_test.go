@@ -4,14 +4,15 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/aporeto-inc/elemental"
-	"github.com/aporeto-inc/manipulate"
+	"go.aporeto.io/elemental"
+	"go.aporeto.io/manipulate"
+
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 type fakeManipulator struct{}
 
-func (*fakeManipulator) RetrieveMany(*manipulate.Context, elemental.ContentIdentifiable) error {
+func (*fakeManipulator) RetrieveMany(*manipulate.Context, elemental.Identifiables) error {
 	return nil
 }
 func (*fakeManipulator) Retrieve(*manipulate.Context, ...elemental.Identifiable) error { return nil }

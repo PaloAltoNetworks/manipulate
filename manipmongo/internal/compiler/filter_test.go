@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aporeto-inc/manipulate"
+	"go.aporeto.io/manipulate"
 	"github.com/globalsign/mgo/bson"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -99,6 +99,36 @@ func TestUtils_compiler(t *testing.T) {
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"$or":[{"x":{"$options":"m","$regex":"$abc^"}},{"x":{"$options":"m","$regex":".*"}}]}]}`)
+			})
+		})
+	})
+
+	Convey("Given I have filter that contains Exists", t, func() {
+
+		f := manipulate.NewFilterComposer().
+			WithKey("x").Exists().
+			Done()
+
+		Convey("When I compile the filter", func() {
+			b, _ := bson.MarshalJSON(CompileFilter(f))
+
+			Convey("Then the bson should be correct", func() {
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$exists":true}}]}`)
+			})
+		})
+	})
+
+	Convey("Given I have filter that contains NotExists", t, func() {
+
+		f := manipulate.NewFilterComposer().
+			WithKey("x").NotExists().
+			Done()
+
+		Convey("When I compile the filter", func() {
+			b, _ := bson.MarshalJSON(CompileFilter(f))
+
+			Convey("Then the bson should be correct", func() {
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$exists":false}}]}`)
 			})
 		})
 	})

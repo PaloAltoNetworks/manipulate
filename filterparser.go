@@ -22,6 +22,7 @@ const (
 	parserTokenAND
 	parserTokenOR
 	parserTokenQUOTE
+	parserTokenSINGLEQUOTE
 	parserTokenEQUAL
 	parserTokenNOTEQUAL
 	parserTokenLT
@@ -67,6 +68,7 @@ const (
 	runeLEFTPARENTHESE        = '('
 	runeRIGHTPARENTHESE       = ')'
 	runeQUOTE                 = '"'
+	runeSINGLEQUOTE           = '\''
 	runeLEFTSQUAREPARENTHESE  = '['
 	runeRIGHTSQUAREPARENTHESE = ']'
 	runeCOMMA                 = ','
@@ -113,6 +115,7 @@ var runeToToken = map[rune]parserToken{
 	runeLEFTPARENTHESE:        parserTokenLEFTPARENTHESE,
 	runeRIGHTPARENTHESE:       parserTokenRIGHTPARENTHESE,
 	runeQUOTE:                 parserTokenQUOTE,
+	runeSINGLEQUOTE:           parserTokenSINGLEQUOTE,
 	runeLEFTSQUAREPARENTHESE:  parserTokenLEFTSQUAREPARENTHESE,
 	runeRIGHTSQUAREPARENTHESE: parserTokenRIGHTSQUAREPARENTHESE,
 	runeCOMMA:                 parserTokenCOMMA,
@@ -149,6 +152,7 @@ func (p *FilterParser) Parse() (*Filter, error) {
 	// The input needs to start with a word, a quote or a left parenthese.
 	if token != parserTokenWORD &&
 		token != parserTokenQUOTE &&
+		token != parserTokenSINGLEQUOTE &&
 		token != parserTokenLEFTPARENTHESE {
 		return nil, fmt.Errorf("invalid start of expression. found %s", literal)
 	}
@@ -182,7 +186,8 @@ func (p *FilterParser) Parse() (*Filter, error) {
 			break
 		}
 
-		if token == parserTokenQUOTE {
+		if token == parserTokenQUOTE || token == parserTokenSINGLEQUOTE {
+			tokenQuote := token
 			// Handle expression starting with QUOTE like "a" operator b
 			token, literal = p.scanIgnoreWhitespace()
 
@@ -190,7 +195,7 @@ func (p *FilterParser) Parse() (*Filter, error) {
 				return nil, fmt.Errorf("invalid word after the quote. found %s", literal)
 			}
 			quote, _ := p.scanIgnoreWhitespace()
-			if quote != parserTokenQUOTE {
+			if quote != tokenQuote {
 				return nil, fmt.Errorf("missing quote after the word %s", literal)
 			}
 
@@ -423,7 +428,7 @@ func (p *FilterParser) parseValue() (interface{}, error) {
 
 	token, literal := p.scanIgnoreWhitespace()
 
-	if token == parserTokenQUOTE {
+	if token == parserTokenQUOTE || token == parserTokenSINGLEQUOTE {
 		return p.parseStringValue()
 	}
 
@@ -563,7 +568,8 @@ func (p *FilterParser) parseStringValue() (string, error) {
 	var value string
 
 	// Quoted string
-	if token == parserTokenQUOTE {
+	if token == parserTokenQUOTE || token == parserTokenSINGLEQUOTE {
+		tokenQuote := token
 		// Scan everything until the next quote or the end of the input
 		for {
 			token, literal = p.scan()
@@ -571,7 +577,7 @@ func (p *FilterParser) parseStringValue() (string, error) {
 				return "", fmt.Errorf("unable to find quote after value: %s. found EOF", value)
 			}
 
-			if token == parserTokenQUOTE {
+			if token == tokenQuote {
 				return value, nil
 			}
 
@@ -590,7 +596,7 @@ func (p *FilterParser) parseStringValue() (string, error) {
 
 	token, next := p.peekIgnoreWhitespace()
 	switch token {
-	case parserTokenQUOTE:
+	case parserTokenQUOTE, parserTokenSINGLEQUOTE:
 		return "", fmt.Errorf("missing quote before the value: %s", literal)
 	case parserTokenWORD:
 		return "", fmt.Errorf("missing parenthese to protect value: %s %s", literal, next)

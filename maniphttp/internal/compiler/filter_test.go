@@ -3,7 +3,8 @@ package compiler
 import (
 	"testing"
 
-	"github.com/aporeto-inc/manipulate"
+	"go.aporeto.io/manipulate"
+
 	. "github.com/smartystreets/goconvey/convey"
 )
 

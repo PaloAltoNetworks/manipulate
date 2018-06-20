@@ -3,7 +3,7 @@
 [![codecov](https://codecov.io/gh/aporeto-inc/manipulate/branch/master/graph/badge.svg?token=2dEWoQKRO0)](https://codecov.io/gh/aporeto-inc/manipulate)
 
 Package manipulate provides everything needed to perform CRUD operations
-on an [elemental](https://github.com/aporeto-inc/elemental) based data model.
+on an [elemental](https://go.aporeto.io/elemental) based data model.
 
 The main interface is `Manipulator`. This interface provides various
 methods for creation, modification, retrieval and so on.
@@ -59,9 +59,9 @@ import (
     "fmt"
     "os"
 
-    "github.com/aporeto-inc/gaia/squallmodels/v1/golang"
-    "github.com/aporeto-inc/manipulate"
-    "github.com/aporeto-inc/manipulate/manipwebsocket"
+    "go.aporeto.io/gaia/squallmodels/v1/golang"
+    "go.aporeto.io/manipulate"
+    "go.aporeto.io/manipulate/manipwebsocket"
 )
 
 const aporetoAPIURL = "https://squall.console.aporeto.com"

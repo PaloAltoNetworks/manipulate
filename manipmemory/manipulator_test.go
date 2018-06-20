@@ -3,8 +3,8 @@ package manipmemory
 import (
 	"testing"
 
-	"github.com/aporeto-inc/elemental/test/model"
-	"github.com/aporeto-inc/manipulate"
+	"go.aporeto.io/elemental/test/model"
+	"go.aporeto.io/manipulate"
 
 	memdb "github.com/hashicorp/go-memdb"
 	. "github.com/smartystreets/goconvey/convey"

@@ -3,7 +3,7 @@ package manipmongo
 import (
 	"sync"
 
-	"github.com/aporeto-inc/manipulate"
+	"go.aporeto.io/manipulate"
 )
 
 type transactionsRegistry struct {

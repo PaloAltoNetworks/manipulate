@@ -16,11 +16,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aporeto-inc/addedeffect/tokenutils"
-	"github.com/aporeto-inc/elemental"
-	"github.com/aporeto-inc/manipulate"
-	"github.com/aporeto-inc/manipulate/internal/tracing"
 	"github.com/opentracing/opentracing-go/log"
+	"go.aporeto.io/addedeffect/tokenutils"
+	"go.aporeto.io/elemental"
+	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/internal/tracing"
 	"go.uber.org/zap"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -51,8 +51,7 @@ func NewHTTPManipulator(url, username, password, namespace string) manipulate.Ma
 		password,
 		namespace,
 		&tls.Config{
-			InsecureSkipVerify: true,
-			RootCAs:            CAPool,
+			RootCAs: CAPool,
 		},
 	)
 }
@@ -102,6 +101,7 @@ func NewHTTPManipulatorWithTokenManager(ctx context.Context, url string, namespa
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConfig,
 			},
+			Timeout: 30 * time.Second,
 		},
 	}
 
@@ -125,16 +125,16 @@ func NewHTTPManipulatorWithTokenManager(ctx context.Context, url string, namespa
 	return m, nil
 }
 
-func (s *httpManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.ContentIdentifiable) error {
+func (s *httpManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.Identifiables) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext()
 	}
 
-	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.retrieve_many.%s", dest.ContentIdentity().Category))
+	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.retrieve_many.%s", dest.Identity().Category))
 	defer sp.Finish()
 
-	url, err := s.getURLForChildrenIdentity(mctx.Parent, dest.ContentIdentity(), dest.Version(), mctx.Version)
+	url, err := s.getURLForChildrenIdentity(mctx.Parent, dest.Identity(), dest.Version(), mctx.Version)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -583,6 +583,8 @@ func (s *httpManipulator) getURLForChildrenIdentity(
 func (s *httpManipulator) send(mctx *manipulate.Context, request *http.Request) (*http.Response, error) {
 
 	s.prepareHeaders(request, mctx)
+
+	request = request.WithContext(mctx.Context())
 
 	response, err := s.client.Do(request)
 	if err != nil {

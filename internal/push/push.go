@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/aporeto-inc/addedeffect/wsc"
-	"github.com/aporeto-inc/elemental"
-	"github.com/aporeto-inc/manipulate"
+	"go.aporeto.io/addedeffect/wsc"
+	"go.aporeto.io/elemental"
+	"go.aporeto.io/manipulate"
 	"github.com/gorilla/websocket"
 )
 
@@ -21,23 +21,24 @@ const (
 )
 
 type subscription struct {
-	events   chan *elemental.Event
-	errors   chan error
-	status   chan manipulate.SubscriberStatus
-	filters  chan *elemental.PushFilter
-	conn     wsc.Websocket
-	endpoint string
-	config   wsc.Config
+	events    chan *elemental.Event
+	errors    chan error
+	status    chan manipulate.SubscriberStatus
+	filters   chan *elemental.PushFilter
+	conn      wsc.Websocket
+	tokenFunc func() string
+	config    wsc.Config
+	url       string
+	ns        string
+	recursive bool
 }
 
 // NewSubscriber creates a new Subscription.
-func NewSubscriber(
-	url string,
-	ns string,
-	token string,
-	tlsConfig *tls.Config,
-	recursive bool,
-) manipulate.Subscriber {
+func NewSubscriber(url string, ns string, tokenFunc func() string, tlsConfig *tls.Config, recursive bool) manipulate.Subscriber {
+
+	if tokenFunc == nil {
+		panic("tokenFunc must not be nil")
+	}
 
 	config := wsc.Config{
 		PongWait:   10 * time.Second,
@@ -47,12 +48,15 @@ func NewSubscriber(
 	}
 
 	s := &subscription{
-		endpoint: makeURL(url, "events", ns, token, recursive),
-		events:   make(chan *elemental.Event, eventChSize),
-		errors:   make(chan error, errorChSize),
-		status:   make(chan manipulate.SubscriberStatus, statusChSize),
-		filters:  make(chan *elemental.PushFilter, filterChSize),
-		config:   config,
+		url:       url,
+		ns:        ns,
+		recursive: recursive,
+		tokenFunc: tokenFunc,
+		events:    make(chan *elemental.Event, eventChSize),
+		errors:    make(chan error, errorChSize),
+		status:    make(chan manipulate.SubscriberStatus, statusChSize),
+		filters:   make(chan *elemental.PushFilter, filterChSize),
+		config:    config,
 	}
 
 	return s
@@ -78,7 +82,7 @@ func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 
 	for {
 
-		if s.conn, resp, err = wsc.Connect(ctx, s.endpoint, s.config); err == nil {
+		if s.conn, resp, err = wsc.Connect(ctx, makeURL(s.url, s.ns, s.tokenFunc(), s.recursive), s.config); err == nil {
 
 			if initial {
 				s.publishStatus(manipulate.SubscriberStatusInitialConnection)

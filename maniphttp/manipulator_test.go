@@ -5,14 +5,16 @@
 package maniphttp
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/aporeto-inc/elemental"
-	"github.com/aporeto-inc/elemental/test/model"
-	"github.com/aporeto-inc/manipulate"
+	"go.aporeto.io/elemental"
+	"go.aporeto.io/elemental/test/model"
+	"go.aporeto.io/manipulate"
+
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -894,6 +896,27 @@ func TestHTTP_send(t *testing.T) {
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+				So(err.Error(), ShouldEqual, `Cannot communicate: Post nop: unsupported protocol scheme ""`)
+			})
+		})
+	})
+
+	Convey("Given I have a m with with a timeout", t, func() {
+
+		m := NewHTTPManipulator("username", "password", "", "")
+
+		Convey("When I call send", func() {
+
+			ctx, cancel := context.WithTimeout(context.Background(), 0)
+			defer cancel()
+
+			req, _ := http.NewRequest(http.MethodPost, "https://google.com", nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext().WithContext(ctx), req)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+				So(err.Error(), ShouldEqual, "Cannot communicate: Post https://google.com: context deadline exceeded")
 			})
 		})
 	})

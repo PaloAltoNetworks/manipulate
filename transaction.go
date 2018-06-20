@@ -8,5 +8,5 @@ type TransactionID string
 // NewTransactionID returns a new transaction ID.
 func NewTransactionID() TransactionID {
 
-	return TransactionID(uuid.Must(uuid.NewV4()).String())
+	return TransactionID(uuid.NewV4().String())
 }

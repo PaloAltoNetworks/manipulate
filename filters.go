@@ -28,6 +28,8 @@ const (
 	NotContainComparator
 	MatchComparator
 	NotMatchComparator
+	ExistsComparator
+	NotExistsComparator
 	emptyComparator
 )
 
@@ -92,6 +94,8 @@ type FilterValueComposer interface {
 	Contains(...interface{}) FilterKeyComposer
 	NotContains(...interface{}) FilterKeyComposer
 	Matches(...interface{}) FilterKeyComposer
+	Exists() FilterKeyComposer
+	NotExists() FilterKeyComposer
 }
 
 // FilterKeyComposer composes a filter.
@@ -251,6 +255,20 @@ func (f *Filter) Matches(values ...interface{}) FilterKeyComposer {
 	return f
 }
 
+// Exists adds an exists comparator to the FilterComposer.
+func (f *Filter) Exists() FilterKeyComposer {
+	f.values = f.values.add(true)
+	f.comparators = f.comparators.add(ExistsComparator)
+	return f
+}
+
+// NotExists adds an not exist comparator to the FilterComposer.
+func (f *Filter) NotExists() FilterKeyComposer {
+	f.values = f.values.add(false)
+	f.comparators = f.comparators.add(NotExistsComparator)
+	return f
+}
+
 // WithKey adds a key to FilterComposer.
 func (f *Filter) WithKey(key string) FilterValueComposer {
 	f.operators = append(f.operators, AndOperator)
@@ -303,8 +321,10 @@ func (f *Filter) String() string {
 			writeString(&buffer, f.keys[i])
 			writeString(&buffer, " ")
 			writeString(&buffer, translateComparator(f.comparators[i]))
-			writeString(&buffer, " ")
-			writeString(&buffer, translateValue(f.comparators[i], f.values[i]))
+			if f.comparators[i] != ExistsComparator && f.comparators[i] != NotExistsComparator {
+				writeString(&buffer, " ")
+				writeString(&buffer, translateValue(f.comparators[i], f.values[i]))
+			}
 
 		case AndFilterOperator:
 			var strs []string
@@ -354,6 +374,10 @@ func translateComparator(comparator FilterComparator) string {
 		return "not contains"
 	case MatchComparator:
 		return "matches"
+	case ExistsComparator:
+		return "exists"
+	case NotExistsComparator:
+		return "not exists"
 	default:
 		panic(fmt.Sprintf("Unknown comparator: %d", comparator))
 	}

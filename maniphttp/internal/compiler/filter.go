@@ -3,7 +3,7 @@ package compiler
 import (
 	"net/url"
 
-	"github.com/aporeto-inc/manipulate"
+	"go.aporeto.io/manipulate"
 )
 
 // CompileFilter compiles the given filter into a http query filter.

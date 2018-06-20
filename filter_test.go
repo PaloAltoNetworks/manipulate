@@ -327,3 +327,15 @@ func TestFilter_SubFilters(t *testing.T) {
 		})
 	})
 }
+
+func TestFilter_Exists(t *testing.T) {
+
+	Convey("Given I create a filter", t, func() {
+
+		f := NewFilterComposer().WithKey("key1").Exists().WithKey("key2").NotExists().Done()
+
+		Convey("When I call string it should be correct ", func() {
+			So(f.String(), ShouldEqual, "key1 exists and key2 not exists")
+		})
+	})
+}
