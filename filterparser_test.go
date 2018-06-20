@@ -7,6 +7,26 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+func TestParser_Spaces(t *testing.T) {
+
+	Convey("Given the operator is not separated by spaces but quoted", t, func() {
+
+		parser := NewFilterParser(`"tag"=="@sys:image=nginx"`)
+		expectedFilter := NewFilterComposer().WithKey("tag").Equals("@sys:image=nginx").Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+}
+
 func TestParser_Keys(t *testing.T) {
 
 	Convey("Given the quoted expression", t, func() {
@@ -232,6 +252,40 @@ func TestParser_Operators(t *testing.T) {
 			})
 		})
 	})
+
+	Convey("Given the operator 'exists'", t, func() {
+
+		parser := NewFilterParser(`key exists`)
+		expectedFilter := NewFilterComposer().WithKey("key").Exists().Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+
+	Convey("Given the operator 'not exists'", t, func() {
+
+		parser := NewFilterParser(`key not exists`)
+		expectedFilter := NewFilterComposer().WithKey("key").NotExists().Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
 }
 
 func TestParser_Operators_Errors(t *testing.T) {
@@ -280,6 +334,7 @@ func TestParser_Operators_Errors(t *testing.T) {
 			})
 		})
 	})
+
 	Convey(`Given the wrong operator: name == 0 and toto contains "1" an contains "@hello=2"`, t, func() {
 
 		parser := NewFilterParser(`name == 0 and toto contains "1" an contains "@hello=2"`)
@@ -537,6 +592,21 @@ func TestParser_Values_Errors(t *testing.T) {
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
 				So(err.Error(), ShouldEqual, `invalid value. found and`)
+			})
+		})
+	})
+
+	Convey(`Given the wrong value and: key exists value"`, t, func() {
+
+		parser := NewFilterParser(`key exists value"`)
+
+		Convey("When I run Parse", func() {
+
+			_, err := parser.Parse()
+
+			Convey("Then there should be an error", func() {
+				So(err, ShouldNotEqual, nil)
+				So(err.Error(), ShouldEqual, `invalid keyword after key exists. Found value`)
 			})
 		})
 	})
@@ -943,9 +1013,9 @@ func Test_Parser(t *testing.T) {
 		})
 	})
 
-	Convey(`Given the filter: (name == toto or name == tata) and age == 31`, t, func() {
+	Convey(`Given the filter: (name == toto or name == tata) and age exists and age == 31`, t, func() {
 
-		parser := NewFilterParser("(name == toto or name == tata) and age == 31")
+		parser := NewFilterParser("(name == toto or name == tata) and age exists and age == 31")
 
 		Convey("When I run Parse", func() {
 
@@ -955,6 +1025,7 @@ func Test_Parser(t *testing.T) {
 					NewFilterComposer().WithKey("name").Equals("toto").Done(),
 					NewFilterComposer().WithKey("name").Equals("tata").Done(),
 				).Done(),
+				NewFilterComposer().WithKey("age").Exists().Done(),
 				NewFilterComposer().WithKey("age").Equals(31).Done(),
 			).Done()
 
