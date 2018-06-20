@@ -64,6 +64,7 @@ const (
 	wordNOT         = "NOT"
 	wordEXISTS      = "EXISTS"
 	wordNOTEXISTS   = "NOTEXISTS"
+	wordEOF         = "EOF"
 )
 
 const (
@@ -392,7 +393,11 @@ func (p *FilterParser) makeFilter(key string, operator parserToken, value interf
 		token != parserTokenOR &&
 		token != parserTokenRIGHTPARENTHESE &&
 		token != parserTokenEOF {
-		return nil, fmt.Errorf("invalid keyword after %s. Found %s", filter.Done().String(), literal)
+
+		if token == parserTokenEOF {
+			literal = wordEOF
+		}
+		return nil, fmt.Errorf("invalid keyword after %s. found %s", filter.Done().String(), literal)
 	}
 
 	return filter.Done(), nil
@@ -419,7 +424,12 @@ func (p *FilterParser) parseOperator() (parserToken, error) {
 		token != parserTokenMATCHES &&
 		token != parserTokenEXISTS &&
 		token != parserTokenNOTEXISTS {
-		return parserTokenILLEGAL, fmt.Errorf("invalid operator. found %s", literal)
+
+		if token == parserTokenEOF {
+			literal = wordEOF
+		}
+
+		return parserTokenILLEGAL, fmt.Errorf("invalid operator. found %s instead of (==, !=, <, <=, >, >=, contains, in, matches, exists)", literal)
 	}
 
 	if operatorNot {
@@ -588,7 +598,7 @@ func (p *FilterParser) parseStringValue() (string, error) {
 		for {
 			token, literal = p.scan()
 			if token == parserTokenEOF {
-				return "", fmt.Errorf("unable to find quote after value: %s", value)
+				return "", fmt.Errorf("unable to find quote after value: %s. found EOF", value)
 			}
 
 			if token == tokenQuote {
@@ -602,6 +612,9 @@ func (p *FilterParser) parseStringValue() (string, error) {
 
 	// Unquoted string can have only one word
 	if token != parserTokenWORD {
+		if token == parserTokenEOF {
+			literal = wordEOF
+		}
 		return "", fmt.Errorf("invalid value. found %s", literal)
 	}
 

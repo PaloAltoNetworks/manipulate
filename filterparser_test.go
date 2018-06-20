@@ -300,7 +300,7 @@ func TestParser_Operators_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `invalid operator. found "`)
+				So(err.Error(), ShouldEqual, `invalid operator. found " instead of (==, !=, <, <=, >, >=, contains, in, matches, exists)`)
 			})
 		})
 	})
@@ -315,7 +315,7 @@ func TestParser_Operators_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `invalid operator. found and`)
+				So(err.Error(), ShouldEqual, `invalid operator. found and instead of (==, !=, <, <=, >, >=, contains, in, matches, exists)`)
 			})
 		})
 	})
@@ -330,7 +330,7 @@ func TestParser_Operators_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldContainSubstring, `invalid operator`) // Note: Not sure about this case.
+				So(err.Error(), ShouldContainSubstring, `invalid operator. found EOF instead of (==, !=, <, <=, >, >=, contains, in, matches, exists)`) // Note: Not sure about this case.
 			})
 		})
 	})
@@ -345,7 +345,7 @@ func TestParser_Operators_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldContainSubstring, `invalid keyword after toto contains ["1"]. Found an`)
+				So(err.Error(), ShouldContainSubstring, `invalid keyword after toto contains ["1"]. found an`)
 			})
 		})
 	})
@@ -502,7 +502,7 @@ func TestParser_Values_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `unable to find quote after value: hello`)
+				So(err.Error(), ShouldEqual, `unable to find quote after value: hello. found EOF`)
 			})
 		})
 	})
@@ -517,7 +517,7 @@ func TestParser_Values_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `unable to find quote after value: hello`)
+				So(err.Error(), ShouldEqual, `unable to find quote after value: hello. found EOF`)
 			})
 		})
 	})
@@ -561,7 +561,7 @@ func TestParser_Values_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `unable to find quote after value: hello"`)
+				So(err.Error(), ShouldEqual, `unable to find quote after value: hello". found EOF`)
 			})
 		})
 	})
@@ -576,7 +576,7 @@ func TestParser_Values_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `unable to find quote after value: hello'`)
+				So(err.Error(), ShouldEqual, `unable to find quote after value: hello'. found EOF`)
 			})
 		})
 	})
@@ -606,7 +606,7 @@ func TestParser_Values_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `invalid keyword after key exists. Found value`)
+				So(err.Error(), ShouldEqual, `invalid keyword after key exists. found value`)
 			})
 		})
 	})
