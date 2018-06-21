@@ -88,16 +88,17 @@ var specialLetters = map[rune]interface{}{
 	'.':  nil,
 	'/':  nil,
 	'\\': nil,
-	'<':  nil,
-	'>':  nil,
-	'=':  nil,
-	'!':  nil,
 	'*':  nil,
 }
 
-var stringToToken = map[string]parserToken{
-	wordAND:         parserTokenAND,
-	wordOR:          parserTokenOR,
+var operatorStart = map[rune]interface{}{
+	'<': nil,
+	'>': nil,
+	'=': nil,
+	'!': nil,
+}
+
+var operatorsToToken = map[string]parserToken{
 	wordEQUAL:       parserTokenEQUAL,
 	wordNOTEQUAL:    parserTokenNOTEQUAL,
 	wordLT:          parserTokenLT,
@@ -107,13 +108,18 @@ var stringToToken = map[string]parserToken{
 	wordCONTAINS:    parserTokenCONTAINS,
 	wordNOTCONTAINS: parserTokenNOTCONTAINS,
 	wordMATCHES:     parserTokenMATCHES,
-	wordTRUE:        parserTokenTRUE,
-	wordFALSE:       parserTokenFALSE,
 	wordIN:          parserTokenIN,
 	wordNOTIN:       parserTokenNOTIN,
 	wordNOT:         parserTokenNOT,
 	wordEXISTS:      parserTokenEXISTS,
 	wordNOTEXISTS:   parserTokenNOTEXISTS,
+}
+
+var wordToToken = map[string]parserToken{
+	wordAND:   parserTokenAND,
+	wordOR:    parserTokenOR,
+	wordTRUE:  parserTokenTRUE,
+	wordFALSE: parserTokenFALSE,
 }
 
 var runeToToken = map[rune]parserToken{
@@ -193,16 +199,10 @@ func (p *FilterParser) Parse() (*Filter, error) {
 		}
 
 		if token == parserTokenQUOTE || token == parserTokenSINGLEQUOTE {
-			tokenQuote := token
 			// Handle expression starting with QUOTE like "a" operator b
-			token, literal = p.scanIgnoreWhitespace()
-
-			if token != parserTokenWORD {
-				return nil, fmt.Errorf("invalid word after the quote. found %s", literal)
-			}
-			quote, _ := p.scanIgnoreWhitespace()
-			if quote != tokenQuote {
-				return nil, fmt.Errorf("missing quote after the word %s", literal)
+			key, err := p.parseUntilQuoteSimilar(token)
+			if err != nil {
+				return nil, err
 			}
 
 			operator, value, err := p.parseOperatorAndValue()
@@ -210,7 +210,7 @@ func (p *FilterParser) Parse() (*Filter, error) {
 				return nil, err
 			}
 
-			filter, err := p.makeFilter(literal, operator, value)
+			filter, err := p.makeFilter(key, operator, value)
 			if err != nil {
 				return nil, err
 			}
@@ -413,18 +413,7 @@ func (p *FilterParser) parseOperator() (parserToken, error) {
 		token, literal = p.scanIgnoreWhitespace()
 	}
 
-	if token != parserTokenEQUAL &&
-		token != parserTokenNOTEQUAL &&
-		token != parserTokenLT &&
-		token != parserTokenLTE &&
-		token != parserTokenGT &&
-		token != parserTokenGTE &&
-		token != parserTokenCONTAINS &&
-		token != parserTokenIN &&
-		token != parserTokenMATCHES &&
-		token != parserTokenEXISTS &&
-		token != parserTokenNOTEXISTS {
-
+	if !tokenIsOperator(token) {
 		if token == parserTokenEOF {
 			literal = wordEOF
 		}
@@ -585,29 +574,33 @@ func (p *FilterParser) parseDateValue() (time.Time, error) {
 	return t, fmt.Errorf("unable to parse date format %s", expression)
 }
 
+func (p *FilterParser) parseUntilQuoteSimilar(tokenQuote parserToken) (string, error) {
+
+	var word string
+	// Scan everything until the next quote or the end of the input
+	for {
+		token, literal := p.scan()
+		if token == parserTokenEOF {
+			return "", fmt.Errorf("missing quote after %s", word)
+		}
+
+		if token == tokenQuote {
+			return word, nil
+		}
+
+		// Add anything to the value
+		word += literal
+	}
+}
+
 func (p *FilterParser) parseStringValue() (string, error) {
 
 	p.unscan()
 	token, literal := p.scanIgnoreWhitespace()
-	var value string
 
 	// Quoted string
 	if token == parserTokenQUOTE || token == parserTokenSINGLEQUOTE {
-		tokenQuote := token
-		// Scan everything until the next quote or the end of the input
-		for {
-			token, literal = p.scan()
-			if token == parserTokenEOF {
-				return "", fmt.Errorf("unable to find quote after value: %s. found EOF", value)
-			}
-
-			if token == tokenQuote {
-				return value, nil
-			}
-
-			// Add anything to the value
-			value += literal
-		}
+		return p.parseUntilQuoteSimilar(token)
 	}
 
 	// Unquoted string can have only one word
@@ -672,12 +665,45 @@ func (p *FilterParser) parseArrayValue() ([]interface{}, error) {
 
 func isWhitespace(ch rune) bool { return ch == ' ' || ch == '\t' || ch == '\n' }
 func isDigit(ch rune) bool      { return (ch >= '0' && ch <= '9') }
-
 func isLetter(ch rune) bool {
 
 	if _, ok := specialLetters[ch]; ok {
 		return true
 	}
 
+	if _, ok := operatorStart[ch]; ok {
+		return true
+	}
+
 	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
+}
+
+func isOperatorStart(ch rune) bool {
+
+	_, ok := operatorStart[ch]
+	return ok
+}
+
+func isOperator(runes ...rune) (parserToken, string, bool) {
+	word := string(runes)
+	token, ok := operatorsToToken[word]
+
+	return token, word, ok
+}
+
+func tokenIsOperator(token parserToken) bool {
+
+	return token == parserTokenEQUAL ||
+		token == parserTokenNOTEQUAL ||
+		token == parserTokenLT ||
+		token == parserTokenLTE ||
+		token == parserTokenGT ||
+		token == parserTokenGTE ||
+		token == parserTokenCONTAINS ||
+		token == parserTokenIN ||
+		token == parserTokenMATCHES ||
+		token == parserTokenEXISTS ||
+		token == parserTokenNOTEXISTS ||
+		token == parserTokenNOTCONTAINS ||
+		token == parserTokenNOTIN
 }

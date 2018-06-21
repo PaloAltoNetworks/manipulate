@@ -9,10 +9,146 @@ import (
 
 func TestParser_Spaces(t *testing.T) {
 
-	Convey("Given the operator is not separated by spaces but quoted", t, func() {
+	Convey("Given the operator '==' is not separated by spaces but quoted", t, func() {
 
 		parser := NewFilterParser(`"tag"=="@sys:image=nginx"`)
 		expectedFilter := NewFilterComposer().WithKey("tag").Equals("@sys:image=nginx").Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+
+	Convey("Given the operator '==' is not separated by spaces", t, func() {
+
+		parser := NewFilterParser(`a==b`)
+		expectedFilter := NewFilterComposer().WithKey("a").Equals("b").Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+
+	Convey("Given the operator '<=' is not separated by spaces", t, func() {
+
+		parser := NewFilterParser(`a<=b`)
+		expectedFilter := NewFilterComposer().WithKey("a").LesserOrEqualThan("b").Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+
+	Convey("Given the operator '<' is not separated by spaces", t, func() {
+
+		parser := NewFilterParser(`a<b`)
+		expectedFilter := NewFilterComposer().WithKey("a").LesserThan("b").Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+
+	Convey("Given the operator is separated by spaces", t, func() {
+
+		parser := NewFilterParser(`a == b`)
+		expectedFilter := NewFilterComposer().WithKey("a").Equals("b").Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+
+	Convey("Given the operator complex value", t, func() {
+
+		parser := NewFilterParser(`value == "age>=3"`)
+		expectedFilter := NewFilterComposer().WithKey("value").Equals("age>=3").Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+
+	Convey("Given the operator complex key", t, func() {
+
+		parser := NewFilterParser(`"tag==toto"=="3==5"`)
+		expectedFilter := NewFilterComposer().WithKey("tag==toto").Equals("3==5").Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+
+	Convey(`Given the weird case '"=="=="=="'`, t, func() {
+
+		parser := NewFilterParser(`"=="=="=="`)
+		expectedFilter := NewFilterComposer().WithKey("==").Equals("==").Done()
+
+		Convey("When I run Parse", func() {
+
+			filter, err := parser.Parse()
+
+			Convey("Then there should be no error and the filter should as expected", func() {
+				So(err, ShouldEqual, nil)
+				So(filter, ShouldNotEqual, nil)
+				So(filter.String(), ShouldEqual, expectedFilter.String())
+			})
+		})
+	})
+
+	Convey(`Given the weird case '"=="    ==    "=="'`, t, func() {
+
+		parser := NewFilterParser(`"=="    ==    "=="`)
+		expectedFilter := NewFilterComposer().WithKey("==").Equals("==").Done()
 
 		Convey("When I run Parse", func() {
 
@@ -126,7 +262,7 @@ func TestParser_Keys_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `missing quote after the word key`)
+				So(err.Error(), ShouldEqual, `missing quote after key == chris`)
 			})
 		})
 	})
@@ -320,21 +456,6 @@ func TestParser_Operators_Errors(t *testing.T) {
 		})
 	})
 
-	Convey(`Given the wrong operator: key==chris`, t, func() {
-
-		parser := NewFilterParser("key==chris")
-
-		Convey("When I run Parse", func() {
-
-			_, err := parser.Parse()
-
-			Convey("Then there should be an error", func() {
-				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldContainSubstring, `invalid operator. found EOF instead of (==, !=, <, <=, >, >=, contains, in, matches, exists)`) // Note: Not sure about this case.
-			})
-		})
-	})
-
 	Convey(`Given the wrong operator: name == 0 and toto contains "1" an contains "@hello=2"`, t, func() {
 
 		parser := NewFilterParser(`name == 0 and toto contains "1" an contains "@hello=2"`)
@@ -502,7 +623,7 @@ func TestParser_Values_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `unable to find quote after value: hello. found EOF`)
+				So(err.Error(), ShouldEqual, `missing quote after hello`)
 			})
 		})
 	})
@@ -517,7 +638,7 @@ func TestParser_Values_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `unable to find quote after value: hello. found EOF`)
+				So(err.Error(), ShouldEqual, `missing quote after hello`)
 			})
 		})
 	})
@@ -561,7 +682,7 @@ func TestParser_Values_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `unable to find quote after value: hello". found EOF`)
+				So(err.Error(), ShouldEqual, `missing quote after hello"`)
 			})
 		})
 	})
@@ -576,7 +697,7 @@ func TestParser_Values_Errors(t *testing.T) {
 
 			Convey("Then there should be an error", func() {
 				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldEqual, `unable to find quote after value: hello'. found EOF`)
+				So(err.Error(), ShouldEqual, `missing quote after hello'`)
 			})
 		})
 	})
