@@ -4,8 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"go.aporeto.io/manipulate"
 	"github.com/globalsign/mgo/bson"
+	"go.aporeto.io/manipulate"
+
 	. "github.com/smartystreets/goconvey/convey"
 )
 

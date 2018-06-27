@@ -3,8 +3,9 @@ package manipmongo
 import (
 	"testing"
 
-	"go.aporeto.io/elemental/test/model"
 	"github.com/globalsign/mgo"
+	"go.aporeto.io/elemental/test/model"
+
 	. "github.com/smartystreets/goconvey/convey"
 )
 

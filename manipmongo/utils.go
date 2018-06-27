@@ -3,8 +3,8 @@ package manipmongo
 import (
 	"strings"
 
-	"go.aporeto.io/elemental"
 	"github.com/globalsign/mgo"
+	"go.aporeto.io/elemental"
 )
 
 // collectionFromIdentity returns the mgo*.Collection associated to the given Identity from the

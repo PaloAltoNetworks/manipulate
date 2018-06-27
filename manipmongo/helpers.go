@@ -3,9 +3,9 @@ package manipmongo
 import (
 	"strconv"
 
+	"github.com/globalsign/mgo"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
-	"github.com/globalsign/mgo"
 )
 
 // DoesDatabaseExist checks if the database used by the given manipulator exists.

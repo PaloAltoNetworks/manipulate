@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"go.aporeto.io/manipulate"
 	"github.com/globalsign/mgo/bson"
+	"go.aporeto.io/manipulate"
 )
 
 func massageKey(key string) string {

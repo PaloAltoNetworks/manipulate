@@ -4,9 +4,9 @@ import (
 	"context"
 	"sync"
 
+	"github.com/globalsign/mgo"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
-	"github.com/globalsign/mgo"
 )
 
 type transaction struct {
