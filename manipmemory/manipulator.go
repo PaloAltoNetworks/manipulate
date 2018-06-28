@@ -36,7 +36,7 @@ func NewMemoryManipulator(schema *memdb.DBSchema) manipulate.TransactionalManipu
 }
 
 // RetrieveMany is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.Identifiables) error {
+func (s *memdbManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.Identifiables) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext()
@@ -46,9 +46,9 @@ func (s *memdbManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental
 
 	index := "id"
 	args := []interface{}{}
-	if mctx.Filter != nil {
-		index = mctx.Filter.Keys()[0]
-		args = mctx.Filter.Values()[0]
+	if mctx.Filter() != nil {
+		index = mctx.Filter().Keys()[0]
+		args = mctx.Filter().Values()[0]
 	}
 
 	iterator, err := txn.Get(dest.Identity().Category, index, args...)
@@ -69,7 +69,7 @@ func (s *memdbManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental
 }
 
 // Retrieve is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Retrieve(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
+func (s *memdbManipulator) Retrieve(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	txn := s.db.Txn(false)
 
@@ -91,13 +91,13 @@ func (s *memdbManipulator) Retrieve(mctx *manipulate.Context, objects ...element
 }
 
 // Create is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Create(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
+func (s *memdbManipulator) Create(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext()
 	}
 
-	tid := mctx.TransactionID
+	tid := mctx.TransactionID()
 	txn := s.txnForID(tid)
 	defer txn.Abort()
 
@@ -118,13 +118,13 @@ func (s *memdbManipulator) Create(mctx *manipulate.Context, objects ...elemental
 }
 
 // Update is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Update(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
+func (s *memdbManipulator) Update(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext()
 	}
 
-	tid := mctx.TransactionID
+	tid := mctx.TransactionID()
 	txn := s.txnForID(tid)
 	defer txn.Abort()
 
@@ -142,13 +142,13 @@ func (s *memdbManipulator) Update(mctx *manipulate.Context, objects ...elemental
 }
 
 // Delete is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Delete(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
+func (s *memdbManipulator) Delete(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext()
 	}
 
-	tid := mctx.TransactionID
+	tid := mctx.TransactionID()
 	txn := s.txnForID(tid)
 	defer txn.Abort()
 
@@ -166,12 +166,12 @@ func (s *memdbManipulator) Delete(mctx *manipulate.Context, objects ...elemental
 }
 
 // DeleteMany is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) DeleteMany(mctx *manipulate.Context, identity elemental.Identity) error {
+func (s *memdbManipulator) DeleteMany(mctx manipulate.Context, identity elemental.Identity) error {
 	return manipulate.NewErrNotImplemented("DeleteMany not implemented in manipmemory")
 }
 
 // Count is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Count(mctx *manipulate.Context, identity elemental.Identity) (int, error) {
+func (s *memdbManipulator) Count(mctx manipulate.Context, identity elemental.Identity) (int, error) {
 
 	// out := elemental.IdentifiablesList{}
 	// if err := s.RetrieveMany(mctx, &out); err != nil {

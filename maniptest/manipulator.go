@@ -9,13 +9,13 @@ import (
 )
 
 type mockedMethods struct {
-	retrieveManyMock func(context *manipulate.Context, dest elemental.Identifiables) error
-	retrieveMock     func(context *manipulate.Context, objects ...elemental.Identifiable) error
-	createMock       func(context *manipulate.Context, objects ...elemental.Identifiable) error
-	updateMock       func(context *manipulate.Context, objects ...elemental.Identifiable) error
-	deleteMock       func(context *manipulate.Context, objects ...elemental.Identifiable) error
-	deleteManyMock   func(context *manipulate.Context, identity elemental.Identity) error
-	countMock        func(context *manipulate.Context, identity elemental.Identity) (int, error)
+	retrieveManyMock func(context manipulate.Context, dest elemental.Identifiables) error
+	retrieveMock     func(context manipulate.Context, objects ...elemental.Identifiable) error
+	createMock       func(context manipulate.Context, objects ...elemental.Identifiable) error
+	updateMock       func(context manipulate.Context, objects ...elemental.Identifiable) error
+	deleteMock       func(context manipulate.Context, objects ...elemental.Identifiable) error
+	deleteManyMock   func(context manipulate.Context, identity elemental.Identity) error
+	countMock        func(context manipulate.Context, identity elemental.Identity) (int, error)
 	commitMock       func(id manipulate.TransactionID) error
 	abortMock        func(id manipulate.TransactionID) bool
 }
@@ -23,13 +23,13 @@ type mockedMethods struct {
 // A TestManipulator is the interface of mockable test manipulator.
 type TestManipulator interface {
 	manipulate.TransactionalManipulator
-	MockRetrieveMany(t *testing.T, impl func(ctx *manipulate.Context, dest elemental.Identifiables) error)
-	MockRetrieve(t *testing.T, impl func(ctx *manipulate.Context, objects ...elemental.Identifiable) error)
-	MockCreate(t *testing.T, impl func(ctx *manipulate.Context, objects ...elemental.Identifiable) error)
-	MockUpdate(t *testing.T, impl func(ctx *manipulate.Context, objects ...elemental.Identifiable) error)
-	MockDelete(t *testing.T, impl func(ctx *manipulate.Context, objects ...elemental.Identifiable) error)
-	MockDeleteMany(t *testing.T, impl func(ctx *manipulate.Context, identity elemental.Identity) error)
-	MockCount(t *testing.T, impl func(ctx *manipulate.Context, identity elemental.Identity) (int, error))
+	MockRetrieveMany(t *testing.T, impl func(ctx manipulate.Context, dest elemental.Identifiables) error)
+	MockRetrieve(t *testing.T, impl func(ctx manipulate.Context, objects ...elemental.Identifiable) error)
+	MockCreate(t *testing.T, impl func(ctx manipulate.Context, objects ...elemental.Identifiable) error)
+	MockUpdate(t *testing.T, impl func(ctx manipulate.Context, objects ...elemental.Identifiable) error)
+	MockDelete(t *testing.T, impl func(ctx manipulate.Context, objects ...elemental.Identifiable) error)
+	MockDeleteMany(t *testing.T, impl func(ctx manipulate.Context, identity elemental.Identity) error)
+	MockCount(t *testing.T, impl func(ctx manipulate.Context, identity elemental.Identity) (int, error))
 	MockCommit(t *testing.T, impl func(tid manipulate.TransactionID) error)
 	MockAbort(t *testing.T, impl func(tid manipulate.TransactionID) bool)
 }
@@ -49,37 +49,37 @@ func NewTestManipulator() TestManipulator {
 	}
 }
 
-func (m *testManipulator) MockRetrieveMany(t *testing.T, impl func(context *manipulate.Context, dest elemental.Identifiables) error) {
+func (m *testManipulator) MockRetrieveMany(t *testing.T, impl func(context manipulate.Context, dest elemental.Identifiables) error) {
 
 	m.currentMocks(t).retrieveManyMock = impl
 }
 
-func (m *testManipulator) MockRetrieve(t *testing.T, impl func(context *manipulate.Context, objects ...elemental.Identifiable) error) {
+func (m *testManipulator) MockRetrieve(t *testing.T, impl func(context manipulate.Context, objects ...elemental.Identifiable) error) {
 
 	m.currentMocks(t).retrieveMock = impl
 }
 
-func (m *testManipulator) MockCreate(t *testing.T, impl func(context *manipulate.Context, objects ...elemental.Identifiable) error) {
+func (m *testManipulator) MockCreate(t *testing.T, impl func(context manipulate.Context, objects ...elemental.Identifiable) error) {
 
 	m.currentMocks(t).createMock = impl
 }
 
-func (m *testManipulator) MockUpdate(t *testing.T, impl func(context *manipulate.Context, objects ...elemental.Identifiable) error) {
+func (m *testManipulator) MockUpdate(t *testing.T, impl func(context manipulate.Context, objects ...elemental.Identifiable) error) {
 
 	m.currentMocks(t).updateMock = impl
 }
 
-func (m *testManipulator) MockDelete(t *testing.T, impl func(context *manipulate.Context, objects ...elemental.Identifiable) error) {
+func (m *testManipulator) MockDelete(t *testing.T, impl func(context manipulate.Context, objects ...elemental.Identifiable) error) {
 
 	m.currentMocks(t).deleteMock = impl
 }
 
-func (m *testManipulator) MockDeleteMany(t *testing.T, impl func(context *manipulate.Context, identity elemental.Identity) error) {
+func (m *testManipulator) MockDeleteMany(t *testing.T, impl func(context manipulate.Context, identity elemental.Identity) error) {
 
 	m.currentMocks(t).deleteManyMock = impl
 }
 
-func (m *testManipulator) MockCount(t *testing.T, impl func(context *manipulate.Context, identity elemental.Identity) (int, error)) {
+func (m *testManipulator) MockCount(t *testing.T, impl func(context manipulate.Context, identity elemental.Identity) (int, error)) {
 
 	m.currentMocks(t).countMock = impl
 }
@@ -94,7 +94,7 @@ func (m *testManipulator) MockAbort(t *testing.T, impl func(id manipulate.Transa
 	m.currentMocks(t).abortMock = impl
 }
 
-func (m *testManipulator) RetrieveMany(context *manipulate.Context, dest elemental.Identifiables) error {
+func (m *testManipulator) RetrieveMany(context manipulate.Context, dest elemental.Identifiables) error {
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.retrieveManyMock != nil {
 		return mock.retrieveManyMock(context, dest)
@@ -103,7 +103,7 @@ func (m *testManipulator) RetrieveMany(context *manipulate.Context, dest element
 	return nil
 }
 
-func (m *testManipulator) Retrieve(context *manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *testManipulator) Retrieve(context manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.retrieveMock != nil {
 		return mock.retrieveMock(context, objects...)
@@ -112,7 +112,7 @@ func (m *testManipulator) Retrieve(context *manipulate.Context, objects ...eleme
 	return nil
 }
 
-func (m *testManipulator) Create(context *manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *testManipulator) Create(context manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.createMock != nil {
 		return mock.createMock(context, objects...)
@@ -121,7 +121,7 @@ func (m *testManipulator) Create(context *manipulate.Context, objects ...element
 	return nil
 }
 
-func (m *testManipulator) Update(context *manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *testManipulator) Update(context manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.updateMock != nil {
 		return mock.updateMock(context, objects...)
@@ -130,7 +130,7 @@ func (m *testManipulator) Update(context *manipulate.Context, objects ...element
 	return nil
 }
 
-func (m *testManipulator) Delete(context *manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *testManipulator) Delete(context manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.deleteMock != nil {
 		return mock.deleteMock(context, objects...)
@@ -140,7 +140,7 @@ func (m *testManipulator) Delete(context *manipulate.Context, objects ...element
 }
 
 // DeleteMany is part of the implementation of the Manipulator interface.
-func (m *testManipulator) DeleteMany(context *manipulate.Context, identity elemental.Identity) error {
+func (m *testManipulator) DeleteMany(context manipulate.Context, identity elemental.Identity) error {
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.deleteManyMock != nil {
 		return mock.deleteManyMock(context, identity)
@@ -149,7 +149,7 @@ func (m *testManipulator) DeleteMany(context *manipulate.Context, identity eleme
 	return nil
 }
 
-func (m *testManipulator) Count(context *manipulate.Context, identity elemental.Identity) (int, error) {
+func (m *testManipulator) Count(context manipulate.Context, identity elemental.Identity) (int, error) {
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.countMock != nil {
 		return mock.countMock(context, identity)

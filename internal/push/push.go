@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"go.aporeto.io/addedeffect/wsc"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
-	"github.com/gorilla/websocket"
 )
 
 const (

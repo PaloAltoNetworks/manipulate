@@ -94,9 +94,9 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 
 			Convey("When I prepareHeaders with a no tracked context", func() {
 
-				ctx := manipulate.NewContext()
-				ctx.ExternalTrackingID = "tid"
-				ctx.ExternalTrackingType = "type"
+				ctx := manipulate.NewContext(
+					manipulate.ContextOptionTracking("tid", "type"),
+				)
 
 				m.prepareHeaders(req, ctx)
 
@@ -135,7 +135,7 @@ func TestHTTP_readHeaders(t *testing.T) {
 			m.readHeaders(req, ctx)
 
 			Convey("Then Context.X-Count-Total should be 456", func() {
-				So(ctx.CountTotal, ShouldEqual, 456)
+				So(ctx.Count(), ShouldEqual, 456)
 			})
 		})
 	})
@@ -574,8 +574,10 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 			var l testmodel.TasksList
-			ctx := manipulate.NewContext()
-			ctx.Parent = list
+			ctx := manipulate.NewContext(
+				manipulate.ContextOptionParent(list),
+			)
+
 			errs := m.RetrieveMany(ctx, &l)
 
 			Convey("Then err should not be nil", func() {
@@ -609,8 +611,9 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			list2 := testmodel.NewList()
 			var l testmodel.TasksList
 
-			ctx := manipulate.NewContext()
-			ctx.Parent = list2
+			ctx := manipulate.NewContext(
+				manipulate.ContextOptionParent(list2),
+			)
 
 			errs := m.RetrieveMany(ctx, &l)
 
@@ -631,8 +634,9 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			e := testmodel.NewTask()
 			var l testmodel.TasksList
 
-			ctx := manipulate.NewContext()
-			ctx.Parent = e
+			ctx := manipulate.NewContext(
+				manipulate.ContextOptionParent(e),
+			)
 
 			errs := m.RetrieveMany(ctx, &l)
 
@@ -657,8 +661,9 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 
 			var l testmodel.TasksList
 
-			ctx := manipulate.NewContext()
-			ctx.Parent = list
+			ctx := manipulate.NewContext(
+				manipulate.ContextOptionParent(list),
+			)
 
 			_ = m.RetrieveMany(ctx, &l)
 
@@ -677,8 +682,9 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
-			ctx := manipulate.NewContext()
-			ctx.Parent = list
+			ctx := manipulate.NewContext(
+				manipulate.ContextOptionParent(list),
+			)
 
 			var l testmodel.TasksList
 			errs := m.RetrieveMany(ctx, &l)
@@ -698,8 +704,9 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
-			ctx := manipulate.NewContext()
-			ctx.Parent = list
+			ctx := manipulate.NewContext(
+				manipulate.ContextOptionParent(list),
+			)
 
 			var l testmodel.TasksList
 			errs := m.RetrieveMany(ctx, &l)
@@ -745,8 +752,9 @@ func TestHTTP_Create(t *testing.T) {
 			m := NewHTTPManipulator("username", "password", "url.com", "")
 			list2 := testmodel.NewList()
 			task := testmodel.NewTask()
-			ctx := manipulate.NewContext()
-			ctx.Parent = list2
+			ctx := manipulate.NewContext(
+				manipulate.ContextOptionParent(list2),
+			)
 
 			errs := m.Create(ctx, task)
 
@@ -831,8 +839,10 @@ func TestHTTP_Count(t *testing.T) {
 
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
-			ctx := manipulate.NewContext()
-			ctx.Parent = list
+			ctx := manipulate.NewContext(
+				manipulate.ContextOptionParent(list),
+			)
+
 			num, errs := m.Count(ctx, testmodel.TaskIdentity)
 
 			Convey("Then err should not be nil", func() {
@@ -850,8 +860,9 @@ func TestHTTP_Count(t *testing.T) {
 
 			list2 := testmodel.NewList()
 
-			ctx := manipulate.NewContext()
-			ctx.Parent = list2
+			ctx := manipulate.NewContext(
+				manipulate.ContextOptionParent(list2),
+			)
 
 			_, errs := m.Count(ctx, testmodel.TaskIdentity)
 
@@ -870,8 +881,9 @@ func TestHTTP_Count(t *testing.T) {
 
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
-			ctx := manipulate.NewContext()
-			ctx.Parent = list
+			ctx := manipulate.NewContext(
+				manipulate.ContextOptionParent(list),
+			)
 
 			_, errs := m.Count(ctx, testmodel.TaskIdentity)
 
@@ -911,7 +923,7 @@ func TestHTTP_send(t *testing.T) {
 			defer cancel()
 
 			req, _ := http.NewRequest(http.MethodPost, "https://google.com", nil)
-			_, err := m.(*httpManipulator).send(manipulate.NewContext().WithContext(ctx), req)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(manipulate.ContextOptionContext(ctx)), req)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)

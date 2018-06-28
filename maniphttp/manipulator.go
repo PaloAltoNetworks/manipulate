@@ -125,7 +125,7 @@ func NewHTTPManipulatorWithTokenManager(ctx context.Context, url string, namespa
 	return m, nil
 }
 
-func (s *httpManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.Identifiables) error {
+func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.Identifiables) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext()
@@ -134,7 +134,7 @@ func (s *httpManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.retrieve_many.%s", dest.Identity().Category))
 	defer sp.Finish()
 
-	url, err := s.getURLForChildrenIdentity(mctx.Parent, dest.Identity(), dest.Version(), mctx.Version)
+	url, err := s.getURLForChildrenIdentity(mctx.Parent(), dest.Identity(), dest.Version(), mctx.Version())
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -187,7 +187,7 @@ func (s *httpManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.
 	return nil
 }
 
-func (s *httpManipulator) Retrieve(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
+func (s *httpManipulator) Retrieve(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext()
@@ -198,7 +198,7 @@ func (s *httpManipulator) Retrieve(mctx *manipulate.Context, objects ...elementa
 		sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.retrieve.object.%s", object.Identity().Name))
 		defer sp.Finish()
 
-		url, err := s.getPersonalURL(object, mctx.Version)
+		url, err := s.getPersonalURL(object, mctx.Version())
 		if err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
@@ -246,7 +246,7 @@ func (s *httpManipulator) Retrieve(mctx *manipulate.Context, objects ...elementa
 	return nil
 }
 
-func (s *httpManipulator) Create(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
+func (s *httpManipulator) Create(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext()
@@ -258,7 +258,7 @@ func (s *httpManipulator) Create(mctx *manipulate.Context, objects ...elemental.
 		sp.LogFields(log.String("object_id", object.Identifier()))
 		defer sp.Finish()
 
-		url, err := s.getURLForChildrenIdentity(mctx.Parent, object.Identity(), object.Version(), mctx.Version)
+		url, err := s.getURLForChildrenIdentity(mctx.Parent(), object.Identity(), object.Version(), mctx.Version())
 		if err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
@@ -313,7 +313,7 @@ func (s *httpManipulator) Create(mctx *manipulate.Context, objects ...elemental.
 	return nil
 }
 
-func (s *httpManipulator) Update(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
+func (s *httpManipulator) Update(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if len(objects) == 0 {
 		return nil
@@ -329,7 +329,7 @@ func (s *httpManipulator) Update(mctx *manipulate.Context, objects ...elemental.
 		sp.LogFields(log.String("object_id", object.Identifier()))
 		defer sp.Finish()
 
-		url, err := s.getPersonalURL(object, mctx.Version)
+		url, err := s.getPersonalURL(object, mctx.Version())
 		if err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
@@ -384,7 +384,7 @@ func (s *httpManipulator) Update(mctx *manipulate.Context, objects ...elemental.
 	return nil
 }
 
-func (s *httpManipulator) Delete(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
+func (s *httpManipulator) Delete(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext()
@@ -396,7 +396,7 @@ func (s *httpManipulator) Delete(mctx *manipulate.Context, objects ...elemental.
 		sp.LogFields(log.String("object_id", object.Identifier()))
 		defer sp.Finish()
 
-		url, err := s.getPersonalURL(object, mctx.Version)
+		url, err := s.getPersonalURL(object, mctx.Version())
 		if err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
@@ -444,11 +444,11 @@ func (s *httpManipulator) Delete(mctx *manipulate.Context, objects ...elemental.
 	return nil
 }
 
-func (s *httpManipulator) DeleteMany(mctx *manipulate.Context, identity elemental.Identity) error {
+func (s *httpManipulator) DeleteMany(mctx manipulate.Context, identity elemental.Identity) error {
 	return manipulate.NewErrNotImplemented("DeleteMany not implemented in maniphttp")
 }
 
-func (s *httpManipulator) Count(mctx *manipulate.Context, identity elemental.Identity) (int, error) {
+func (s *httpManipulator) Count(mctx manipulate.Context, identity elemental.Identity) (int, error) {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext()
@@ -457,7 +457,7 @@ func (s *httpManipulator) Count(mctx *manipulate.Context, identity elemental.Ide
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.count.%s", identity.Category))
 	defer sp.Finish()
 
-	url, err := s.getURLForChildrenIdentity(mctx.Parent, identity, 0, mctx.Version)
+	url, err := s.getURLForChildrenIdentity(mctx.Parent(), identity, 0, mctx.Version())
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -489,7 +489,7 @@ func (s *httpManipulator) Count(mctx *manipulate.Context, identity elemental.Ide
 		return 0, err
 	}
 
-	return mctx.CountTotal, nil
+	return mctx.Count(), nil
 }
 
 func (s *httpManipulator) makeAuthorizationHeaders() string {
@@ -497,38 +497,40 @@ func (s *httpManipulator) makeAuthorizationHeaders() string {
 	return s.username + " " + s.currentPassword()
 }
 
-func (s *httpManipulator) prepareHeaders(request *http.Request, mctx *manipulate.Context) {
+func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.Context) {
 
-	if mctx.Namespace == "" {
-		mctx.Namespace = s.namespace
+	ns := mctx.Namespace()
+	if ns == "" {
+		ns = s.namespace
 	}
 
-	if mctx.Namespace != "" {
-		request.Header.Set("X-Namespace", mctx.Namespace)
+	if ns != "" {
+		request.Header.Set("X-Namespace", ns)
 	}
 
 	if s.username != "" && s.currentPassword() != "" {
 		request.Header.Set("Authorization", s.makeAuthorizationHeaders())
 	}
 
-	if mctx.ExternalTrackingID != "" {
-		request.Header.Set("X-External-Tracking-ID", mctx.ExternalTrackingID)
+	if v := mctx.ExternalTrackingID(); v != "" {
+		request.Header.Set("X-External-Tracking-ID", v)
 	}
 
-	if mctx.ExternalTrackingType != "" {
-		request.Header.Set("X-External-Tracking-Type", mctx.ExternalTrackingType)
+	if v := mctx.ExternalTrackingType(); v != "" {
+		request.Header.Set("X-External-Tracking-Type", v)
 	}
 
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
 }
 
-func (s *httpManipulator) readHeaders(response *http.Response, mctx *manipulate.Context) {
+func (s *httpManipulator) readHeaders(response *http.Response, mctx manipulate.Context) {
 
 	if mctx == nil {
 		return
 	}
 
-	mctx.CountTotal, _ = strconv.Atoi(response.Header.Get("X-Count-Total"))
+	t, _ := strconv.Atoi(response.Header.Get("X-Count-Total"))
+	mctx.SetCount(t)
 }
 
 func (s *httpManipulator) computeVersion(modelVersion int, mctxVersion int) string {
@@ -580,7 +582,7 @@ func (s *httpManipulator) getURLForChildrenIdentity(
 	return url + "/" + childrenIdentity.Category, nil
 }
 
-func (s *httpManipulator) send(mctx *manipulate.Context, request *http.Request) (*http.Response, error) {
+func (s *httpManipulator) send(mctx manipulate.Context, request *http.Request) (*http.Response, error) {
 
 	s.prepareHeaders(request, mctx)
 

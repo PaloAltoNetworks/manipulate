@@ -7,14 +7,14 @@ import (
 	"net"
 	"time"
 
-	"go.aporeto.io/elemental"
-	"go.aporeto.io/manipulate"
-	"go.aporeto.io/manipulate/internal/tracing"
-	"go.aporeto.io/manipulate/manipmongo/internal/compiler"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
+	"go.aporeto.io/elemental"
+	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/internal/tracing"
+	"go.aporeto.io/manipulate/manipmongo/internal/compiler"
 	"go.uber.org/zap"
 )
 
@@ -78,7 +78,7 @@ func NewMongoManipulator(connectionString string, dbName string, user string, pa
 	}
 }
 
-func (s *mongoManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental.Identifiables) error {
+func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.Identifiables) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext()
@@ -94,8 +94,8 @@ func (s *mongoManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental
 	collection := collectionFromIdentity(db, dest.Identity(), "")
 	filter := bson.M{}
 
-	if mctx.Filter != nil {
-		filter = compiler.CompileFilter(mctx.Filter)
+	if f := mctx.Filter(); f != nil {
+		filter = compiler.CompileFilter(f)
 	}
 
 	query := collection.Find(filter)
@@ -108,15 +108,17 @@ func (s *mongoManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental
 
 	var inverted bool
 
-	if mctx.Page > 0 {
-		query = query.Skip((mctx.Page - 1) * mctx.PageSize).Limit(mctx.PageSize)
-	} else if mctx.Page < 0 {
-		query = query.Skip((-mctx.Page - 1) * mctx.PageSize).Limit(mctx.PageSize)
+	p := mctx.Page()
+	ps := mctx.PageSize()
+	if p > 0 {
+		query = query.Skip((p - 1) * ps).Limit(ps)
+	} else if p < 0 {
+		query = query.Skip((-p - 1) * ps).Limit(ps)
 		inverted = true
 	}
 
-	if len(mctx.Order) > 0 {
-		query = query.Sort(applyOrdering(mctx.Order, inverted)...)
+	if o := mctx.Order(); len(o) > 0 {
+		query = query.Sort(applyOrdering(o, inverted)...)
 	} else if orderer, ok := dest.(elemental.DefaultOrderer); ok {
 		query = query.Sort(applyOrdering(orderer.DefaultOrder(), inverted)...)
 	} else {
@@ -139,7 +141,7 @@ func (s *mongoManipulator) RetrieveMany(mctx *manipulate.Context, dest elemental
 	return nil
 }
 
-func (s *mongoManipulator) Retrieve(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
+func (s *mongoManipulator) Retrieve(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if len(objects) == 0 {
 		return nil
@@ -156,8 +158,8 @@ func (s *mongoManipulator) Retrieve(mctx *manipulate.Context, objects ...element
 	collection := collectionFromIdentity(db, objects[0].Identity(), "")
 	filter := bson.M{}
 
-	if mctx.Filter != nil {
-		filter = compiler.CompileFilter(mctx.Filter)
+	if f := mctx.Filter(); f != nil {
+		filter = compiler.CompileFilter(f)
 	}
 
 	for _, o := range objects {
@@ -191,7 +193,7 @@ func (s *mongoManipulator) Retrieve(mctx *manipulate.Context, objects ...element
 	return nil
 }
 
-func (s *mongoManipulator) Create(mctx *manipulate.Context, children ...elemental.Identifiable) error {
+func (s *mongoManipulator) Create(mctx manipulate.Context, children ...elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext()
@@ -208,8 +210,8 @@ func (s *mongoManipulator) Create(mctx *manipulate.Context, children ...elementa
 		sp.LogFields(log.String("object_id", child.Identifier()))
 		defer sp.Finish()
 
-		if mctx.CreateFinalizer != nil {
-			if err := mctx.CreateFinalizer(child); err != nil {
+		if f := mctx.Finalizer(); f != nil {
+			if err := f(child); err != nil {
 				sp.SetTag("error", true)
 				sp.LogFields(log.Error(err))
 				return err
@@ -226,7 +228,7 @@ func (s *mongoManipulator) Create(mctx *manipulate.Context, children ...elementa
 	return nil
 }
 
-func (s *mongoManipulator) Update(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
+func (s *mongoManipulator) Update(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if len(objects) == 0 {
 		return nil
@@ -255,7 +257,7 @@ func (s *mongoManipulator) Update(mctx *manipulate.Context, objects ...elemental
 	return nil
 }
 
-func (s *mongoManipulator) Delete(mctx *manipulate.Context, objects ...elemental.Identifiable) error {
+func (s *mongoManipulator) Delete(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if len(objects) == 0 {
 		return nil
@@ -289,7 +291,7 @@ func (s *mongoManipulator) Delete(mctx *manipulate.Context, objects ...elemental
 	return nil
 }
 
-func (s *mongoManipulator) DeleteMany(mctx *manipulate.Context, identity elemental.Identity) error {
+func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elemental.Identity) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext()
@@ -301,7 +303,7 @@ func (s *mongoManipulator) DeleteMany(mctx *manipulate.Context, identity element
 	transaction, commit := s.retrieveTransaction(mctx)
 	bulk := transaction.bulkForIdentity(identity, "")
 
-	bulk.RemoveAll(compiler.CompileFilter(mctx.Filter))
+	bulk.RemoveAll(compiler.CompileFilter(mctx.Filter()))
 
 	if commit {
 		return s.Commit(transaction.id)
@@ -310,7 +312,7 @@ func (s *mongoManipulator) DeleteMany(mctx *manipulate.Context, identity element
 	return nil
 }
 
-func (s *mongoManipulator) Count(mctx *manipulate.Context, identity elemental.Identity) (int, error) {
+func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Identity) (int, error) {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext()
@@ -323,8 +325,8 @@ func (s *mongoManipulator) Count(mctx *manipulate.Context, identity elemental.Id
 	collection := collectionFromIdentity(db, identity, "")
 	filter := bson.M{}
 
-	if mctx.Filter != nil {
-		filter = compiler.CompileFilter(mctx.Filter)
+	if f := mctx.Filter(); f != nil {
+		filter = compiler.CompileFilter(f)
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.count.%s", identity.Category))
@@ -386,11 +388,11 @@ func (s *mongoManipulator) Abort(id manipulate.TransactionID) bool {
 	return true
 }
 
-func (s *mongoManipulator) retrieveTransaction(mctx *manipulate.Context) (*transaction, bool) {
+func (s *mongoManipulator) retrieveTransaction(mctx manipulate.Context) (*transaction, bool) {
 
 	var created bool
 
-	tid := mctx.TransactionID
+	tid := mctx.TransactionID()
 	if tid == "" {
 		tid = manipulate.NewTransactionID()
 		created = true

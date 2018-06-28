@@ -177,8 +177,11 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 			ps := testmodel.ListsList{}
 
-			mctx := manipulate.NewContext()
-			mctx.Filter = manipulate.NewFilterComposer().WithKey("Name").Equals("Antoine1").Done()
+			mctx := manipulate.NewContext(
+				manipulate.ContextOptionFilter(
+					manipulate.NewFilterComposer().WithKey("Name").Equals("Antoine1").Done(),
+				),
+			)
 
 			err := m.RetrieveMany(mctx, &ps)
 
@@ -196,8 +199,11 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 			ps := testmodel.ListsList{}
 
-			mctx := manipulate.NewContext()
-			mctx.Filter = manipulate.NewFilterComposer().WithKey("Bad").Equals("Antoine1").Done()
+			mctx := manipulate.NewContext(
+				manipulate.ContextOptionFilter(
+					manipulate.NewFilterComposer().WithKey("Bad").Equals("Antoine1").Done(),
+				),
+			)
 
 			err := m.RetrieveMany(mctx, &ps)
 

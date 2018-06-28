@@ -12,15 +12,15 @@ import (
 
 type fakeManipulator struct{}
 
-func (*fakeManipulator) RetrieveMany(*manipulate.Context, elemental.Identifiables) error {
+func (*fakeManipulator) RetrieveMany(manipulate.Context, elemental.Identifiables) error {
 	return nil
 }
-func (*fakeManipulator) Retrieve(*manipulate.Context, ...elemental.Identifiable) error { return nil }
-func (*fakeManipulator) Create(*manipulate.Context, ...elemental.Identifiable) error   { return nil }
-func (*fakeManipulator) Update(*manipulate.Context, ...elemental.Identifiable) error   { return nil }
-func (*fakeManipulator) Delete(*manipulate.Context, ...elemental.Identifiable) error   { return nil }
-func (*fakeManipulator) DeleteMany(*manipulate.Context, elemental.Identity) error      { return nil }
-func (*fakeManipulator) Count(*manipulate.Context, elemental.Identity) (int, error)    { return 0, nil }
+func (*fakeManipulator) Retrieve(manipulate.Context, ...elemental.Identifiable) error { return nil }
+func (*fakeManipulator) Create(manipulate.Context, ...elemental.Identifiable) error   { return nil }
+func (*fakeManipulator) Update(manipulate.Context, ...elemental.Identifiable) error   { return nil }
+func (*fakeManipulator) Delete(manipulate.Context, ...elemental.Identifiable) error   { return nil }
+func (*fakeManipulator) DeleteMany(manipulate.Context, elemental.Identity) error      { return nil }
+func (*fakeManipulator) Count(manipulate.Context, elemental.Identity) (int, error)    { return 0, nil }
 
 func TestManiphttp_ExtractCredentials(t *testing.T) {
 
