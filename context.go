@@ -36,6 +36,7 @@ type Context interface {
 	ExternalTrackingType() string
 	Order() []string
 	Context() context.Context
+	Derive(...ContextOption) Context
 
 	fmt.Stringer
 }
@@ -132,4 +133,33 @@ func (c *mcontext) Context() context.Context { return c.ctx }
 func (c *mcontext) String() string {
 
 	return fmt.Sprintf("<Context page:%d pagesize:%d filter:%v version:%d>", c.page, c.pageSize, c.filter, c.version)
+}
+
+// Derive creates a copy of the context but updates the values of the given options.
+func (c *mcontext) Derive(options ...ContextOption) Context {
+
+	copy := &mcontext{
+		page:                 c.page,
+		pageSize:             c.pageSize,
+		parent:               c.parent,
+		countTotal:           c.countTotal,
+		filter:               c.filter,
+		parameters:           c.parameters,
+		transactionID:        c.transactionID,
+		namespace:            c.namespace,
+		recursive:            c.recursive,
+		overrideProtection:   c.overrideProtection,
+		createFinalizer:      c.createFinalizer,
+		version:              c.version,
+		externalTrackingID:   c.externalTrackingID,
+		externalTrackingType: c.externalTrackingType,
+		order:                c.order,
+		ctx:                  c.ctx,
+	}
+
+	for _, opt := range options {
+		opt(copy)
+	}
+
+	return copy
 }
