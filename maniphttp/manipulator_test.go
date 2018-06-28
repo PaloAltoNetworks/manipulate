@@ -81,7 +81,7 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 
 			Convey("When I prepareHeaders with a no context", func() {
 
-				m.prepareHeaders(req, manipulate.NewContext())
+				m.prepareHeaders(req, manipulate.NewContext(context.Background()))
 
 				Convey("Then I should have a the X-Namespace set to 'myns'", func() {
 					So(req.Header.Get("X-Namespace"), ShouldEqual, "myns")
@@ -95,6 +95,7 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 			Convey("When I prepareHeaders with a no tracked context", func() {
 
 				ctx := manipulate.NewContext(
+					context.Background(),
 					manipulate.ContextOptionTracking("tid", "type"),
 				)
 
@@ -117,7 +118,7 @@ func TestHTTP_readHeaders(t *testing.T) {
 	Convey("Given I create a new HTTP manipulator and a Context", t, func() {
 
 		m := NewHTTPManipulator("http://fake.com", "username", "password", "").(*httpManipulator)
-		ctx := manipulate.NewContext()
+		ctx := manipulate.NewContext(context.Background())
 		req := &http.Response{Header: http.Header{}}
 
 		Convey("When I readHeaders with a no context", func() {
@@ -575,6 +576,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 
 			var l testmodel.TasksList
 			ctx := manipulate.NewContext(
+				context.Background(),
 				manipulate.ContextOptionParent(list),
 			)
 
@@ -612,6 +614,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			var l testmodel.TasksList
 
 			ctx := manipulate.NewContext(
+				context.Background(),
 				manipulate.ContextOptionParent(list2),
 			)
 
@@ -635,6 +638,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			var l testmodel.TasksList
 
 			ctx := manipulate.NewContext(
+				context.Background(),
 				manipulate.ContextOptionParent(e),
 			)
 
@@ -662,6 +666,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			var l testmodel.TasksList
 
 			ctx := manipulate.NewContext(
+				context.Background(),
 				manipulate.ContextOptionParent(list),
 			)
 
@@ -683,6 +688,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 			ctx := manipulate.NewContext(
+				context.Background(),
 				manipulate.ContextOptionParent(list),
 			)
 
@@ -705,6 +711,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 			ctx := manipulate.NewContext(
+				context.Background(),
 				manipulate.ContextOptionParent(list),
 			)
 
@@ -753,6 +760,7 @@ func TestHTTP_Create(t *testing.T) {
 			list2 := testmodel.NewList()
 			task := testmodel.NewTask()
 			ctx := manipulate.NewContext(
+				context.Background(),
 				manipulate.ContextOptionParent(list2),
 			)
 
@@ -840,6 +848,7 @@ func TestHTTP_Count(t *testing.T) {
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 			ctx := manipulate.NewContext(
+				context.Background(),
 				manipulate.ContextOptionParent(list),
 			)
 
@@ -861,6 +870,7 @@ func TestHTTP_Count(t *testing.T) {
 			list2 := testmodel.NewList()
 
 			ctx := manipulate.NewContext(
+				context.Background(),
 				manipulate.ContextOptionParent(list2),
 			)
 
@@ -882,6 +892,7 @@ func TestHTTP_Count(t *testing.T) {
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 			ctx := manipulate.NewContext(
+				context.Background(),
 				manipulate.ContextOptionParent(list),
 			)
 
@@ -903,7 +914,7 @@ func TestHTTP_send(t *testing.T) {
 		Convey("When I call send", func() {
 
 			req, _ := http.NewRequest(http.MethodPost, "nop", nil)
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(), req)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(context.Background()), req)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -923,7 +934,7 @@ func TestHTTP_send(t *testing.T) {
 			defer cancel()
 
 			req, _ := http.NewRequest(http.MethodPost, "https://google.com", nil)
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(manipulate.ContextOptionContext(ctx)), req)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)

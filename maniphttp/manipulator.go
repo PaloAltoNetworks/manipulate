@@ -128,7 +128,7 @@ func NewHTTPManipulatorWithTokenManager(ctx context.Context, url string, namespa
 func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.Identifiables) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext()
+		mctx = manipulate.NewContext(context.Background())
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.retrieve_many.%s", dest.Identity().Category))
@@ -190,7 +190,7 @@ func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.I
 func (s *httpManipulator) Retrieve(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext()
+		mctx = manipulate.NewContext(context.Background())
 	}
 
 	for _, object := range objects {
@@ -249,7 +249,7 @@ func (s *httpManipulator) Retrieve(mctx manipulate.Context, objects ...elemental
 func (s *httpManipulator) Create(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext()
+		mctx = manipulate.NewContext(context.Background())
 	}
 
 	for _, object := range objects {
@@ -320,7 +320,7 @@ func (s *httpManipulator) Update(mctx manipulate.Context, objects ...elemental.I
 	}
 
 	if mctx == nil {
-		mctx = manipulate.NewContext()
+		mctx = manipulate.NewContext(context.Background())
 	}
 
 	for _, object := range objects {
@@ -387,7 +387,7 @@ func (s *httpManipulator) Update(mctx manipulate.Context, objects ...elemental.I
 func (s *httpManipulator) Delete(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext()
+		mctx = manipulate.NewContext(context.Background())
 	}
 
 	for _, object := range objects {
@@ -451,7 +451,7 @@ func (s *httpManipulator) DeleteMany(mctx manipulate.Context, identity elemental
 func (s *httpManipulator) Count(mctx manipulate.Context, identity elemental.Identity) (int, error) {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext()
+		mctx = manipulate.NewContext(context.Background())
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.count.%s", identity.Category))

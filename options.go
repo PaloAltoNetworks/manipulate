@@ -1,7 +1,6 @@
 package manipulate
 
 import (
-	"context"
 	"net/url"
 
 	"go.aporeto.io/elemental"
@@ -25,9 +24,9 @@ func ContextOptionNamespace(n string) ContextOption {
 }
 
 // ContextOptionRecursive sets the recursive option of the context.
-func ContextOptionRecursive() ContextOption {
+func ContextOptionRecursive(r bool) ContextOption {
 	return func(c *mcontext) {
-		c.recursive = true
+		c.recursive = r
 	}
 }
 
@@ -39,9 +38,9 @@ func ContextOptionVersion(v int) ContextOption {
 }
 
 // ContextOptionVersion sets the override option of the context.
-func ContextOptionOverride() ContextOption {
+func ContextOptionOverride(o bool) ContextOption {
 	return func(c *mcontext) {
-		c.overrideProtection = true
+		c.overrideProtection = o
 	}
 }
 
@@ -65,18 +64,6 @@ func ContextOptionTracking(identifier, typ string) ContextOption {
 func ContextOptionOrder(orders ...string) ContextOption {
 	return func(c *mcontext) {
 		c.order = orders
-	}
-}
-
-// ContextOptionContext sets the context.Context option of the context.
-func ContextOptionContext(ctx context.Context) ContextOption {
-
-	if ctx == nil {
-		panic("nil context")
-	}
-
-	return func(c *mcontext) {
-		c.ctx = ctx
 	}
 }
 

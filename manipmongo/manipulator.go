@@ -1,6 +1,7 @@
 package manipmongo
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -81,7 +82,7 @@ func NewMongoManipulator(connectionString string, dbName string, user string, pa
 func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.Identifiables) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext()
+		mctx = manipulate.NewContext(context.Background())
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve_many.%s", dest.Identity().Category))
@@ -148,7 +149,7 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, objects ...elementa
 	}
 
 	if mctx == nil {
-		mctx = manipulate.NewContext()
+		mctx = manipulate.NewContext(context.Background())
 	}
 
 	session := s.rootSession.Copy()
@@ -196,7 +197,7 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, objects ...elementa
 func (s *mongoManipulator) Create(mctx manipulate.Context, children ...elemental.Identifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext()
+		mctx = manipulate.NewContext(context.Background())
 	}
 
 	transaction, commit := s.retrieveTransaction(mctx)
@@ -235,7 +236,7 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, objects ...elemental.
 	}
 
 	if mctx == nil {
-		mctx = manipulate.NewContext()
+		mctx = manipulate.NewContext(context.Background())
 	}
 
 	transaction, commit := s.retrieveTransaction(mctx)
@@ -264,7 +265,7 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, objects ...elemental.
 	}
 
 	if mctx == nil {
-		mctx = manipulate.NewContext()
+		mctx = manipulate.NewContext(context.Background())
 	}
 
 	transaction, commit := s.retrieveTransaction(mctx)
@@ -294,7 +295,7 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, objects ...elemental.
 func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elemental.Identity) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext()
+		mctx = manipulate.NewContext(context.Background())
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.delete_many.%s", identity.Name))
@@ -315,7 +316,7 @@ func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Identity) (int, error) {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext()
+		mctx = manipulate.NewContext(context.Background())
 	}
 
 	session := s.rootSession.Copy()

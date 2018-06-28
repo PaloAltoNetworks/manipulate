@@ -13,7 +13,7 @@ import (
 
 func TestManipulate_ContextOption(t *testing.T) {
 
-	mctx := NewContext()
+	mctx := NewContext(context.Background())
 
 	Convey("Calling ContextOptionFilter should work", t, func() {
 		ContextOptionFilter(NewFilterComposer().WithKey("a").Equals("b").Done())(mctx.(*mcontext))
@@ -26,12 +26,12 @@ func TestManipulate_ContextOption(t *testing.T) {
 	})
 
 	Convey("Calling ContextOptionRecursive should work", t, func() {
-		ContextOptionRecursive()(mctx.(*mcontext))
+		ContextOptionRecursive(true)(mctx.(*mcontext))
 		So(mctx.Recursive(), ShouldEqual, true)
 	})
 
 	Convey("Calling ContextOptionOverride should work", t, func() {
-		ContextOptionOverride()(mctx.(*mcontext))
+		ContextOptionOverride(true)(mctx.(*mcontext))
 		So(mctx.Override(), ShouldEqual, true)
 	})
 
@@ -55,16 +55,6 @@ func TestManipulate_ContextOption(t *testing.T) {
 	Convey("Calling ContextOptionOrder should work", t, func() {
 		ContextOptionOrder("a", "b")(mctx.(*mcontext))
 		So(mctx.Order(), ShouldResemble, []string{"a", "b"})
-	})
-
-	Convey("Calling ContextOptionContext should work", t, func() {
-		ctx := context.Background()
-		ContextOptionContext(ctx)(mctx.(*mcontext))
-		So(mctx.Context(), ShouldEqual, ctx)
-	})
-
-	Convey("Calling ContextOptionContext with nil context should panic", t, func() {
-		So(func() { ContextOptionContext(nil)(mctx.(*mcontext)) }, ShouldPanicWith, "nil context")
 	})
 
 	Convey("Calling ContextOptionParameters should work", t, func() {

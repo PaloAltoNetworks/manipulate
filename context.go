@@ -41,10 +41,14 @@ type Context interface {
 }
 
 // NewContext creates a context with the given ContextOption.
-func NewContext(options ...ContextOption) Context {
+func NewContext(ctx context.Context, options ...ContextOption) Context {
+
+	if ctx == nil {
+		panic("nil context")
+	}
 
 	mctx := &mcontext{
-		ctx: context.Background(),
+		ctx: ctx,
 	}
 
 	for _, opt := range options {
