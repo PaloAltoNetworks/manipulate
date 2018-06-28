@@ -7,6 +7,7 @@ import (
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/elemental/test/model"
 	"go.aporeto.io/manipulate"
+
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -27,7 +28,7 @@ func TestTestManipulator_MockRetrieveMany(t *testing.T) {
 
 			Convey("When I mock it to return an error", func() {
 
-				m.MockRetrieveMany(t, func(context *manipulate.Context, dest elemental.Identifiables) error {
+				m.MockRetrieveMany(t, func(context manipulate.Context, dest elemental.Identifiables) error {
 					return fmt.Errorf("wow such error")
 				})
 
@@ -66,7 +67,7 @@ func TestTestManipulator_MockRetrieve(t *testing.T) {
 
 			Convey("When I mock it to return an error", func() {
 
-				m.MockRetrieve(t, func(ctx *manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockRetrieve(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
 					return fmt.Errorf("wow such error")
 				})
 
@@ -105,7 +106,7 @@ func TestTestManipulator_MockCreate(t *testing.T) {
 
 			Convey("When I mock it to return an error", func() {
 
-				m.MockCreate(t, func(ctx *manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockCreate(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
 					return fmt.Errorf("wow such error")
 				})
 
@@ -144,7 +145,7 @@ func TestTestManipulator_MockUpdate(t *testing.T) {
 
 			Convey("When I mock it to return an error", func() {
 
-				m.MockUpdate(t, func(ctx *manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockUpdate(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
 					return fmt.Errorf("wow such error")
 				})
 
@@ -183,7 +184,7 @@ func TestTestManipulator_MockDelete(t *testing.T) {
 
 			Convey("When I mock it to return an error", func() {
 
-				m.MockDelete(t, func(ctx *manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockDelete(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
 					return fmt.Errorf("wow such error")
 				})
 
@@ -226,7 +227,7 @@ func TestTestManipulator_MockCount(t *testing.T) {
 
 			Convey("When I mock it to return an error", func() {
 
-				m.MockCount(t, func(ctx *manipulate.Context, identity elemental.Identity) (int, error) {
+				m.MockCount(t, func(ctx manipulate.Context, identity elemental.Identity) (int, error) {
 					return -1, fmt.Errorf("wow such error")
 				})
 

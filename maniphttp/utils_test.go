@@ -2,6 +2,7 @@ package maniphttp
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
@@ -17,15 +18,19 @@ func Test_addQueryParameters(t *testing.T) {
 	Convey("Given I have a request and a context", t, func() {
 
 		request, _ := http.NewRequest(http.MethodGet, "http://test.com", nil)
-		ctx := manipulate.NewContext()
 
 		Convey("When I call the method addQueryParameters with parameters", func() {
 
-			ctx.Parameters = url.Values{
-				"a":    []string{"1"},
-				"b b":  []string{"2 2"},
-				"c+&=": []string{"3;:/"},
-			}
+			ctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionParameters(
+					url.Values{
+						"a":    []string{"1"},
+						"b b":  []string{"2 2"},
+						"c+&=": []string{"3;:/"},
+					},
+				),
+			)
 
 			err := addQueryParameters(request, ctx)
 
@@ -40,7 +45,12 @@ func Test_addQueryParameters(t *testing.T) {
 
 		Convey("When I call the method addQueryParameters with a filter", func() {
 
-			ctx.Filter = manipulate.NewFilterComposer().WithKey("name").Equals("toto").WithKey("description").Equals("hello").Done()
+			ctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionFilter(
+					manipulate.NewFilterComposer().WithKey("name").Equals("toto").WithKey("description").Equals("hello").Done(),
+				),
+			)
 
 			err := addQueryParameters(request, ctx)
 
@@ -55,7 +65,10 @@ func Test_addQueryParameters(t *testing.T) {
 
 		Convey("When I call the method addQueryParameters with a order", func() {
 
-			ctx.Order = []string{"a", "b", "c"}
+			ctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionOrder("a", "b", "c"),
+			)
 
 			err := addQueryParameters(request, ctx)
 
@@ -70,7 +83,10 @@ func Test_addQueryParameters(t *testing.T) {
 
 		Convey("When I call the method addQueryParameters with a overide protection", func() {
 
-			ctx.OverrideProtection = true
+			ctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionOverride(true),
+			)
 
 			err := addQueryParameters(request, ctx)
 
@@ -85,8 +101,10 @@ func Test_addQueryParameters(t *testing.T) {
 
 		Convey("When I call the method addQueryParameters with a pagination", func() {
 
-			ctx.Page = 12
-			ctx.PageSize = 42
+			ctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionPage(12, 42),
+			)
 
 			err := addQueryParameters(request, ctx)
 
@@ -101,7 +119,10 @@ func Test_addQueryParameters(t *testing.T) {
 
 		Convey("When I call the method addQueryParameters with a recursive", func() {
 
-			ctx.Recursive = true
+			ctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionRecursive(true),
+			)
 
 			err := addQueryParameters(request, ctx)
 
@@ -121,7 +142,7 @@ func Test_addQueryParameters(t *testing.T) {
 
 		Convey("When I call the method addQueryParameters with a context with no Parameters", func() {
 
-			err := addQueryParameters(request, manipulate.NewContext())
+			err := addQueryParameters(request, manipulate.NewContext(context.Background()))
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)

@@ -14,12 +14,12 @@ import (
 
 // AddQueryParameters appends each key-value pair from ctx.Parameters
 // to a request as query parameters with proper escaping.
-func addQueryParameters(req *http.Request, ctx *manipulate.Context) error {
+func addQueryParameters(req *http.Request, ctx manipulate.Context) error {
 
 	q := req.URL.Query()
 
-	if ctx.Filter != nil {
-		query, err := compiler.CompileFilter(ctx.Filter)
+	if f := ctx.Filter(); f != nil {
+		query, err := compiler.CompileFilter(f)
 		if err != nil {
 			return err
 		}
@@ -28,27 +28,27 @@ func addQueryParameters(req *http.Request, ctx *manipulate.Context) error {
 		}
 	}
 
-	for k, v := range ctx.Parameters {
+	for k, v := range ctx.Parameters() {
 		q[k] = v
 	}
 
-	for _, order := range ctx.Order {
+	for _, order := range ctx.Order() {
 		q.Add("order", order)
 	}
 
-	if ctx.Page != 0 {
-		q.Add("page", strconv.Itoa(ctx.Page))
+	if p := ctx.Page(); p != 0 {
+		q.Add("page", strconv.Itoa(p))
 	}
 
-	if ctx.PageSize > 0 {
-		q.Add("pagesize", strconv.Itoa(ctx.PageSize))
+	if p := ctx.PageSize(); p > 0 {
+		q.Add("pagesize", strconv.Itoa(p))
 	}
 
-	if ctx.Recursive {
+	if ctx.Recursive() {
 		q.Add("recursive", "true")
 	}
 
-	if ctx.OverrideProtection {
+	if ctx.Override() {
 		q.Add("override", "true")
 	}
 
