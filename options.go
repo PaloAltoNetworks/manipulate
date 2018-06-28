@@ -37,7 +37,7 @@ func ContextOptionVersion(v int) ContextOption {
 	}
 }
 
-// ContextOptionVersion sets the override option of the context.
+// ContextOptionOverride sets the override option of the context.
 func ContextOptionOverride(o bool) ContextOption {
 	return func(c *mcontext) {
 		c.overrideProtection = o

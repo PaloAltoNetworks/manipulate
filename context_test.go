@@ -135,7 +135,7 @@ func TestContext_Derive(t *testing.T) {
 
 			copy := mctx.Derive()
 
-			Convey("Then the copy should ressemble to the original", func() {
+			Convey("Then the copy should resemble to the original", func() {
 				So(copy, ShouldResemble, mctx)
 			})
 		})
@@ -147,7 +147,7 @@ func TestContext_Derive(t *testing.T) {
 				ContextOptionFilter(NewFilterComposer().WithKey("k").Equals("v2").Done()),
 			).(*mcontext)
 
-			Convey("Then the copy should ressemble to the original but for the changes", func() {
+			Convey("Then the copy should resemble to the original but for the changes", func() {
 				So(copy.page, ShouldEqual, 11)
 				So(copy.pageSize, ShouldEqual, 12)
 				So(copy.parent, ShouldEqual, mctx.parent)
