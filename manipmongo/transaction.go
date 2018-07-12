@@ -40,7 +40,7 @@ func (t *transaction) closeSession() {
 	t.session = nil
 }
 
-func (t *transaction) bulkForIdentity(identity elemental.Identity, prefix string) *mgo.Bulk {
+func (t *transaction) bulkForIdentity(identity elemental.Identity, prefix string) *mgo.Bulk { // nolint:unparam
 
 	t.lock.Lock()
 	defer t.lock.Unlock()
