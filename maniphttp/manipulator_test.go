@@ -301,7 +301,8 @@ func TestHTTP_Retrieve(t *testing.T) {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, `{"ID":"xxx","name":"the list 1"}`)
+			_, err := fmt.Fprintf(w, `{"ID":"xxx","name":"the list 1"}`)
+			So(err, ShouldBeNil)
 		}))
 		defer ts.Close()
 
@@ -338,7 +339,8 @@ func TestHTTP_Retrieve(t *testing.T) {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(422)
-			fmt.Fprint(w, `[{"code":422,"description":"nope.","subject":"elemental","title":"Read Only Error","data":null}]`)
+			_, err := fmt.Fprintf(w, `[{"code":422,"description":"nope.","subject":"elemental","title":"Read Only Error","data":null}]`)
+			So(err, ShouldBeNil)
 		}))
 		defer ts.Close()
 
@@ -362,7 +364,8 @@ func TestHTTP_Retrieve(t *testing.T) {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, `not good at all`)
+			_, err := fmt.Fprintf(w, `not good at all`)
+			So(err, ShouldBeNil)
 		}))
 		defer ts.Close()
 
@@ -388,7 +391,8 @@ func TestHTTP_Update(t *testing.T) {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, `{"ID": "zzz", "parentType": "pedro", "parentID": "yyy"}`)
+			_, err := fmt.Fprintf(w, `{"ID": "zzz", "parentType": "pedro", "parentID": "yyy"}`)
+			So(err, ShouldBeNil)
 		}))
 		defer ts.Close()
 
@@ -457,7 +461,8 @@ func TestHTTP_Update(t *testing.T) {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, `bad json`)
+			_, err := fmt.Fprintf(w, `bad json`)
+			So(err, ShouldBeNil)
 		}))
 		defer ts.Close()
 
@@ -502,7 +507,8 @@ func TestHTTP_Delete(t *testing.T) {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, `[{"ID": "yyy"}]`)
+			_, err := fmt.Fprintf(w, `[{"ID": "yyy"}]`)
+			So(err, ShouldBeNil)
 		}))
 		defer ts.Close()
 
@@ -568,7 +574,8 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				fmt.Fprint(w, `[{"ID": "1", "name": "name1"}, {"ID": "2", "name": "name2"}]`)
+				_, err := fmt.Fprintf(w, `[{"ID": "1", "name": "name1"}, {"ID": "2", "name": "name2"}]`)
+				So(err, ShouldBeNil)
 			}))
 			defer ts.Close()
 
@@ -658,7 +665,8 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNoContent)
 				w.Header().Set("Content-Type", "application/json")
-				fmt.Fprint(w, `[]`)
+				_, err := fmt.Fprintf(w, `[]`)
+				So(err, ShouldBeNil)
 			}))
 			defer ts.Close()
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
@@ -704,7 +712,8 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				fmt.Fprint(w, `[not good]`)
+				_, err := fmt.Fprintf(w, `[not good]`)
+				So(err, ShouldBeNil)
 			}))
 			defer ts.Close()
 
@@ -737,7 +746,8 @@ func TestHTTP_Create(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusCreated)
-				fmt.Fprint(w, `{"ID": "zzz"}`)
+				_, err := fmt.Fprintf(w, `{"ID": "zzz"}`)
+				So(err, ShouldBeNil)
 			}))
 			defer ts.Close()
 
@@ -803,7 +813,8 @@ func TestHTTP_Create(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusCreated)
-				fmt.Fprint(w, `[{"bad"}]`)
+				_, err := fmt.Fprintf(w, `[{"bad"}]`)
+				So(err, ShouldBeNil)
 			}))
 			defer ts.Close()
 
