@@ -56,6 +56,12 @@ func NewHTTPManipulator(url, username, password, namespace string) manipulate.Ma
 	)
 }
 
+// NewHTTPManipulatorWithToken returns a Manipualtor based on token authentication
+func NewHTTPManipulatorWithToken(url, token, namespace string, tlsConfig *tls.Config) manipulate.Manipulator {
+
+	return NewHTTPManipulatorWithTLS(url, "Bearer", token, namespace, tlsConfig)
+}
+
 // NewHTTPManipulatorWithTLS returns a Manipulator backed by an ReST API using the tls config.
 func NewHTTPManipulatorWithTLS(url, username, password, namespace string, tlsConfig *tls.Config) manipulate.Manipulator {
 
