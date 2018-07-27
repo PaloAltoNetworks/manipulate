@@ -96,6 +96,9 @@ func (m *testManipulator) MockAbort(t *testing.T, impl func(id manipulate.Transa
 
 func (m *testManipulator) RetrieveMany(context manipulate.Context, dest elemental.Identifiables) error {
 
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.retrieveManyMock != nil {
 		return mock.retrieveManyMock(context, dest)
 	}
@@ -104,6 +107,9 @@ func (m *testManipulator) RetrieveMany(context manipulate.Context, dest elementa
 }
 
 func (m *testManipulator) Retrieve(context manipulate.Context, objects ...elemental.Identifiable) error {
+
+	m.lock.Lock()
+	defer m.lock.Unlock()
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.retrieveMock != nil {
 		return mock.retrieveMock(context, objects...)
@@ -114,6 +120,9 @@ func (m *testManipulator) Retrieve(context manipulate.Context, objects ...elemen
 
 func (m *testManipulator) Create(context manipulate.Context, objects ...elemental.Identifiable) error {
 
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.createMock != nil {
 		return mock.createMock(context, objects...)
 	}
@@ -123,6 +132,9 @@ func (m *testManipulator) Create(context manipulate.Context, objects ...elementa
 
 func (m *testManipulator) Update(context manipulate.Context, objects ...elemental.Identifiable) error {
 
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.updateMock != nil {
 		return mock.updateMock(context, objects...)
 	}
@@ -131,6 +143,9 @@ func (m *testManipulator) Update(context manipulate.Context, objects ...elementa
 }
 
 func (m *testManipulator) Delete(context manipulate.Context, objects ...elemental.Identifiable) error {
+
+	m.lock.Lock()
+	defer m.lock.Unlock()
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.deleteMock != nil {
 		return mock.deleteMock(context, objects...)
@@ -142,6 +157,9 @@ func (m *testManipulator) Delete(context manipulate.Context, objects ...elementa
 // DeleteMany is part of the implementation of the Manipulator interface.
 func (m *testManipulator) DeleteMany(context manipulate.Context, identity elemental.Identity) error {
 
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.deleteManyMock != nil {
 		return mock.deleteManyMock(context, identity)
 	}
@@ -150,6 +168,9 @@ func (m *testManipulator) DeleteMany(context manipulate.Context, identity elemen
 }
 
 func (m *testManipulator) Count(context manipulate.Context, identity elemental.Identity) (int, error) {
+
+	m.lock.Lock()
+	defer m.lock.Unlock()
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.countMock != nil {
 		return mock.countMock(context, identity)
@@ -160,6 +181,9 @@ func (m *testManipulator) Count(context manipulate.Context, identity elemental.I
 
 func (m *testManipulator) Commit(id manipulate.TransactionID) error {
 
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.commitMock != nil {
 		return mock.commitMock(id)
 	}
@@ -169,6 +193,9 @@ func (m *testManipulator) Commit(id manipulate.TransactionID) error {
 
 func (m *testManipulator) Abort(id manipulate.TransactionID) bool {
 
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.abortMock != nil {
 		return mock.abortMock(id)
 	}
@@ -177,8 +204,6 @@ func (m *testManipulator) Abort(id manipulate.TransactionID) bool {
 }
 
 func (m *testManipulator) currentMocks(t *testing.T) *mockedMethods {
-	m.lock.Lock()
-	defer m.lock.Unlock()
 
 	mocks := m.mocks[t]
 
