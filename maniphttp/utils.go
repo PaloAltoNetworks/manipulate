@@ -1,12 +1,14 @@
 package maniphttp
 
 import (
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"sync"
 
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/maniphttp/internal/compiler"
@@ -74,4 +76,23 @@ func decodeData(dataReader io.Reader, dest interface{}) (err error) {
 	}
 
 	return nil
+}
+
+var systemCertPoolLock sync.Mutex
+var systemCertPool *x509.CertPool
+
+func getSystemCertPool() (*x509.CertPool, error) {
+
+	systemCertPoolLock.Lock()
+	defer systemCertPoolLock.Unlock()
+
+	if systemCertPool == nil {
+		var err error
+
+		if systemCertPool, err = x509.SystemCertPool(); err != nil {
+			return nil, err
+		}
+	}
+
+	return systemCertPool, nil
 }
