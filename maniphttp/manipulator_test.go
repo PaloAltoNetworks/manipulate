@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/elemental/test/model"
@@ -940,6 +941,138 @@ func TestHTTP_send(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
 				So(err.Error(), ShouldEqual, "Cannot communicate: Post https://google.com: context deadline exceeded")
+			})
+		})
+	})
+
+	Convey("Given I have a m with with a 408", t, func() {
+
+		m := NewHTTPManipulator("username", "password", "", "")
+
+		Convey("When I call send", func() {
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				http.Error(w, `[{"code": 408, "title": "nope", "description": "boom"}]`, 408)
+			}))
+			defer ts.Close()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+
+			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+				So(err.Error(), ShouldEqual, "Cannot communicate: error 408 (): nope: boom")
+			})
+		})
+	})
+
+	Convey("Given I have a m with with a 502", t, func() {
+
+		m := NewHTTPManipulator("username", "password", "", "")
+
+		Convey("When I call send", func() {
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				http.Error(w, `[{"code": 502, "title": "nope", "description": "boom"}]`, 502)
+			}))
+			defer ts.Close()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+
+			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+				So(err.Error(), ShouldEqual, "Cannot communicate: Service unavailable")
+			})
+		})
+	})
+
+	Convey("Given I have a m with with a 423", t, func() {
+
+		m := NewHTTPManipulator("username", "password", "", "")
+
+		Convey("When I call send", func() {
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				http.Error(w, `[{"code": 423, "title": "nope", "description": "boom"}]`, 423)
+			}))
+			defer ts.Close()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+
+			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrLocked{})
+				So(err.Error(), ShouldEqual, "Cannot communicate: The api has been locked down by the server.")
+			})
+		})
+	})
+
+	Convey("Given I have a m with with a unmarshalable error", t, func() {
+
+		m := NewHTTPManipulator("username", "password", "", "")
+
+		Convey("When I call send", func() {
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				http.Error(w, `[{"code": 423, "]`, 404)
+			}))
+			defer ts.Close()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+
+			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotUnmarshal{})
+				So(err.Error(), ShouldEqual, `Unable to unmarshal data: invalid character '\n' in string literal. original data:
+[{"code": 423, "]
+`)
+			})
+		})
+	})
+
+	Convey("Given I have a m with with a 500", t, func() {
+
+		m := NewHTTPManipulator("username", "password", "", "")
+
+		Convey("When I call send", func() {
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				http.Error(w, `[{"code": 500, "title": "nope", "description": "boom"}]`, 500)
+			}))
+			defer ts.Close()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+
+			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldHaveSameTypeAs, elemental.Errors{})
+				So(err.Error(), ShouldEqual, "error 500 (): nope: boom")
 			})
 		})
 	})
