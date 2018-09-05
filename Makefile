@@ -36,4 +36,6 @@ test:
 	done;
 
 codecov:
+	env
 	bash <(curl -s https://codecov.io/bash)
+	exit 1
