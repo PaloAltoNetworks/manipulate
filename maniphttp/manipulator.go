@@ -626,6 +626,10 @@ func (s *httpManipulator) send(mctx manipulate.Context, request *http.Request) (
 			errs = append(errs, e)
 		}
 
+		if response.StatusCode == http.StatusRequestTimeout {
+			return response, manipulate.NewErrCannotCommunicate(errs.Error())
+		}
+
 		return response, errs
 	}
 
