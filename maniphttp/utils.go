@@ -1,6 +1,7 @@
 package maniphttp
 
 import (
+	"compress/gzip"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
@@ -59,13 +60,22 @@ func addQueryParameters(req *http.Request, ctx manipulate.Context) error {
 	return nil
 }
 
-func decodeData(dataReader io.Reader, dest interface{}) (err error) {
+func decodeData(r *http.Response, dest interface{}) (err error) {
 
-	var data []byte
-
-	if dataReader == nil {
+	if r.Body == nil {
 		return manipulate.NewErrCannotUnmarshal("nil reader")
 	}
+
+	var dataReader io.ReadCloser
+	switch r.Header.Get("Content-Encoding") {
+	case "gzip":
+		dataReader, _ = gzip.NewReader(r.Body)
+		defer dataReader.Close() // nolint
+	default:
+		dataReader = r.Body
+	}
+
+	var data []byte
 
 	if data, err = ioutil.ReadAll(dataReader); err != nil {
 		return manipulate.NewErrCannotUnmarshal(fmt.Sprintf("unable to read data: %s", err.Error()))
