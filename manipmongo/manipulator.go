@@ -129,7 +129,7 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	if err := query.All(dest); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
-		return manipulate.NewErrCannotExecuteQuery(err.Error())
+		return handleQueryError(err)
 	}
 
 	// backport all default values that are empty.
@@ -172,17 +172,9 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, objects ...elementa
 		defer sp.Finish()
 
 		if err := collection.Find(filter).One(o); err != nil {
-
 			sp.SetTag("error", true)
-
-			if err == mgo.ErrNotFound {
-				err = manipulate.NewErrObjectNotFound("cannot find the object for the given ID")
-				sp.LogFields(log.Error(err))
-				return err
-			}
-
 			sp.LogFields(log.Error(err))
-			return manipulate.NewErrCannotExecuteQuery(err.Error())
+			return handleQueryError(err)
 		}
 
 		// backport all default values that are empty.
@@ -337,7 +329,7 @@ func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
-		return 0, manipulate.NewErrCannotExecuteQuery(err.Error())
+		return 0, handleQueryError(err)
 	}
 
 	return c, nil
@@ -361,15 +353,9 @@ func (s *mongoManipulator) Commit(id manipulate.TransactionID) error {
 	for _, bulk := range transaction.bulks {
 
 		if _, err := bulk.Run(); err != nil {
-
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
-
-			if mgo.IsDup(err) {
-				return manipulate.NewErrConstraintViolation("duplicate key.")
-			}
-
-			return manipulate.NewErrCannotCommit(err.Error())
+			return handleQueryError(err)
 		}
 	}
 
