@@ -2,8 +2,10 @@ package maniphttp
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"errors"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"testing"
@@ -163,12 +165,48 @@ func Test_decodeData(t *testing.T) {
 
 	Convey("Given I have valid json data in a reader", t, func() {
 
-		buf := bytes.NewBuffer([]byte(`{"name":"thename","age": 2}`))
+		r := &http.Response{
+			Body: ioutil.NopCloser(bytes.NewBuffer([]byte(`{"name":"thename","age": 2}`))),
+		}
 
 		Convey("When I call decodeData", func() {
 
 			dest := map[string]interface{}{}
-			err := decodeData(buf, &dest)
+			err := decodeData(r, &dest)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then the dest should be correct", func() {
+				So(len(dest), ShouldEqual, 2)
+				So(dest["name"].(string), ShouldEqual, "thename")
+				So(dest["age"].(float64), ShouldEqual, 2)
+			})
+		})
+	})
+
+	Convey("Given I have valid json gzipped data in a reader", t, func() {
+
+		buf := bytes.NewBuffer(nil)
+		zw := gzip.NewWriter(buf)
+		_, err := zw.Write([]byte(`{"name":"thename","age": 2}`))
+		if err != nil {
+			panic(err)
+		}
+		zw.Close() // nolint
+
+		r := &http.Response{
+			Body: ioutil.NopCloser(buf),
+			Header: http.Header{
+				"Content-Encoding": []string{"gzip"},
+			},
+		}
+
+		Convey("When I call decodeData", func() {
+
+			dest := map[string]interface{}{}
+			err := decodeData(r, &dest)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
@@ -184,12 +222,14 @@ func Test_decodeData(t *testing.T) {
 
 	Convey("Given I have invalid valid json data in a reader", t, func() {
 
-		buf := bytes.NewBuffer([]byte(`<html><body>not json</body></html>`))
+		r := &http.Response{
+			Body: ioutil.NopCloser(bytes.NewBuffer([]byte(`<html><body>not json</body></html>`))),
+		}
 
 		Convey("When I call decodeData", func() {
 
 			dest := map[string]interface{}{}
-			err := decodeData(buf, &dest)
+			err := decodeData(r, &dest)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -206,8 +246,12 @@ func Test_decodeData(t *testing.T) {
 
 		Convey("When I call decodeData", func() {
 
+			r := &http.Response{
+				Body: nil,
+			}
+
 			dest := map[string]interface{}{}
-			err := decodeData(nil, &dest)
+			err := decodeData(r, &dest)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -222,12 +266,14 @@ func Test_decodeData(t *testing.T) {
 
 	Convey("Given I have a reader that returns an errpr", t, func() {
 
-		buf := &fakeReader{}
+		r := &http.Response{
+			Body: ioutil.NopCloser(&fakeReader{}),
+		}
 
 		Convey("When I call decodeData", func() {
 
 			dest := map[string]interface{}{}
-			err := decodeData(buf, &dest)
+			err := decodeData(r, &dest)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)

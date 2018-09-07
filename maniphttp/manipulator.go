@@ -180,7 +180,7 @@ func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.I
 
 	if response.StatusCode != http.StatusNoContent {
 		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response.Body, dest); err != nil {
+		if err := decodeData(response, dest); err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
 			return err
@@ -240,7 +240,7 @@ func (s *httpManipulator) Retrieve(mctx manipulate.Context, objects ...elemental
 
 		if response.StatusCode != http.StatusNoContent {
 			defer response.Body.Close() // nolint: errcheck
-			if err := decodeData(response.Body, &object); err != nil {
+			if err := decodeData(response, &object); err != nil {
 				sp.SetTag("error", true)
 				sp.LogFields(log.Error(err))
 				return err
@@ -307,7 +307,7 @@ func (s *httpManipulator) Create(mctx manipulate.Context, objects ...elemental.I
 
 		if response.StatusCode != http.StatusNoContent {
 			defer response.Body.Close() // nolint: errcheck
-			if err := decodeData(response.Body, &object); err != nil {
+			if err := decodeData(response, &object); err != nil {
 				sp.SetTag("error", true)
 				sp.LogFields(log.Error(err))
 				return err
@@ -378,7 +378,7 @@ func (s *httpManipulator) Update(mctx manipulate.Context, objects ...elemental.I
 
 		if response.StatusCode != http.StatusNoContent {
 			defer response.Body.Close() // nolint: errcheck
-			if err := decodeData(response.Body, &object); err != nil {
+			if err := decodeData(response, &object); err != nil {
 				sp.SetTag("error", true)
 				sp.LogFields(log.Error(err))
 				return err
@@ -438,7 +438,7 @@ func (s *httpManipulator) Delete(mctx manipulate.Context, objects ...elemental.I
 
 		if response.StatusCode != http.StatusNoContent {
 			defer response.Body.Close() // nolint: errcheck
-			if err := decodeData(response.Body, &object); err != nil {
+			if err := decodeData(response, &object); err != nil {
 				sp.SetTag("error", true)
 				sp.LogFields(log.Error(err))
 				return err
@@ -531,6 +531,7 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.
 	}
 
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	request.Header.Set("Accept-Encoding", "gzip")
 }
 
 func (s *httpManipulator) readHeaders(response *http.Response, mctx manipulate.Context) {
@@ -616,7 +617,7 @@ func (s *httpManipulator) send(mctx manipulate.Context, request *http.Request) (
 		es := []elemental.Error{}
 
 		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response.Body, &es); err != nil {
+		if err := decodeData(response, &es); err != nil {
 			return nil, err
 		}
 
