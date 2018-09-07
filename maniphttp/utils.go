@@ -71,10 +71,8 @@ func decodeData(r *http.Response, dest interface{}) (err error) {
 	case "gzip":
 		dataReader, _ = gzip.NewReader(r.Body)
 		defer dataReader.Close() // nolint
-		fmt.Println("USING GZIP")
 	default:
 		dataReader = r.Body
-		fmt.Println("NO GZIP")
 	}
 
 	var data []byte
