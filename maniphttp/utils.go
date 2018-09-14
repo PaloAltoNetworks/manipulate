@@ -15,6 +15,8 @@ import (
 	"go.aporeto.io/manipulate/maniphttp/internal/compiler"
 )
 
+var gzipReaders = sync.Pool{New: func() interface{} { return &gzip.Reader{} }}
+
 // AddQueryParameters appends each key-value pair from ctx.Parameters
 // to a request as query parameters with proper escaping.
 func addQueryParameters(req *http.Request, ctx manipulate.Context) error {
@@ -69,8 +71,16 @@ func decodeData(r *http.Response, dest interface{}) (err error) {
 	var dataReader io.ReadCloser
 	switch r.Header.Get("Content-Encoding") {
 	case "gzip":
-		dataReader, _ = gzip.NewReader(r.Body)
-		defer dataReader.Close() // nolint
+		gz := gzipReaders.Get().(*gzip.Reader)
+		defer gzipReaders.Put(gz)
+
+		if err := gz.Reset(r.Body); err != nil {
+			panic(err)
+		}
+		defer gz.Close() // nolint
+
+		dataReader = gz
+
 	default:
 		dataReader = r.Body
 	}
