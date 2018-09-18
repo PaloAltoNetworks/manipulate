@@ -79,4 +79,9 @@ func TestManipulate_ContextOption(t *testing.T) {
 		ContextOptionParent(i)(mctx.(*mcontext))
 		So(mctx.Parent(), ShouldEqual, i)
 	})
+
+	Convey("Calling ContextOptionFields should work", t, func() {
+		ContextOptionFields([]string{"a", "b"})(mctx.(*mcontext))
+		So(mctx.Fields(), ShouldResemble, []string{"a", "b"})
+	})
 }

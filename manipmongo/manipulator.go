@@ -126,6 +126,14 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 		query = query.Sort(invertSortKey("$natural", inverted))
 	}
 
+	if len(mctx.Fields()) > 0 {
+		sel := bson.M{}
+		for _, f := range mctx.Fields() {
+			sel[f] = 1
+		}
+		query = query.Select(sel)
+	}
+
 	if err := query.All(dest); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))

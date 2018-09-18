@@ -37,6 +37,7 @@ type Context interface {
 	Order() []string
 	Context() context.Context
 	Derive(...ContextOption) Context
+	Fields() []string
 
 	fmt.Stringer
 }
@@ -76,6 +77,7 @@ type mcontext struct {
 	externalTrackingType string
 	order                []string
 	ctx                  context.Context
+	fields               []string
 }
 
 // Count returns the count
@@ -126,6 +128,9 @@ func (c *mcontext) ExternalTrackingType() string { return c.externalTrackingType
 // Order returns the Order.
 func (c *mcontext) Order() []string { return c.order }
 
+// Fields returns the fields.
+func (c *mcontext) Fields() []string { return c.fields }
+
 // Context returns the internal context.Context.
 func (c *mcontext) Context() context.Context { return c.ctx }
 
@@ -154,6 +159,7 @@ func (c *mcontext) Derive(options ...ContextOption) Context {
 		externalTrackingID:   c.externalTrackingID,
 		externalTrackingType: c.externalTrackingType,
 		order:                c.order,
+		fields:               c.fields,
 		ctx:                  c.ctx,
 	}
 

@@ -128,6 +128,7 @@ func TestContext_Derive(t *testing.T) {
 			externalTrackingID:   "externalTrackingID",
 			externalTrackingType: "externalTrackingType",
 			order:                []string{"a", "b"},
+			fields:               []string{"a", "b"},
 			ctx:                  context.Background(),
 		}
 
@@ -163,6 +164,7 @@ func TestContext_Derive(t *testing.T) {
 				So(copy.externalTrackingID, ShouldEqual, mctx.externalTrackingID)
 				So(copy.externalTrackingType, ShouldEqual, mctx.externalTrackingType)
 				So(copy.order, ShouldResemble, mctx.order)
+				So(copy.fields, ShouldResemble, mctx.fields)
 				So(copy.ctx, ShouldEqual, mctx.ctx)
 			})
 		})

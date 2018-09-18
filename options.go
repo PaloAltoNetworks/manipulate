@@ -94,3 +94,10 @@ func ContextOptionParent(i elemental.Identifiable) ContextOption {
 		c.parent = i
 	}
 }
+
+// ContextOptionFields sets the list of fields to include in the reply.
+func ContextOptionFields(fields []string) ContextOption {
+	return func(c *mcontext) {
+		c.fields = fields
+	}
+}
