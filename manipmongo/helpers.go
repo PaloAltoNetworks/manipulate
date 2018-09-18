@@ -4,9 +4,16 @@ import (
 	"strconv"
 
 	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/manipmongo/internal/compiler"
 )
+
+// CompileFilter compiles the given manipulate filter into a raw mongo filter.
+func CompileFilter(f *manipulate.Filter) bson.M {
+	return compiler.CompileFilter(f)
+}
 
 // DoesDatabaseExist checks if the database used by the given manipulator exists.
 func DoesDatabaseExist(manipulator manipulate.Manipulator) (bool, error) {
