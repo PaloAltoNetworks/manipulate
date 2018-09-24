@@ -2,6 +2,7 @@ package maniphttp
 
 import (
 	"crypto/tls"
+	"net/http"
 
 	"go.aporeto.io/manipulate"
 )
@@ -44,4 +45,15 @@ func ExtractTLSConfig(manipulator manipulate.Manipulator) *tls.Config {
 	}
 
 	return m.tlsConfig
+}
+
+// SetGlobalHeaders sets the given headers to all requests that will be sent.
+func SetGlobalHeaders(manipulator manipulate.Manipulator, headers http.Header) {
+
+	m, ok := manipulator.(*httpManipulator)
+	if !ok {
+		panic("You can only pass a HTTP Manipulator to SetGlobalHeaders")
+	}
+
+	m.globalHeaders = headers
 }

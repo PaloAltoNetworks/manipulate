@@ -76,6 +76,11 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 
 		m := NewHTTPManipulator("http://fake.com", "username", "password", "myns").(*httpManipulator)
 
+		m.globalHeaders = http.Header{
+			"Header-1": []string{"hey"},
+			"Header-2": []string{"ho"},
+		}
+
 		Convey("Given I create a Request", func() {
 
 			req, _ := http.NewRequest("GET", "http://fake.com", nil)
@@ -90,6 +95,11 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 
 				Convey("Then I should not have a value for X-Count-Total", func() {
 					So(req.Header.Get("X-Count-Total"), ShouldEqual, "")
+				})
+
+				Convey("Then I should get the global headers", func() {
+					So(req.Header.Get("Header-1"), ShouldEqual, "hey")
+					So(req.Header.Get("Header-2"), ShouldEqual, "ho")
 				})
 			})
 

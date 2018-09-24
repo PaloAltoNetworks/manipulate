@@ -27,14 +27,15 @@ import (
 )
 
 type httpManipulator struct {
-	username     string
-	password     string
-	url          string
-	namespace    string
-	renewLock    *sync.Mutex
-	client       *http.Client
-	tlsConfig    *tls.Config
-	tokenManager manipulate.TokenManager
+	username      string
+	password      string
+	url           string
+	namespace     string
+	renewLock     *sync.Mutex
+	client        *http.Client
+	tlsConfig     *tls.Config
+	tokenManager  manipulate.TokenManager
+	globalHeaders http.Header
 }
 
 // NewHTTPManipulator returns a Manipulator backed by an ReST API.
@@ -514,6 +515,13 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.
 		ns = s.namespace
 	}
 
+	for k, v := range s.globalHeaders {
+		request.Header[k] = v
+	}
+
+	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	request.Header.Set("Accept-Encoding", "gzip")
+
 	if ns != "" {
 		request.Header.Set("X-Namespace", ns)
 	}
@@ -530,8 +538,6 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.
 		request.Header.Set("X-External-Tracking-Type", v)
 	}
 
-	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	request.Header.Set("Accept-Encoding", "gzip")
 }
 
 func (s *httpManipulator) readHeaders(response *http.Response, mctx manipulate.Context) {

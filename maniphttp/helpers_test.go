@@ -1,6 +1,7 @@
 package maniphttp
 
 import (
+	"net/http"
 	"sync"
 	"testing"
 
@@ -51,6 +52,42 @@ func TestManiphttp_ExtractCredentials(t *testing.T) {
 
 			Convey("Then it should panic", func() {
 				So(func() { ExtractCredentials(m) }, ShouldPanicWith, "You can only pass a HTTP Manipulator to ExtractCredentials")
+			})
+		})
+	})
+}
+
+func TestManiphttp_SetGlobalHeaders(t *testing.T) {
+
+	Convey("Given I have a manipulator and some header", t, func() {
+
+		m := &httpManipulator{
+			renewLock: &sync.Mutex{},
+		}
+
+		h := http.Header{
+			"Header-1": []string{"hey"},
+			"Header-2": []string{"ho"},
+		}
+
+		Convey("When I call SetGlobalHeaders", func() {
+
+			SetGlobalHeaders(m, h)
+
+			Convey("Then hte global header should be set", func() {
+				So(m.globalHeaders, ShouldResemble, h)
+			})
+		})
+	})
+
+	Convey("Given I have a non http manipulator", t, func() {
+
+		m := &fakeManipulator{}
+
+		Convey("When I call SetGlobalHeaders", func() {
+
+			Convey("Then it should panic", func() {
+				So(func() { SetGlobalHeaders(m, nil) }, ShouldPanicWith, "You can only pass a HTTP Manipulator to SetGlobalHeaders")
 			})
 		})
 	})
