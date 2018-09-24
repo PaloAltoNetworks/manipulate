@@ -65,7 +65,9 @@ func CreateIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 	collection := session.DB(m.dbName).C(identity.Name)
 
 	for i, index := range indexes {
-		index.Name = "index_" + identity.Name + "_" + strconv.Itoa(i)
+		if index.Name == "" {
+			index.Name = "index_" + identity.Name + "_" + strconv.Itoa(i)
+		}
 		if err := collection.EnsureIndex(index); err != nil {
 			return err
 		}
