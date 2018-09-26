@@ -88,7 +88,7 @@ func CompileFilter(f *manipulate.Filter) bson.M {
 			case manipulate.MatchComparator:
 				dest := []bson.M{}
 				for _, v := range f.Values()[i] {
-					dest = append(dest, bson.M{k: bson.M{"$regex": v, "$options": "m"}})
+					dest = append(dest, bson.M{k: bson.M{"$regex": v}})
 				}
 				items = append(items, bson.M{"$or": dest})
 			}
