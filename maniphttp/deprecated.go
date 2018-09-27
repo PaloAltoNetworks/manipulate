@@ -23,7 +23,7 @@ func NewHTTPManipulator(url, username, password, namespace string) manipulate.Ma
 func NewHTTPManipulatorWithTLS(url, username, password, namespace string, tlsConfig *tls.Config) manipulate.Manipulator {
 
 	// fmt.Println("Deprecated: maniphttp.NewHTTPManipulatorWithTLS. Please switch to maniphttp.New")
-	m, err := New(context.Background(), url, OptionCredentials(username, password), OptionTLSConfig(tlsConfig))
+	m, err := New(context.Background(), url, OptionCredentials(username, password), OptionNamespace(namespace), OptionTLSConfig(tlsConfig))
 	if err != nil {
 		panic(err)
 	}
