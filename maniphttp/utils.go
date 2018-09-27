@@ -2,14 +2,17 @@ package maniphttp
 
 import (
 	"compress/gzip"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/maniphttp/internal/compiler"
@@ -101,18 +104,38 @@ func decodeData(r *http.Response, dest interface{}) (err error) {
 var systemCertPoolLock sync.Mutex
 var systemCertPool *x509.CertPool
 
-func getSystemCertPool() (*x509.CertPool, error) {
+func getDefaultTLSConfig() *tls.Config {
 
 	systemCertPoolLock.Lock()
 	defer systemCertPoolLock.Unlock()
 
 	if systemCertPool == nil {
 		var err error
-
 		if systemCertPool, err = x509.SystemCertPool(); err != nil {
-			return nil, err
+			panic(fmt.Sprintf("Unable to load system root cert pool: %s", err))
 		}
 	}
 
-	return systemCertPool, nil
+	return &tls.Config{RootCAs: systemCertPool}
+}
+
+func getDefaultTransport() *http.Transport {
+	return &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}).DialContext,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+}
+
+func getDefaultClient() *http.Client {
+	return &http.Client{
+		Timeout: 30 * time.Second,
+	}
 }

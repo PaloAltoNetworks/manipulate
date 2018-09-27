@@ -10,7 +10,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 	"strconv"
 	"sync"
@@ -21,112 +20,85 @@ import (
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/tracing"
-	"go.uber.org/zap"
 
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
 type httpManipulator struct {
-	username      string
-	password      string
-	url           string
-	namespace     string
-	renewLock     *sync.Mutex
+	username  string
+	password  string
+	url       string
+	namespace string
+	renewLock *sync.Mutex
+
+	// optionnable
+	ctx           context.Context
 	client        *http.Client
 	tlsConfig     *tls.Config
 	tokenManager  manipulate.TokenManager
 	globalHeaders http.Header
+	transport     *http.Transport
 }
 
-// NewHTTPManipulator returns a Manipulator backed by an ReST API.
-func NewHTTPManipulator(url, username, password, namespace string) manipulate.Manipulator {
+// New returns a maniphttp.Manipulator configured according to the given suite of Option.
+func New(ctx context.Context, url string, options ...Option) (manipulate.Manipulator, error) {
 
-	CAPool, err := getSystemCertPool()
-	if err != nil {
-		zap.L().Fatal("Unable to load system root cert pool", zap.Error(err))
+	if url == "" {
+		panic("empty url")
 	}
 
-	return NewHTTPManipulatorWithTLS(
-		url,
-		username,
-		password,
-		namespace,
-		&tls.Config{
-			RootCAs: CAPool,
-		},
-	)
-}
-
-// NewHTTPManipulatorWithTLS returns a Manipulator backed by an ReST API using the tls config.
-func NewHTTPManipulatorWithTLS(url, username, password, namespace string, tlsConfig *tls.Config) manipulate.Manipulator {
-
-	m, err := NewHTTPManipulatorWithTokenManager(context.Background(), url, namespace, tlsConfig, nil)
-	if err != nil {
-		panic(err)
+	// initialize solid varialbles.
+	m := &httpManipulator{
+		renewLock: &sync.Mutex{},
+		ctx:       ctx,
+		url:       url,
 	}
 
-	m.(*httpManipulator).password = password
-	m.(*httpManipulator).username = username
+	// Apply the options.
+	for _, opt := range options {
+		opt(m)
+	}
 
-	return m
-}
+	if m.client == nil {
 
-// NewHTTPManipulatorWithTokenManager returns a http backed manipulate.Manipulatorusing the given manipulate.TokenManager to manage the the token.
-func NewHTTPManipulatorWithTokenManager(ctx context.Context, url string, namespace string, tlsConfig *tls.Config, tokenManager manipulate.TokenManager) (manipulate.Manipulator, error) {
+		m.client = getDefaultClient()
 
-	var username, password string
+		if m.transport == nil {
 
-	if tokenManager != nil {
+			m.transport = getDefaultTransport()
 
-		issueCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			if m.tlsConfig == nil {
+				m.tlsConfig = getDefaultTLSConfig()
+			}
+
+			m.transport.TLSClientConfig = m.tlsConfig
+		}
+
+		m.client.Transport = m.transport
+	}
+
+	if m.tokenManager != nil {
+
+		ictx, cancel := context.WithTimeout(m.ctx, 10*time.Second)
 		defer cancel()
 
-		token, err := tokenManager.Issue(issueCtx)
+		token, err := m.tokenManager.Issue(ictx)
 		if err != nil {
 			return nil, err
 		}
 
-		password = token
-		username = "Bearer"
-	}
+		m.username = "Bearer"
+		m.password = token
 
-	m := &httpManipulator{
-		username:     username,
-		password:     password,
-		namespace:    namespace,
-		tokenManager: tokenManager,
-		renewLock:    &sync.Mutex{},
-		url:          url,
-		tlsConfig:    tlsConfig,
-		client: &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: tlsConfig,
-				Proxy:           http.ProxyFromEnvironment,
-				DialContext: (&net.Dialer{
-					Timeout:   30 * time.Second,
-					KeepAlive: 30 * time.Second,
-					DualStack: true,
-				}).DialContext,
-				MaxIdleConns:          100,
-				IdleConnTimeout:       90 * time.Second,
-				TLSHandshakeTimeout:   10 * time.Second,
-				ExpectContinueTimeout: 1 * time.Second,
-			},
-			Timeout: 30 * time.Second,
-		},
-	}
-
-	if tokenManager != nil {
 		go func() {
 			tokenCh := make(chan string)
-
-			go tokenManager.Run(ctx, tokenCh)
+			go m.tokenManager.Run(m.ctx, tokenCh)
 
 			for {
 				select {
 				case t := <-tokenCh:
 					m.setPassword(t)
-				case <-ctx.Done():
+				case <-m.ctx.Done():
 					return
 				}
 			}
@@ -201,7 +173,7 @@ func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.I
 func (s *httpManipulator) Retrieve(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		mctx = manipulate.NewContext(s.ctx)
 	}
 
 	for _, object := range objects {
