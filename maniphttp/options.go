@@ -20,7 +20,7 @@ func OptionCredentials(username, password string) Option {
 
 // OptionToken sets JWT token. If you use for authentication.
 //
-// If you also use OptionCredentials or OptionTokenManager, the last one will take precendence.
+// If you also use OptionCredentials or OptionTokenManager, the last one will take precedence.
 func OptionToken(token string) Option {
 	return func(m *httpManipulator) {
 		m.username = "Bearer"
@@ -30,7 +30,7 @@ func OptionToken(token string) Option {
 
 // OptionTokenManager sets manipulate.TokenManager to handle token auto renewal.
 //
-// If you also use OptionCredentials or OptionToken, the last one will take precendence.
+// If you also use OptionCredentials or OptionToken, the last one will take precedence.
 func OptionTokenManager(tokenManager manipulate.TokenManager) Option {
 	return func(m *httpManipulator) {
 		m.tokenManager = tokenManager
