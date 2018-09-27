@@ -10,70 +10,70 @@ import (
 // An Option represents a maniphttp.Manipulator option.
 type Option func(*httpManipulator)
 
-// OptCredentials sets the username and password to use for authentication.
-func OptCredentials(username, password string) Option {
+// OptionCredentials sets the username and password to use for authentication.
+func OptionCredentials(username, password string) Option {
 	return func(m *httpManipulator) {
 		m.username = username
 		m.password = password
 	}
 }
 
-// OptToken sets JWT token. If you use for authentication.
+// OptionToken sets JWT token. If you use for authentication.
 //
-// If you also use OptCredentials or OptTokenManager, the last one will take precendence.
-func OptToken(token string) Option {
+// If you also use OptionCredentials or OptionTokenManager, the last one will take precendence.
+func OptionToken(token string) Option {
 	return func(m *httpManipulator) {
 		m.username = "Bearer"
 		m.password = token
 	}
 }
 
-// OptTokenManager sets manipulate.TokenManager to handle token auto renewal.
+// OptionTokenManager sets manipulate.TokenManager to handle token auto renewal.
 //
-// If you also use OptCredentials or OptToken, the last one will take precendence.
-func OptTokenManager(tokenManager manipulate.TokenManager) Option {
+// If you also use OptionCredentials or OptionToken, the last one will take precendence.
+func OptionTokenManager(tokenManager manipulate.TokenManager) Option {
 	return func(m *httpManipulator) {
 		m.tokenManager = tokenManager
 	}
 }
 
-// OptNamespace sets the namespace.
-func OptNamespace(ns string) Option {
+// OptionNamespace sets the namespace.
+func OptionNamespace(ns string) Option {
 	return func(m *httpManipulator) {
 		m.namespace = ns
 	}
 }
 
-// OptAdditonalHeaders sets the additional http.Header that will be sent.
-func OptAdditonalHeaders(headers http.Header) Option {
+// OptionAdditonalHeaders sets the additional http.Header that will be sent.
+func OptionAdditonalHeaders(headers http.Header) Option {
 	return func(m *httpManipulator) {
 		m.globalHeaders = headers
 	}
 }
 
-// OptHTTPClient sets internal full *http.Client.
+// OptionHTTPClient sets internal full *http.Client.
 //
 // If you use this option you are responsible for configuring the *http.Transport
-// and transport's *tls.Config). OptHTTPTransport or OptTLSConfig
+// and transport's *tls.Config). OptionHTTPTransport or OptionTLSConfig
 // will have no effect if you use this option.
-func OptHTTPClient(client *http.Client) Option {
+func OptionHTTPClient(client *http.Client) Option {
 	return func(m *httpManipulator) {
 		m.client = client
 	}
 }
 
-// OptHTTPTransport sets internal *http.Transport.
+// OptionHTTPTransport sets internal *http.Transport.
 //
 // If you use this option you are responsible for configuring the *tls.Config.
-// OptTLSConfig will have no effect if you use this option.
-func OptHTTPTransport(transport *http.Transport) Option {
+// OptionTLSConfig will have no effect if you use this option.
+func OptionHTTPTransport(transport *http.Transport) Option {
 	return func(m *httpManipulator) {
 		m.transport = transport
 	}
 }
 
-// OptTLSConfig sets the tls.Config to use for the manipulator.
-func OptTLSConfig(tlsConfig *tls.Config) Option {
+// OptionTLSConfig sets the tls.Config to use for the manipulator.
+func OptionTLSConfig(tlsConfig *tls.Config) Option {
 	return func(m *httpManipulator) {
 		m.tlsConfig = tlsConfig
 	}

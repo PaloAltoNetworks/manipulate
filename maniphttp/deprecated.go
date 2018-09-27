@@ -11,7 +11,7 @@ import (
 func NewHTTPManipulator(url, username, password, namespace string) manipulate.Manipulator {
 
 	// fmt.Println("Deprecated: maniphttp.NewHTTPManipulator. Please switch to maniphttp.New")
-	m, err := New(context.Background(), url, OptCredentials(username, password), OptNamespace(namespace))
+	m, err := New(context.Background(), url, OptionCredentials(username, password), OptionNamespace(namespace))
 	if err != nil {
 		panic(err)
 	}
@@ -23,7 +23,7 @@ func NewHTTPManipulator(url, username, password, namespace string) manipulate.Ma
 func NewHTTPManipulatorWithTLS(url, username, password, namespace string, tlsConfig *tls.Config) manipulate.Manipulator {
 
 	// fmt.Println("Deprecated: maniphttp.NewHTTPManipulatorWithTLS. Please switch to maniphttp.New")
-	m, err := New(context.Background(), url, OptCredentials(username, password), OptTLSConfig(tlsConfig))
+	m, err := New(context.Background(), url, OptionCredentials(username, password), OptionTLSConfig(tlsConfig))
 	if err != nil {
 		panic(err)
 	}
@@ -35,5 +35,5 @@ func NewHTTPManipulatorWithTLS(url, username, password, namespace string, tlsCon
 func NewHTTPManipulatorWithTokenManager(ctx context.Context, url string, namespace string, tlsConfig *tls.Config, tokenManager manipulate.TokenManager) (manipulate.Manipulator, error) {
 
 	// fmt.Println("Deprecated: maniphttp.NewHTTPManipulatorWithTokenManager. Please switch to maniphttp.New")
-	return New(ctx, url, OptNamespace(namespace), OptTLSConfig(tlsConfig), OptTokenManager(tokenManager))
+	return New(ctx, url, OptionNamespace(namespace), OptionTLSConfig(tlsConfig), OptionTokenManager(tokenManager))
 }
