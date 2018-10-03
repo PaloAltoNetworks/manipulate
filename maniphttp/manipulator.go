@@ -609,6 +609,10 @@ func (s *httpManipulator) send(mctx manipulate.Context, request *http.Request) (
 			return response, manipulate.NewErrCannotCommunicate(errs.Error())
 		}
 
+		if response.StatusCode == http.StatusTooManyRequests {
+			return response, manipulate.NewErrTooManyRequests(errs.Error())
+		}
+
 		return response, errs
 	}
 

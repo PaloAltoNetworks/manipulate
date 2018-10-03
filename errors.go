@@ -207,3 +207,19 @@ func IsDisconnectedError(err error) bool {
 	_, ok := err.(ErrDisconnected)
 	return ok
 }
+
+// ErrTooManyRequests represents the error returned when the server api is locked..
+type ErrTooManyRequests struct{ message string }
+
+// NewErrTooManyRequests returns a new ErrCannotCommunicate.
+func NewErrTooManyRequests(message string) ErrTooManyRequests {
+	return ErrTooManyRequests{message: message}
+}
+
+func (e ErrTooManyRequests) Error() string { return "Cannot communicate: " + e.message }
+
+// IsTooManyRequestsError returns true if the given error is am ErrTooManyRequests.
+func IsTooManyRequestsError(err error) bool {
+	_, ok := err.(ErrTooManyRequests)
+	return ok
+}

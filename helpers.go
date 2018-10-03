@@ -54,7 +54,7 @@ func Retry(ctx context.Context, manipulateFunc func() error, onRetryFunc func(in
 		switch err.(type) {
 
 		// If this is a ErrCannotCommunicate or ErrLocked, we retry until the context is canceled.
-		case ErrCannotCommunicate, ErrLocked:
+		case ErrCannotCommunicate, ErrLocked, ErrTooManyRequests:
 
 			// If onRetryFunc is provided we call it and decide what to do.
 			if onRetryFunc != nil {
