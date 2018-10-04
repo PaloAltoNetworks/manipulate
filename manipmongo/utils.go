@@ -13,9 +13,9 @@ import (
 // given *mgo.Database.
 func collectionFromIdentity(db *mgo.Database, identity elemental.Identity, prefix string) *mgo.Collection {
 
-	if prefix != "" {
-		return db.C(prefix + "-" + identity.Name)
-	}
+	// if prefix != "" {
+	// 	return db.C(prefix + "-" + identity.Name)
+	// }
 
 	return db.C(identity.Name)
 }

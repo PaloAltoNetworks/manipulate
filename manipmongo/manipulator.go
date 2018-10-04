@@ -22,6 +22,7 @@ import (
 // MongoStore represents a MongoDB session.
 type mongoManipulator struct {
 	rootSession  *mgo.Session
+	rootDatabase *mgo.Database
 	dbName       string
 	transactions *transactionsRegistry
 }
@@ -75,6 +76,7 @@ func NewMongoManipulator(connectionString string, dbName string, user string, pa
 	return &mongoManipulator{
 		dbName:       dbName,
 		rootSession:  session,
+		rootDatabase: session.DB(dbName),
 		transactions: newTransactionRegistry(),
 	}
 }
@@ -88,11 +90,11 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve_many.%s", dest.Identity().Category))
 	defer sp.Finish()
 
-	session := s.rootSession.Copy()
-	defer session.Close()
+	// session := s.rootSession.Copy()
+	// defer session.Close()
+	// db := session.DB(s.dbName)
 
-	db := session.DB(s.dbName)
-	collection := collectionFromIdentity(db, dest.Identity(), "")
+	collection := collectionFromIdentity(s.rootDatabase, dest.Identity(), "")
 	filter := bson.M{}
 
 	if f := mctx.Filter(); f != nil {
@@ -160,11 +162,11 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, objects ...elementa
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	session := s.rootSession.Copy()
-	defer session.Close()
+	// session := s.rootSession.Copy()
+	// defer session.Close()
+	// db := session.DB(s.dbName)
 
-	db := session.DB(s.dbName)
-	collection := collectionFromIdentity(db, objects[0].Identity(), "")
+	collection := collectionFromIdentity(s.rootDatabase, objects[0].Identity(), "")
 	filter := bson.M{}
 
 	if f := mctx.Filter(); f != nil {
@@ -319,11 +321,11 @@ func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	session := s.rootSession.Copy()
-	defer session.Close()
+	// session := s.rootSession.Copy()
+	// defer session.Close()
+	// db := session.DB(s.dbName)
 
-	db := session.DB(s.dbName)
-	collection := collectionFromIdentity(db, identity, "")
+	collection := collectionFromIdentity(s.rootDatabase, identity, "")
 	filter := bson.M{}
 
 	if f := mctx.Filter(); f != nil {
@@ -353,10 +355,7 @@ func (s *mongoManipulator) Commit(id manipulate.TransactionID) error {
 	sp, _ := opentracing.StartSpanFromContext(transaction.ctx, "manipmongo.commit")
 	defer sp.Finish()
 
-	defer func() {
-		transaction.closeSession()
-		s.transactions.unregisterTransaction(id)
-	}()
+	defer s.transactions.unregisterTransaction(id)
 
 	for _, bulk := range transaction.bulks {
 
@@ -377,7 +376,6 @@ func (s *mongoManipulator) Abort(id manipulate.TransactionID) bool {
 		return false
 	}
 
-	transaction.closeSession()
 	s.transactions.unregisterTransaction(id)
 
 	return true
@@ -398,7 +396,7 @@ func (s *mongoManipulator) retrieveTransaction(mctx manipulate.Context) (*transa
 		return t, created
 	}
 
-	t = newTransaction(mctx.Context(), tid, s.rootSession.Copy(), s.dbName)
+	t = newTransaction(mctx.Context(), tid, s.rootDatabase)
 	s.transactions.registerTransaction(tid, t)
 
 	return t, created

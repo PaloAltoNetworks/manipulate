@@ -10,34 +10,22 @@ import (
 )
 
 type transaction struct {
-	bulks   map[elemental.Identity]*mgo.Bulk
-	db      *mgo.Database
-	id      manipulate.TransactionID
-	lock    *sync.Mutex
-	session *mgo.Session
-	ctx     context.Context
+	bulks map[elemental.Identity]*mgo.Bulk
+	db    *mgo.Database
+	id    manipulate.TransactionID
+	lock  *sync.Mutex
+	ctx   context.Context
 }
 
-func newTransaction(ctx context.Context, id manipulate.TransactionID, session *mgo.Session, dbName string) *transaction {
+func newTransaction(ctx context.Context, id manipulate.TransactionID, db *mgo.Database) *transaction {
 
 	return &transaction{
-		bulks:   map[elemental.Identity]*mgo.Bulk{},
-		db:      session.DB(dbName),
-		id:      id,
-		lock:    &sync.Mutex{},
-		session: session,
-		ctx:     ctx,
+		bulks: map[elemental.Identity]*mgo.Bulk{},
+		db:    db,
+		id:    id,
+		lock:  &sync.Mutex{},
+		ctx:   ctx,
 	}
-}
-
-func (t *transaction) closeSession() {
-
-	if t.session == nil {
-		return
-	}
-
-	t.session.Close()
-	t.session = nil
 }
 
 func (t *transaction) bulkForIdentity(identity elemental.Identity, prefix string) *mgo.Bulk { // nolint:unparam
