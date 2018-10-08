@@ -94,7 +94,7 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	// defer session.Close()
 	// db := session.DB(s.dbName)
 
-	collection := collectionFromIdentity(s.rootDatabase, dest.Identity(), "")
+	collection := collectionFromIdentity(s.rootDatabase, dest.Identity())
 	filter := bson.M{}
 
 	if f := mctx.Filter(); f != nil {
@@ -166,7 +166,7 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, objects ...elementa
 	// defer session.Close()
 	// db := session.DB(s.dbName)
 
-	collection := collectionFromIdentity(s.rootDatabase, objects[0].Identity(), "")
+	collection := collectionFromIdentity(s.rootDatabase, objects[0].Identity())
 	filter := bson.M{}
 
 	if f := mctx.Filter(); f != nil {
@@ -203,7 +203,7 @@ func (s *mongoManipulator) Create(mctx manipulate.Context, children ...elemental
 	}
 
 	transaction, commit := s.retrieveTransaction(mctx)
-	bulk := transaction.bulkForIdentity(children[0].Identity(), "")
+	bulk := transaction.bulkForIdentity(children[0].Identity())
 
 	for _, child := range children {
 
@@ -242,7 +242,7 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, objects ...elemental.
 	}
 
 	transaction, commit := s.retrieveTransaction(mctx)
-	bulk := transaction.bulkForIdentity(objects[0].Identity(), "")
+	bulk := transaction.bulkForIdentity(objects[0].Identity())
 
 	for _, o := range objects {
 
@@ -271,7 +271,7 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, objects ...elemental.
 	}
 
 	transaction, commit := s.retrieveTransaction(mctx)
-	bulk := transaction.bulkForIdentity(objects[0].Identity(), "")
+	bulk := transaction.bulkForIdentity(objects[0].Identity())
 
 	for _, o := range objects {
 
@@ -304,7 +304,7 @@ func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 	defer sp.Finish()
 
 	transaction, commit := s.retrieveTransaction(mctx)
-	bulk := transaction.bulkForIdentity(identity, "")
+	bulk := transaction.bulkForIdentity(identity)
 
 	bulk.RemoveAll(compiler.CompileFilter(mctx.Filter()))
 
@@ -325,7 +325,7 @@ func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	// defer session.Close()
 	// db := session.DB(s.dbName)
 
-	collection := collectionFromIdentity(s.rootDatabase, identity, "")
+	collection := collectionFromIdentity(s.rootDatabase, identity)
 	filter := bson.M{}
 
 	if f := mctx.Filter(); f != nil {
