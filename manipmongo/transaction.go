@@ -28,7 +28,7 @@ func newTransaction(ctx context.Context, id manipulate.TransactionID, db *mgo.Da
 	}
 }
 
-func (t *transaction) bulkForIdentity(identity elemental.Identity, prefix string) *mgo.Bulk { // nolint:unparam
+func (t *transaction) bulkForIdentity(identity elemental.Identity) *mgo.Bulk { // nolint:unparam
 
 	t.lock.Lock()
 	defer t.lock.Unlock()
@@ -38,7 +38,7 @@ func (t *transaction) bulkForIdentity(identity elemental.Identity, prefix string
 		return bulk
 	}
 
-	t.bulks[identity] = collectionFromIdentity(t.db, identity, prefix).Bulk()
+	t.bulks[identity] = collectionFromIdentity(t.db, identity).Bulk()
 
 	return t.bulks[identity]
 }
