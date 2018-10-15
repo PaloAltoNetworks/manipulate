@@ -306,6 +306,11 @@ func (s *httpManipulator) Update(mctx manipulate.Context, objects ...elemental.I
 		mctx = manipulate.NewContext(context.Background())
 	}
 
+	method := http.MethodPut
+	if _, ok := objects[0].(elemental.SparseIdentifiable); ok {
+		method = http.MethodPatch
+	}
+
 	for _, object := range objects {
 
 		sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.update.object.%s", object.Identity().Name))
@@ -326,7 +331,7 @@ func (s *httpManipulator) Update(mctx manipulate.Context, objects ...elemental.I
 			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
-		request, err := http.NewRequest(http.MethodPut, url, buffer)
+		request, err := http.NewRequest(method, url, buffer)
 		if err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
