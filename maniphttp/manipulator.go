@@ -515,6 +515,9 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.
 		request.Header.Set("X-External-Tracking-Type", v)
 	}
 
+	for _, field := range mctx.Fields() {
+		request.Header.Add("X-Fields", field)
+	}
 }
 
 func (s *httpManipulator) readHeaders(response *http.Response, mctx manipulate.Context) {
