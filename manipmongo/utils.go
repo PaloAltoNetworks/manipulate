@@ -6,6 +6,7 @@ import (
 	"go.aporeto.io/manipulate"
 
 	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
 )
 
@@ -95,4 +96,25 @@ func getErrorCode(err error) int {
 	}
 
 	return 0
+}
+
+func makeFieldsSelector(fields []string) bson.M {
+
+	if len(fields) == 0 {
+		return nil
+	}
+
+	sels := bson.M{}
+	for _, f := range fields {
+		if f == "" {
+			continue
+		}
+		sels[strings.ToLower(f)] = 1
+	}
+
+	if len(sels) == 0 {
+		return nil
+	}
+
+	return sels
 }
