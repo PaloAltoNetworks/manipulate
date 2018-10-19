@@ -3,6 +3,7 @@ package manipulate
 import (
 	"bytes"
 	"strings"
+	"unicode/utf8"
 )
 
 // scanner scans a given input
@@ -38,6 +39,17 @@ func (s *scanner) read() rune {
 	return ch
 }
 
+// peekNextRune returns the next rune but does not read it.
+func (s *scanner) peekNextRune() rune {
+
+	if s.buf.Len() == 0 {
+		return runeEOF
+	}
+
+	ch, _ := utf8.DecodeRune(s.buf.Bytes()[0:])
+	return ch
+}
+
 // unread a previously read rune
 func (s *scanner) unread() {
 	_ = s.buf.UnreadRune()
@@ -51,8 +63,25 @@ func (s *scanner) scan() (parserToken, string) {
 	if s.isWhitespace(ch) {
 		s.unread()
 		return s.scanWhitespace()
+	}
 
-	} else if s.isLetter(ch) || s.isDigit(ch) {
+	if isOperatorStart(ch) {
+		// Chack if the next run can create an operator
+		nextCh := s.peekNextRune()
+		if nextCh != runeEOF {
+			if token, literal, ok := isOperator(ch, nextCh); ok {
+				s.read() // read only if it has matched.
+				return token, literal
+			}
+		}
+
+		// Check if the current rune is an operator
+		if token, literal, ok := isOperator(ch); ok {
+			return token, literal
+		}
+	}
+
+	if s.isLetter(ch) || s.isDigit(ch) {
 		s.unread()
 		return s.scanWord()
 	}
@@ -102,16 +131,42 @@ func (s *scanner) scanWord() (parserToken, string) {
 				// Move forward
 				ch = s.read()
 			}
+
+			if isOperatorStart(ch) {
+				// Check if the next rune can create an operator
+				nextCh := s.peekNextRune()
+				if nextCh != runeEOF {
+					if _, _, ok := isOperator(ch, nextCh); ok {
+						s.unread() // unread ch rune
+						break
+					}
+				}
+
+				// Check if ch is an operator by itself
+				if _, _, ok := isOperator(ch); ok {
+					s.unread()
+					break
+				}
+			}
+
 			buf.WriteRune(ch)
 		}
 	}
 
-	output := buf.String()
+	return stringToToken(buf.String())
+}
 
-	token, ok := stringToToken[strings.ToUpper(output)]
-	if !ok {
-		return parserTokenWORD, output
+func stringToToken(output string) (parserToken, string) {
+
+	upper := strings.ToUpper(output)
+
+	if token, ok := wordToToken[upper]; ok {
+		return token, output
 	}
 
-	return token, output
+	if token, ok := operatorsToToken[upper]; ok {
+		return token, output
+	}
+
+	return parserTokenWORD, output
 }
