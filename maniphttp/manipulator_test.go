@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/elemental/test/model"
@@ -75,13 +76,18 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 
 		m := NewHTTPManipulator("http://fake.com", "username", "password", "myns").(*httpManipulator)
 
+		m.globalHeaders = http.Header{
+			"Header-1": []string{"hey"},
+			"Header-2": []string{"ho"},
+		}
+
 		Convey("Given I create a Request", func() {
 
 			req, _ := http.NewRequest("GET", "http://fake.com", nil)
 
 			Convey("When I prepareHeaders with a no context", func() {
 
-				m.prepareHeaders(req, manipulate.NewContext())
+				m.prepareHeaders(req, manipulate.NewContext(context.Background()))
 
 				Convey("Then I should have a the X-Namespace set to 'myns'", func() {
 					So(req.Header.Get("X-Namespace"), ShouldEqual, "myns")
@@ -90,13 +96,19 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 				Convey("Then I should not have a value for X-Count-Total", func() {
 					So(req.Header.Get("X-Count-Total"), ShouldEqual, "")
 				})
+
+				Convey("Then I should get the global headers", func() {
+					So(req.Header.Get("Header-1"), ShouldEqual, "hey")
+					So(req.Header.Get("Header-2"), ShouldEqual, "ho")
+				})
 			})
 
 			Convey("When I prepareHeaders with a no tracked context", func() {
 
-				ctx := manipulate.NewContext()
-				ctx.ExternalTrackingID = "tid"
-				ctx.ExternalTrackingType = "type"
+				ctx := manipulate.NewContext(
+					context.Background(),
+					manipulate.ContextOptionTracking("tid", "type"),
+				)
 
 				m.prepareHeaders(req, ctx)
 
@@ -117,7 +129,7 @@ func TestHTTP_readHeaders(t *testing.T) {
 	Convey("Given I create a new HTTP manipulator and a Context", t, func() {
 
 		m := NewHTTPManipulator("http://fake.com", "username", "password", "").(*httpManipulator)
-		ctx := manipulate.NewContext()
+		ctx := manipulate.NewContext(context.Background())
 		req := &http.Response{Header: http.Header{}}
 
 		Convey("When I readHeaders with a no context", func() {
@@ -135,7 +147,7 @@ func TestHTTP_readHeaders(t *testing.T) {
 			m.readHeaders(req, ctx)
 
 			Convey("Then Context.X-Count-Total should be 456", func() {
-				So(ctx.CountTotal, ShouldEqual, 456)
+				So(ctx.Count(), ShouldEqual, 456)
 			})
 		})
 	})
@@ -574,8 +586,11 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
 			var l testmodel.TasksList
-			ctx := manipulate.NewContext()
-			ctx.Parent = list
+			ctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionParent(list),
+			)
+
 			errs := m.RetrieveMany(ctx, &l)
 
 			Convey("Then err should not be nil", func() {
@@ -609,8 +624,10 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			list2 := testmodel.NewList()
 			var l testmodel.TasksList
 
-			ctx := manipulate.NewContext()
-			ctx.Parent = list2
+			ctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionParent(list2),
+			)
 
 			errs := m.RetrieveMany(ctx, &l)
 
@@ -631,8 +648,10 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 			e := testmodel.NewTask()
 			var l testmodel.TasksList
 
-			ctx := manipulate.NewContext()
-			ctx.Parent = e
+			ctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionParent(e),
+			)
 
 			errs := m.RetrieveMany(ctx, &l)
 
@@ -657,8 +676,10 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 
 			var l testmodel.TasksList
 
-			ctx := manipulate.NewContext()
-			ctx.Parent = list
+			ctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionParent(list),
+			)
 
 			_ = m.RetrieveMany(ctx, &l)
 
@@ -677,8 +698,10 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
-			ctx := manipulate.NewContext()
-			ctx.Parent = list
+			ctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionParent(list),
+			)
 
 			var l testmodel.TasksList
 			errs := m.RetrieveMany(ctx, &l)
@@ -698,8 +721,10 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
-			ctx := manipulate.NewContext()
-			ctx.Parent = list
+			ctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionParent(list),
+			)
 
 			var l testmodel.TasksList
 			errs := m.RetrieveMany(ctx, &l)
@@ -745,8 +770,10 @@ func TestHTTP_Create(t *testing.T) {
 			m := NewHTTPManipulator("username", "password", "url.com", "")
 			list2 := testmodel.NewList()
 			task := testmodel.NewTask()
-			ctx := manipulate.NewContext()
-			ctx.Parent = list2
+			ctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionParent(list2),
+			)
 
 			errs := m.Create(ctx, task)
 
@@ -831,8 +858,11 @@ func TestHTTP_Count(t *testing.T) {
 
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
-			ctx := manipulate.NewContext()
-			ctx.Parent = list
+			ctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionParent(list),
+			)
+
 			num, errs := m.Count(ctx, testmodel.TaskIdentity)
 
 			Convey("Then err should not be nil", func() {
@@ -850,8 +880,10 @@ func TestHTTP_Count(t *testing.T) {
 
 			list2 := testmodel.NewList()
 
-			ctx := manipulate.NewContext()
-			ctx.Parent = list2
+			ctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionParent(list2),
+			)
 
 			_, errs := m.Count(ctx, testmodel.TaskIdentity)
 
@@ -870,8 +902,10 @@ func TestHTTP_Count(t *testing.T) {
 
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
 
-			ctx := manipulate.NewContext()
-			ctx.Parent = list
+			ctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionParent(list),
+			)
 
 			_, errs := m.Count(ctx, testmodel.TaskIdentity)
 
@@ -891,7 +925,7 @@ func TestHTTP_send(t *testing.T) {
 		Convey("When I call send", func() {
 
 			req, _ := http.NewRequest(http.MethodPost, "nop", nil)
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(), req)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(context.Background()), req)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -911,12 +945,144 @@ func TestHTTP_send(t *testing.T) {
 			defer cancel()
 
 			req, _ := http.NewRequest(http.MethodPost, "https://google.com", nil)
-			_, err := m.(*httpManipulator).send(manipulate.NewContext().WithContext(ctx), req)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
 				So(err.Error(), ShouldEqual, "Cannot communicate: Post https://google.com: context deadline exceeded")
+			})
+		})
+	})
+
+	Convey("Given I have a m with with a 408", t, func() {
+
+		m := NewHTTPManipulator("username", "password", "", "")
+
+		Convey("When I call send", func() {
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				http.Error(w, `[{"code": 408, "title": "nope", "description": "boom"}]`, 408)
+			}))
+			defer ts.Close()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+
+			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+				So(err.Error(), ShouldEqual, "Cannot communicate: error 408 (): nope: boom")
+			})
+		})
+	})
+
+	Convey("Given I have a m with with a 502", t, func() {
+
+		m := NewHTTPManipulator("username", "password", "", "")
+
+		Convey("When I call send", func() {
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				http.Error(w, `[{"code": 502, "title": "nope", "description": "boom"}]`, 502)
+			}))
+			defer ts.Close()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+
+			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+				So(err.Error(), ShouldEqual, "Cannot communicate: Service unavailable")
+			})
+		})
+	})
+
+	Convey("Given I have a m with with a 423", t, func() {
+
+		m := NewHTTPManipulator("username", "password", "", "")
+
+		Convey("When I call send", func() {
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				http.Error(w, `[{"code": 423, "title": "nope", "description": "boom"}]`, 423)
+			}))
+			defer ts.Close()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+
+			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrLocked{})
+				So(err.Error(), ShouldEqual, "Cannot communicate: The api has been locked down by the server.")
+			})
+		})
+	})
+
+	Convey("Given I have a m with with a unmarshalable error", t, func() {
+
+		m := NewHTTPManipulator("username", "password", "", "")
+
+		Convey("When I call send", func() {
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				http.Error(w, `[{"code": 423, "]`, 404)
+			}))
+			defer ts.Close()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+
+			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotUnmarshal{})
+				So(err.Error(), ShouldEqual, `Unable to unmarshal data: invalid character '\n' in string literal. original data:
+[{"code": 423, "]
+`)
+			})
+		})
+	})
+
+	Convey("Given I have a m with with a 500", t, func() {
+
+		m := NewHTTPManipulator("username", "password", "", "")
+
+		Convey("When I call send", func() {
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				http.Error(w, `[{"code": 500, "title": "nope", "description": "boom"}]`, 500)
+			}))
+			defer ts.Close()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+
+			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldHaveSameTypeAs, elemental.Errors{})
+				So(err.Error(), ShouldEqual, "error 500 (): nope: boom")
 			})
 		})
 	})

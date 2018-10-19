@@ -8,3 +8,5 @@ codegen
 vendor/
 *.lock
 testresults.xml
+profile.out
+coverage.txt

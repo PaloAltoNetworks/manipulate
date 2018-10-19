@@ -3,10 +3,17 @@ package manipmongo
 import (
 	"strconv"
 
+	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
-	"github.com/globalsign/mgo"
+	"go.aporeto.io/manipulate/manipmongo/internal/compiler"
 )
+
+// CompileFilter compiles the given manipulate filter into a raw mongo filter.
+func CompileFilter(f *manipulate.Filter) bson.M {
+	return compiler.CompileFilter(f)
+}
 
 // DoesDatabaseExist checks if the database used by the given manipulator exists.
 func DoesDatabaseExist(manipulator manipulate.Manipulator) (bool, error) {
@@ -58,7 +65,9 @@ func CreateIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 	collection := session.DB(m.dbName).C(identity.Name)
 
 	for i, index := range indexes {
-		index.Name = "index_" + identity.Name + "_" + strconv.Itoa(i)
+		if index.Name == "" {
+			index.Name = "index_" + identity.Name + "_" + strconv.Itoa(i)
+		}
 		if err := collection.EnsureIndex(index); err != nil {
 			return err
 		}

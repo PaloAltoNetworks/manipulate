@@ -14,29 +14,29 @@ import (
 type Manipulator interface {
 
 	// RetrieveMany retrieves the a list of objects with the given elemental.Identity and put them in the given dest.
-	RetrieveMany(context *Context, dest elemental.Identifiables) error
+	RetrieveMany(mctx Context, dest elemental.Identifiables) error
 
 	// Retrieve retrieves one or multiple elemental.Identifiables.
 	// In order to be retrievable, the elemental.Identifiable needs to have their Identifier correctly set.
-	Retrieve(context *Context, objects ...elemental.Identifiable) error
+	Retrieve(mctx Context, objects ...elemental.Identifiable) error
 
 	// Create creates a the given elemental.Identifiables.
-	Create(context *Context, objects ...elemental.Identifiable) error
+	Create(mctx Context, objects ...elemental.Identifiable) error
 
 	// Update updates one or multiple elemental.Identifiables.
 	// In order to be updatable, the elemental.Identifiable needs to have their Identifier correctly set.
-	Update(context *Context, objects ...elemental.Identifiable) error
+	Update(mctx Context, objects ...elemental.Identifiable) error
 
 	// Delete deletes one or multiple elemental.Identifiables.
 	// In order to be deletable, the elemental.Identifiable needs to have their Identifier correctly set.
-	Delete(context *Context, objects ...elemental.Identifiable) error
+	Delete(mctx Context, objects ...elemental.Identifiable) error
 
 	// DeleteMany deletes all objects of with the given identity or
 	// all the ones matching the filter in the given context.
-	DeleteMany(context *Context, identity elemental.Identity) error
+	DeleteMany(mctx Context, identity elemental.Identity) error
 
 	// Count returns the number of objects with the given identity.
-	Count(context *Context, identity elemental.Identity) (int, error)
+	Count(mctx Context, identity elemental.Identity) (int, error)
 }
 
 // A TransactionalManipulator is a Manipulator that handles transactions.

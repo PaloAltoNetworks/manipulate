@@ -1,25 +1,33 @@
 package maniphttp
 
 import (
+	"compress/gzip"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"strconv"
+	"sync"
+	"time"
 
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/maniphttp/internal/compiler"
 )
 
+var gzipReaders = sync.Pool{New: func() interface{} { return &gzip.Reader{} }}
+
 // AddQueryParameters appends each key-value pair from ctx.Parameters
 // to a request as query parameters with proper escaping.
-func addQueryParameters(req *http.Request, ctx *manipulate.Context) error {
+func addQueryParameters(req *http.Request, ctx manipulate.Context) error {
 
 	q := req.URL.Query()
 
-	if ctx.Filter != nil {
-		query, err := compiler.CompileFilter(ctx.Filter)
+	if f := ctx.Filter(); f != nil {
+		query, err := compiler.CompileFilter(f)
 		if err != nil {
 			return err
 		}
@@ -28,27 +36,27 @@ func addQueryParameters(req *http.Request, ctx *manipulate.Context) error {
 		}
 	}
 
-	for k, v := range ctx.Parameters {
+	for k, v := range ctx.Parameters() {
 		q[k] = v
 	}
 
-	for _, order := range ctx.Order {
+	for _, order := range ctx.Order() {
 		q.Add("order", order)
 	}
 
-	if ctx.Page != 0 {
-		q.Add("page", strconv.Itoa(ctx.Page))
+	if p := ctx.Page(); p != 0 {
+		q.Add("page", strconv.Itoa(p))
 	}
 
-	if ctx.PageSize > 0 {
-		q.Add("pagesize", strconv.Itoa(ctx.PageSize))
+	if p := ctx.PageSize(); p > 0 {
+		q.Add("pagesize", strconv.Itoa(p))
 	}
 
-	if ctx.Recursive {
+	if ctx.Recursive() {
 		q.Add("recursive", "true")
 	}
 
-	if ctx.OverrideProtection {
+	if ctx.Override() {
 		q.Add("override", "true")
 	}
 
@@ -57,13 +65,30 @@ func addQueryParameters(req *http.Request, ctx *manipulate.Context) error {
 	return nil
 }
 
-func decodeData(dataReader io.Reader, dest interface{}) (err error) {
+func decodeData(r *http.Response, dest interface{}) (err error) {
 
-	var data []byte
-
-	if dataReader == nil {
+	if r.Body == nil {
 		return manipulate.NewErrCannotUnmarshal("nil reader")
 	}
+
+	var dataReader io.ReadCloser
+	switch r.Header.Get("Content-Encoding") {
+	case "gzip":
+		gz := gzipReaders.Get().(*gzip.Reader)
+		defer gzipReaders.Put(gz)
+
+		if err := gz.Reset(r.Body); err != nil {
+			panic(err)
+		}
+		defer gz.Close() // nolint
+
+		dataReader = gz
+
+	default:
+		dataReader = r.Body
+	}
+
+	var data []byte
 
 	if data, err = ioutil.ReadAll(dataReader); err != nil {
 		return manipulate.NewErrCannotUnmarshal(fmt.Sprintf("unable to read data: %s", err.Error()))
@@ -74,4 +99,43 @@ func decodeData(dataReader io.Reader, dest interface{}) (err error) {
 	}
 
 	return nil
+}
+
+var systemCertPoolLock sync.Mutex
+var systemCertPool *x509.CertPool
+
+func getDefaultTLSConfig() *tls.Config {
+
+	systemCertPoolLock.Lock()
+	defer systemCertPoolLock.Unlock()
+
+	if systemCertPool == nil {
+		var err error
+		if systemCertPool, err = x509.SystemCertPool(); err != nil {
+			panic(fmt.Sprintf("Unable to load system root cert pool: %s", err))
+		}
+	}
+
+	return &tls.Config{RootCAs: systemCertPool}
+}
+
+func getDefaultTransport() *http.Transport {
+	return &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}).DialContext,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+}
+
+func getDefaultClient() *http.Client {
+	return &http.Client{
+		Timeout: 30 * time.Second,
+	}
 }

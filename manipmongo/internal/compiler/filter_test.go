@@ -4,8 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"go.aporeto.io/manipulate"
 	"github.com/globalsign/mgo/bson"
+	"go.aporeto.io/manipulate"
+
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -98,7 +99,7 @@ func TestUtils_compiler(t *testing.T) {
 			b, _ := bson.MarshalJSON(CompileFilter(f))
 
 			Convey("Then the bson should be correct", func() {
-				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"$or":[{"x":{"$options":"m","$regex":"$abc^"}},{"x":{"$options":"m","$regex":".*"}}]}]}`)
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"$or":[{"x":{"$regex":"$abc^"}},{"x":{"$regex":".*"}}]}]}`)
 			})
 		})
 	})
