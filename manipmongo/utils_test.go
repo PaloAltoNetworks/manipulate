@@ -1,9 +1,11 @@
 package manipmongo
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 )
 
 func Test_handleQueryError(t *testing.T) {
@@ -148,6 +150,56 @@ func Test_handleQueryError(t *testing.T) {
 			err := handleQueryError(tt.args.err)
 			if tt.errString != err.Error() {
 				t.Errorf("handleQueryError() error = %v, wantErr %v", err, tt.errString)
+			}
+		})
+	}
+}
+
+func Test_makeFieldsSelector(t *testing.T) {
+	type args struct {
+		fields []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bson.M
+	}{
+		{
+			"simple",
+			args{
+				[]string{"MyField1", "myfield2", ""},
+			},
+			bson.M{
+				"myfield1": 1,
+				"myfield2": 1,
+			},
+		},
+		{
+			"empty",
+			args{
+				[]string{},
+			},
+			nil,
+		},
+		{
+			"nil",
+			args{
+				nil,
+			},
+			nil,
+		},
+		{
+			"only empty",
+			args{
+				[]string{"", ""},
+			},
+			nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := makeFieldsSelector(tt.args.fields); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("makeFieldsSelector() = %v, want %v", got, tt.want)
 			}
 		})
 	}

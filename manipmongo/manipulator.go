@@ -90,10 +90,6 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve_many.%s", dest.Identity().Category))
 	defer sp.Finish()
 
-	// session := s.rootSession.Copy()
-	// defer session.Close()
-	// db := session.DB(s.dbName)
-
 	collection := collectionFromIdentity(s.rootDatabase, dest.Identity())
 	filter := bson.M{}
 
@@ -128,12 +124,8 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 		query = query.Sort(invertSortKey("$natural", inverted))
 	}
 
-	if len(mctx.Fields()) > 0 {
-		sel := bson.M{}
-		for _, f := range mctx.Fields() {
-			sel[f] = 1
-		}
-		query = query.Select(sel)
+	if sels := makeFieldsSelector(mctx.Fields()); sels != nil {
+		query = query.Select(sels)
 	}
 
 	if err := query.All(dest); err != nil {
@@ -162,10 +154,6 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, objects ...elementa
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	// session := s.rootSession.Copy()
-	// defer session.Close()
-	// db := session.DB(s.dbName)
-
 	collection := collectionFromIdentity(s.rootDatabase, objects[0].Identity())
 	filter := bson.M{}
 
@@ -181,7 +169,12 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, objects ...elementa
 		sp.LogFields(log.String("object_id", o.Identifier()), log.Object("filter", filter))
 		defer sp.Finish()
 
-		if err := collection.Find(filter).One(o); err != nil {
+		query := collection.Find(filter)
+		if sels := makeFieldsSelector(mctx.Fields()); sels != nil {
+			query = query.Select(sels)
+		}
+
+		if err := query.One(o); err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
 			return handleQueryError(err)
