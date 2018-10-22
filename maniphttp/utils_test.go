@@ -10,9 +10,8 @@ import (
 	"net/url"
 	"testing"
 
-	"go.aporeto.io/manipulate"
-
 	. "github.com/smartystreets/goconvey/convey"
+	"go.aporeto.io/manipulate"
 )
 
 func Test_addQueryParameters(t *testing.T) {

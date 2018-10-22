@@ -3,11 +3,10 @@ package manipmongo
 import (
 	"strings"
 
-	"go.aporeto.io/manipulate"
-
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
+	"go.aporeto.io/manipulate"
 )
 
 // collectionFromIdentity returns the mgo*.Collection associated to the given Identity from the

@@ -5,10 +5,9 @@ import (
 	"net/url"
 	"testing"
 
-	"go.aporeto.io/elemental/test/model"
-
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
+	"go.aporeto.io/elemental/test/model"
 )
 
 func TestManipulate_ContextOption(t *testing.T) {

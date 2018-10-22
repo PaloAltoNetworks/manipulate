@@ -12,11 +12,10 @@ import (
 	"testing"
 	"time"
 
+	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/elemental/test/model"
 	"go.aporeto.io/manipulate"
-
-	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestHTTP_NewSHTTPm(t *testing.T) {

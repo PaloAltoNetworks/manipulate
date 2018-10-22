@@ -3,9 +3,8 @@ package compiler
 import (
 	"testing"
 
-	"go.aporeto.io/manipulate"
-
 	. "github.com/smartystreets/goconvey/convey"
+	"go.aporeto.io/manipulate"
 )
 
 func TestFilter_CompileFilter(t *testing.T) {

@@ -9,9 +9,8 @@ import (
 	"net/url"
 	"testing"
 
-	"go.aporeto.io/elemental/test/model"
-
 	. "github.com/smartystreets/goconvey/convey"
+	"go.aporeto.io/elemental/test/model"
 )
 
 func TestMethodNewContext(t *testing.T) {

@@ -5,9 +5,8 @@ import (
 	"testing"
 
 	"github.com/globalsign/mgo/bson"
-	"go.aporeto.io/manipulate"
-
 	. "github.com/smartystreets/goconvey/convey"
+	"go.aporeto.io/manipulate"
 )
 
 func TestUtils_compiler(t *testing.T) {
