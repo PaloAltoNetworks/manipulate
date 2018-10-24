@@ -13,10 +13,6 @@ import (
 // given *mgo.Database.
 func collectionFromIdentity(db *mgo.Database, identity elemental.Identity) *mgo.Collection {
 
-	// if prefix != "" {
-	// 	return db.C(prefix + "-" + identity.Name)
-	// }
-
 	return db.C(identity.Name)
 }
 
@@ -36,9 +32,19 @@ func invertSortKey(k string, revert bool) string {
 
 func applyOrdering(order []string, inverted bool) []string {
 
-	o := make([]string, len(order))
-	for i := 0; i < len(order); i++ {
-		o[i] = strings.ToLower(invertSortKey(order[i], inverted))
+	o := []string{} // nolint: prealloc
+
+	for _, f := range order {
+
+		if f == "" {
+			continue
+		}
+
+		if f == "ID" || f == "id" {
+			f = "_id"
+		}
+
+		o = append(o, strings.ToLower(invertSortKey(f, inverted)))
 	}
 
 	return o
