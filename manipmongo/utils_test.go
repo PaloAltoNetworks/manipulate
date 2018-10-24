@@ -175,6 +175,24 @@ func Test_makeFieldsSelector(t *testing.T) {
 			},
 		},
 		{
+			"ID",
+			args{
+				[]string{"ID"},
+			},
+			bson.M{
+				"_id": 1,
+			},
+		},
+		{
+			"id",
+			args{
+				[]string{"ID"},
+			},
+			bson.M{
+				"_id": 1,
+			},
+		},
+		{
 			"empty",
 			args{
 				[]string{},

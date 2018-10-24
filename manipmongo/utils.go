@@ -108,6 +108,9 @@ func makeFieldsSelector(fields []string) bson.M {
 		if f == "" {
 			continue
 		}
+		if f == "ID" || f == "id" {
+			f = "_id"
+		}
 		sels[strings.ToLower(f)] = 1
 	}
 
