@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
+	"math"
 	"net/url"
 	"strings"
+	"time"
 
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
@@ -51,16 +52,9 @@ func makeURL(u string, namespace string, password string, recursive bool) string
 	return u
 }
 
-func isCommError(resp *http.Response) bool {
+const maxBackoff = 8000
 
-	if resp == nil {
-		return true
-	}
+func nextBackoff(try int) time.Duration {
 
-	switch resp.StatusCode {
-	case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
-		return true
-	default:
-		return false
-	}
+	return time.Duration(math.Min(math.Pow(2.0, float64(try))-1, maxBackoff)) * time.Millisecond
 }
