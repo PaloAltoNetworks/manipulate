@@ -101,7 +101,9 @@ func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 			s.publishStatus(manipulate.SubscriberStatusReconnectionFailure)
 		}
 
-		if resp == nil || resp.StatusCode != http.StatusSwitchingProtocols && try == 0 {
+		if resp == nil {
+			s.errors <- err
+		} else if resp.StatusCode != http.StatusSwitchingProtocols {
 			s.errors <- decodeErrors(resp.Body)
 		}
 
