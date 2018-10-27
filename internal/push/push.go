@@ -79,6 +79,7 @@ func (s *subscription) Start(ctx context.Context, filter *elemental.PushFilter) 
 func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 
 	var resp *http.Response
+	var try int
 
 	for {
 
@@ -90,11 +91,8 @@ func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 				s.publishStatus(manipulate.SubscriberStatusReconnection)
 			}
 
+			try = 0
 			return nil
-		}
-
-		if !isCommError(resp) {
-			return decodeErrors(resp.Body)
 		}
 
 		if initial {
@@ -103,11 +101,18 @@ func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 			s.publishStatus(manipulate.SubscriberStatusReconnectionFailure)
 		}
 
-		select {
-		case <-time.After(3 * time.Second):
-		case <-ctx.Done():
-			return manipulate.NewErrDisconnected("Disconnected per signal")
+		if resp == nil {
+			s.errors <- err
+		} else if resp.StatusCode != http.StatusSwitchingProtocols {
+			s.errors <- decodeErrors(resp.Body)
 		}
+
+		select {
+		case <-time.After(nextBackoff(try)):
+		case <-ctx.Done():
+			s.publishStatus(manipulate.SubscriberStatusFinalDisconnection)
+		}
+		try++
 	}
 }
 

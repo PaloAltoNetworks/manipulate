@@ -4,11 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"go.aporeto.io/elemental/test/model"
-	"go.aporeto.io/manipulate"
-
 	memdb "github.com/hashicorp/go-memdb"
 	. "github.com/smartystreets/goconvey/convey"
+	"go.aporeto.io/elemental/test/model"
+	"go.aporeto.io/manipulate"
 )
 
 var Schema = &memdb.DBSchema{

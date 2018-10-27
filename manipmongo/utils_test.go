@@ -175,6 +175,24 @@ func Test_makeFieldsSelector(t *testing.T) {
 			},
 		},
 		{
+			"ID",
+			args{
+				[]string{"ID"},
+			},
+			bson.M{
+				"_id": 1,
+			},
+		},
+		{
+			"id",
+			args{
+				[]string{"ID"},
+			},
+			bson.M{
+				"_id": 1,
+			},
+		},
+		{
 			"empty",
 			args{
 				[]string{},
@@ -200,6 +218,90 @@ func Test_makeFieldsSelector(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := makeFieldsSelector(tt.args.fields); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("makeFieldsSelector() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_applyOrdering(t *testing.T) {
+	type args struct {
+		order    []string
+		inverted bool
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			"simple",
+			args{
+				[]string{"NAME", "toto", ""},
+				false,
+			},
+			[]string{"name", "toto"},
+		},
+		{
+			"simple inverted",
+			args{
+				[]string{"NAME", "", "toto"},
+				true,
+			},
+			[]string{"-name", "-toto"},
+		},
+		{
+			"ID",
+			args{
+				[]string{"ID"},
+				false,
+			},
+			[]string{"_id"},
+		},
+		{
+			"ID inverted",
+			args{
+				[]string{"ID"},
+				true,
+			},
+			[]string{"-_id"},
+		},
+		{
+			"id",
+			args{
+				[]string{"id"},
+				false,
+			},
+			[]string{"_id"},
+		},
+		{
+			"id inverted",
+			args{
+				[]string{"id"},
+				true,
+			},
+			[]string{"-_id"},
+		},
+		{
+			"only empty",
+			args{
+				[]string{"", ""},
+				false,
+			},
+			[]string{},
+		},
+		{
+			"only empty inverted",
+			args{
+				[]string{"", ""},
+				true,
+			},
+			[]string{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := applyOrdering(tt.args.order, tt.args.inverted); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("applyOrdering() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -5,11 +5,10 @@ import (
 	"reflect"
 	"sync"
 
-	"go.aporeto.io/elemental"
-	"go.aporeto.io/manipulate"
-
 	memdb "github.com/hashicorp/go-memdb"
 	uuid "github.com/satori/go.uuid"
+	"go.aporeto.io/elemental"
+	"go.aporeto.io/manipulate"
 )
 
 type txnRegistry map[manipulate.TransactionID]*memdb.Txn
