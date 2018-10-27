@@ -334,6 +334,10 @@ func (p *FilterParser) parseOperatorAndValue() (parserToken, interface{}, error)
 
 func (p *FilterParser) makeFilter(key string, operator parserToken, value interface{}) (*Filter, error) {
 
+	if strings.HasPrefix(key, "$") {
+		return nil, fmt.Errorf("could not start a parameter with $. Found %s", key)
+	}
+
 	filter := NewFilterComposer()
 
 	// Create filter
