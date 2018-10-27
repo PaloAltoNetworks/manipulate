@@ -235,16 +235,16 @@ func TestParser_Keys(t *testing.T) {
 	Convey("Given the expression is a tag like '$key'", t, func() {
 
 		parser := NewFilterParser("$key == value")
-		expectedFilter := NewFilterComposer().WithKey("$key").Equals("value").Done()
+		// expectedFilter := NewFilterComposer().WithKey("$key").Equals("value").Done()
 
 		Convey("When I run Parse", func() {
 
 			filter, err := parser.Parse()
 
-			Convey("Then there should be no error and the filter should as expected", func() {
-				So(err, ShouldEqual, nil)
-				So(filter, ShouldNotEqual, nil)
-				So(filter.String(), ShouldEqual, expectedFilter.String())
+			Convey("Then there should have an error", func() {
+				So(err, ShouldNotEqual, nil)
+				So(err.Error(), ShouldContainSubstring, "could not start a parameter with $")
+				So(filter, ShouldEqual, nil)
 			})
 		})
 	})
