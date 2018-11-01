@@ -37,7 +37,6 @@ func decodeErrors(r io.Reader) error {
 
 func makeURL(u string, namespace string, password string, recursive bool) string {
 
-	u = strings.Replace(u, "http://", "ws://", 1)
 	u = strings.Replace(u, "https://", "wss://", 1)
 	u = fmt.Sprintf("%s?token=%s", u, password)
 
