@@ -35,6 +35,18 @@ func ExtractEndpoint(manipulator manipulate.Manipulator) string {
 	return m.url
 }
 
+// ExtractNamespace extracts the default namespace from the given manipulator.
+// Note: the given manipulator must be an HTTP Manipulator or it will return an error.
+func ExtractNamespace(manipulator manipulate.Manipulator) string {
+
+	m, ok := manipulator.(*httpManipulator)
+	if !ok {
+		panic("You can only pass a HTTP Manipulator to ExtractNamespace")
+	}
+
+	return m.namespace
+}
+
 // ExtractTLSConfig extracts the tls config from the given manipulator.
 // Note: the given manipulator must be an HTTP Manipulator or it will return an error.
 func ExtractTLSConfig(manipulator manipulate.Manipulator) *tls.Config {
