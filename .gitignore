@@ -9,4 +9,5 @@ vendor/
 *.lock
 testresults.xml
 profile.out
-coverage.txt
+*.cov
+artifacts
