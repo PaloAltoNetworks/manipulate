@@ -64,7 +64,7 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 
 		if m.transport == nil {
 
-			m.transport = getDefaultTransport()
+			m.transport, m.url = getDefaultTransport(url)
 
 			if m.tlsConfig == nil {
 				m.tlsConfig = getDefaultTLSConfig()
