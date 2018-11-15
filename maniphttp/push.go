@@ -22,5 +22,13 @@ func NewSubscriberWithEndpoint(manipulator manipulate.Manipulator, endpoint stri
 		panic("You must pass a HTTP manipulator to maniphttp.NewSubscriber or maniphttp.NewSubscriberWithEndpoint")
 	}
 
-	return push.NewSubscriber(fmt.Sprintf("%s/%s", m.url, strings.TrimLeft(endpoint, "/")), m.namespace, m.currentPassword, m.tlsConfig, recursive)
+	return push.NewSubscriber(
+		fmt.Sprintf("%s/%s", m.url, strings.TrimLeft(endpoint, "/")),
+		m.namespace,
+		m.currentPassword(),
+		m.registerRenewNotifier,
+		m.unregisterRenewNotifier,
+		m.tlsConfig,
+		recursive,
+	)
 }

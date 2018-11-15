@@ -5,8 +5,10 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"net/http"
+	"sync"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/gorilla/websocket"
 	"go.aporeto.io/addedeffect/wsc"
 	"go.aporeto.io/elemental"
@@ -21,45 +23,55 @@ const (
 )
 
 type subscription struct {
-	events    chan *elemental.Event
-	errors    chan error
-	status    chan manipulate.SubscriberStatus
-	filters   chan *elemental.PushFilter
-	conn      wsc.Websocket
-	tokenFunc func() string
-	config    wsc.Config
-	url       string
-	ns        string
-	recursive bool
+	id                      string
+	config                  wsc.Config
+	conn                    wsc.Websocket
+	errors                  chan error
+	events                  chan *elemental.Event
+	ns                      string
+	recursive               bool
+	status                  chan manipulate.SubscriberStatus
+	url                     string
+	filters                 chan *elemental.PushFilter
+	tokenRenewed            chan struct{}
+	currentToken            string
+	currentTokenLock        *sync.Mutex
+	unregisterTokenNotifier func(string)
+	registerTokenNotifier   func(string, func(string))
 }
 
 // NewSubscriber creates a new Subscription.
-func NewSubscriber(url string, ns string, tokenFunc func() string, tlsConfig *tls.Config, recursive bool) manipulate.Subscriber {
+func NewSubscriber(
+	url string,
+	ns string,
+	token string,
+	registerTokenNotifier func(string, func(string)),
+	unregisterTokenNotifier func(string),
+	tlsConfig *tls.Config,
+	recursive bool,
+) manipulate.Subscriber {
 
-	if tokenFunc == nil {
-		panic("tokenFunc must not be nil")
+	return &subscription{
+		id:                      uuid.Must(uuid.NewV4()).String(),
+		url:                     url,
+		ns:                      ns,
+		recursive:               recursive,
+		currentToken:            token,
+		tokenRenewed:            make(chan struct{}),
+		currentTokenLock:        &sync.Mutex{},
+		unregisterTokenNotifier: unregisterTokenNotifier,
+		registerTokenNotifier:   registerTokenNotifier,
+		events:                  make(chan *elemental.Event, eventChSize),
+		errors:                  make(chan error, errorChSize),
+		status:                  make(chan manipulate.SubscriberStatus, statusChSize),
+		filters:                 make(chan *elemental.PushFilter, filterChSize),
+		config: wsc.Config{
+			PongWait:   10 * time.Second,
+			WriteWait:  10 * time.Second,
+			PingPeriod: 5 * time.Second,
+			TLSConfig:  tlsConfig,
+		},
 	}
-
-	config := wsc.Config{
-		PongWait:   10 * time.Second,
-		WriteWait:  10 * time.Second,
-		PingPeriod: 5 * time.Second,
-		TLSConfig:  tlsConfig,
-	}
-
-	s := &subscription{
-		url:       url,
-		ns:        ns,
-		recursive: recursive,
-		tokenFunc: tokenFunc,
-		events:    make(chan *elemental.Event, eventChSize),
-		errors:    make(chan error, errorChSize),
-		status:    make(chan manipulate.SubscriberStatus, statusChSize),
-		filters:   make(chan *elemental.PushFilter, filterChSize),
-		config:    config,
-	}
-
-	return s
 }
 
 func (s *subscription) UpdateFilter(filter *elemental.PushFilter) { s.filters <- filter }
@@ -73,6 +85,8 @@ func (s *subscription) Start(ctx context.Context, filter *elemental.PushFilter) 
 		s.filters <- filter
 	}
 
+	s.registerTokenNotifier(s.id, s.setCurrentToken)
+
 	go s.listen(ctx)
 }
 
@@ -83,7 +97,7 @@ func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 
 	for {
 
-		if s.conn, resp, err = wsc.Connect(ctx, makeURL(s.url, s.ns, s.tokenFunc(), s.recursive), s.config); err == nil {
+		if s.conn, resp, err = wsc.Connect(ctx, makeURL(s.url, s.ns, s.getCurrentToken(), s.recursive), s.config); err == nil {
 
 			if initial {
 				s.publishStatus(manipulate.SubscriberStatusInitialConnection)
@@ -163,8 +177,14 @@ func (s *subscription) listen(ctx context.Context) {
 
 				break processingLoop
 
+			case <-s.tokenRenewed:
+
+				s.publishStatus(manipulate.SubscriberStatusTokenRenewal)
+				break processingLoop
+
 			case <-ctx.Done():
 
+				s.unregisterTokenNotifier(s.id)
 				s.conn.Close(websocket.CloseGoingAway)
 				s.publishStatus(manipulate.SubscriberStatusFinalDisconnection)
 				return
@@ -194,4 +214,26 @@ func (s *subscription) publishStatus(st manipulate.SubscriberStatus) {
 	case s.status <- st:
 	default:
 	}
+}
+
+func (s *subscription) setCurrentToken(t string) {
+
+	s.currentTokenLock.Lock()
+	s.currentToken = t
+	s.currentTokenLock.Unlock()
+
+	// notify the main loop if needed
+	select {
+	case s.tokenRenewed <- struct{}{}:
+	default:
+	}
+}
+
+func (s *subscription) getCurrentToken() string {
+
+	s.currentTokenLock.Lock()
+	t := s.currentToken
+	s.currentTokenLock.Unlock()
+
+	return t
 }

@@ -63,6 +63,7 @@ const (
 	SubscriberStatusReconnectionFailure
 	SubscriberStatusDisconnection
 	SubscriberStatusFinalDisconnection
+	SubscriberStatusTokenRenewal
 )
 
 // A Subscriber is the interface to control a push event subscription.

@@ -1103,3 +1103,46 @@ func TestHTTP_setPassword(t *testing.T) {
 		})
 	})
 }
+
+func TestHTTP_renewNotifiers(t *testing.T) {
+
+	Convey("Given I have an http manipulator", t, func() {
+
+		m := NewHTTPManipulator("username", "password", "", "").(*httpManipulator)
+
+		var called1, called2 string
+		notifier1 := func(p string) { called1 = p }
+		notifier2 := func(p string) { called2 = p }
+
+		Convey("When I register the notifiers", func() {
+
+			m.registerRenewNotifier("1", notifier1)
+			m.registerRenewNotifier("2", notifier2)
+
+			Convey("When I call setPassword", func() {
+
+				m.setPassword("changed")
+
+				Convey("Then both notified should have been called", func() {
+					So(called1, ShouldEqual, "changed")
+					So(called2, ShouldEqual, "changed")
+				})
+
+				Convey("Then when I unregister notifier2", func() {
+
+					m.unregisterRenewNotifier("2")
+
+					Convey("When I call setPassword again", func() {
+
+						m.setPassword("changed1")
+
+						Convey("Then both notified should have been called", func() {
+							So(called1, ShouldEqual, "changed1")
+							So(called2, ShouldEqual, "changed")
+						})
+					})
+				})
+			})
+		})
+	})
+}

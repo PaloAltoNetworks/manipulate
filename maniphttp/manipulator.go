@@ -24,11 +24,13 @@ import (
 )
 
 type httpManipulator struct {
-	username  string
-	password  string
-	url       string
-	namespace string
-	renewLock *sync.Mutex
+	username           string
+	password           string
+	url                string
+	namespace          string
+	renewLock          *sync.Mutex
+	renewNotifiers     map[string]func(string)
+	renewNotifiersLock *sync.Mutex
 
 	// optionnable
 	ctx           context.Context
@@ -48,9 +50,11 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 
 	// initialize solid varialbles.
 	m := &httpManipulator{
-		renewLock: &sync.Mutex{},
-		ctx:       ctx,
-		url:       url,
+		renewLock:          &sync.Mutex{},
+		renewNotifiersLock: &sync.Mutex{},
+		renewNotifiers:     map[string]func(string){},
+		ctx:                ctx,
+		url:                url,
 	}
 
 	// Apply the options.
@@ -628,10 +632,33 @@ func (s *httpManipulator) send(mctx manipulate.Context, request *http.Request) (
 	return response, nil
 }
 
+func (s *httpManipulator) registerRenewNotifier(id string, f func(string)) {
+
+	s.renewNotifiersLock.Lock()
+	s.renewNotifiers[id] = f
+	s.renewNotifiersLock.Unlock()
+}
+
+func (s *httpManipulator) unregisterRenewNotifier(id string) {
+
+	s.renewNotifiersLock.Lock()
+	delete(s.renewNotifiers, id)
+	s.renewNotifiersLock.Unlock()
+}
+
 func (s *httpManipulator) setPassword(password string) {
+
 	s.renewLock.Lock()
 	s.password = password
 	s.renewLock.Unlock()
+
+	s.renewNotifiersLock.Lock()
+	for _, f := range s.renewNotifiers {
+		if f != nil {
+			f(password)
+		}
+	}
+	s.renewNotifiersLock.Unlock()
 }
 
 func (s *httpManipulator) currentPassword() string {
