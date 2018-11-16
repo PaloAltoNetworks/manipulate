@@ -92,9 +92,9 @@ func CreateCollection(manipulator manipulate.Manipulator, identity elemental.Ide
 	return collection.Create(info)
 }
 
-// GetSession returns a ready to use session. Use at your own risks.
+// GetDatabase returns a ready to use mgo.Database. Use at your own risks.
 // You are responsible for closing the session by calling the returner close function
-func GetSession(manipulator manipulate.Manipulator) (*mgo.Database, func(), error) {
+func GetDatabase(manipulator manipulate.Manipulator) (*mgo.Database, func(), error) {
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
