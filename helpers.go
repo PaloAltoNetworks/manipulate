@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 const maxBackoff = 8000
@@ -48,6 +50,7 @@ func Retry(ctx context.Context, manipulateFunc func() error, onRetryFunc func(in
 
 		err = manipulateFunc()
 		if err == nil {
+			zap.L().Info("Retry success", zap.Int("attempt", try))
 			return nil
 		}
 
@@ -63,15 +66,19 @@ func Retry(ctx context.Context, manipulateFunc func() error, onRetryFunc func(in
 				}
 			}
 
+			d := nextBackoff(try)
+			zap.L().Info("Retry failed...retrying", zap.Int("attempt", try), zap.Error(err), zap.Duration("backoff", d))
+
 			// Otherwise we wait.
 			select {
-			case <-time.After(nextBackoff(try)):
+			case <-time.After(d):
 			case <-ctx.Done():
 				return NewErrDisconnected(fmt.Sprintf("interupted by context: %s. original error: %s", ctx.Err(), err))
 			}
 
 		// If it's any other kind of error, we do nothing and we return the error.
 		default:
+			zap.L().Info("Retry failed...end", zap.Int("attempt", try), zap.Error(err))
 			return err
 		}
 	}
