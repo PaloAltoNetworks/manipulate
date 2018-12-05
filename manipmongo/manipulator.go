@@ -10,7 +10,6 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
-	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
@@ -21,11 +20,9 @@ import (
 
 // MongoStore represents a MongoDB session.
 type mongoManipulator struct {
-	rootSession  *mgo.Session
-	rootDatabase *mgo.Database
-	dbName       string
-	transactions *transactionsRegistry
-	sharder      Sharder
+	rootSession *mgo.Session
+	dbName      string
+	sharder     Sharder
 }
 
 // New returns a new manipulator backed by MongoDB.
@@ -67,11 +64,9 @@ func New(url string, db string, options ...Option) (manipulate.TransactionalMani
 	session.SetMode(cfg.mode, true)
 
 	return &mongoManipulator{
-		dbName:       db,
-		rootSession:  session,
-		rootDatabase: session.DB(db),
-		transactions: newTransactionRegistry(),
-		sharder:      cfg.sharder,
+		dbName:      db,
+		rootSession: session,
+		sharder:     cfg.sharder,
 	}, nil
 }
 
@@ -112,7 +107,10 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve_many.%s", dest.Identity().Category))
 	defer sp.Finish()
 
-	collection := collectionFromIdentity(s.rootDatabase, dest.Identity())
+	session := s.rootSession.Copy()
+	defer session.Close()
+	c := collectionFromIdentity(session.DB(s.dbName), dest.Identity())
+
 	filter := bson.M{}
 
 	if f := mctx.Filter(); f != nil {
@@ -126,7 +124,7 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 		}
 	}
 
-	query := collection.Find(filter)
+	query := c.Find(filter)
 
 	// This makes squall returning a 500 error.
 	// we should have an ErrBadRequest or something like this.
@@ -183,7 +181,10 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, objects ...elementa
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	collection := collectionFromIdentity(s.rootDatabase, objects[0].Identity())
+	session := s.rootSession.Copy()
+	defer session.Close()
+	c := collectionFromIdentity(session.DB(s.dbName), objects[0].Identity())
+
 	filter := bson.M{}
 
 	if f := mctx.Filter(); f != nil {
@@ -205,7 +206,7 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, objects ...elementa
 		sp.LogFields(log.String("object_id", o.Identifier()), log.Object("filter", filter))
 		defer sp.Finish()
 
-		query := collection.Find(filter)
+		query := c.Find(filter)
 		if sels := makeFieldsSelector(mctx.Fields()); sels != nil {
 			query = query.Select(sels)
 		}
@@ -227,12 +228,17 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, objects ...elementa
 
 func (s *mongoManipulator) Create(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
+	if len(objects) == 0 {
+		return nil
+	}
+
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	transaction, commit := s.retrieveTransaction(mctx)
-	bulk := transaction.bulkForIdentity(objects[0].Identity())
+	session := s.rootSession.Copy()
+	defer session.Close()
+	c := collectionFromIdentity(session.DB(s.dbName), objects[0].Identity())
 
 	for _, obj := range objects {
 
@@ -254,11 +260,11 @@ func (s *mongoManipulator) Create(mctx manipulate.Context, objects ...elemental.
 			s.sharder.Shard(obj)
 		}
 
-		bulk.Insert(obj)
-	}
-
-	if commit {
-		return s.Commit(transaction.id)
+		if err := c.Insert(obj); err != nil {
+			sp.SetTag("error", true)
+			sp.LogFields(log.Error(err))
+			return handleQueryError(err)
+		}
 	}
 
 	return nil
@@ -274,8 +280,9 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, objects ...elemental.
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	transaction, commit := s.retrieveTransaction(mctx)
-	bulk := transaction.bulkForIdentity(objects[0].Identity())
+	session := s.rootSession.Copy()
+	defer session.Close()
+	c := collectionFromIdentity(session.DB(s.dbName), objects[0].Identity())
 
 	var filter bson.M
 
@@ -293,11 +300,11 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, objects ...elemental.
 			}
 		}
 
-		bulk.Update(filter, o)
-	}
-
-	if commit {
-		return s.Commit(transaction.id)
+		if err := c.Update(filter, o); err != nil {
+			sp.SetTag("error", true)
+			sp.LogFields(log.Error(err))
+			return handleQueryError(err)
+		}
 	}
 
 	return nil
@@ -313,8 +320,9 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, objects ...elemental.
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	transaction, commit := s.retrieveTransaction(mctx)
-	bulk := transaction.bulkForIdentity(objects[0].Identity())
+	session := s.rootSession.Copy()
+	defer session.Close()
+	c := collectionFromIdentity(session.DB(s.dbName), objects[0].Identity())
 
 	var filter bson.M
 
@@ -332,16 +340,16 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, objects ...elemental.
 			}
 		}
 
-		bulk.Remove(filter)
+		if err := c.Remove(filter); err != nil {
+			sp.SetTag("error", true)
+			sp.LogFields(log.Error(err))
+			return handleQueryError(err)
+		}
 
 		// backport all default values that are empty.
 		if a, ok := o.(elemental.AttributeSpecifiable); ok {
 			elemental.ResetDefaultForZeroValues(a)
 		}
-	}
-
-	if commit {
-		return s.Commit(transaction.id)
 	}
 
 	return nil
@@ -356,8 +364,9 @@ func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.delete_many.%s", identity.Name))
 	defer sp.Finish()
 
-	transaction, commit := s.retrieveTransaction(mctx)
-	bulk := transaction.bulkForIdentity(identity)
+	session := s.rootSession.Copy()
+	defer session.Close()
+	c := collectionFromIdentity(session.DB(s.dbName), identity)
 
 	filter := compiler.CompileFilter(mctx.Filter())
 	if s.sharder != nil {
@@ -367,10 +376,10 @@ func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 		}
 	}
 
-	bulk.RemoveAll(filter)
-
-	if commit {
-		return s.Commit(transaction.id)
+	if _, err := c.RemoveAll(filter); err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return handleQueryError(err)
 	}
 
 	return nil
@@ -382,7 +391,10 @@ func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	collection := collectionFromIdentity(s.rootDatabase, identity)
+	session := s.rootSession.Copy()
+	defer session.Close()
+	c := collectionFromIdentity(session.DB(s.dbName), identity)
+
 	filter := bson.M{}
 
 	if f := mctx.Filter(); f != nil {
@@ -399,72 +411,19 @@ func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.count.%s", identity.Category))
 	defer sp.Finish()
 
-	c, err := collection.Find(filter).Count()
+	n, err := c.Find(filter).Count()
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return 0, handleQueryError(err)
 	}
 
-	return c, nil
+	return n, nil
 }
 
-func (s *mongoManipulator) Commit(id manipulate.TransactionID) error {
+func (s *mongoManipulator) Commit(id manipulate.TransactionID) error { return nil }
 
-	transaction := s.transactions.transactionWithID(id)
-	if transaction == nil {
-		return manipulate.NewErrTransactionNotFound("No batch found for the given transaction.")
-	}
-
-	sp, _ := opentracing.StartSpanFromContext(transaction.ctx, "manipmongo.commit")
-	defer sp.Finish()
-
-	defer s.transactions.unregisterTransaction(id)
-
-	for _, bulk := range transaction.bulks {
-
-		if _, err := bulk.Run(); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return handleQueryError(err)
-		}
-	}
-
-	return nil
-}
-
-func (s *mongoManipulator) Abort(id manipulate.TransactionID) bool {
-
-	transaction := s.transactions.transactionWithID(id)
-	if transaction == nil {
-		return false
-	}
-
-	s.transactions.unregisterTransaction(id)
-
-	return true
-}
-
-func (s *mongoManipulator) retrieveTransaction(mctx manipulate.Context) (*transaction, bool) {
-
-	var created bool
-
-	tid := mctx.TransactionID()
-	if tid == "" {
-		tid = manipulate.NewTransactionID()
-		created = true
-	}
-
-	t := s.transactions.transactionWithID(tid)
-	if t != nil {
-		return t, created
-	}
-
-	t = newTransaction(mctx.Context(), tid, s.rootDatabase)
-	s.transactions.registerTransaction(tid, t)
-
-	return t, created
-}
+func (s *mongoManipulator) Abort(id manipulate.TransactionID) bool { return true }
 
 func (s *mongoManipulator) Ping(timeout time.Duration) error {
 
