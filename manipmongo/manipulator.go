@@ -61,7 +61,7 @@ func New(url string, db string, options ...Option) (manipulate.TransactionalMani
 	}
 
 	session.SetSocketTimeout(cfg.socketTimeout)
-	session.SetMode(cfg.mode, true)
+	session.SetMode(convertConsistency(cfg.consistency), true)
 
 	return &mongoManipulator{
 		dbName:      db,

@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"time"
 
-	"github.com/globalsign/mgo"
+	"go.aporeto.io/manipulate"
 )
 
 // An Option represents a maniphttp.Manipulator option.
@@ -18,7 +18,7 @@ type config struct {
 	poolLimit      int
 	connectTimeout time.Duration
 	socketTimeout  time.Duration
-	mode           mgo.Mode
+	consistency    manipulate.Consistency
 	sharder        Sharder
 }
 
@@ -27,7 +27,7 @@ func newConfig() *config {
 		poolLimit:      4096,
 		connectTimeout: 10 * time.Second,
 		socketTimeout:  60 * time.Second,
-		mode:           mgo.Strong,
+		consistency:    manipulate.ConsistencyStrong,
 	}
 }
 
@@ -69,9 +69,9 @@ func OptionSocketTimeout(socketTimeout time.Duration) Option {
 }
 
 // OptionDefaultConsistencyMode sets the default consistency mode.
-func OptionDefaultConsistencyMode(mode mgo.Mode) Option {
+func OptionDefaultConsistencyMode(consistency manipulate.Consistency) Option {
 	return func(c *config) {
-		c.mode = mode
+		c.consistency = consistency
 	}
 }
 
