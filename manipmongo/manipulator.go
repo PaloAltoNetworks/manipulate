@@ -107,9 +107,8 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve_many.%s", dest.Identity().Category))
 	defer sp.Finish()
 
-	session := s.rootSession.Copy()
-	defer session.Close()
-	c := collectionFromIdentity(session.DB(s.dbName), dest.Identity())
+	c, close := s.makeSession(dest.Identity(), mctx.Consistency())
+	defer close()
 
 	filter := bson.M{}
 
@@ -181,9 +180,8 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, objects ...elementa
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	session := s.rootSession.Copy()
-	defer session.Close()
-	c := collectionFromIdentity(session.DB(s.dbName), objects[0].Identity())
+	c, close := s.makeSession(objects[0].Identity(), mctx.Consistency())
+	defer close()
 
 	filter := bson.M{}
 
@@ -236,9 +234,8 @@ func (s *mongoManipulator) Create(mctx manipulate.Context, objects ...elemental.
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	session := s.rootSession.Copy()
-	defer session.Close()
-	c := collectionFromIdentity(session.DB(s.dbName), objects[0].Identity())
+	c, close := s.makeSession(objects[0].Identity(), mctx.Consistency())
+	defer close()
 
 	for _, obj := range objects {
 
@@ -280,9 +277,8 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, objects ...elemental.
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	session := s.rootSession.Copy()
-	defer session.Close()
-	c := collectionFromIdentity(session.DB(s.dbName), objects[0].Identity())
+	c, close := s.makeSession(objects[0].Identity(), mctx.Consistency())
+	defer close()
 
 	var filter bson.M
 
@@ -320,9 +316,8 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, objects ...elemental.
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	session := s.rootSession.Copy()
-	defer session.Close()
-	c := collectionFromIdentity(session.DB(s.dbName), objects[0].Identity())
+	c, close := s.makeSession(objects[0].Identity(), mctx.Consistency())
+	defer close()
 
 	var filter bson.M
 
@@ -364,9 +359,8 @@ func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.delete_many.%s", identity.Name))
 	defer sp.Finish()
 
-	session := s.rootSession.Copy()
-	defer session.Close()
-	c := collectionFromIdentity(session.DB(s.dbName), identity)
+	c, close := s.makeSession(identity, mctx.Consistency())
+	defer close()
 
 	filter := compiler.CompileFilter(mctx.Filter())
 	if s.sharder != nil {
@@ -391,9 +385,8 @@ func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	session := s.rootSession.Copy()
-	defer session.Close()
-	c := collectionFromIdentity(session.DB(s.dbName), identity)
+	c, close := s.makeSession(identity, mctx.Consistency())
+	defer close()
 
 	filter := bson.M{}
 
@@ -439,5 +432,15 @@ func (s *mongoManipulator) Ping(timeout time.Duration) error {
 	case err := <-errChannel:
 		return err
 	}
+}
 
+func (s *mongoManipulator) makeSession(identity elemental.Identity, consistency manipulate.Consistency) (*mgo.Collection, func()) {
+
+	session := s.rootSession.Copy()
+	mc := convertConsistency(consistency)
+	if mc != -1 {
+		session.SetMode(mc, true)
+	}
+
+	return session.DB(s.dbName).C(identity.Name), session.Close
 }

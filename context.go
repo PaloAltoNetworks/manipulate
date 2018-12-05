@@ -12,6 +12,19 @@ import (
 	"go.aporeto.io/elemental"
 )
 
+// Consistency represents the desired consistency of the request.
+// Not all driver may implement this.
+type Consistency string
+
+// Various values for Consistency
+const (
+	ConsistencyDefault   Consistency = "default"
+	ConsistencyNearest   Consistency = "nearest"
+	ConsistencyEventual  Consistency = "eventual"
+	ConsistencyMonotonic Consistency = "monotonic"
+	ConsistencyStrong    Consistency = "strong"
+)
+
 // A FinalizerFunc is the type of a function that can be used as a creation finalizer.
 // This is only supported by manipulators that generate an ID to let a chance to the user.
 // to now the intended ID before actually creating the object.
@@ -38,6 +51,7 @@ type Context interface {
 	Context() context.Context
 	Derive(...ContextOption) Context
 	Fields() []string
+	Consistency() Consistency
 
 	fmt.Stringer
 }
@@ -50,7 +64,8 @@ func NewContext(ctx context.Context, options ...ContextOption) Context {
 	}
 
 	mctx := &mcontext{
-		ctx: ctx,
+		ctx:         ctx,
+		consistency: ConsistencyDefault,
 	}
 
 	for _, opt := range options {
@@ -78,6 +93,7 @@ type mcontext struct {
 	order                []string
 	ctx                  context.Context
 	fields               []string
+	consistency          Consistency
 }
 
 // Count returns the count
@@ -130,6 +146,9 @@ func (c *mcontext) Order() []string { return c.order }
 
 // Fields returns the fields.
 func (c *mcontext) Fields() []string { return c.fields }
+
+// Consistency returns the desired consistency.
+func (c *mcontext) Consistency() Consistency { return c.consistency }
 
 // Context returns the internal context.Context.
 func (c *mcontext) Context() context.Context { return c.ctx }

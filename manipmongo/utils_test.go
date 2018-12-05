@@ -6,6 +6,7 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	"go.aporeto.io/manipulate"
 )
 
 func Test_handleQueryError(t *testing.T) {
@@ -302,6 +303,55 @@ func Test_applyOrdering(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := applyOrdering(tt.args.order, tt.args.inverted); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("applyOrdering() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_convertConsistency(t *testing.T) {
+	type args struct {
+		c manipulate.Consistency
+	}
+	tests := []struct {
+		name string
+		args args
+		want mgo.Mode
+	}{
+		{
+			"eventual",
+			args{manipulate.ConsistencyEventual},
+			mgo.Eventual,
+		},
+		{
+			"monotonic",
+			args{manipulate.ConsistencyMonotonic},
+			mgo.Monotonic,
+		},
+		{
+			"nearest",
+			args{manipulate.ConsistencyNearest},
+			mgo.Nearest,
+		},
+		{
+			"strong",
+			args{manipulate.ConsistencyStrong},
+			mgo.Strong,
+		},
+		{
+			"default",
+			args{manipulate.ConsistencyDefault},
+			-1,
+		},
+		{
+			"something else",
+			args{manipulate.Consistency("else")},
+			-1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := convertConsistency(tt.args.c); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("convertConsistency() = %v, want %v", got, tt.want)
 			}
 		})
 	}

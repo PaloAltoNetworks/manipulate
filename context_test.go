@@ -22,6 +22,7 @@ func TestMethodNewContext(t *testing.T) {
 		Convey("Then my context should be initiliazed", func() {
 			So(mctx.Page(), ShouldEqual, 0)
 			So(mctx.PageSize(), ShouldEqual, 0)
+			So(mctx.Consistency(), ShouldEqual, ConsistencyDefault)
 		})
 	})
 }
