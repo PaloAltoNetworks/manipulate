@@ -25,14 +25,74 @@ type mongoManipulator struct {
 	rootDatabase *mgo.Database
 	dbName       string
 	transactions *transactionsRegistry
+	sharder      Sharder
+}
+
+// New returns a new manipulator backed by MongoDB.
+func New(url string, db string, options ...Option) (manipulate.TransactionalManipulator, error) {
+
+	cfg := newConfig()
+	for _, o := range options {
+		o(cfg)
+	}
+
+	dialInfo, err := mgo.ParseURL(url)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse mongo url '%s': %s", url, err)
+	}
+
+	dialInfo.Database = db
+	dialInfo.PoolLimit = cfg.poolLimit
+	dialInfo.Username = cfg.username
+	dialInfo.Password = cfg.password
+	dialInfo.Source = cfg.authsource
+	dialInfo.Timeout = cfg.connectTimeout
+
+	if cfg.tlsConfig != nil {
+		dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
+			return tls.Dial("tcp", addr.String(), cfg.tlsConfig)
+		}
+	} else {
+		dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
+			return net.Dial("tcp", addr.String())
+		}
+	}
+
+	session, err := mgo.DialWithInfo(dialInfo)
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to mongo url '%s': %s", url, err)
+	}
+
+	session.SetSocketTimeout(cfg.socketTimeout)
+	session.SetMode(cfg.mode, true)
+
+	return &mongoManipulator{
+		dbName:       db,
+		rootSession:  session,
+		rootDatabase: session.DB(db),
+		transactions: newTransactionRegistry(),
+		sharder:      cfg.sharder,
+	}, nil
 }
 
 // NewMongoManipulator returns a new TransactionalManipulator backed by MongoDB
 func NewMongoManipulator(connectionString string, dbName string, user string, password string, authsource string, poolLimit int, CAPool *x509.CertPool, clientCerts []tls.Certificate) manipulate.TransactionalManipulator {
 
-	dialInfo, err := mgo.ParseURL(connectionString)
+	fmt.Println("DEPRECATED: manipmongo.NewMongoManipulator is deprecated in favor of manipmongo.New")
+
+	m, err := New(
+		connectionString,
+		dbName,
+		OptionCredentials(user, password, authsource),
+		OptionConnectionPoolLimit(poolLimit),
+		OptionTLS(&tls.Config{
+			RootCAs:      CAPool,
+			Certificates: clientCerts,
+		}),
+	)
+
 	if err != nil {
-		zap.L().Fatal("Unable to create dial information",
+		zap.L().Fatal("Unable to connect to mongo",
 			zap.String("uri", connectionString),
 			zap.String("db", dbName),
 			zap.String("username", user),
@@ -40,45 +100,7 @@ func NewMongoManipulator(connectionString string, dbName string, user string, pa
 		)
 	}
 
-	dialInfo.PoolLimit = poolLimit
-	dialInfo.Database = dbName
-	dialInfo.Source = authsource
-	dialInfo.Username = user
-	dialInfo.Password = password
-	dialInfo.Timeout = 10 * time.Second
-	dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
-
-		conn, e := tls.Dial("tcp", addr.String(), &tls.Config{
-			RootCAs:      CAPool,
-			Certificates: clientCerts,
-		})
-
-		if e == nil {
-			return conn, nil
-		}
-
-		zap.L().Warn("Unable to dial to mongo using TLS. Trying with unencrypted dialing", zap.Error(e))
-		return net.Dial("tcp", addr.String())
-	}
-
-	session, err := mgo.DialWithInfo(dialInfo)
-	if err != nil {
-		zap.L().Fatal("Cannot connect to mongo",
-			zap.String("url", connectionString),
-			zap.String("db", dbName),
-			zap.String("username", user),
-			zap.Error(err),
-		)
-	}
-
-	session.SetSocketTimeout(60 * time.Second)
-
-	return &mongoManipulator{
-		dbName:       dbName,
-		rootSession:  session,
-		rootDatabase: session.DB(dbName),
-		transactions: newTransactionRegistry(),
-	}
+	return m
 }
 
 func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.Identifiables) error {
@@ -95,6 +117,13 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 
 	if f := mctx.Filter(); f != nil {
 		filter = compiler.CompileFilter(f)
+	}
+
+	if s.sharder != nil {
+		sq := s.sharder.FilterMany(dest.Identity())
+		if sq != nil {
+			filter = bson.M{"$and": []bson.M{sq, filter}}
+		}
 	}
 
 	query := collection.Find(filter)
@@ -165,6 +194,13 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, objects ...elementa
 
 		filter["_id"] = o.Identifier()
 
+		if s.sharder != nil {
+			sq := s.sharder.FilterOne(o)
+			if sq != nil {
+				filter = bson.M{"$and": []bson.M{sq, filter}}
+			}
+		}
+
 		sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve.object.%s", objects[0].Identity().Name))
 		sp.LogFields(log.String("object_id", o.Identifier()), log.Object("filter", filter))
 		defer sp.Finish()
@@ -189,32 +225,36 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, objects ...elementa
 	return nil
 }
 
-func (s *mongoManipulator) Create(mctx manipulate.Context, children ...elemental.Identifiable) error {
+func (s *mongoManipulator) Create(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
 	}
 
 	transaction, commit := s.retrieveTransaction(mctx)
-	bulk := transaction.bulkForIdentity(children[0].Identity())
+	bulk := transaction.bulkForIdentity(objects[0].Identity())
 
-	for _, child := range children {
+	for _, obj := range objects {
 
-		child.SetIdentifier(bson.NewObjectId().Hex())
+		obj.SetIdentifier(bson.NewObjectId().Hex())
 
-		sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.create.object.%s", child.Identity().Name))
-		sp.LogFields(log.String("object_id", child.Identifier()))
+		sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.create.object.%s", obj.Identity().Name))
+		sp.LogFields(log.String("object_id", obj.Identifier()))
 		defer sp.Finish()
 
 		if f := mctx.Finalizer(); f != nil {
-			if err := f(child); err != nil {
+			if err := f(obj); err != nil {
 				sp.SetTag("error", true)
 				sp.LogFields(log.Error(err))
 				return err
 			}
 		}
 
-		bulk.Insert(child)
+		if s.sharder != nil {
+			s.sharder.Shard(obj)
+		}
+
+		bulk.Insert(obj)
 	}
 
 	if commit {
@@ -237,13 +277,23 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, objects ...elemental.
 	transaction, commit := s.retrieveTransaction(mctx)
 	bulk := transaction.bulkForIdentity(objects[0].Identity())
 
+	var filter bson.M
+
 	for _, o := range objects {
 
 		sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.update.object.%s", o.Identity().Name))
 		sp.LogFields(log.String("object_id", o.Identifier()))
 		defer sp.Finish()
 
-		bulk.Update(bson.M{"_id": o.Identifier()}, o)
+		filter = bson.M{"_id": o.Identifier()}
+		if s.sharder != nil {
+			sq := s.sharder.FilterOne(o)
+			if sq != nil {
+				filter = bson.M{"$and": []bson.M{sq, filter}}
+			}
+		}
+
+		bulk.Update(filter, o)
 	}
 
 	if commit {
@@ -266,13 +316,23 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, objects ...elemental.
 	transaction, commit := s.retrieveTransaction(mctx)
 	bulk := transaction.bulkForIdentity(objects[0].Identity())
 
+	var filter bson.M
+
 	for _, o := range objects {
 
 		sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.delete.object.%s", o.Identity().Name))
 		sp.LogFields(log.String("object_id", o.Identifier()))
 		defer sp.Finish()
 
-		bulk.Remove(bson.M{"_id": o.Identifier()})
+		filter = bson.M{"_id": o.Identifier()}
+		if s.sharder != nil {
+			sq := s.sharder.FilterOne(o)
+			if sq != nil {
+				filter = bson.M{"$and": []bson.M{sq, filter}}
+			}
+		}
+
+		bulk.Remove(filter)
 
 		// backport all default values that are empty.
 		if a, ok := o.(elemental.AttributeSpecifiable); ok {
@@ -299,7 +359,15 @@ func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 	transaction, commit := s.retrieveTransaction(mctx)
 	bulk := transaction.bulkForIdentity(identity)
 
-	bulk.RemoveAll(compiler.CompileFilter(mctx.Filter()))
+	filter := compiler.CompileFilter(mctx.Filter())
+	if s.sharder != nil {
+		sq := s.sharder.FilterMany(identity)
+		if sq != nil {
+			filter = bson.M{"$and": []bson.M{sq, filter}}
+		}
+	}
+
+	bulk.RemoveAll(filter)
 
 	if commit {
 		return s.Commit(transaction.id)
@@ -314,15 +382,18 @@ func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	// session := s.rootSession.Copy()
-	// defer session.Close()
-	// db := session.DB(s.dbName)
-
 	collection := collectionFromIdentity(s.rootDatabase, identity)
 	filter := bson.M{}
 
 	if f := mctx.Filter(); f != nil {
 		filter = compiler.CompileFilter(f)
+	}
+
+	if s.sharder != nil {
+		sq := s.sharder.FilterMany(identity)
+		if sq != nil {
+			filter = bson.M{"$and": []bson.M{sq, filter}}
+		}
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.count.%s", identity.Category))
