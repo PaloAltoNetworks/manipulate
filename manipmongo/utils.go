@@ -5,16 +5,8 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
-	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 )
-
-// collectionFromIdentity returns the mgo*.Collection associated to the given Identity from the
-// given *mgo.Database.
-func collectionFromIdentity(db *mgo.Database, identity elemental.Identity) *mgo.Collection {
-
-	return db.C(identity.Name)
-}
 
 // invertSortKey eventually inverts the given sorting key.
 func invertSortKey(k string, revert bool) string {
@@ -125,4 +117,19 @@ func makeFieldsSelector(fields []string) bson.M {
 	}
 
 	return sels
+}
+
+func convertConsistency(c manipulate.Consistency) mgo.Mode {
+	switch c {
+	case manipulate.ConsistencyEventual:
+		return mgo.Eventual
+	case manipulate.ConsistencyMonotonic:
+		return mgo.Monotonic
+	case manipulate.ConsistencyNearest:
+		return mgo.Nearest
+	case manipulate.ConsistencyStrong:
+		return mgo.Strong
+	default:
+		return -1
+	}
 }
