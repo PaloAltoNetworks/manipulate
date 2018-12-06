@@ -32,7 +32,7 @@ type WriteConsistency string
 // Various values for Consistency
 const (
 	WriteConsistencyDefault   WriteConsistency = "default"
-	WriteConsistencyLow       WriteConsistency = "low"
+	WriteConsistencyNone      WriteConsistency = "none"
 	WriteConsistencyStrong    WriteConsistency = "strong"
 	WriteConsistencyStrongest WriteConsistency = "strongest"
 )

@@ -367,8 +367,8 @@ func Test_convertWriteConsistency(t *testing.T) {
 		want *mgo.Safe
 	}{
 		{
-			"low",
-			args{manipulate.WriteConsistencyLow},
+			"none",
+			args{manipulate.WriteConsistencyNone},
 			nil,
 		},
 		{
