@@ -134,11 +134,21 @@ func convertReadConsistency(c manipulate.ReadConsistency) mgo.Mode {
 	}
 }
 
+var (
+	defaultSafety   = &mgo.Safe{}
+	strongSafety    = &mgo.Safe{WMode: "majority"}
+	strongestSafety = &mgo.Safe{WMode: "majority", J: true}
+)
+
 func convertWriteConsistency(c manipulate.WriteConsistency) *mgo.Safe {
 	switch c {
-	case manipulate.WriteConsistencyStrong:
-		return &mgo.Safe{WMode: "majority"}
-	default:
+	case manipulate.WriteConsistencyLow:
 		return nil
+	case manipulate.WriteConsistencyStrong:
+		return strongSafety
+	case manipulate.WriteConsistencyStrongest:
+		return strongestSafety
+	default:
+		return defaultSafety
 	}
 }

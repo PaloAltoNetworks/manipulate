@@ -367,19 +367,29 @@ func Test_convertWriteConsistency(t *testing.T) {
 		want *mgo.Safe
 	}{
 		{
+			"low",
+			args{manipulate.WriteConsistencyLow},
+			nil,
+		},
+		{
 			"strong",
 			args{manipulate.WriteConsistencyStrong},
 			&mgo.Safe{WMode: "majority"},
 		},
 		{
+			"strongest",
+			args{manipulate.WriteConsistencyStrongest},
+			&mgo.Safe{WMode: "majority", J: true},
+		},
+		{
 			"default",
 			args{manipulate.WriteConsistencyDefault},
-			nil,
+			&mgo.Safe{},
 		},
 		{
 			"something else",
 			args{manipulate.WriteConsistency("else")},
-			nil,
+			&mgo.Safe{},
 		},
 	}
 	for _, tt := range tests {

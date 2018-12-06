@@ -31,8 +31,10 @@ type WriteConsistency string
 
 // Various values for Consistency
 const (
-	WriteConsistencyDefault WriteConsistency = "default"
-	WriteConsistencyStrong  WriteConsistency = "strong"
+	WriteConsistencyDefault   WriteConsistency = "default"
+	WriteConsistencyLow       WriteConsistency = "low"
+	WriteConsistencyStrong    WriteConsistency = "strong"
+	WriteConsistencyStrongest WriteConsistency = "strongest"
 )
 
 // A FinalizerFunc is the type of a function that can be used as a creation finalizer.
