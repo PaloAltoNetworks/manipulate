@@ -83,4 +83,9 @@ func TestManipulate_ContextOption(t *testing.T) {
 		ContextOptionFields([]string{"a", "b"})(mctx.(*mcontext))
 		So(mctx.Fields(), ShouldResemble, []string{"a", "b"})
 	})
+
+	Convey("Calling ContextOptionConsistency should work", t, func() {
+		ContextOptionConsistency(ConsistencyStrong)(mctx.(*mcontext))
+		So(mctx.Consistency(), ShouldEqual, ConsistencyStrong)
+	})
 }

@@ -101,3 +101,10 @@ func ContextOptionFields(fields []string) ContextOption {
 		c.fields = fields
 	}
 }
+
+// ContextOptionConsistency sets the desired consistency of the request.
+func ContextOptionConsistency(consistency Consistency) ContextOption {
+	return func(c *mcontext) {
+		c.consistency = consistency
+	}
+}
