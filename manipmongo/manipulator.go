@@ -61,7 +61,8 @@ func New(url string, db string, options ...Option) (manipulate.TransactionalMani
 	}
 
 	session.SetSocketTimeout(cfg.socketTimeout)
-	session.SetMode(convertConsistency(cfg.consistency), true)
+	session.SetMode(convertReadConsistency(cfg.readConsistency), true)
+	session.SetSafe(convertWriteConsistency(cfg.writeConsistency))
 
 	return &mongoManipulator{
 		dbName:      db,
@@ -107,7 +108,7 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve_many.%s", dest.Identity().Category))
 	defer sp.Finish()
 
-	c, close := s.makeSession(dest.Identity(), mctx.Consistency())
+	c, close := s.makeSession(dest.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
 	filter := bson.M{}
@@ -180,7 +181,7 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, objects ...elementa
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	c, close := s.makeSession(objects[0].Identity(), mctx.Consistency())
+	c, close := s.makeSession(objects[0].Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
 	filter := bson.M{}
@@ -234,7 +235,7 @@ func (s *mongoManipulator) Create(mctx manipulate.Context, objects ...elemental.
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	c, close := s.makeSession(objects[0].Identity(), mctx.Consistency())
+	c, close := s.makeSession(objects[0].Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
 	for _, obj := range objects {
@@ -277,7 +278,7 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, objects ...elemental.
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	c, close := s.makeSession(objects[0].Identity(), mctx.Consistency())
+	c, close := s.makeSession(objects[0].Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
 	var filter bson.M
@@ -316,7 +317,7 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, objects ...elemental.
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	c, close := s.makeSession(objects[0].Identity(), mctx.Consistency())
+	c, close := s.makeSession(objects[0].Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
 	var filter bson.M
@@ -359,7 +360,7 @@ func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.delete_many.%s", identity.Name))
 	defer sp.Finish()
 
-	c, close := s.makeSession(identity, mctx.Consistency())
+	c, close := s.makeSession(identity, mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
 	filter := compiler.CompileFilter(mctx.Filter())
@@ -385,7 +386,7 @@ func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	c, close := s.makeSession(identity, mctx.Consistency())
+	c, close := s.makeSession(identity, mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
 	filter := bson.M{}
@@ -434,12 +435,21 @@ func (s *mongoManipulator) Ping(timeout time.Duration) error {
 	}
 }
 
-func (s *mongoManipulator) makeSession(identity elemental.Identity, consistency manipulate.Consistency) (*mgo.Collection, func()) {
+func (s *mongoManipulator) makeSession(
+	identity elemental.Identity,
+	readConsistency manipulate.ReadConsistency,
+	writeConsistency manipulate.WriteConsistency,
+) (*mgo.Collection, func()) {
 
 	session := s.rootSession.Copy()
-	mc := convertConsistency(consistency)
-	if mc != -1 {
-		session.SetMode(mc, true)
+	mrc := convertReadConsistency(readConsistency)
+	if mrc != -1 {
+		session.SetMode(mrc, true)
+	}
+
+	mwc := convertWriteConsistency(writeConsistency)
+	if mrc != -1 {
+		session.SetSafe(mwc)
 	}
 
 	return session.DB(s.dbName).C(identity.Name), session.Close

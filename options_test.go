@@ -7,7 +7,7 @@ import (
 
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
-	"go.aporeto.io/elemental/test/model"
+	testmodel "go.aporeto.io/elemental/test/model"
 )
 
 func TestManipulate_ContextOption(t *testing.T) {
@@ -84,8 +84,13 @@ func TestManipulate_ContextOption(t *testing.T) {
 		So(mctx.Fields(), ShouldResemble, []string{"a", "b"})
 	})
 
-	Convey("Calling ContextOptionConsistency should work", t, func() {
-		ContextOptionConsistency(ConsistencyStrong)(mctx.(*mcontext))
-		So(mctx.Consistency(), ShouldEqual, ConsistencyStrong)
+	Convey("Calling ContextOptionWriteConsistency should work", t, func() {
+		ContextOptionWriteConsistency(WriteConsistencyStrong)(mctx.(*mcontext))
+		So(mctx.WriteConsistency(), ShouldEqual, WriteConsistencyStrong)
+	})
+
+	Convey("Calling ContextOptionReadConsistency should work", t, func() {
+		ContextOptionReadConsistency(ReadConsistencyStrong)(mctx.(*mcontext))
+		So(mctx.ReadConsistency(), ShouldEqual, ReadConsistencyStrong)
 	})
 }

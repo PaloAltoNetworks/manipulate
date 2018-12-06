@@ -308,9 +308,9 @@ func Test_applyOrdering(t *testing.T) {
 	}
 }
 
-func Test_convertConsistency(t *testing.T) {
+func Test_convertReadConsistency(t *testing.T) {
 	type args struct {
-		c manipulate.Consistency
+		c manipulate.ReadConsistency
 	}
 	tests := []struct {
 		name string
@@ -319,39 +319,73 @@ func Test_convertConsistency(t *testing.T) {
 	}{
 		{
 			"eventual",
-			args{manipulate.ConsistencyEventual},
+			args{manipulate.ReadConsistencyEventual},
 			mgo.Eventual,
 		},
 		{
 			"monotonic",
-			args{manipulate.ConsistencyMonotonic},
+			args{manipulate.ReadConsistencyMonotonic},
 			mgo.Monotonic,
 		},
 		{
 			"nearest",
-			args{manipulate.ConsistencyNearest},
+			args{manipulate.ReadConsistencyNearest},
 			mgo.Nearest,
 		},
 		{
 			"strong",
-			args{manipulate.ConsistencyStrong},
+			args{manipulate.ReadConsistencyStrong},
 			mgo.Strong,
 		},
 		{
 			"default",
-			args{manipulate.ConsistencyDefault},
+			args{manipulate.ReadConsistencyDefault},
 			-1,
 		},
 		{
 			"something else",
-			args{manipulate.Consistency("else")},
+			args{manipulate.ReadConsistency("else")},
 			-1,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := convertConsistency(tt.args.c); !reflect.DeepEqual(got, tt.want) {
+			if got := convertReadConsistency(tt.args.c); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("convertConsistency() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_convertWriteConsistency(t *testing.T) {
+	type args struct {
+		c manipulate.WriteConsistency
+	}
+	tests := []struct {
+		name string
+		args args
+		want *mgo.Safe
+	}{
+		{
+			"strong",
+			args{manipulate.WriteConsistencyStrong},
+			&mgo.Safe{WMode: "majority"},
+		},
+		{
+			"default",
+			args{manipulate.WriteConsistencyDefault},
+			nil,
+		},
+		{
+			"something else",
+			args{manipulate.WriteConsistency("else")},
+			nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := convertWriteConsistency(tt.args.c); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("convertWriteConsistency() = %v, want %v", got, tt.want)
 			}
 		})
 	}

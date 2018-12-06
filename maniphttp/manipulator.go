@@ -518,8 +518,12 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.
 		request.Header.Set("X-External-Tracking-Type", v)
 	}
 
-	if v := mctx.Consistency(); v != manipulate.ConsistencyDefault {
-		request.Header.Set("X-Consistency", string(v))
+	if v := mctx.ReadConsistency(); v != manipulate.ReadConsistencyDefault {
+		request.Header.Set("X-Read-Consistency", string(v))
+	}
+
+	if v := mctx.WriteConsistency(); v != manipulate.WriteConsistencyDefault {
+		request.Header.Set("X-Write-Consistency", string(v))
 	}
 
 	for _, field := range mctx.Fields() {
