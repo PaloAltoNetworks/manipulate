@@ -11,23 +11,25 @@ import (
 type Option func(*config)
 
 type config struct {
-	username       string
-	password       string
-	authsource     string
-	tlsConfig      *tls.Config
-	poolLimit      int
-	connectTimeout time.Duration
-	socketTimeout  time.Duration
-	consistency    manipulate.Consistency
-	sharder        Sharder
+	username         string
+	password         string
+	authsource       string
+	tlsConfig        *tls.Config
+	poolLimit        int
+	connectTimeout   time.Duration
+	socketTimeout    time.Duration
+	readConsistency  manipulate.ReadConsistency
+	writeConsistency manipulate.WriteConsistency
+	sharder          Sharder
 }
 
 func newConfig() *config {
 	return &config{
-		poolLimit:      4096,
-		connectTimeout: 10 * time.Second,
-		socketTimeout:  60 * time.Second,
-		consistency:    manipulate.ConsistencyStrong,
+		poolLimit:        4096,
+		connectTimeout:   10 * time.Second,
+		socketTimeout:    60 * time.Second,
+		readConsistency:  manipulate.ReadConsistencyDefault,
+		writeConsistency: manipulate.WriteConsistencyDefault,
 	}
 }
 
@@ -68,10 +70,17 @@ func OptionSocketTimeout(socketTimeout time.Duration) Option {
 	}
 }
 
-// OptionDefaultConsistencyMode sets the default consistency mode.
-func OptionDefaultConsistencyMode(consistency manipulate.Consistency) Option {
+// OptionDefaultReadConsistencyMode sets the default read consistency mode.
+func OptionDefaultReadConsistencyMode(consistency manipulate.ReadConsistency) Option {
 	return func(c *config) {
-		c.consistency = consistency
+		c.readConsistency = consistency
+	}
+}
+
+// OptionDefaultWriteConsistencyMode sets the default write consistency mode.
+func OptionDefaultWriteConsistencyMode(consistency manipulate.WriteConsistency) Option {
+	return func(c *config) {
+		c.writeConsistency = consistency
 	}
 }
 

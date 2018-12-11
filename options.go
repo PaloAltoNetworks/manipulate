@@ -102,9 +102,16 @@ func ContextOptionFields(fields []string) ContextOption {
 	}
 }
 
-// ContextOptionConsistency sets the desired consistency of the request.
-func ContextOptionConsistency(consistency Consistency) ContextOption {
+// ContextOptionWriteConsistency sets the desired write consistency of the request.
+func ContextOptionWriteConsistency(consistency WriteConsistency) ContextOption {
 	return func(c *mcontext) {
-		c.consistency = consistency
+		c.writeConsistency = consistency
+	}
+}
+
+// ContextOptionReadConsistency sets the desired read consistency of the request.
+func ContextOptionReadConsistency(consistency ReadConsistency) ContextOption {
+	return func(c *mcontext) {
+		c.readConsistency = consistency
 	}
 }

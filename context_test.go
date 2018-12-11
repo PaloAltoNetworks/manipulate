@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
-	"go.aporeto.io/elemental/test/model"
+	testmodel "go.aporeto.io/elemental/test/model"
 )
 
 func TestMethodNewContext(t *testing.T) {
@@ -22,7 +22,8 @@ func TestMethodNewContext(t *testing.T) {
 		Convey("Then my context should be initiliazed", func() {
 			So(mctx.Page(), ShouldEqual, 0)
 			So(mctx.PageSize(), ShouldEqual, 0)
-			So(mctx.Consistency(), ShouldEqual, ConsistencyDefault)
+			So(mctx.WriteConsistency(), ShouldEqual, WriteConsistencyDefault)
+			So(mctx.ReadConsistency(), ShouldEqual, ReadConsistencyDefault)
 		})
 	})
 }

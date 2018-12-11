@@ -5,7 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/globalsign/mgo"
+	"go.aporeto.io/manipulate"
+
 	"github.com/globalsign/mgo/bson"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
@@ -30,7 +31,8 @@ func TestManipMongo_newConfig(t *testing.T) {
 			So(c.poolLimit, ShouldEqual, 4096)
 			So(c.connectTimeout, ShouldEqual, 10*time.Second)
 			So(c.socketTimeout, ShouldEqual, 60*time.Second)
-			So(c.mode, ShouldEqual, mgo.Strong)
+			So(c.readConsistency, ShouldEqual, manipulate.ReadConsistencyDefault)
+			So(c.writeConsistency, ShouldEqual, manipulate.WriteConsistencyDefault)
 		})
 	})
 }
@@ -70,10 +72,16 @@ func TestManipMongo_Options(t *testing.T) {
 		So(c.socketTimeout, ShouldEqual, 12*time.Second)
 	})
 
-	Convey("Calling OptionDefaultConsistencyMode should work", t, func() {
+	Convey("Calling OptionDefaultReadConsistencyMode should work", t, func() {
 		c := newConfig()
-		OptionDefaultConsistencyMode(mgo.Nearest)(c)
-		So(c.mode, ShouldEqual, mgo.Nearest)
+		OptionDefaultReadConsistencyMode(manipulate.ReadConsistencyNearest)(c)
+		So(c.readConsistency, ShouldEqual, manipulate.ReadConsistencyNearest)
+	})
+
+	Convey("Calling OptionDefaultWriteConsistencyMode should work", t, func() {
+		c := newConfig()
+		OptionDefaultWriteConsistencyMode(manipulate.WriteConsistencyStrong)(c)
+		So(c.writeConsistency, ShouldEqual, manipulate.WriteConsistencyStrong)
 	})
 
 	Convey("Calling OptionSharder should work", t, func() {

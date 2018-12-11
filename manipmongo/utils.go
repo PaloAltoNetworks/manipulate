@@ -119,17 +119,30 @@ func makeFieldsSelector(fields []string) bson.M {
 	return sels
 }
 
-func convertConsistency(c manipulate.Consistency) mgo.Mode {
+func convertReadConsistency(c manipulate.ReadConsistency) mgo.Mode {
 	switch c {
-	case manipulate.ConsistencyEventual:
+	case manipulate.ReadConsistencyEventual:
 		return mgo.Eventual
-	case manipulate.ConsistencyMonotonic:
+	case manipulate.ReadConsistencyMonotonic:
 		return mgo.Monotonic
-	case manipulate.ConsistencyNearest:
+	case manipulate.ReadConsistencyNearest:
 		return mgo.Nearest
-	case manipulate.ConsistencyStrong:
+	case manipulate.ReadConsistencyStrong:
 		return mgo.Strong
 	default:
 		return -1
+	}
+}
+
+func convertWriteConsistency(c manipulate.WriteConsistency) *mgo.Safe {
+	switch c {
+	case manipulate.WriteConsistencyNone:
+		return nil
+	case manipulate.WriteConsistencyStrong:
+		return &mgo.Safe{WMode: "majority"}
+	case manipulate.WriteConsistencyStrongest:
+		return &mgo.Safe{WMode: "majority", J: true}
+	default:
+		return &mgo.Safe{}
 	}
 }
