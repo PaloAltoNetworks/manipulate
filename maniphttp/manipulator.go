@@ -17,9 +17,9 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
-	"go.aporeto.io/addedeffect/tokenutils"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/internal/snip"
 	"go.aporeto.io/manipulate/internal/tracing"
 )
 
@@ -598,7 +598,7 @@ func (s *httpManipulator) send(mctx manipulate.Context, request *http.Request) (
 
 	response, err := s.client.Do(request)
 	if err != nil {
-		return response, manipulate.NewErrCannotCommunicate(tokenutils.Snip(err, s.currentPassword()).Error())
+		return response, manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
 	}
 
 	if response.StatusCode == http.StatusBadGateway {
