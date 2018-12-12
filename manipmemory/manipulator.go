@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/gofrs/uuid/v3"
+	"github.com/gofrs/uuid"
 	memdb "github.com/hashicorp/go-memdb"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"

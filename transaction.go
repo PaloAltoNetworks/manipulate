@@ -1,6 +1,6 @@
 package manipulate
 
-import "github.com/gofrs/uuid/v3"
+import "github.com/gofrs/uuid"
 
 // TransactionID is the type used to define a transcation ID of a store
 type TransactionID string
