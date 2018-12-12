@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gofrs/uuid"
+	"github.com/gofrs/uuid/v3"
 	"github.com/gorilla/websocket"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
