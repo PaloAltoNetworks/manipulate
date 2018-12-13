@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -16,7 +17,7 @@ import (
 )
 
 const (
-	eventChSize  = 1024
+	eventChSize  = 2048
 	errorChSize  = 64
 	statusChSize = 8
 	filterChSize = 2
@@ -210,6 +211,7 @@ func (s *subscription) publishEvent(evt *elemental.Event) {
 	select {
 	case s.events <- evt:
 	default:
+		s.publishError(fmt.Errorf("unable to forward event: channel full"))
 	}
 }
 
