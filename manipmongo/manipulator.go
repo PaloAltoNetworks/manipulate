@@ -442,15 +442,12 @@ func (s *mongoManipulator) makeSession(
 ) (*mgo.Collection, func()) {
 
 	session := s.rootSession.Copy()
-	mrc := convertReadConsistency(readConsistency)
-	if mrc != -1 {
+
+	if mrc := convertReadConsistency(readConsistency); mrc != -1 {
 		session.SetMode(mrc, true)
 	}
 
-	mwc := convertWriteConsistency(writeConsistency)
-	if mrc != -1 {
-		session.SetSafe(mwc)
-	}
+	session.SetSafe(convertWriteConsistency(writeConsistency))
 
 	return session.DB(s.dbName).C(identity.Name), session.Close
 }
