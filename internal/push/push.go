@@ -66,10 +66,11 @@ func NewSubscriber(
 		status:                  make(chan manipulate.SubscriberStatus, statusChSize),
 		filters:                 make(chan *elemental.PushFilter, filterChSize),
 		config: wsc.Config{
-			PongWait:   10 * time.Second,
-			WriteWait:  10 * time.Second,
-			PingPeriod: 5 * time.Second,
-			TLSConfig:  tlsConfig,
+			PongWait:     10 * time.Second,
+			WriteWait:    10 * time.Second,
+			PingPeriod:   5 * time.Second,
+			ReadChanSize: 2048,
+			TLSConfig:    tlsConfig,
 		},
 	}
 }
@@ -168,6 +169,9 @@ func (s *subscription) listen(ctx context.Context) {
 				}
 
 				s.publishEvent(event)
+
+			case err = <-s.conn.Error():
+				s.publishError(err)
 
 			case err = <-s.conn.Done():
 
