@@ -4,19 +4,20 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/gorilla/websocket"
-	"go.aporeto.io/addedeffect/wsc"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/wsc"
 )
 
 const (
-	eventChSize  = 1024
+	eventChSize  = 2048
 	errorChSize  = 64
 	statusChSize = 8
 	filterChSize = 2
@@ -66,10 +67,11 @@ func NewSubscriber(
 		status:                  make(chan manipulate.SubscriberStatus, statusChSize),
 		filters:                 make(chan *elemental.PushFilter, filterChSize),
 		config: wsc.Config{
-			PongWait:   10 * time.Second,
-			WriteWait:  10 * time.Second,
-			PingPeriod: 5 * time.Second,
-			TLSConfig:  tlsConfig,
+			PongWait:     10 * time.Second,
+			WriteWait:    10 * time.Second,
+			PingPeriod:   5 * time.Second,
+			ReadChanSize: 2048,
+			TLSConfig:    tlsConfig,
 		},
 	}
 }
@@ -169,6 +171,9 @@ func (s *subscription) listen(ctx context.Context) {
 
 				s.publishEvent(event)
 
+			case err = <-s.conn.Error():
+				s.publishError(err)
+
 			case err = <-s.conn.Done():
 
 				if err != nil {
@@ -206,6 +211,7 @@ func (s *subscription) publishEvent(evt *elemental.Event) {
 	select {
 	case s.events <- evt:
 	default:
+		s.publishError(fmt.Errorf("unable to forward event: channel full"))
 	}
 }
 
