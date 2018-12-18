@@ -76,6 +76,28 @@ func CreateIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 	return nil
 }
 
+// DeleteIndex deletes multiple mgo.Index for the collection.
+func DeleteIndex(manipulator manipulate.Manipulator, identity elemental.Identity, indexes ...string) error {
+
+	m, ok := manipulator.(*mongoManipulator)
+	if !ok {
+		panic("you can only pass a mongo manipulator to DeleteIndex")
+	}
+
+	session := m.rootSession.Copy()
+	defer session.Close()
+
+	collection := session.DB(m.dbName).C(identity.Name)
+
+	for _, index := range indexes {
+		if err := collection.DropIndexName(index); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // CreateCollection creates a collection using the given mgo.CollectionInfo.
 func CreateCollection(manipulator manipulate.Manipulator, identity elemental.Identity, info *mgo.CollectionInfo) error {
 
