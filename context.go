@@ -65,6 +65,8 @@ type Context interface {
 	Fields() []string
 	ReadConsistency() ReadConsistency
 	WriteConsistency() WriteConsistency
+	Messages() []string
+	SetMessages([]string)
 
 	fmt.Stringer
 }
@@ -109,6 +111,7 @@ type mcontext struct {
 	fields               []string
 	writeConsistency     WriteConsistency
 	readConsistency      ReadConsistency
+	messages             []string
 }
 
 // Count returns the count
@@ -167,6 +170,13 @@ func (c *mcontext) WriteConsistency() WriteConsistency { return c.writeConsisten
 
 // ReadConsistency returns the desired read consistency.
 func (c *mcontext) ReadConsistency() ReadConsistency { return c.readConsistency }
+
+// Messages returns the eventual list of messages regarding a manipulation.
+func (c *mcontext) Messages() []string { return c.messages }
+
+// SetMessages sets the message in the context.
+// You should not need to use this.
+func (c *mcontext) SetMessages(messages []string) { c.messages = messages }
 
 // Context returns the internal context.Context.
 func (c *mcontext) Context() context.Context { return c.ctx }

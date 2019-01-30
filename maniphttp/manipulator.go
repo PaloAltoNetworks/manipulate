@@ -538,7 +538,9 @@ func (s *httpManipulator) readHeaders(response *http.Response, mctx manipulate.C
 	}
 
 	t, _ := strconv.Atoi(response.Header.Get("X-Count-Total"))
+
 	mctx.SetCount(t)
+	mctx.SetMessages(response.Header["X-Messages"])
 }
 
 func (s *httpManipulator) computeVersion(modelVersion int, mctxVersion int) string {
