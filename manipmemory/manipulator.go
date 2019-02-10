@@ -289,9 +289,23 @@ func (s *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 			switch f.Comparators()[i] {
 
 			case manipulate.EqualComparator:
+
 				if err := s.retrieveIntersection(identity, k, f.Values()[i][0], items, fullQuery); err != nil {
 					return err
 				}
+
+			case manipulate.ContainComparator:
+
+				values := f.Values()[i]
+
+				termFullQuery := fullQuery
+				for _, value := range values {
+					if err := s.retrieveIntersection(identity, k, value, items, termFullQuery); err != nil {
+						return err
+					}
+					termFullQuery = false
+				}
+
 			default:
 				return manipulate.NewErrCannotExecuteQuery(fmt.Sprintf("invalid comparator for memdb: %d", f.Comparators()[i]))
 			}
@@ -317,6 +331,7 @@ func (s *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 					(*items)[k] = v
 				}
 			}
+
 		default:
 			return fmt.Errorf("invalid operator for memdb: %d", operator)
 		}

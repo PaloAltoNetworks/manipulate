@@ -272,6 +272,64 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 			})
 		})
 
+		Convey("When I retrieve the lists with the Contains comparator", func() {
+
+			ps := testmodel.ListsList{}
+
+			filter := manipulate.NewFilterComposer().
+				WithKey("Slice").Contains("category=dimitri", "a=b").Done()
+
+			mctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionFilter(filter),
+			)
+
+			err := m.RetrieveMany(mctx, &ps)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then I should have two items in the list", func() {
+				So(len(ps), ShouldEqual, 2)
+				So(ps, ShouldContain, l3)
+				So(ps, ShouldContain, l4)
+			})
+		})
+
+		Convey("When I retrieve the lists with an OR of Contains, I should get four items", func() {
+
+			ps := testmodel.ListsList{}
+
+			filter := manipulate.NewFilterComposer().Or(
+				manipulate.NewFilterComposer().
+					WithKey("Slice").Contains("category=dimitri", "a=b").Done(),
+				manipulate.NewFilterComposer().
+					WithKey("Slice").Contains("category=antoine").Done(),
+				manipulate.NewFilterComposer().
+					WithKey("Slice").Contains("x=y").Done(),
+			).Done()
+
+			mctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionFilter(filter),
+			)
+
+			err := m.RetrieveMany(mctx, &ps)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then I should have two items in the list", func() {
+				So(len(ps), ShouldEqual, 4)
+				So(ps, ShouldContain, l1)
+				So(ps, ShouldContain, l2)
+				So(ps, ShouldContain, l3)
+				So(ps, ShouldContain, l4)
+			})
+		})
+
 		Convey("When I retrieve the lists with a bad filter", func() {
 
 			ps := testmodel.ListsList{}
