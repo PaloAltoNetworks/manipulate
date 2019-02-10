@@ -333,7 +333,7 @@ func (s *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 			}
 
 		default:
-			return fmt.Errorf("invalid operator for memdb: %d", operator)
+			return manipulate.NewErrCannotExecuteQuery(fmt.Sprintf("invalid operator for memdb: %d", operator))
 		}
 
 		fullQuery = false
