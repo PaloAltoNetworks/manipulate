@@ -2,6 +2,8 @@ package manipmemory
 
 import (
 	"context"
+	"crypto/rand"
+	"strconv"
 	"testing"
 
 	memdb "github.com/hashicorp/go-memdb"
@@ -661,4 +663,71 @@ func TestMemManipulator_txnForID(t *testing.T) {
 			})
 		})
 	})
+}
+
+func BenchmarkRetrieveMany(b *testing.B) {
+	b.StopTimer()
+
+	m := NewMemoryManipulator(Schema)
+	populateDB(m, 10000)
+
+	filters := []*manipulate.Filter{
+		manipulate.NewFilterComposer().
+			WithKey("Slice").Contains("label1=10", "label2=10").
+			Done(),
+		manipulate.NewFilterComposer().
+			WithKey("Slice").Contains("label1=10", "label2=10", "label=common").
+			Done(),
+	}
+	b.StartTimer()
+
+	for f, filter := range filters {
+		b.Run("Filter: "+strconv.Itoa(f), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+
+				list := testmodel.ListsList{}
+
+				mctx := manipulate.NewContext(
+					context.Background(),
+					manipulate.ContextOptionFilter(filter),
+				)
+				if err := m.RetrieveMany(mctx, &list); err != nil {
+					b.Errorf("Error in retrieve many: %s", err.Error())
+					b.FailNow()
+				}
+				if len(list) != 1 {
+					b.Errorf("Length of list is wrong: %d %d %d", len(list), i, b.N)
+					b.FailNow()
+				}
+			}
+		})
+	}
+}
+
+func populateDB(m manipulate.TransactionalManipulator, num int) error {
+
+	for i := 0; i < num; i++ {
+
+		iString := strconv.Itoa(i)
+
+		l := testmodel.NewList()
+
+		l.Name = "name" + iString
+
+		l.Slice = []string{"label1=" + iString, "label2=" + iString, "label=common"}
+
+		for j := 0; j < 14; j++ {
+			b := make([]byte, 32)
+			if _, err := rand.Read(b); err != nil {
+				return err
+			}
+			l.Slice = append(l.Slice, string(b))
+		}
+
+		if err := m.Create(nil, l); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
