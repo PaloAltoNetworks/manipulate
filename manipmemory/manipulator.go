@@ -2,6 +2,7 @@ package manipmemory
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sync"
 
@@ -18,6 +19,7 @@ type memdbManipulator struct {
 	db              *memdb.MemDB
 	txnRegistry     txnRegistry
 	txnRegistryLock *sync.Mutex
+	validIndexes    map[string]map[string]struct{}
 }
 
 // NewMemoryManipulator returns a new TransactionalManipulator backed by memdb.
@@ -28,10 +30,26 @@ func NewMemoryManipulator(schema *memdb.DBSchema) manipulate.TransactionalManipu
 		panic(err)
 	}
 
+	validIndexes := map[string]map[string]struct{}{}
+
+	for _, table := range schema.Tables {
+		if _, ok := validIndexes[table.Name]; ok {
+			panic("Duplicate tables detected")
+		}
+		validIndexes[table.Name] = map[string]struct{}{}
+		for _, index := range table.Indexes {
+			if _, ok := validIndexes[table.Name][index.Name]; ok {
+				panic("Duplicate indexes in table " + table.Name)
+			}
+			validIndexes[table.Name][index.Name] = struct{}{}
+		}
+	}
+
 	return &memdbManipulator{
 		db:              db,
 		txnRegistryLock: &sync.Mutex{},
 		txnRegistry:     txnRegistry{},
+		validIndexes:    validIndexes,
 	}
 }
 
@@ -42,27 +60,16 @@ func (s *memdbManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	txn := s.db.Txn(false)
+	items := map[string]elemental.Identifiable{}
 
-	index := "id"
-	args := []interface{}{}
-	if mctx.Filter() != nil {
-		index = mctx.Filter().Keys()[0]
-		args = mctx.Filter().Values()[0]
-	}
-
-	iterator, err := txn.Get(dest.Identity().Category, index, args...)
-
-	if err != nil {
-		return manipulate.NewErrCannotExecuteQuery(err.Error())
+	if err := s.retrieveFromFilter(dest.Identity().Category, mctx.Filter(), &items, true); err != nil {
+		return err
 	}
 
 	out := reflect.ValueOf(dest).Elem()
 
-	raw := iterator.Next()
-	for raw != nil {
-		out.Set(reflect.Append(out, reflect.ValueOf(raw)))
-		raw = iterator.Next()
+	for _, obj := range items {
+		out.Set(reflect.Append(out, reflect.ValueOf(obj)))
 	}
 
 	return nil
@@ -255,4 +262,100 @@ func (s *memdbManipulator) registeredTxnWithID(id manipulate.TransactionID) *mem
 	b := s.txnRegistry[id]
 
 	return b
+}
+
+// RetrieveFromFilter compiles the given manipulate Filter into a mongo filter.
+func (s *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Filter, items *map[string]elemental.Identifiable, fullQuery bool) error {
+
+	if f == nil {
+		return s.retrieveIntersection(identity, "id", nil, items, fullQuery)
+	}
+
+	if len(f.Operators()) == 0 {
+		return nil
+	}
+
+	for i, operator := range f.Operators() {
+
+		switch operator {
+
+		case manipulate.AndOperator:
+
+			k := f.Keys()[i]
+			if _, ok := s.validIndexes[identity][k]; !ok {
+				return manipulate.NewErrCannotExecuteQuery(fmt.Sprintf("unsupported index: %s for table %s", k, identity))
+			}
+
+			switch f.Comparators()[i] {
+
+			case manipulate.EqualComparator:
+				if err := s.retrieveIntersection(identity, k, f.Values()[i][0], items, fullQuery); err != nil {
+					return err
+				}
+			default:
+				return manipulate.NewErrCannotExecuteQuery(fmt.Sprintf("invalid comparator for memdb: %d", f.Comparators()[i]))
+			}
+
+		case manipulate.AndFilterOperator:
+
+			for _, sub := range f.AndFilters()[i] {
+				if err := s.retrieveFromFilter(identity, sub, items, fullQuery); err != nil {
+					return err
+				}
+				fullQuery = false
+			}
+
+		case manipulate.OrFilterOperator:
+
+			for _, sub := range f.OrFilters()[i] {
+				orItems := map[string]elemental.Identifiable{}
+
+				if err := s.retrieveFromFilter(identity, sub, &orItems, true); err != nil {
+					return err
+				}
+				for k, v := range orItems {
+					(*items)[k] = v
+				}
+			}
+		default:
+			return fmt.Errorf("invalid operator for memdb: %d", operator)
+		}
+
+		fullQuery = false
+	}
+
+	return nil
+}
+
+func (s *memdbManipulator) retrieveIntersection(identity string, k string, value interface{}, items *map[string]elemental.Identifiable, fullquery bool) error {
+
+	existingItems := *items
+
+	txn := s.db.Txn(false)
+
+	var iterator memdb.ResultIterator
+	var err error
+	if value == nil {
+		iterator, err = txn.Get(identity, k)
+	} else {
+		iterator, err = txn.Get(identity, k, value)
+	}
+	if err != nil {
+		return manipulate.NewErrCannotExecuteQuery(err.Error())
+	}
+
+	raw := iterator.Next()
+	combinedItems := map[string]elemental.Identifiable{}
+
+	for raw != nil {
+		obj := raw.(elemental.Identifiable)
+		if _, ok := existingItems[obj.Identifier()]; ok || fullquery {
+			combinedItems[obj.Identifier()] = obj
+		}
+		raw = iterator.Next()
+	}
+
+	*items = combinedItems
+
+	return nil
 }

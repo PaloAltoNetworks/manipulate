@@ -24,6 +24,10 @@ var Schema = &memdb.DBSchema{
 					Name:    "Name",
 					Indexer: &memdb.StringFieldIndex{Field: "Name"},
 				},
+				"Slice": &memdb.IndexSchema{
+					Name:    "Slice",
+					Indexer: &memdb.StringSliceFieldIndex{Field: "Slice"},
+				},
 			},
 		},
 	},
@@ -45,7 +49,8 @@ func TestMemManipulator_Create(t *testing.T) {
 
 		m := NewMemoryManipulator(Schema)
 		p := &testmodel.List{
-			Name: "Antoine",
+			Name:  "Antoine",
+			Slice: []string{"$names=antoine"},
 		}
 
 		Convey("When I create list", func() {
@@ -96,7 +101,8 @@ func TestMemManipulator_Retrieve(t *testing.T) {
 
 		m := NewMemoryManipulator(Schema)
 		l1 := &testmodel.List{
-			Name: "Antoine1",
+			Name:  "Antoine1",
+			Slice: []string{"$name=Antoine1"},
 		}
 
 		_ = m.Create(nil, l1)
@@ -149,13 +155,23 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 		m := NewMemoryManipulator(Schema)
 		l1 := &testmodel.List{
-			Name: "Antoine1",
+			Name:  "Antoine1",
+			Slice: []string{"$name=antoine1", "category=antoine", "a=b", "c=d"},
 		}
 		l2 := &testmodel.List{
-			Name: "Antoine2",
+			Name:  "Antoine2",
+			Slice: []string{"$name=antoine2", "category=antoine", "x=y", "w=z"},
+		}
+		l3 := &testmodel.List{
+			Name:  "Dimitri1",
+			Slice: []string{"$name=dimitri1", "category=dimitri", "a=b", "x=y"},
+		}
+		l4 := &testmodel.List{
+			Name:  "Dimitri2",
+			Slice: []string{"$name=dimitri2", "category=dimitri", "a=b", "x=y"},
 		}
 
-		_ = m.Create(nil, l1, l2)
+		_ = m.Create(nil, l1, l2, l3, l4)
 
 		Convey("When I retrieve the lists", func() {
 
@@ -180,7 +196,8 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 			mctx := manipulate.NewContext(
 				context.Background(),
 				manipulate.ContextOptionFilter(
-					manipulate.NewFilterComposer().WithKey("Name").Equals("Antoine1").Done(),
+					manipulate.NewFilterComposer().WithKey("Name").Equals("Antoine1").
+						WithKey("Slice").Equals("a=b").Done(),
 				),
 			)
 
@@ -191,8 +208,67 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 			})
 
 			Convey("Then I should only have retrieved l1", func() {
+				So(len(ps), ShouldEqual, 1)
 				So(ps, ShouldContain, l1)
 				So(ps, ShouldNotContain, l2)
+			})
+		})
+
+		Convey("When I retrieve the lists with an OR filter that matches l1 and l2", func() {
+
+			ps := testmodel.ListsList{}
+
+			filter := manipulate.NewFilterComposer().Or(
+				manipulate.NewFilterComposer().
+					WithKey("Name").Equals("Antoine1").Done(),
+				manipulate.NewFilterComposer().
+					WithKey("Name").Equals("Antoine2").Done(),
+			).Done()
+
+			mctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionFilter(filter),
+			)
+
+			err := m.RetrieveMany(mctx, &ps)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then I should have both items in the list", func() {
+				So(len(ps), ShouldEqual, 2)
+				So(ps, ShouldContain, l1)
+				So(ps, ShouldContain, l2)
+			})
+		})
+
+		Convey("When I retrieve the lists with an AND filter that matches l3 and l4", func() {
+
+			ps := testmodel.ListsList{}
+
+			filter := manipulate.NewFilterComposer().And(
+				manipulate.NewFilterComposer().
+					WithKey("Slice").Equals("category=dimitri").Done(),
+				manipulate.NewFilterComposer().
+					WithKey("Slice").Equals("a=b").Done(),
+			).Done()
+
+			mctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionFilter(filter),
+			)
+
+			err := m.RetrieveMany(mctx, &ps)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then I should have two items in the list", func() {
+				So(len(ps), ShouldEqual, 2)
+				So(ps, ShouldContain, l3)
+				So(ps, ShouldContain, l4)
 			})
 		})
 
@@ -223,7 +299,8 @@ func TestMemManipulator_Update(t *testing.T) {
 
 		m := NewMemoryManipulator(Schema)
 		p := &testmodel.List{
-			Name: "Antoine",
+			Name:  "Antoine",
+			Slice: []string{"$names=antoine"},
 		}
 
 		Convey("When I create the list", func() {
@@ -284,7 +361,8 @@ func TestMemManipulator_Delete(t *testing.T) {
 
 		m := NewMemoryManipulator(Schema)
 		p := &testmodel.List{
-			Name: "Antoine",
+			Name:  "Antoine",
+			Slice: []string{"$name=antoine"},
 		}
 
 		Convey("When I create the list", func() {
@@ -359,11 +437,13 @@ func TestMemManipulator_Count(t *testing.T) {
 
 		m := NewMemoryManipulator(Schema)
 		l1 := &testmodel.List{
-			Name: "Antoine1",
+			Name:  "Antoine1",
+			Slice: []string{"$names=antoine1"},
 		}
 
 		l2 := &testmodel.List{
-			Name: "Antoine2",
+			Name:  "Antoine2",
+			Slice: []string{"$name=antoine2"},
 		}
 
 		Convey("When I create the list", func() {
