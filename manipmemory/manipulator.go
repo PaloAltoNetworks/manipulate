@@ -110,7 +110,7 @@ func (s *memdbManipulator) Create(mctx manipulate.Context, objects ...elemental.
 
 	for _, object := range objects {
 
-		// In caching scenarions the identifier is already set. Do not insert
+		// In caching scenarios the identifier is already set. Do not insert
 		// here. We will get it pre-populated from the master DB.
 		if object.Identifier() == "" {
 			object.SetIdentifier(uuid.Must(uuid.NewV4()).String())

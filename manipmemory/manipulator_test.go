@@ -680,7 +680,8 @@ func BenchmarkRetrieveMany(b *testing.B) {
 
 	m, err := NewMemoryManipulator(Schema)
 	So(err, ShouldBeNil)
-	populateDB(m, 10000)
+	err = populateDB(m, 10000)
+	So(err, ShouldBeNil)
 
 	filters := []*manipulate.Filter{
 		manipulate.NewFilterComposer().
