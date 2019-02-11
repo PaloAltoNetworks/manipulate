@@ -76,7 +76,6 @@ func (m *testSubscriber) Start(ctx context.Context, filter *elemental.PushFilter
 		mock.startMock(ctx, filter)
 	}
 
-	return
 }
 
 func (m *testSubscriber) UpdateFilter(filter *elemental.PushFilter) {
@@ -88,7 +87,6 @@ func (m *testSubscriber) UpdateFilter(filter *elemental.PushFilter) {
 		mock.updateFilerMock(filter)
 	}
 
-	return
 }
 
 func (m *testSubscriber) Events() chan *elemental.Event {
