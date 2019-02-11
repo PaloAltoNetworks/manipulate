@@ -23,23 +23,23 @@ type memdbManipulator struct {
 }
 
 // NewMemoryManipulator returns a new TransactionalManipulator backed by memdb.
-func NewMemoryManipulator(schema *memdb.DBSchema) manipulate.TransactionalManipulator {
+func NewMemoryManipulator(schema *memdb.DBSchema) (manipulate.TransactionalManipulator, error) {
 
 	db, err := memdb.NewMemDB(schema)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	validIndexes := map[string]map[string]struct{}{}
 
 	for _, table := range schema.Tables {
 		if _, ok := validIndexes[table.Name]; ok {
-			panic("Duplicate tables detected")
+			return nil, fmt.Errorf("Duplicate tables detected")
 		}
 		validIndexes[table.Name] = map[string]struct{}{}
 		for _, index := range table.Indexes {
 			if _, ok := validIndexes[table.Name][index.Name]; ok {
-				panic("Duplicate indexes in table " + table.Name)
+				return nil, fmt.Errorf("Duplicate indexes in table: %s", table.Name)
 			}
 			validIndexes[table.Name][index.Name] = struct{}{}
 		}
@@ -50,7 +50,7 @@ func NewMemoryManipulator(schema *memdb.DBSchema) manipulate.TransactionalManipu
 		txnRegistryLock: &sync.Mutex{},
 		txnRegistry:     txnRegistry{},
 		validIndexes:    validIndexes,
-	}
+	}, nil
 }
 
 // RetrieveMany is part of the implementation of the Manipulator interface.
@@ -110,7 +110,11 @@ func (s *memdbManipulator) Create(mctx manipulate.Context, objects ...elemental.
 
 	for _, object := range objects {
 
-		object.SetIdentifier(uuid.Must(uuid.NewV4()).String())
+		// In caching scenarions the identifier is already set. Do not insert
+		// here. We will get it pre-populated from the master DB.
+		if object.Identifier() == "" {
+			object.SetIdentifier(uuid.Must(uuid.NewV4()).String())
+		}
 
 		if err := txn.Insert(object.Identity().Category, object); err != nil {
 			return manipulate.NewErrCannotExecuteQuery(err.Error())
@@ -344,12 +348,13 @@ func (s *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 
 func (s *memdbManipulator) retrieveIntersection(identity string, k string, value interface{}, items *map[string]elemental.Identifiable, fullquery bool) error {
 
+	var iterator memdb.ResultIterator
+	var err error
+
 	existingItems := *items
 
 	txn := s.db.Txn(false)
 
-	var iterator memdb.ResultIterator
-	var err error
 	if value == nil {
 		iterator, err = txn.Get(identity, k)
 	} else {
@@ -359,8 +364,9 @@ func (s *memdbManipulator) retrieveIntersection(identity string, k string, value
 		return manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
 
-	raw := iterator.Next()
 	combinedItems := map[string]elemental.Identifiable{}
+
+	raw := iterator.Next()
 
 	for raw != nil {
 		obj := raw.(elemental.Identifiable)

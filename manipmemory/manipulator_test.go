@@ -39,8 +39,9 @@ func TestMemManipulator_NewMemoryManipulator(t *testing.T) {
 
 	Convey("Given I create a new MemoryManipulator with bad schema", t, func() {
 
-		Convey("Then it should panic", func() {
-			So(func() { NewMemoryManipulator(nil) }, ShouldPanic)
+		Convey("Then it should return err", func() {
+			_, err := NewMemoryManipulator(nil)
+			So(err, ShouldNotBeNil)
 		})
 	})
 }
@@ -49,7 +50,8 @@ func TestMemManipulator_Create(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
-		m := NewMemoryManipulator(Schema)
+		m, err := NewMemoryManipulator(Schema)
+		So(err, ShouldBeNil)
 		p := &testmodel.List{
 			Name:  "Antoine",
 			Slice: []string{"$names=antoine"},
@@ -101,7 +103,8 @@ func TestMemManipulator_Retrieve(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
-		m := NewMemoryManipulator(Schema)
+		m, err := NewMemoryManipulator(Schema)
+		So(err, ShouldBeNil)
 		l1 := &testmodel.List{
 			Name:  "Antoine1",
 			Slice: []string{"$name=Antoine1"},
@@ -155,7 +158,8 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
-		m := NewMemoryManipulator(Schema)
+		m, err := NewMemoryManipulator(Schema)
+		So(err, ShouldBeNil)
 		l1 := &testmodel.List{
 			Name:  "Antoine1",
 			Slice: []string{"$name=antoine1", "category=antoine", "a=b", "c=d"},
@@ -357,7 +361,8 @@ func TestMemManipulator_Update(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
-		m := NewMemoryManipulator(Schema)
+		m, err := NewMemoryManipulator(Schema)
+		So(err, ShouldBeNil)
 		p := &testmodel.List{
 			Name:  "Antoine",
 			Slice: []string{"$names=antoine"},
@@ -419,7 +424,8 @@ func TestMemManipulator_Delete(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
-		m := NewMemoryManipulator(Schema)
+		m, err := NewMemoryManipulator(Schema)
+		So(err, ShouldBeNil)
 		p := &testmodel.List{
 			Name:  "Antoine",
 			Slice: []string{"$name=antoine"},
@@ -495,7 +501,8 @@ func TestMemManipulator_Count(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
-		m := NewMemoryManipulator(Schema)
+		m, err := NewMemoryManipulator(Schema)
+		So(err, ShouldBeNil)
 		l1 := &testmodel.List{
 			Name:  "Antoine1",
 			Slice: []string{"$names=antoine1"},
@@ -574,7 +581,8 @@ func TestMemManipulator_Commit(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a transaction ID", t, func() {
 
-		m := NewMemoryManipulator(Schema)
+		m, err := NewMemoryManipulator(Schema)
+		So(err, ShouldBeNil)
 		tid := manipulate.NewTransactionID()
 
 		Convey("When I call Commit with a non existing tid", func() {
@@ -603,7 +611,8 @@ func TestMemManipulator_Abort(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a transaction ID", t, func() {
 
-		m := NewMemoryManipulator(Schema)
+		m, err := NewMemoryManipulator(Schema)
+		So(err, ShouldBeNil)
 		tid := manipulate.NewTransactionID()
 
 		Convey("When I call Abort with a non existing tid", func() {
@@ -631,7 +640,8 @@ func TestMemManipulator_txnForID(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a transaction ID", t, func() {
 
-		m := NewMemoryManipulator(Schema)
+		m, err := NewMemoryManipulator(Schema)
+		So(err, ShouldBeNil)
 		tid := manipulate.NewTransactionID()
 
 		Convey("When I call txnForID with an empty ID", func() {
@@ -668,7 +678,8 @@ func TestMemManipulator_txnForID(t *testing.T) {
 func BenchmarkRetrieveMany(b *testing.B) {
 	b.StopTimer()
 
-	m := NewMemoryManipulator(Schema)
+	m, err := NewMemoryManipulator(Schema)
+	So(err, ShouldBeNil)
 	populateDB(m, 10000)
 
 	filters := []*manipulate.Filter{
