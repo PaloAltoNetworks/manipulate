@@ -96,6 +96,11 @@ func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 
 	var resp *http.Response
 	var try int
+	defer func() {
+		if resp != nil {
+			resp.Body.Close()
+		}
+	}()
 
 	for {
 
@@ -108,6 +113,7 @@ func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 			}
 
 			try = 0
+
 			return nil
 		}
 
