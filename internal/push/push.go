@@ -99,6 +99,10 @@ func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 
 	for {
 
+		if s.conn != nil {
+			s.conn.Close(0)
+		}
+
 		if s.conn, resp, err = wsc.Connect(ctx, makeURL(s.url, s.ns, s.getCurrentToken(), s.recursive), s.config); err == nil {
 
 			if initial {
