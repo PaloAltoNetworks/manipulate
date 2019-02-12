@@ -99,6 +99,14 @@ func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 
 	for {
 
+		if s.conn != nil {
+			s.conn.Close(0)
+		}
+
+		if resp != nil {
+			resp.Body.Close() // nolint
+		}
+
 		if s.conn, resp, err = wsc.Connect(ctx, makeURL(s.url, s.ns, s.getCurrentToken(), s.recursive), s.config); err == nil {
 
 			if initial {
@@ -106,6 +114,8 @@ func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 			} else {
 				s.publishStatus(manipulate.SubscriberStatusReconnection)
 			}
+
+			resp.Body.Close() // nolint
 
 			try = 0
 			return nil
