@@ -139,14 +139,25 @@ func TestHTTP_readHeaders(t *testing.T) {
 			})
 		})
 
-		Convey("When I readHeaders with a request that has information", func() {
+		Convey("When I readHeaders with a request that has count information", func() {
 
 			req.Header.Set("X-Count-Total", "456")
 
 			m.readHeaders(req, ctx)
 
-			Convey("Then Context.X-Count-Total should be 456", func() {
+			Convey("Then Context.Count() should be 456", func() {
 				So(ctx.Count(), ShouldEqual, 456)
+			})
+		})
+
+		Convey("When I readHeaders with a request that has messages", func() {
+
+			req.Header["X-Messages"] = []string{"hello", "bonjour"}
+
+			m.readHeaders(req, ctx)
+
+			Convey("Then Context.Messages() should be 456", func() {
+				So(ctx.Messages(), ShouldResemble, []string{"hello", "bonjour"})
 			})
 		})
 	})
