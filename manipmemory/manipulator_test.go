@@ -189,9 +189,12 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 
-			Convey("Then I should  have retrieved l1 and l2", func() {
+			Convey("Then I should  have retrieved all the items", func() {
+				So(len(ps), ShouldEqual, 4)
 				So(ps, ShouldContain, l1)
 				So(ps, ShouldContain, l2)
+				So(ps, ShouldContain, l3)
+				So(ps, ShouldContain, l4)
 			})
 		})
 
@@ -203,7 +206,7 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 				context.Background(),
 				manipulate.ContextOptionFilter(
 					manipulate.NewFilterComposer().WithKey("Name").Equals("Antoine1").
-						WithKey("Slice").Equals("a=b").Done(),
+						WithKey("Slice").Contains("a=b").Done(),
 				),
 			)
 
@@ -297,7 +300,8 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 			})
 
 			Convey("Then I should have two items in the list", func() {
-				So(len(ps), ShouldEqual, 2)
+				So(len(ps), ShouldEqual, 3)
+				So(ps, ShouldContain, l1)
 				So(ps, ShouldContain, l3)
 				So(ps, ShouldContain, l4)
 			})

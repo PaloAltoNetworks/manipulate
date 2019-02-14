@@ -302,13 +302,17 @@ func (s *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 
 				values := f.Values()[i]
 
-				termFullQuery := fullQuery
+				containItems := map[string]elemental.Identifiable{}
+
 				for _, value := range values {
-					if err := s.retrieveIntersection(identity, k, value, items, termFullQuery); err != nil {
+					valueItems := map[string]elemental.Identifiable{}
+					if err := s.retrieveIntersection(identity, k, value, &valueItems, true); err != nil {
 						return err
 					}
-					termFullQuery = false
+					mergeIn(&containItems, &valueItems)
 				}
+
+				intersection(items, &containItems, fullQuery)
 
 			default:
 				return manipulate.NewErrCannotExecuteQuery(fmt.Sprintf("invalid comparator for memdb: %d", f.Comparators()[i]))
@@ -325,16 +329,19 @@ func (s *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 
 		case manipulate.OrFilterOperator:
 
-			for _, sub := range f.OrFilters()[i] {
-				orItems := map[string]elemental.Identifiable{}
+			orItems := map[string]elemental.Identifiable{}
 
-				if err := s.retrieveFromFilter(identity, sub, &orItems, true); err != nil {
+			for _, sub := range f.OrFilters()[i] {
+				valueItems := map[string]elemental.Identifiable{}
+
+				if err := s.retrieveFromFilter(identity, sub, &valueItems, true); err != nil {
 					return err
 				}
-				for k, v := range orItems {
-					(*items)[k] = v
-				}
+
+				mergeIn(&orItems, &valueItems)
 			}
+
+			intersection(items, &orItems, fullQuery)
 
 		default:
 			return manipulate.NewErrCannotExecuteQuery(fmt.Sprintf("invalid operator for memdb: %d", operator))
@@ -379,4 +386,23 @@ func (s *memdbManipulator) retrieveIntersection(identity string, k string, value
 	*items = combinedItems
 
 	return nil
+}
+
+func mergeIn(target, source *map[string]elemental.Identifiable) {
+	for k, v := range *source {
+		(*target)[k] = v
+	}
+}
+
+func intersection(target, source *map[string]elemental.Identifiable, queryStart bool) {
+
+	combined := map[string]elemental.Identifiable{}
+
+	for k, v := range *source {
+		if _, ok := (*target)[k]; ok || queryStart {
+			combined[k] = v
+		}
+	}
+
+	*target = combined
 }
