@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/gofrs/uuid"
 	memdb "github.com/hashicorp/go-memdb"
+	"github.com/rs/xid"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 )
@@ -113,7 +113,7 @@ func (s *memdbManipulator) Create(mctx manipulate.Context, objects ...elemental.
 		// In caching scenarios the identifier is already set. Do not insert
 		// here. We will get it pre-populated from the master DB.
 		if object.Identifier() == "" {
-			object.SetIdentifier(uuid.Must(uuid.NewV4()).String())
+			object.SetIdentifier(xid.New().String())
 		}
 
 		if err := txn.Insert(object.Identity().Category, object); err != nil {
