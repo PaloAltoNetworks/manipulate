@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 
 	memdb "github.com/hashicorp/go-memdb"
@@ -285,7 +286,8 @@ func (s *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 
 		case manipulate.AndOperator:
 
-			k := f.Keys()[i]
+			k := strings.ToLower(f.Keys()[i])
+
 			if _, ok := s.validIndexes[identity][k]; !ok {
 				return manipulate.NewErrCannotExecuteQuery(fmt.Sprintf("unsupported index: %s for table %s", k, identity))
 			}
