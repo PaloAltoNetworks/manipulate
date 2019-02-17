@@ -167,17 +167,26 @@ func (s *memdbManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 	return manipulate.NewErrNotImplemented("DeleteMany not implemented in manipmemory")
 }
 
-// Count is part of the implementation of the Manipulator interface.
+// Count is part of the implementation of the Manipulator interface. Count is very expensive.
 func (s *memdbManipulator) Count(mctx manipulate.Context, identity elemental.Identity) (int, error) {
 
-	// out := elemental.IdentifiablesList{}
-	// if err := s.RetrieveMany(mctx, &out); err != nil {
-	// 	return -1, err
-	// }
-	//
-	// return len(out), nil
+	txn := s.db.Txn(false)
 
-	return 0, nil
+	iterator, err := txn.Get(identity.Category, "id")
+	if err != nil {
+		return 0, fmt.Errorf("failed to create iterator for %s: %s", identity.Category, err)
+	}
+
+	count := 0
+
+	raw := iterator.Next()
+	for raw != nil {
+		count = count + 1
+		raw = iterator.Next()
+	}
+
+	return count, nil
+
 }
 
 // Commit is part of the implementation of the TransactionalManipulator interface.
