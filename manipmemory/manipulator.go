@@ -20,7 +20,7 @@ type memdbManipulator struct {
 	db              *memdb.MemDB
 	txnRegistry     txnRegistry
 	txnRegistryLock *sync.Mutex
-	validIndexes    map[string]map[string]struct{}
+	schema          *memdb.DBSchema
 }
 
 // NewMemoryManipulator returns a new TransactionalManipulator backed by memdb.
@@ -31,26 +31,11 @@ func NewMemoryManipulator(schema *memdb.DBSchema) (manipulate.TransactionalManip
 		return nil, err
 	}
 
-	validIndexes := map[string]map[string]struct{}{}
-
-	for _, table := range schema.Tables {
-		if _, ok := validIndexes[table.Name]; ok {
-			return nil, fmt.Errorf("Duplicate tables detected")
-		}
-		validIndexes[table.Name] = map[string]struct{}{}
-		for _, index := range table.Indexes {
-			if _, ok := validIndexes[table.Name][index.Name]; ok {
-				return nil, fmt.Errorf("Duplicate indexes in table: %s", table.Name)
-			}
-			validIndexes[table.Name][index.Name] = struct{}{}
-		}
-	}
-
 	return &memdbManipulator{
 		db:              db,
 		txnRegistryLock: &sync.Mutex{},
 		txnRegistry:     txnRegistry{},
-		validIndexes:    validIndexes,
+		schema:          schema,
 	}, nil
 }
 
@@ -288,7 +273,7 @@ func (s *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 
 			k := strings.ToLower(f.Keys()[i])
 
-			if _, ok := s.validIndexes[identity][k]; !ok {
+			if _, ok := s.schema.Tables[identity].Indexes[k]; !ok {
 				return manipulate.NewErrCannotExecuteQuery(fmt.Sprintf("unsupported index: %s for table %s", k, identity))
 			}
 

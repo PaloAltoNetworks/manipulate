@@ -22,12 +22,12 @@ var Schema = &memdb.DBSchema{
 					Unique:  true,
 					Indexer: &memdb.StringFieldIndex{Field: "ID"},
 				},
-				"Name": &memdb.IndexSchema{
-					Name:    "Name",
+				"name": &memdb.IndexSchema{
+					Name:    "name",
 					Indexer: &memdb.StringFieldIndex{Field: "Name"},
 				},
-				"Slice": &memdb.IndexSchema{
-					Name:    "Slice",
+				"slice": &memdb.IndexSchema{
+					Name:    "slice",
 					Indexer: &memdb.StringSliceFieldIndex{Field: "Slice"},
 				},
 			},
