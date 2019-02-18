@@ -20,10 +20,22 @@ type memdbManipulator struct {
 	db              *memdb.MemDB
 	txnRegistry     txnRegistry
 	txnRegistryLock *sync.Mutex
-	schema          *memdb.DBSchema
 }
 
-// NewMemoryManipulator returns a new TransactionalManipulator backed by memdb.
+// NewMemoryManipulatorFromDB will create a new memdb manipulator assuming that the DB
+// is already provided at the input. This allow multiple instances of the manipulator
+// to operate on the same memdb.
+func NewMemoryManipulatorFromDB(db *memdb.MemDB) manipulate.TransactionalManipulator {
+	return &memdbManipulator{
+		db:              db,
+		txnRegistryLock: &sync.Mutex{},
+		txnRegistry:     txnRegistry{},
+	}
+
+}
+
+// NewMemoryManipulator returns a new TransactionalManipulator backed by memdb. It first
+// instantiates the memdb with the provided schema.
 func NewMemoryManipulator(schema *memdb.DBSchema) (manipulate.TransactionalManipulator, error) {
 
 	db, err := memdb.NewMemDB(schema)
@@ -31,12 +43,7 @@ func NewMemoryManipulator(schema *memdb.DBSchema) (manipulate.TransactionalManip
 		return nil, err
 	}
 
-	return &memdbManipulator{
-		db:              db,
-		txnRegistryLock: &sync.Mutex{},
-		txnRegistry:     txnRegistry{},
-		schema:          schema,
-	}, nil
+	return NewMemoryManipulatorFromDB(db), nil
 }
 
 // RetrieveMany is part of the implementation of the Manipulator interface.
@@ -281,10 +288,6 @@ func (s *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 		case manipulate.AndOperator:
 
 			k := strings.ToLower(f.Keys()[i])
-
-			if _, ok := s.schema.Tables[identity].Indexes[k]; !ok {
-				return manipulate.NewErrCannotExecuteQuery(fmt.Sprintf("unsupported index: %s for table %s", k, identity))
-			}
 
 			switch f.Comparators()[i] {
 
