@@ -210,7 +210,8 @@ func Test_Run(t *testing.T) {
 
 		v := NewMemDBVortex(d, m, nil, newIdentityProcessor(config.WriteThrough), testmodel.Manager(), "./testlog")
 
-		defer os.Remove("./testlog")
+		defer os.Remove("./testlog") // nolint errcheck
+
 		Convey("When I try to run it, it should succeed and the log channel should be there", func() {
 			ctx, cancel := context.WithCancel(context.Background())
 			err := v.Run(ctx)

@@ -33,7 +33,7 @@ func Test_newLogWriter(t *testing.T) {
 
 	Convey("When I create a new log writer with a good file", t, func() {
 		c, err := newLogWriter(ctx, "test.log", 100)
-		defer os.Remove("test.log")
+		defer os.Remove("test.log") // nolint errcheck
 
 		Convey("There should be no error and a valid channel", func() {
 			So(err, ShouldBeNil)

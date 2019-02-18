@@ -18,7 +18,7 @@ func newLogWriter(ctx context.Context, filename string, size int) (chan *Transac
 	events := make(chan *Transaction, size)
 
 	go func(f *os.File) {
-		defer f.Close()
+		defer f.Close() // nolint errcheck
 
 		for {
 

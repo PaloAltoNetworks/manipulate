@@ -819,7 +819,7 @@ func (v *MemDBVortex) eventHandler(ctx context.Context, evt *elemental.Event) {
 	defer v.RUnlock()
 
 	// DO WE FORCE COMPLETE RESYNCS HERE IF THERE ARE FAILURES?
-	// ERROR HANDLING NEEDS WORK. Sicne errors here are extremely
+	// ERROR HANDLING NEEDS WORK. Since errors here are extremely
 	// unlikely, provided that the schema is correct, probably the
 	// right thing to do is to force a re-sync or completely panic.
 	var method elemental.Operation

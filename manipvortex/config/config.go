@@ -91,7 +91,7 @@ const (
 	// memory.
 	WriteThrough CacheMode = iota
 
-	// WriteBack means that writes will be commited locally
+	// WriteBack means that writes will be committed locally
 	// and lazily synced with the main data store. These objects
 	// will not be accessible until they are actually synced
 	// with the backend since they don't have a unique ID
