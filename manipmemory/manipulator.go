@@ -18,36 +18,59 @@ type txnRegistry map[manipulate.TransactionID]*memdb.Txn
 // A memoryManipulator is an empty manipulator that can be used with ApoMock.
 type memdbManipulator struct {
 	db              *memdb.MemDB
+	schema          *memdb.DBSchema
 	txnRegistry     txnRegistry
 	txnRegistryLock *sync.Mutex
+	flushLock       *sync.Mutex
 }
 
-// NewMemoryManipulatorFromDB will create a new memdb manipulator assuming that the DB
-// is already provided at the input. This allow multiple instances of the manipulator
-// to operate on the same memdb.
-func NewMemoryManipulatorFromDB(db *memdb.MemDB) manipulate.TransactionalManipulator {
-	return &memdbManipulator{
-		db:              db,
-		txnRegistryLock: &sync.Mutex{},
-		txnRegistry:     txnRegistry{},
+// New creates a new datastore backed by a memdb.
+func New(c map[string]*IdentitySchema) (manipulate.TransactionalManipulator, error) {
+
+	schema := &memdb.DBSchema{
+		Tables: map[string]*memdb.TableSchema{},
 	}
 
-}
-
-// NewMemoryManipulator returns a new TransactionalManipulator backed by memdb. It first
-// instantiates the memdb with the provided schema.
-func NewMemoryManipulator(schema *memdb.DBSchema) (manipulate.TransactionalManipulator, error) {
+	for table, cfg := range c {
+		index, err := createSchema(cfg)
+		if err != nil {
+			return nil, err
+		}
+		schema.Tables[table] = index
+	}
 
 	db, err := memdb.NewMemDB(schema)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewMemoryManipulatorFromDB(db), nil
+	return &memdbManipulator{
+		schema:          schema,
+		db:              db,
+		txnRegistry:     txnRegistry{},
+		txnRegistryLock: &sync.Mutex{},
+		flushLock:       &sync.Mutex{},
+	}, nil
+}
+
+// Flush will flush the datastore essentially creating a new one.
+func (m *memdbManipulator) Flush(ctx context.Context) error {
+
+	m.flushLock.Lock()
+	defer m.flushLock.Unlock()
+
+	db, err := memdb.NewMemDB(m.schema)
+	if err != nil {
+		return err
+	}
+
+	m.db = db
+
+	return nil
 }
 
 // RetrieveMany is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.Identifiables) error {
+func (m *memdbManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.Identifiables) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
@@ -55,7 +78,7 @@ func (s *memdbManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 
 	items := map[string]elemental.Identifiable{}
 
-	if err := s.retrieveFromFilter(dest.Identity().Category, mctx.Filter(), &items, true); err != nil {
+	if err := m.retrieveFromFilter(dest.Identity().Category, mctx.Filter(), &items, true); err != nil {
 		return err
 	}
 
@@ -69,9 +92,9 @@ func (s *memdbManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 }
 
 // Retrieve is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Retrieve(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *memdbManipulator) Retrieve(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
-	txn := s.db.Txn(false)
+	txn := m.db.Txn(false)
 
 	for _, object := range objects {
 
@@ -91,14 +114,14 @@ func (s *memdbManipulator) Retrieve(mctx manipulate.Context, objects ...elementa
 }
 
 // Create is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Create(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *memdbManipulator) Create(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
 	}
 
 	tid := mctx.TransactionID()
-	txn := s.txnForID(tid)
+	txn := m.txnForID(tid)
 	defer txn.Abort()
 
 	for _, object := range objects {
@@ -115,21 +138,21 @@ func (s *memdbManipulator) Create(mctx manipulate.Context, objects ...elemental.
 	}
 
 	if tid == "" {
-		s.commitTxn(txn)
+		m.commitTxn(txn)
 	}
 
 	return nil
 }
 
 // Update is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Update(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *memdbManipulator) Update(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
 	}
 
 	tid := mctx.TransactionID()
-	txn := s.txnForID(tid)
+	txn := m.txnForID(tid)
 	defer txn.Abort()
 
 	for _, object := range objects {
@@ -139,21 +162,21 @@ func (s *memdbManipulator) Update(mctx manipulate.Context, objects ...elemental.
 	}
 
 	if tid == "" {
-		s.commitTxn(txn)
+		m.commitTxn(txn)
 	}
 
 	return nil
 }
 
 // Delete is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) Delete(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *memdbManipulator) Delete(mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
 	}
 
 	tid := mctx.TransactionID()
-	txn := s.txnForID(tid)
+	txn := m.txnForID(tid)
 	defer txn.Abort()
 
 	for _, object := range objects {
@@ -163,21 +186,21 @@ func (s *memdbManipulator) Delete(mctx manipulate.Context, objects ...elemental.
 	}
 
 	if tid == "" {
-		s.commitTxn(txn)
+		m.commitTxn(txn)
 	}
 
 	return nil
 }
 
 // DeleteMany is part of the implementation of the Manipulator interface.
-func (s *memdbManipulator) DeleteMany(mctx manipulate.Context, identity elemental.Identity) error {
+func (m *memdbManipulator) DeleteMany(mctx manipulate.Context, identity elemental.Identity) error {
 	return manipulate.NewErrNotImplemented("DeleteMany not implemented in manipmemory")
 }
 
 // Count is part of the implementation of the Manipulator interface. Count is very expensive.
-func (s *memdbManipulator) Count(mctx manipulate.Context, identity elemental.Identity) (int, error) {
+func (m *memdbManipulator) Count(mctx manipulate.Context, identity elemental.Identity) (int, error) {
 
-	txn := s.db.Txn(false)
+	txn := m.db.Txn(false)
 
 	iterator, err := txn.Get(identity.Category, "id")
 	if err != nil {
@@ -197,84 +220,84 @@ func (s *memdbManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 }
 
 // Commit is part of the implementation of the TransactionalManipulator interface.
-func (s *memdbManipulator) Commit(id manipulate.TransactionID) error {
+func (m *memdbManipulator) Commit(id manipulate.TransactionID) error {
 
-	txn := s.registeredTxnWithID(id)
+	txn := m.registeredTxnWithID(id)
 
 	if txn == nil {
 		return manipulate.NewErrCannotCommit("Cannot find transaction " + string(id))
 	}
 
-	defer func() { s.unregisterTxn(id) }()
+	defer func() { m.unregisterTxn(id) }()
 
-	s.commitTxn(txn)
+	m.commitTxn(txn)
 
 	return nil
 }
 
 // Abort is part of the implementation of the TransactionalManipulator interface.
-func (s *memdbManipulator) Abort(id manipulate.TransactionID) bool {
+func (m *memdbManipulator) Abort(id manipulate.TransactionID) bool {
 
-	txn := s.registeredTxnWithID(id)
+	txn := m.registeredTxnWithID(id)
 	if txn == nil {
 		return false
 	}
 
 	txn.Abort()
-	s.unregisterTxn(id)
+	m.unregisterTxn(id)
 
 	return true
 }
 
-func (s *memdbManipulator) txnForID(id manipulate.TransactionID) *memdb.Txn {
+func (m *memdbManipulator) txnForID(id manipulate.TransactionID) *memdb.Txn {
 
 	if id == "" {
-		return s.db.Txn(true)
+		return m.db.Txn(true)
 	}
 
-	txn := s.registeredTxnWithID(id)
+	txn := m.registeredTxnWithID(id)
 
 	if txn == nil {
-		txn = s.db.Txn(true)
-		s.registerTxn(id, txn)
+		txn = m.db.Txn(true)
+		m.registerTxn(id, txn)
 	}
 
 	return txn
 }
 
-func (s *memdbManipulator) commitTxn(t *memdb.Txn) {
+func (m *memdbManipulator) commitTxn(t *memdb.Txn) {
 
 	t.Commit()
 }
 
-func (s *memdbManipulator) registerTxn(id manipulate.TransactionID, txn *memdb.Txn) {
+func (m *memdbManipulator) registerTxn(id manipulate.TransactionID, txn *memdb.Txn) {
 
-	s.txnRegistryLock.Lock()
-	defer s.txnRegistryLock.Unlock()
-	s.txnRegistry[id] = txn
+	m.txnRegistryLock.Lock()
+	defer m.txnRegistryLock.Unlock()
+	m.txnRegistry[id] = txn
 }
 
-func (s *memdbManipulator) unregisterTxn(id manipulate.TransactionID) {
+func (m *memdbManipulator) unregisterTxn(id manipulate.TransactionID) {
 
-	s.txnRegistryLock.Lock()
-	defer s.txnRegistryLock.Unlock()
-	delete(s.txnRegistry, id)
+	m.txnRegistryLock.Lock()
+	defer m.txnRegistryLock.Unlock()
+	delete(m.txnRegistry, id)
 }
 
-func (s *memdbManipulator) registeredTxnWithID(id manipulate.TransactionID) *memdb.Txn {
+func (m *memdbManipulator) registeredTxnWithID(id manipulate.TransactionID) *memdb.Txn {
 
-	s.txnRegistryLock.Lock()
-	defer s.txnRegistryLock.Unlock()
-	b := s.txnRegistry[id]
+	m.txnRegistryLock.Lock()
+	defer m.txnRegistryLock.Unlock()
+	b := m.txnRegistry[id]
 
 	return b
 }
 
 // RetrieveFromFilter compiles the given manipulate Filter into a mongo filter.
-func (s *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Filter, items *map[string]elemental.Identifiable, fullQuery bool) error {
+func (m *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Filter, items *map[string]elemental.Identifiable, fullQuery bool) error {
 
 	if f == nil {
-		return s.retrieveIntersection(identity, "id", nil, items, fullQuery)
+		return m.retrieveIntersection(identity, "id", nil, items, fullQuery)
 	}
 
 	if len(f.Operators()) == 0 {
@@ -293,7 +316,7 @@ func (s *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 
 			case manipulate.EqualComparator:
 
-				if err := s.retrieveIntersection(identity, k, f.Values()[i][0], items, fullQuery); err != nil {
+				if err := m.retrieveIntersection(identity, k, f.Values()[i][0], items, fullQuery); err != nil {
 					return err
 				}
 
@@ -305,7 +328,7 @@ func (s *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 
 				for _, value := range values {
 					valueItems := map[string]elemental.Identifiable{}
-					if err := s.retrieveIntersection(identity, k, value, &valueItems, true); err != nil {
+					if err := m.retrieveIntersection(identity, k, value, &valueItems, true); err != nil {
 						return err
 					}
 					mergeIn(&containItems, &valueItems)
@@ -320,7 +343,7 @@ func (s *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 		case manipulate.AndFilterOperator:
 
 			for _, sub := range f.AndFilters()[i] {
-				if err := s.retrieveFromFilter(identity, sub, items, fullQuery); err != nil {
+				if err := m.retrieveFromFilter(identity, sub, items, fullQuery); err != nil {
 					return err
 				}
 				fullQuery = false
@@ -333,7 +356,7 @@ func (s *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 			for _, sub := range f.OrFilters()[i] {
 				valueItems := map[string]elemental.Identifiable{}
 
-				if err := s.retrieveFromFilter(identity, sub, &valueItems, true); err != nil {
+				if err := m.retrieveFromFilter(identity, sub, &valueItems, true); err != nil {
 					return err
 				}
 
@@ -352,14 +375,14 @@ func (s *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 	return nil
 }
 
-func (s *memdbManipulator) retrieveIntersection(identity string, k string, value interface{}, items *map[string]elemental.Identifiable, fullquery bool) error {
+func (m *memdbManipulator) retrieveIntersection(identity string, k string, value interface{}, items *map[string]elemental.Identifiable, fullquery bool) error {
 
 	var iterator memdb.ResultIterator
 	var err error
 
 	existingItems := *items
 
-	txn := s.db.Txn(false)
+	txn := m.db.Txn(false)
 
 	if value == nil {
 		iterator, err = txn.Get(identity, k)
@@ -385,23 +408,4 @@ func (s *memdbManipulator) retrieveIntersection(identity string, k string, value
 	*items = combinedItems
 
 	return nil
-}
-
-func mergeIn(target, source *map[string]elemental.Identifiable) {
-	for k, v := range *source {
-		(*target)[k] = v
-	}
-}
-
-func intersection(target, source *map[string]elemental.Identifiable, queryStart bool) {
-
-	combined := map[string]elemental.Identifiable{}
-
-	for k, v := range *source {
-		if _, ok := (*target)[k]; ok || queryStart {
-			combined[k] = v
-		}
-	}
-
-	*target = combined
 }

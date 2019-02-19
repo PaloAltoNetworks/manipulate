@@ -1,4 +1,4 @@
-package memdbvortex
+package manipvortex
 
 import (
 	"context"
@@ -11,8 +11,8 @@ import (
 	"go.aporeto.io/elemental"
 	testmodel "go.aporeto.io/elemental/test/model"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/manipmemory"
 	"go.aporeto.io/manipulate/maniptest"
-	"go.aporeto.io/manipulate/manipvortex/config"
 )
 
 func newObject(name string, tags []string) *testmodel.List {
@@ -23,27 +23,27 @@ func newObject(name string, tags []string) *testmodel.List {
 	return o
 }
 
-func newDatastore() (*MemdbDatastore, error) {
+func newDatastore() (manipulate.Manipulator, error) {
 
-	config := map[string]*config.MemDBIdentity{
-		testmodel.ListIdentity.Category: &config.MemDBIdentity{
+	config := map[string]*manipmemory.IdentitySchema{
+		testmodel.ListIdentity.Category: &manipmemory.IdentitySchema{
 			Identity: testmodel.ListIdentity,
-			Indexes: []*config.IndexConfig{
-				&config.IndexConfig{
+			Indexes: []*manipmemory.Index{
+				&manipmemory.Index{
 					Name:      "id",
-					Type:      config.String,
+					Type:      manipmemory.IndexTypeString,
 					Unique:    true,
 					Attribute: "ID",
 				},
-				&config.IndexConfig{
+				&manipmemory.Index{
 					Name:      "Name",
-					Type:      config.String,
+					Type:      manipmemory.IndexTypeString,
 					Unique:    false,
 					Attribute: "Name",
 				},
-				&config.IndexConfig{
+				&manipmemory.Index{
 					Name:      "Slice",
-					Type:      config.Slice,
+					Type:      manipmemory.IndexTypeSlice,
 					Unique:    false,
 					Attribute: "Slice",
 				},
@@ -51,7 +51,7 @@ func newDatastore() (*MemdbDatastore, error) {
 		},
 	}
 
-	d, err := NewDatastore(config)
+	d, err := manipmemory.New(config)
 	if err != nil {
 		return nil, err
 	}
@@ -59,10 +59,10 @@ func newDatastore() (*MemdbDatastore, error) {
 	return d, nil
 }
 
-func newIdentityProcessor(mode config.CacheMode) map[string]*config.ProcessorConfiguration {
+func newIdentityProcessor(mode CacheMode) map[string]*ProcessorConfiguration {
 
-	return map[string]*config.ProcessorConfiguration{
-		testmodel.ListIdentity.Name: &config.ProcessorConfiguration{
+	return map[string]*ProcessorConfiguration{
+		testmodel.ListIdentity.Name: &ProcessorConfiguration{
 			Identity:         testmodel.ListIdentity,
 			Mode:             mode,
 			QueueingDuration: time.Minute,
@@ -71,7 +71,7 @@ func newIdentityProcessor(mode config.CacheMode) map[string]*config.ProcessorCon
 	}
 }
 
-func Test_NewMemDBVortex(t *testing.T) {
+func Test_New(t *testing.T) {
 	t.Parallel()
 
 	Convey("When I create a new memdb vortex, I sould have correct structures", t, func() {
@@ -82,22 +82,21 @@ func Test_NewMemDBVortex(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 			OptionBackendManipulator(m),
 		)
 		So(err, ShouldBeNil)
 		So(v, ShouldNotBeNil)
-		So(v, ShouldHaveSameTypeAs, &MemDBVortex{})
+		So(v, ShouldHaveSameTypeAs, &vortexManipulator{})
 
-		mv := v.(*MemDBVortex)
+		mv := v.(*vortexManipulator)
 
-		So(mv.m, ShouldResemble, m)
-		So(mv.memory, ShouldNotBeNil)
-		So(mv.datastore, ShouldNotBeNil)
+		So(mv.upstreamManipulator, ShouldEqual, m)
+		So(mv.downstreamManipulator, ShouldEqual, d)
 		So(mv.processors, ShouldNotBeNil)
 		So(mv.transactionQueue, ShouldNotBeNil)
 
@@ -114,10 +113,10 @@ func Test_UnsupportedMethods(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 		)
 		So(err, ShouldBeNil)
@@ -136,10 +135,10 @@ func Test_UnsupportedMethods(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 			OptionBackendManipulator(m),
 		)
@@ -167,10 +166,10 @@ func Test_Count(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 			OptionBackendManipulator(m),
 		)
@@ -203,10 +202,10 @@ func Test_run(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		defer os.Remove("./testlog") // nolint errcheck
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 			OptionBackendManipulator(m),
 			OptionTransactionLog("./testlog"),
@@ -214,7 +213,7 @@ func Test_run(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		Convey("The log channel should be available", func() {
-			So(v.(*MemDBVortex).logChannel, ShouldNotBeNil)
+			So(v.(*vortexManipulator).logChannel, ShouldNotBeNil)
 		})
 	})
 
@@ -227,10 +226,10 @@ func Test_run(t *testing.T) {
 		defer cancel()
 
 		defer os.Remove("./bad-directory/test") // nolint errcheck
-		_, err = NewMemDBVortex(
+		_, err = New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 			OptionBackendManipulator(m),
 			OptionTransactionLog("./bad-directory/test"),
@@ -248,10 +247,10 @@ func Test_run(t *testing.T) {
 			return manipulate.NewErrObjectNotFound("testing")
 		})
 
-		_, err = NewMemDBVortex(
+		_, err = New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 			OptionBackendManipulator(m),
 			OptionBackendSubscriber(s),
@@ -269,10 +268,10 @@ func Test_run(t *testing.T) {
 			return nil
 		})
 
-		_, err = NewMemDBVortex(
+		_, err = New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 			OptionBackendManipulator(m),
 			OptionBackendSubscriber(s),
@@ -292,10 +291,10 @@ func Test_Resync(t *testing.T) {
 		d, err := newDatastore()
 		So(err, ShouldBeNil)
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 		)
 
@@ -326,10 +325,10 @@ func Test_Resync(t *testing.T) {
 			return nil
 		})
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 			OptionBackendManipulator(m),
 		)
@@ -358,10 +357,10 @@ func Test_Resync(t *testing.T) {
 
 		m := maniptest.NewTestManipulator()
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 			OptionBackendManipulator(m),
 		)
@@ -401,16 +400,16 @@ func Test_RetrieveMany(t *testing.T) {
 			return nil
 		})
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 			OptionBackendManipulator(m),
 		)
 		So(err, ShouldBeNil)
 
-		objConfig := v.(*MemDBVortex).processors[testmodel.ListIdentity.Name]
+		objConfig := v.(*vortexManipulator).processors[testmodel.ListIdentity.Name]
 		objConfig.RetrieveManyHook = func(m manipulate.Manipulator, mctx manipulate.Context, dest elemental.Identifiables) (bool, error) {
 			if mctx.Parent() != nil {
 				return false, fmt.Errorf("no parent")
@@ -475,10 +474,10 @@ func Test_Retrieve(t *testing.T) {
 			return nil
 		})
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 			OptionBackendManipulator(m),
 		)
@@ -558,16 +557,16 @@ func Test_Create(t *testing.T) {
 		So(err, ShouldBeNil)
 		m := maniptest.NewTestManipulator()
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 			OptionBackendManipulator(m),
 		)
 		So(err, ShouldBeNil)
 
-		objConfig := v.(*MemDBVortex).processors[testmodel.ListIdentity.Name]
+		objConfig := v.(*vortexManipulator).processors[testmodel.ListIdentity.Name]
 		objConfig.UpstreamHook = func(method elemental.Operation, mctx manipulate.Context, objects []elemental.Identifiable) (bool, error) {
 			if mctx.Parent() != nil {
 				return false, nil
@@ -652,16 +651,16 @@ func Test_Update(t *testing.T) {
 		So(err, ShouldBeNil)
 		m := maniptest.NewTestManipulator()
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 			OptionBackendManipulator(m),
 		)
 		So(err, ShouldBeNil)
 
-		objConfig := v.(*MemDBVortex).processors[testmodel.ListIdentity.Name]
+		objConfig := v.(*vortexManipulator).processors[testmodel.ListIdentity.Name]
 		objConfig.UpstreamHook = func(method elemental.Operation, mctx manipulate.Context, objects []elemental.Identifiable) (bool, error) {
 			if mctx.Parent() != nil {
 				return false, nil
@@ -757,16 +756,16 @@ func Test_Delete(t *testing.T) {
 		d, err := newDatastore()
 		So(err, ShouldBeNil)
 		m := maniptest.NewTestManipulator()
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 			OptionBackendManipulator(m),
 		)
 		So(err, ShouldBeNil)
 
-		objConfig := v.(*MemDBVortex).processors[testmodel.ListIdentity.Name]
+		objConfig := v.(*vortexManipulator).processors[testmodel.ListIdentity.Name]
 		objConfig.UpstreamHook = func(method elemental.Operation, mctx manipulate.Context, objects []elemental.Identifiable) (bool, error) {
 			if mctx.Parent() != nil {
 				return false, nil
@@ -856,10 +855,10 @@ func Test_WithNoBackend(t *testing.T) {
 		d, err := newDatastore()
 		So(err, ShouldBeNil)
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 		)
 		So(err, ShouldBeNil)
@@ -963,10 +962,10 @@ func Test_WriteThroughBackend(t *testing.T) {
 			return nil
 		})
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 			OptionBackendManipulator(m),
 		)
@@ -1135,10 +1134,10 @@ func Test_Monitor(t *testing.T) {
 		d, err := newDatastore()
 		So(err, ShouldBeNil)
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 			OptionBackendManipulator(m),
 			OptionBackendSubscriber(s),
@@ -1300,10 +1299,10 @@ func Test_WriteBackBackend(t *testing.T) {
 			return nil
 		})
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteBack),
+			newIdentityProcessor(WriteBack),
 			testmodel.Manager(),
 			OptionBackendManipulator(m),
 		)
@@ -1335,12 +1334,12 @@ func Test_WriteBackBackend(t *testing.T) {
 
 				time.Sleep(1200 * time.Millisecond)
 				objects := testmodel.ListsList{}
-				err = v.(*MemDBVortex).memory.RetrieveMany(nil, &objects)
+				err = v.(*vortexManipulator).downstreamManipulator.RetrieveMany(nil, &objects)
 
 				Convey("After waiting for timeout, the object must not be there", func() {
 					So(err, ShouldBeNil)
 					So(len(objects), ShouldEqual, 2)
-					So(len(v.(*MemDBVortex).transactionQueue), ShouldEqual, 0)
+					So(len(v.(*vortexManipulator).transactionQueue), ShouldEqual, 0)
 				})
 
 			})
@@ -1365,7 +1364,7 @@ func Test_WriteBackBackend(t *testing.T) {
 				Convey("After waiting for timeout, the object must be in the database", func() {
 					So(err, ShouldBeNil)
 					So(len(objects), ShouldEqual, 3)
-					So(len(v.(*MemDBVortex).transactionQueue), ShouldEqual, 0)
+					So(len(v.(*vortexManipulator).transactionQueue), ShouldEqual, 0)
 				})
 
 				Convey("When I retrieve the object from the local db, it should be there", func() {
@@ -1416,7 +1415,7 @@ func Test_WriteBackBackend(t *testing.T) {
 					So(err, ShouldBeNil)
 					So(len(objects), ShouldEqual, 3)
 					So(objects, ShouldContain, obj3)
-					So(len(v.(*MemDBVortex).transactionQueue), ShouldEqual, 0)
+					So(len(v.(*vortexManipulator).transactionQueue), ShouldEqual, 0)
 				})
 			})
 
@@ -1454,7 +1453,7 @@ func Test_WriteBackBackend(t *testing.T) {
 					So(err, ShouldBeNil)
 					So(len(objects), ShouldEqual, 3)
 					So(objects, ShouldContain, updatedObject)
-					So(len(v.(*MemDBVortex).transactionQueue), ShouldEqual, 0)
+					So(len(v.(*vortexManipulator).transactionQueue), ShouldEqual, 0)
 				})
 			})
 		})
@@ -1471,10 +1470,10 @@ func Test_SubscriberRegistration(t *testing.T) {
 		d, err := newDatastore()
 		So(err, ShouldBeNil)
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 			OptionBackendManipulator(m),
 			OptionBackendSubscriber(us),
@@ -1489,7 +1488,7 @@ func Test_SubscriberRegistration(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(s2, ShouldNotBeNil)
 
-			allSubscribers := v.(*MemDBVortex).subscribers
+			allSubscribers := v.(*vortexManipulator).subscribers
 			So(allSubscribers, ShouldNotBeNil)
 			So(len(allSubscribers), ShouldEqual, 2)
 			So(allSubscribers[0], ShouldResemble, s1)
@@ -1497,7 +1496,7 @@ func Test_SubscriberRegistration(t *testing.T) {
 		})
 
 		Convey("When I check if it has a backend subscriber, I should get true", func() {
-			So(v.(*MemDBVortex).hasBackendSubscriber(), ShouldBeTrue)
+			So(v.(*vortexManipulator).hasBackendSubscriber(), ShouldBeTrue)
 		})
 	})
 }
@@ -1512,10 +1511,10 @@ func Test_updateFilter(t *testing.T) {
 		d, err := newDatastore()
 		So(err, ShouldBeNil)
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
 			OptionBackendManipulator(m),
 			OptionBackendSubscriber(us),
@@ -1529,7 +1528,7 @@ func Test_updateFilter(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(s2, ShouldNotBeNil)
 
-		allSubscribers := v.(*MemDBVortex).subscribers
+		allSubscribers := v.(*vortexManipulator).subscribers
 		So(allSubscribers, ShouldNotBeNil)
 		So(len(allSubscribers), ShouldEqual, 2)
 		So(allSubscribers[0], ShouldResemble, s1)

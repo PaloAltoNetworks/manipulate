@@ -1,4 +1,4 @@
-package memdbvortex
+package manipvortex
 
 import (
 	"context"

@@ -3,6 +3,7 @@ package manipmemory
 import (
 	"context"
 	"crypto/rand"
+	"reflect"
 	"strconv"
 	"testing"
 
@@ -12,36 +13,179 @@ import (
 	"go.aporeto.io/manipulate"
 )
 
-var Schema = &memdb.DBSchema{
-	Tables: map[string]*memdb.TableSchema{
-		"lists": &memdb.TableSchema{
-			Name: "lists",
-			Indexes: map[string]*memdb.IndexSchema{
-				"id": &memdb.IndexSchema{
-					Name:    "id",
-					Unique:  true,
-					Indexer: &memdb.StringFieldIndex{Field: "ID"},
+func datastoreIndexConfig() map[string]*IdentitySchema {
+
+	return map[string]*IdentitySchema{
+		testmodel.ListIdentity.Category: &IdentitySchema{
+			Identity: testmodel.ListIdentity,
+			Indexes: []*Index{
+				&Index{
+					Name:      "id",
+					Type:      IndexTypeString,
+					Unique:    true,
+					Attribute: "ID",
 				},
-				"name": &memdb.IndexSchema{
-					Name:    "name",
-					Indexer: &memdb.StringFieldIndex{Field: "Name"},
+				&Index{
+					Name:      "name",
+					Type:      IndexTypeString,
+					Unique:    false,
+					Attribute: "Name",
 				},
-				"slice": &memdb.IndexSchema{
-					Name:    "slice",
-					Indexer: &memdb.StringSliceFieldIndex{Field: "Slice"},
+				&Index{
+					Name:      "slice",
+					Type:      IndexTypeSlice,
+					Unique:    false,
+					Attribute: "Slice",
 				},
 			},
 		},
-	},
+	}
 }
 
-func TestMemManipulator_NewMemoryManipulator(t *testing.T) {
+func TestMemManipulator_New(t *testing.T) {
 
 	Convey("Given I create a new MemoryManipulator with bad schema", t, func() {
 
 		Convey("Then it should return err", func() {
-			_, err := NewMemoryManipulator(nil)
+			_, err := New(nil)
 			So(err, ShouldNotBeNil)
+		})
+	})
+
+	Convey("Given I create a new MemoryManipulator with a valid schema ", t, func() {
+
+		m, err := New(
+			map[string]*IdentitySchema{
+				testmodel.ListIdentity.Category: &IdentitySchema{
+					Identity: testmodel.ListIdentity,
+					Indexes: []*Index{
+						&Index{
+							Name:      "id",
+							Type:      IndexTypeString,
+							Unique:    true,
+							Attribute: "ID",
+						},
+						&Index{
+							Name:      "Name",
+							Type:      IndexTypeString,
+							Unique:    false,
+							Attribute: "Name",
+						},
+						&Index{
+							Name:      "Slice",
+							Type:      IndexTypeSlice,
+							Unique:    false,
+							Attribute: "Slice",
+						},
+						&Index{
+							Name:      "Map",
+							Type:      IndexTypeMap,
+							Unique:    false,
+							Attribute: "Map",
+						},
+						&Index{
+							Name:      "Bool",
+							Type:      IndexTypeBoolean,
+							Unique:    false,
+							Attribute: "Bool",
+						},
+						&Index{
+							Name:      "StringBased",
+							Type:      IndexTypeStringBased,
+							Unique:    false,
+							Attribute: "StringBased",
+						},
+					},
+				},
+			},
+		)
+
+		Convey("Then err should be nil", func() {
+			So(err, ShouldBeNil)
+		})
+
+		d := m.(*memdbManipulator)
+
+		Convey("Then the schema should be populated", func() {
+			So(d.schema, ShouldNotBeNil)
+			So(d.schema.Tables, ShouldNotBeNil)
+			So(d.db, ShouldNotBeNil)
+
+		})
+
+		Convey("Then the schema should be correct", func() {
+			So(len(d.schema.Tables), ShouldEqual, 1)
+			So(d.schema.Tables, ShouldContainKey, testmodel.ListIdentity.Category)
+			So(len(d.schema.Tables[testmodel.ListIdentity.Category].Indexes), ShouldEqual, 6)
+			So(d.schema.Tables[testmodel.ListIdentity.Category].Indexes["id"],
+				ShouldResemble,
+				&memdb.IndexSchema{
+					Name:    "id",
+					Unique:  true,
+					Indexer: &memdb.StringFieldIndex{Field: "ID"},
+				},
+			)
+			So(d.schema.Tables[testmodel.ListIdentity.Category].Indexes["Name"],
+				ShouldResemble,
+				&memdb.IndexSchema{
+					Name:    "Name",
+					Unique:  false,
+					Indexer: &memdb.StringFieldIndex{Field: "Name"},
+				},
+			)
+			So(d.schema.Tables[testmodel.ListIdentity.Category].Indexes["Slice"],
+				ShouldResemble,
+				&memdb.IndexSchema{
+					Name:    "Slice",
+					Unique:  false,
+					Indexer: &memdb.StringSliceFieldIndex{Field: "Slice"},
+				},
+			)
+			So(d.schema.Tables[testmodel.ListIdentity.Category].Indexes["Map"],
+				ShouldResemble,
+				&memdb.IndexSchema{
+					Name:    "Map",
+					Unique:  false,
+					Indexer: &memdb.StringMapFieldIndex{Field: "Map"},
+				},
+			)
+			So(d.schema.Tables[testmodel.ListIdentity.Category].Indexes["StringBased"],
+				ShouldResemble,
+				&memdb.IndexSchema{
+					Name:    "StringBased",
+					Unique:  false,
+					Indexer: &stringBasedFieldIndex{Field: "StringBased"},
+				},
+			)
+			boolIndex := d.schema.Tables[testmodel.ListIdentity.Category].Indexes["Bool"]
+			So(boolIndex.Name, ShouldResemble, "Bool")
+			So(boolIndex.Unique, ShouldBeFalse)
+			So(reflect.TypeOf(boolIndex.Indexer), ShouldEqual, reflect.TypeOf(&memdb.ConditionalIndex{}))
+
+		})
+	})
+}
+
+func Test_Flush(t *testing.T) {
+
+	Convey("Given a valid data store", t, func() {
+
+		m, _ := New(datastoreIndexConfig())
+
+		d := m.(*memdbManipulator)
+
+		Convey("When I flush it", func() {
+
+			oldDb := d.db
+			err := d.Flush(context.Background())
+
+			Convey("Then there should be no error", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("The DB should be all new", func() {
+				So(oldDb, ShouldNotResemble, d.db)
+			})
 		})
 	})
 }
@@ -50,7 +194,7 @@ func TestMemManipulator_Create(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
-		m, err := NewMemoryManipulator(Schema)
+		m, err := New(datastoreIndexConfig())
 		So(err, ShouldBeNil)
 		p := &testmodel.List{
 			Name:  "Antoine",
@@ -103,7 +247,7 @@ func TestMemManipulator_Retrieve(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
-		m, err := NewMemoryManipulator(Schema)
+		m, err := New(datastoreIndexConfig())
 		So(err, ShouldBeNil)
 		l1 := &testmodel.List{
 			Name:  "Antoine1",
@@ -158,7 +302,7 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
-		m, err := NewMemoryManipulator(Schema)
+		m, err := New(datastoreIndexConfig())
 		So(err, ShouldBeNil)
 		l1 := &testmodel.List{
 			Name:  "Antoine1",
@@ -365,7 +509,7 @@ func TestMemManipulator_Update(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
-		m, err := NewMemoryManipulator(Schema)
+		m, err := New(datastoreIndexConfig())
 		So(err, ShouldBeNil)
 		p := &testmodel.List{
 			Name:  "Antoine",
@@ -428,7 +572,7 @@ func TestMemManipulator_Delete(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
-		m, err := NewMemoryManipulator(Schema)
+		m, err := New(datastoreIndexConfig())
 		So(err, ShouldBeNil)
 		p := &testmodel.List{
 			Name:  "Antoine",
@@ -505,7 +649,7 @@ func TestMemManipulator_Count(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
-		m, err := NewMemoryManipulator(Schema)
+		m, err := New(datastoreIndexConfig())
 		So(err, ShouldBeNil)
 		l1 := &testmodel.List{
 			Name:  "Antoine1",
@@ -585,7 +729,7 @@ func TestMemManipulator_Commit(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a transaction ID", t, func() {
 
-		m, err := NewMemoryManipulator(Schema)
+		m, err := New(datastoreIndexConfig())
 		So(err, ShouldBeNil)
 		tid := manipulate.NewTransactionID()
 
@@ -615,7 +759,7 @@ func TestMemManipulator_Abort(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a transaction ID", t, func() {
 
-		m, err := NewMemoryManipulator(Schema)
+		m, err := New(datastoreIndexConfig())
 		So(err, ShouldBeNil)
 		tid := manipulate.NewTransactionID()
 
@@ -644,7 +788,7 @@ func TestMemManipulator_txnForID(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a transaction ID", t, func() {
 
-		m, err := NewMemoryManipulator(Schema)
+		m, err := New(datastoreIndexConfig())
 		So(err, ShouldBeNil)
 		tid := manipulate.NewTransactionID()
 
@@ -682,7 +826,7 @@ func TestMemManipulator_txnForID(t *testing.T) {
 func BenchmarkRetrieveMany(b *testing.B) {
 	b.StopTimer()
 
-	m, err := NewMemoryManipulator(Schema)
+	m, err := New(datastoreIndexConfig())
 	So(err, ShouldBeNil)
 	err = populateDB(m, 10000)
 	So(err, ShouldBeNil)

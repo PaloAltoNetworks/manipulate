@@ -52,6 +52,24 @@ type TransactionalManipulator interface {
 	Manipulator
 }
 
+// A FlushableManipulator is a manipulator that can flush its
+// content to somewhere, like a file.
+type FlushableManipulator interface {
+
+	// Flush flushes and empties the cache.
+	Flush(ctx context.Context) error
+}
+
+// A BufferedManipulator is a Manipulator with a local cache
+type BufferedManipulator interface {
+
+	// ReSync forces a complete resync of the cache.
+	ReSync(context.Context) error
+
+	FlushableManipulator
+	Manipulator
+}
+
 // SubscriberStatus is the type of a subscriber status.
 type SubscriberStatus int
 

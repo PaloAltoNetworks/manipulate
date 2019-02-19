@@ -1,4 +1,4 @@
-package memdbvortex
+package manipvortex
 
 import (
 	"testing"
@@ -9,18 +9,18 @@ import (
 
 func Test_Options(t *testing.T) {
 	Convey("Given a memdb vortext memory", t, func() {
-		v := &MemDBVortex{}
+		v := &vortexManipulator{}
 
 		Convey("When I set the manipulator it should work", func() {
 			m := maniptest.NewTestManipulator()
 			OptionBackendManipulator(m)(v)
-			So(v.m, ShouldResemble, m)
+			So(v.upstreamManipulator, ShouldResemble, m)
 		})
 
 		Convey("When I set the subscriber it should work", func() {
 			s := maniptest.NewTestSubscriber()
 			OptionBackendSubscriber(s)(v)
-			So(v.s, ShouldResemble, s)
+			So(v.upstreamSubscriber, ShouldResemble, s)
 		})
 
 		Convey("When I set the transaction log it should work", func() {
