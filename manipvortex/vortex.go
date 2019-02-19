@@ -6,8 +6,8 @@ import (
 	"go.aporeto.io/manipulate"
 )
 
-// Cache is the Vortex interface for interacting with a memory cache.
-type Cache interface {
+// A BufferedManipulator is a Manipulator with a local cache
+type BufferedManipulator interface {
 
 	// ReSync forces a complete resync of the cache.
 	ReSync(context.Context) error
@@ -15,9 +15,5 @@ type Cache interface {
 	// Flush flushes and empties the cache.
 	Flush(ctx context.Context) error
 
-	// Run starts the cache.
-	Run(ctx context.Context) error
-
 	manipulate.Manipulator
-	manipulate.Subscriber
 }

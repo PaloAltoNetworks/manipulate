@@ -65,6 +65,7 @@ func Test_NewDatastore(t *testing.T) {
 		So(d, ShouldNotBeNil)
 		So(d.schema, ShouldNotBeNil)
 		So(d.schema.Tables, ShouldNotBeNil)
+		So(d.db, ShouldNotBeNil)
 
 		Convey("And the schema must be correct", func() {
 			So(len(d.schema.Tables), ShouldEqual, 1)
@@ -119,52 +120,9 @@ func Test_NewDatastore(t *testing.T) {
 	})
 }
 
-func Test_DatastoreRun(t *testing.T) {
-	Convey("Given a datastore", t, func() {
-		d, err := NewDatastore(datastoreIndexConfig())
-		So(err, ShouldBeNil)
-
-		Convey("If I try to restart it, it should fail", func() {
-			d.started = true
-			err := d.Run()
-			So(err, ShouldNotBeNil)
-		})
-
-		Convey("When I have a registered a valid db schema it should succeed", func() {
-			err = d.Run()
-			So(err, ShouldBeNil)
-			So(d.db, ShouldNotBeNil)
-			So(d.started, ShouldBeTrue)
-		})
-
-		Convey("When I have not registered any schema it should error", func() {
-			d.schema = nil
-			err := d.Run()
-			So(err, ShouldNotBeNil)
-		})
-	})
-}
-
-func Test_DatastoreIsInitialized(t *testing.T) {
-	Convey("Given a valid datastore", t, func() {
-		d, err := NewDatastore(datastoreIndexConfig())
-		So(err, ShouldBeNil)
-
-		err = d.Run()
-		So(err, ShouldBeNil)
-
-		Convey("When I retrieve the state, it should be valid", func() {
-			So(d.IsInitialized(), ShouldEqual, d.started)
-		})
-	})
-}
-
 func Test_DatastoreFlush(t *testing.T) {
 	Convey("Given a valid data store", t, func() {
 		d, err := NewDatastore(datastoreIndexConfig())
-		So(err, ShouldBeNil)
-
-		err = d.Run()
 		So(err, ShouldBeNil)
 
 		Convey("When I flush it, the db should be new", func() {
@@ -174,13 +132,6 @@ func Test_DatastoreFlush(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			So(oldDb, ShouldNotResemble, d.db)
-		})
-
-		Convey("When I try to flush it, and its not started, it should error", func() {
-			d.started = false
-
-			err := d.Flush()
-			So(err, ShouldNotBeNil)
 		})
 	})
 }

@@ -26,11 +26,8 @@ type MemDBVortex struct {
 	processors          map[string]*config.ProcessorConfiguration
 	commitIdentityEvent map[string]struct{}
 
-	subscriberErrorChannel  chan error
-	subscriberEventChannel  chan *elemental.Event
-	subscriberStatusChannel chan manipulate.SubscriberStatus
+	subscribers []*Subscriber
 
-	started          bool
 	transactionQueue chan *Transaction
 
 	enableLog  bool
@@ -57,37 +54,34 @@ type Transaction struct {
 // backend manipulator and susbscriber. If the manipulator is nil, it will be assumed
 // that the cache is standalone (ie there is no backend to synchronize with).
 func NewMemDBVortex(
+	ctx context.Context,
 	datastore *MemdbDatastore,
-	backendManipulator manipulate.Manipulator,
-	backendSubscriber manipulate.Subscriber,
 	processors map[string]*config.ProcessorConfiguration,
 	model elemental.ModelManager,
-	logfile string,
-) manipvortex.Cache {
+	options ...Option,
+) (manipvortex.BufferedManipulator, error) {
 
-	return &MemDBVortex{
-		m:                       backendManipulator,
-		s:                       backendSubscriber,
-		model:                   model,
-		datastore:               datastore,
-		processors:              processors,
-		transactionQueue:        make(chan *Transaction, 1000),
-		subscriberErrorChannel:  make(chan error, 10),
-		subscriberEventChannel:  make(chan *elemental.Event, 100),
-		subscriberStatusChannel: make(chan manipulate.SubscriberStatus, 10),
-		enableLog:               logfile != "",
-		logfile:                 logfile,
+	if datastore == nil || processors == nil || model == nil {
+		return nil, fmt.Errorf("mandatory parameters must be initialized and not nil")
 	}
+
+	v := &MemDBVortex{
+		datastore:        datastore,
+		processors:       processors,
+		model:            model,
+		transactionQueue: make(chan *Transaction, 1000),
+		subscribers:      []*Subscriber{},
+	}
+
+	for _, option := range options {
+		option(v)
+	}
+
+	return v, v.run(ctx)
 }
 
 // Run starts the memory cache.
-func (v *MemDBVortex) Run(ctx context.Context) error {
-	v.Lock()
-	defer v.Unlock()
-
-	if v.started {
-		return fmt.Errorf("DB is already started")
-	}
+func (v *MemDBVortex) run(ctx context.Context) error {
 
 	if v.enableLog {
 		c, err := newLogWriter(ctx, v.logfile, 100)
@@ -95,10 +89,6 @@ func (v *MemDBVortex) Run(ctx context.Context) error {
 			return fmt.Errorf("cannot open commit log file")
 		}
 		v.logChannel = c
-	}
-
-	if v.datastore == nil || !v.datastore.IsInitialized() {
-		return fmt.Errorf("Datastore is nil or not initialized")
 	}
 
 	v.memory = manipmemory.NewMemoryManipulatorFromDB(v.datastore.GetDB())
@@ -120,9 +110,6 @@ func (v *MemDBVortex) Run(ctx context.Context) error {
 	if err := v.resync(ctx); err != nil {
 		return err
 	}
-
-	// You should not start this thing twice or havoc might happen.
-	v.started = true
 
 	return nil
 }
@@ -176,10 +163,6 @@ func (v *MemDBVortex) resync(ctx context.Context) error {
 
 	if v.m == nil {
 		return nil
-	}
-
-	if v.datastore == nil {
-		return fmt.Errorf("cannot resync - datastore is not initialized")
 	}
 
 	if err := v.datastore.Flush(); err != nil {
@@ -326,19 +309,22 @@ func (v *MemDBVortex) Count(mctx manipulate.Context, identity elemental.Identity
 	return v.memory.Count(mctx, identity)
 }
 
-// Start connects to the websocket and starts collecting events
-// until the given context is canceled or any non communication error is
-// received. The eventual error will be received in the Errors() channel.
-// If not nil, the given filter will be applied right away.
-func (v *MemDBVortex) Start(ctx context.Context, e *elemental.PushFilter) {
+func (v *MemDBVortex) hasBackendSubscriber() bool {
+	v.RLock()
+	defer v.RUnlock()
 
-	v.UpdateFilter(e)
+	return v.s != nil
 }
 
-// Implementation of the manipulate subscriber interface.
+func (v *MemDBVortex) registerSubscriber(s *Subscriber) {
+	v.Lock()
+	defer v.Unlock()
+
+	v.subscribers = append(v.subscribers, s)
+}
 
 // UpdateFilter updates the current filter.
-func (v *MemDBVortex) UpdateFilter(e *elemental.PushFilter) {
+func (v *MemDBVortex) updateFilter() {
 
 	v.RLock()
 	defer v.RUnlock()
@@ -355,42 +341,30 @@ func (v *MemDBVortex) UpdateFilter(e *elemental.PushFilter) {
 		filter.FilterIdentity(identity)
 	}
 
-	for callerIdentity := range e.Identities {
+	for _, subscriber := range v.subscribers {
+		for callerIdentity := range subscriber.filter.Identities {
 
-		cfg, ok := v.processors[callerIdentity]
-		if ok {
-			// If we are processing this event and there is a client
-			// subscription, we will only commit if the corresponding
-			// flag is set. Otherwise, the client will have to handle
-			// the update, so we removed it from the list.
-			if !cfg.CommitOnEvent {
-				delete(v.commitIdentityEvent, callerIdentity)
+			cfg, ok := v.processors[callerIdentity]
+			if ok {
+				// If we are processing this event and there is a client
+				// subscription, we will only commit if the corresponding
+				// flag is set. Otherwise, the client will have to handle
+				// the update, so we remove it from the list.
+				if !cfg.CommitOnEvent {
+					delete(v.commitIdentityEvent, callerIdentity)
+				}
+				continue
 			}
-			continue
+			// If it is not one of the registered identites and the client
+			// has subscribed anyway, we still register and forward it to the
+			// client.
+			filter.FilterIdentity(callerIdentity)
 		}
-		// If it is not one of the registered identites and the client
-		// has subscribed anyway, we still register and forward it to the
-		// client.
-		filter.FilterIdentity(callerIdentity)
 	}
 
+	// Update the downstream filter.
 	v.s.UpdateFilter(filter)
 }
-
-// Subscriber returns itself as a subscriber since it implements
-// the interface.
-func (v *MemDBVortex) Subscriber() manipulate.Subscriber {
-	return v
-}
-
-// Events returns the events channel.
-func (v *MemDBVortex) Events() chan *elemental.Event { return v.subscriberEventChannel }
-
-// Errors returns the errors channel.
-func (v *MemDBVortex) Errors() chan error { return v.subscriberErrorChannel }
-
-// Status returns the status channel.
-func (v *MemDBVortex) Status() chan manipulate.SubscriberStatus { return v.subscriberStatusChannel }
 
 // coreCRUDOperation implements the basic operation for updates of the db. This is used
 // by create, update, and delete.
@@ -749,25 +723,12 @@ func (v *MemDBVortex) monitor(ctx context.Context) {
 				v.eventHandler(ctx, evt)
 			}
 
-			// Push event upstream.
-			select {
-
-			case v.subscriberEventChannel <- evt:
-
-			default:
-				zap.L().Warn("Failed to push event upstream - subscriber busy")
-			}
+			v.pushEvent(evt)
 
 		case err := <-v.s.Errors():
 			zap.L().Error("Received error from the push channel", zap.Error(err))
 			// Push event upstream.
-			select {
-
-			case v.subscriberErrorChannel <- err:
-
-			default:
-				zap.L().Warn("Failed to push error upstream - subscriber busy")
-			}
+			v.pushErrors(err)
 
 		case status := <-v.s.Status():
 
@@ -787,17 +748,44 @@ func (v *MemDBVortex) monitor(ctx context.Context) {
 				return
 			}
 
-			// Push event upstream.
-			select {
-
-			case v.subscriberStatusChannel <- status:
-
-			default:
-				zap.L().Warn("Failed to push status upstream - subscriber busy")
-			}
+			v.pushStatus(status)
 
 		case <-ctx.Done():
 			return
+		}
+	}
+}
+
+func (v *MemDBVortex) pushEvent(evt *elemental.Event) {
+
+	for _, s := range v.subscribers {
+		if _, ok := s.filter.Identities[evt.Identity]; ok {
+			select {
+			case s.subscriberEventChannel <- evt:
+			default:
+				zap.L().Error("Subscriber channel is full")
+			}
+		}
+	}
+}
+
+func (v *MemDBVortex) pushStatus(status manipulate.SubscriberStatus) {
+
+	for _, s := range v.subscribers {
+		select {
+		case s.subscriberStatusChannel <- status:
+		default:
+			zap.L().Error("Subscriber channel is full")
+		}
+	}
+}
+
+func (v *MemDBVortex) pushErrors(err error) {
+	for _, s := range v.subscribers {
+		select {
+		case s.subscriberErrorChannel <- err:
+		default:
+			zap.L().Error("Subscriber channel is full")
 		}
 	}
 }
@@ -840,8 +828,7 @@ func (v *MemDBVortex) eventHandler(ctx context.Context, evt *elemental.Event) {
 		return
 	}
 
-	list := elemental.IdentifiablesList{obj}
-	if err := v.commitLocal(method, nil, list); err != nil {
+	if err := v.commitLocal(method, nil, elemental.IdentifiablesList{obj}); err != nil {
 		if method != elemental.OperationDelete {
 			zap.L().Error("failed to commit locally an event notification", zap.String("event", evt.String()), zap.Error(err))
 		}

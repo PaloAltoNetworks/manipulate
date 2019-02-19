@@ -34,47 +34,21 @@ func NewDatastore(c map[string]*config.MemDBIdentity) (*MemdbDatastore, error) {
 		schema.Tables[table] = index
 	}
 
+	db, err := memdb.NewMemDB(schema)
+	if err != nil {
+		return nil, err
+	}
+
 	return &MemdbDatastore{
 		schema: schema,
+		db:     db,
 	}, nil
-}
-
-// Run will create the DB. No schema modifications are allowed after that.
-func (d *MemdbDatastore) Run() error {
-	d.Lock()
-	defer d.Unlock()
-
-	if d.started {
-		return fmt.Errorf("memdb is already started")
-	}
-
-	db, err := memdb.NewMemDB(d.schema)
-	if err != nil {
-		return err
-	}
-
-	d.db = db
-	d.started = true
-
-	return nil
-}
-
-// IsInitialized returns true if the data store is initialized.
-func (d *MemdbDatastore) IsInitialized() bool {
-	d.Lock()
-	defer d.Unlock()
-
-	return d.started
 }
 
 // Flush will flush the datastore essentially creating a new one.
 func (d *MemdbDatastore) Flush() error {
 	d.Lock()
 	defer d.Unlock()
-
-	if !d.started {
-		return fmt.Errorf("Cannot flush datastore - it is not initialized")
-	}
 
 	db, err := memdb.NewMemDB(d.schema)
 	if err != nil {
