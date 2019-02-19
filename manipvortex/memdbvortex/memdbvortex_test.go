@@ -1461,6 +1461,96 @@ func Test_WriteBackBackend(t *testing.T) {
 	})
 }
 
+func Test_SubscriberRegistration(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	Convey("Given a valid vortex with configured subscribers", t, func() {
+		m := maniptest.NewTestManipulator()
+		us := maniptest.NewTestSubscriber()
+		d, err := newDatastore()
+		So(err, ShouldBeNil)
+
+		v, err := NewMemDBVortex(
+			ctx,
+			d,
+			newIdentityProcessor(config.WriteThrough),
+			testmodel.Manager(),
+			OptionBackendManipulator(m),
+			OptionBackendSubscriber(us),
+		)
+		So(err, ShouldBeNil)
+
+		Convey("When I register subscribers, they should register", func() {
+			s1, err := NewSubscriber(v, 100)
+			So(err, ShouldBeNil)
+			So(s1, ShouldNotBeNil)
+			s2, err := NewSubscriber(v, 100)
+			So(err, ShouldBeNil)
+			So(s2, ShouldNotBeNil)
+
+			allSubscribers := v.(*MemDBVortex).subscribers
+			So(allSubscribers, ShouldNotBeNil)
+			So(len(allSubscribers), ShouldEqual, 2)
+			So(allSubscribers[0], ShouldResemble, s1)
+			So(allSubscribers[1], ShouldResemble, s2)
+		})
+
+		Convey("When I check if it has a backend subscriber, I should get true", func() {
+			So(v.(*MemDBVortex).hasBackendSubscriber(), ShouldBeTrue)
+		})
+	})
+}
+
+func Test_updateFilter(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	Convey("Given a valid vortex with configured subscribers", t, func() {
+		m := maniptest.NewTestManipulator()
+		us := maniptest.NewTestSubscriber()
+		d, err := newDatastore()
+		So(err, ShouldBeNil)
+
+		v, err := NewMemDBVortex(
+			ctx,
+			d,
+			newIdentityProcessor(config.WriteThrough),
+			testmodel.Manager(),
+			OptionBackendManipulator(m),
+			OptionBackendSubscriber(us),
+		)
+		So(err, ShouldBeNil)
+
+		s1, err := NewSubscriber(v, 100)
+		So(err, ShouldBeNil)
+		So(s1, ShouldNotBeNil)
+		s2, err := NewSubscriber(v, 100)
+		So(err, ShouldBeNil)
+		So(s2, ShouldNotBeNil)
+
+		allSubscribers := v.(*MemDBVortex).subscribers
+		So(allSubscribers, ShouldNotBeNil)
+		So(len(allSubscribers), ShouldEqual, 2)
+		So(allSubscribers[0], ShouldResemble, s1)
+		So(allSubscribers[1], ShouldResemble, s2)
+
+		Convey("When I update the filter a subscriber the filter should be updated", func() {
+			filter := elemental.NewPushFilter()
+			filter.FilterIdentity(testmodel.ListIdentity.Name)
+			us.MockUpdateFilter(t, func(e *elemental.PushFilter) {
+				if len(e.Identities) == 1 {
+					if _, ok := e.Identities[testmodel.ListIdentity.Name]; ok {
+						panic("test")
+					}
+				}
+			})
+			So(func() { s1.UpdateFilter(filter) }, ShouldPanic)
+		})
+	})
+
+}
+
 // func Test_SubscriberMethods(t *testing.T) {
 // 	Convey("Given a memory DB vortex, with a subsriber and a manipulatr", t, func() {
 // 		m := maniptest.NewTestManipulator()

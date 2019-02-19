@@ -342,6 +342,7 @@ func (v *MemDBVortex) updateFilter() {
 	}
 
 	for _, subscriber := range v.subscribers {
+
 		for callerIdentity := range subscriber.filter.Identities {
 
 			cfg, ok := v.processors[callerIdentity]

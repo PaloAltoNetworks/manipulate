@@ -31,9 +31,9 @@ func NewSubscriber(m manipulate.Manipulator, queueSize int) (manipulate.Subscrib
 
 	s := &Subscriber{
 		v:                       v,
-		subscriberErrorChannel:  make(chan error, 10),
-		subscriberEventChannel:  make(chan *elemental.Event, 100),
-		subscriberStatusChannel: make(chan manipulate.SubscriberStatus, 10),
+		subscriberErrorChannel:  make(chan error, queueSize),
+		subscriberEventChannel:  make(chan *elemental.Event, queueSize),
+		subscriberStatusChannel: make(chan manipulate.SubscriberStatus, queueSize),
 	}
 
 	v.registerSubscriber(s)
