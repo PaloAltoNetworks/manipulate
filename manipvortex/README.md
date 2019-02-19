@@ -91,9 +91,6 @@ func NewMemoryDB(
     if err != nil {
         return nil, cancel, fmt.Errorf("failed to create local memory db: %s", err)
     }
-    if err := datastore.Run(); err != nil {
-        return nil, cancel, fmt.Errorf("failed to run the data store: %s", err)
-    }
 
 // Create the processors and the vortex.
     processors := map[string]*config.ProcessorConfiguration{
@@ -104,10 +101,14 @@ func NewMemoryDB(
             CommitOnEvent:    true,
         },
 
-    v := memdbvortex.NewMemDBVortex(datastore, nil, subscriber, processors, gaia.Manager(), "")
-    if err := v.Run(ctx); err != nil {
-        return nil, cancel, fmt.Errorf("failed to run vortex: %s", err)
-    }
+    v, err := memdbvortex.NewMemDBVortex(
+        ctx,
+        datastore,
+        processors,
+        gaia.Manager(),
+        memdbvortex.OptionBackendManipulator(s),
+        memdbvortex.OptionBackendSubscriber(subscriber),
+        )
 
     return v, cancel, err
 }

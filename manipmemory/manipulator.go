@@ -8,9 +8,9 @@ import (
 	"sync"
 
 	memdb "github.com/hashicorp/go-memdb"
-	"github.com/rs/xid"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type txnRegistry map[manipulate.TransactionID]*memdb.Txn
@@ -106,7 +106,7 @@ func (s *memdbManipulator) Create(mctx manipulate.Context, objects ...elemental.
 		// In caching scenarios the identifier is already set. Do not insert
 		// here. We will get it pre-populated from the master DB.
 		if object.Identifier() == "" {
-			object.SetIdentifier(xid.New().String())
+			object.SetIdentifier(bson.NewObjectId().Hex())
 		}
 
 		if err := txn.Insert(object.Identity().Category, object); err != nil {
