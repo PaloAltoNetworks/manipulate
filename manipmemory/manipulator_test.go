@@ -2,6 +2,8 @@ package manipmemory
 
 import (
 	"context"
+	"crypto/rand"
+	"strconv"
 	"testing"
 
 	memdb "github.com/hashicorp/go-memdb"
@@ -20,9 +22,13 @@ var Schema = &memdb.DBSchema{
 					Unique:  true,
 					Indexer: &memdb.StringFieldIndex{Field: "ID"},
 				},
-				"Name": &memdb.IndexSchema{
-					Name:    "Name",
+				"name": &memdb.IndexSchema{
+					Name:    "name",
 					Indexer: &memdb.StringFieldIndex{Field: "Name"},
+				},
+				"slice": &memdb.IndexSchema{
+					Name:    "slice",
+					Indexer: &memdb.StringSliceFieldIndex{Field: "Slice"},
 				},
 			},
 		},
@@ -33,8 +39,9 @@ func TestMemManipulator_NewMemoryManipulator(t *testing.T) {
 
 	Convey("Given I create a new MemoryManipulator with bad schema", t, func() {
 
-		Convey("Then it should panic", func() {
-			So(func() { NewMemoryManipulator(nil) }, ShouldPanic)
+		Convey("Then it should return err", func() {
+			_, err := NewMemoryManipulator(nil)
+			So(err, ShouldNotBeNil)
 		})
 	})
 }
@@ -43,9 +50,11 @@ func TestMemManipulator_Create(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
-		m := NewMemoryManipulator(Schema)
+		m, err := NewMemoryManipulator(Schema)
+		So(err, ShouldBeNil)
 		p := &testmodel.List{
-			Name: "Antoine",
+			Name:  "Antoine",
+			Slice: []string{"$names=antoine"},
 		}
 
 		Convey("When I create list", func() {
@@ -94,9 +103,11 @@ func TestMemManipulator_Retrieve(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
-		m := NewMemoryManipulator(Schema)
+		m, err := NewMemoryManipulator(Schema)
+		So(err, ShouldBeNil)
 		l1 := &testmodel.List{
-			Name: "Antoine1",
+			Name:  "Antoine1",
+			Slice: []string{"$name=Antoine1"},
 		}
 
 		_ = m.Create(nil, l1)
@@ -147,15 +158,26 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
-		m := NewMemoryManipulator(Schema)
+		m, err := NewMemoryManipulator(Schema)
+		So(err, ShouldBeNil)
 		l1 := &testmodel.List{
-			Name: "Antoine1",
+			Name:  "Antoine1",
+			Slice: []string{"$name=antoine1", "category=antoine", "a=b", "c=d"},
 		}
 		l2 := &testmodel.List{
-			Name: "Antoine2",
+			Name:  "Antoine2",
+			Slice: []string{"$name=antoine2", "category=antoine", "x=y", "w=z"},
+		}
+		l3 := &testmodel.List{
+			Name:  "Dimitri1",
+			Slice: []string{"$name=dimitri1", "category=dimitri", "a=b", "x=y"},
+		}
+		l4 := &testmodel.List{
+			Name:  "Dimitri2",
+			Slice: []string{"$name=dimitri2", "category=dimitri", "a=b", "x=y"},
 		}
 
-		_ = m.Create(nil, l1, l2)
+		_ = m.Create(nil, l1, l2, l3, l4)
 
 		Convey("When I retrieve the lists", func() {
 
@@ -167,9 +189,12 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 
-			Convey("Then I should  have retrieved l1 and l2", func() {
+			Convey("Then I should  have retrieved all the items", func() {
+				So(len(ps), ShouldEqual, 4)
 				So(ps, ShouldContain, l1)
 				So(ps, ShouldContain, l2)
+				So(ps, ShouldContain, l3)
+				So(ps, ShouldContain, l4)
 			})
 		})
 
@@ -180,7 +205,8 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 			mctx := manipulate.NewContext(
 				context.Background(),
 				manipulate.ContextOptionFilter(
-					manipulate.NewFilterComposer().WithKey("Name").Equals("Antoine1").Done(),
+					manipulate.NewFilterComposer().WithKey("Name").Equals("Antoine1").
+						WithKey("Slice").Contains("a=b").Done(),
 				),
 			)
 
@@ -191,8 +217,126 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 			})
 
 			Convey("Then I should only have retrieved l1", func() {
+				So(len(ps), ShouldEqual, 1)
 				So(ps, ShouldContain, l1)
 				So(ps, ShouldNotContain, l2)
+			})
+		})
+
+		Convey("When I retrieve the lists with an OR filter that matches l1 and l2", func() {
+
+			ps := testmodel.ListsList{}
+
+			filter := manipulate.NewFilterComposer().Or(
+				manipulate.NewFilterComposer().
+					WithKey("Name").Equals("Antoine1").Done(),
+				manipulate.NewFilterComposer().
+					WithKey("Name").Equals("Antoine2").Done(),
+			).Done()
+
+			mctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionFilter(filter),
+			)
+
+			err := m.RetrieveMany(mctx, &ps)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then I should have both items in the list", func() {
+				So(len(ps), ShouldEqual, 2)
+				So(ps, ShouldContain, l1)
+				So(ps, ShouldContain, l2)
+			})
+		})
+
+		Convey("When I retrieve the lists with an AND filter that matches l3 and l4", func() {
+
+			ps := testmodel.ListsList{}
+
+			filter := manipulate.NewFilterComposer().And(
+				manipulate.NewFilterComposer().
+					WithKey("Slice").Equals("category=dimitri").Done(),
+				manipulate.NewFilterComposer().
+					WithKey("Slice").Equals("a=b").Done(),
+			).Done()
+
+			mctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionFilter(filter),
+			)
+
+			err := m.RetrieveMany(mctx, &ps)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then I should have two items in the list", func() {
+				So(len(ps), ShouldEqual, 2)
+				So(ps, ShouldContain, l3)
+				So(ps, ShouldContain, l4)
+			})
+		})
+
+		Convey("When I retrieve the lists with the Contains comparator", func() {
+
+			ps := testmodel.ListsList{}
+
+			filter := manipulate.NewFilterComposer().
+				WithKey("Slice").Contains("category=dimitri", "a=b").Done()
+
+			mctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionFilter(filter),
+			)
+
+			err := m.RetrieveMany(mctx, &ps)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then I should have two items in the list", func() {
+				So(len(ps), ShouldEqual, 3)
+				So(ps, ShouldContain, l1)
+				So(ps, ShouldContain, l3)
+				So(ps, ShouldContain, l4)
+			})
+		})
+
+		Convey("When I retrieve the lists with an OR of Contains, I should get four items", func() {
+
+			ps := testmodel.ListsList{}
+
+			filter := manipulate.NewFilterComposer().Or(
+				manipulate.NewFilterComposer().
+					WithKey("Slice").Contains("category=dimitri", "a=b").Done(),
+				manipulate.NewFilterComposer().
+					WithKey("Slice").Contains("category=antoine").Done(),
+				manipulate.NewFilterComposer().
+					WithKey("Slice").Contains("x=y").Done(),
+			).Done()
+
+			mctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionFilter(filter),
+			)
+
+			err := m.RetrieveMany(mctx, &ps)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then I should have two items in the list", func() {
+				So(len(ps), ShouldEqual, 4)
+				So(ps, ShouldContain, l1)
+				So(ps, ShouldContain, l2)
+				So(ps, ShouldContain, l3)
+				So(ps, ShouldContain, l4)
 			})
 		})
 
@@ -221,9 +365,11 @@ func TestMemManipulator_Update(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
-		m := NewMemoryManipulator(Schema)
+		m, err := NewMemoryManipulator(Schema)
+		So(err, ShouldBeNil)
 		p := &testmodel.List{
-			Name: "Antoine",
+			Name:  "Antoine",
+			Slice: []string{"$names=antoine"},
 		}
 
 		Convey("When I create the list", func() {
@@ -282,9 +428,11 @@ func TestMemManipulator_Delete(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
-		m := NewMemoryManipulator(Schema)
+		m, err := NewMemoryManipulator(Schema)
+		So(err, ShouldBeNil)
 		p := &testmodel.List{
-			Name: "Antoine",
+			Name:  "Antoine",
+			Slice: []string{"$name=antoine"},
 		}
 
 		Convey("When I create the list", func() {
@@ -357,13 +505,16 @@ func TestMemManipulator_Count(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a list", t, func() {
 
-		m := NewMemoryManipulator(Schema)
+		m, err := NewMemoryManipulator(Schema)
+		So(err, ShouldBeNil)
 		l1 := &testmodel.List{
-			Name: "Antoine1",
+			Name:  "Antoine1",
+			Slice: []string{"$names=antoine1"},
 		}
 
 		l2 := &testmodel.List{
-			Name: "Antoine2",
+			Name:  "Antoine2",
+			Slice: []string{"$name=antoine2"},
 		}
 
 		Convey("When I create the list", func() {
@@ -434,7 +585,8 @@ func TestMemManipulator_Commit(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a transaction ID", t, func() {
 
-		m := NewMemoryManipulator(Schema)
+		m, err := NewMemoryManipulator(Schema)
+		So(err, ShouldBeNil)
 		tid := manipulate.NewTransactionID()
 
 		Convey("When I call Commit with a non existing tid", func() {
@@ -463,7 +615,8 @@ func TestMemManipulator_Abort(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a transaction ID", t, func() {
 
-		m := NewMemoryManipulator(Schema)
+		m, err := NewMemoryManipulator(Schema)
+		So(err, ShouldBeNil)
 		tid := manipulate.NewTransactionID()
 
 		Convey("When I call Abort with a non existing tid", func() {
@@ -491,7 +644,8 @@ func TestMemManipulator_txnForID(t *testing.T) {
 
 	Convey("Given I have a memory manipulator and a transaction ID", t, func() {
 
-		m := NewMemoryManipulator(Schema)
+		m, err := NewMemoryManipulator(Schema)
+		So(err, ShouldBeNil)
 		tid := manipulate.NewTransactionID()
 
 		Convey("When I call txnForID with an empty ID", func() {
@@ -523,4 +677,73 @@ func TestMemManipulator_txnForID(t *testing.T) {
 			})
 		})
 	})
+}
+
+func BenchmarkRetrieveMany(b *testing.B) {
+	b.StopTimer()
+
+	m, err := NewMemoryManipulator(Schema)
+	So(err, ShouldBeNil)
+	err = populateDB(m, 10000)
+	So(err, ShouldBeNil)
+
+	filters := []*manipulate.Filter{
+		manipulate.NewFilterComposer().
+			WithKey("Slice").Contains("label1=10", "label2=10").
+			Done(),
+		manipulate.NewFilterComposer().
+			WithKey("Slice").Contains("label1=10", "label2=10", "label=common").
+			Done(),
+	}
+	b.StartTimer()
+
+	for f, filter := range filters {
+		b.Run("Filter: "+strconv.Itoa(f), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+
+				list := testmodel.ListsList{}
+
+				mctx := manipulate.NewContext(
+					context.Background(),
+					manipulate.ContextOptionFilter(filter),
+				)
+				if err := m.RetrieveMany(mctx, &list); err != nil {
+					b.Errorf("Error in retrieve many: %s", err.Error())
+					b.FailNow()
+				}
+				if len(list) != 1 {
+					b.Errorf("Length of list is wrong: %d %d %d", len(list), i, b.N)
+					b.FailNow()
+				}
+			}
+		})
+	}
+}
+
+func populateDB(m manipulate.TransactionalManipulator, num int) error {
+
+	for i := 0; i < num; i++ {
+
+		iString := strconv.Itoa(i)
+
+		l := testmodel.NewList()
+
+		l.Name = "name" + iString
+
+		l.Slice = []string{"label1=" + iString, "label2=" + iString, "label=common"}
+
+		for j := 0; j < 14; j++ {
+			b := make([]byte, 32)
+			if _, err := rand.Read(b); err != nil {
+				return err
+			}
+			l.Slice = append(l.Slice, string(b))
+		}
+
+		if err := m.Create(nil, l); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
