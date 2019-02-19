@@ -13,9 +13,8 @@ import (
 // MemdbDatastore is the datastore of the vortex. It must be initialized
 // first and then provided to the vortext.
 type MemdbDatastore struct {
-	db      *memdb.MemDB
-	schema  *memdb.DBSchema
-	started bool
+	db     *memdb.MemDB
+	schema *memdb.DBSchema
 	sync.Mutex
 }
 
