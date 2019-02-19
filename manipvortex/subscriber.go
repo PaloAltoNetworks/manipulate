@@ -1,4 +1,4 @@
-package memdbvortex
+package manipvortex
 
 import (
 	"context"
@@ -8,28 +8,28 @@ import (
 	"go.aporeto.io/manipulate"
 )
 
-// Subscriber is the memdb vortex subscriber implementation.
-type Subscriber struct {
-	v                       *MemDBVortex
+// vortexSubscriber is the memdb vortex subscriber implementation.
+type vortexSubscriber struct {
+	v                       *vortexManipulator
 	subscriberErrorChannel  chan error
 	subscriberEventChannel  chan *elemental.Event
 	subscriberStatusChannel chan manipulate.SubscriberStatus
 	filter                  *elemental.PushFilter
 }
 
-// NewSubscriber creates a new subscriber.
+// NewSubscriber creates a new vortex subscriber.
 func NewSubscriber(m manipulate.Manipulator, queueSize int) (manipulate.Subscriber, error) {
 
-	v, ok := m.(*MemDBVortex)
+	v, ok := m.(*vortexManipulator)
 	if !ok {
-		return nil, fmt.Errorf("NewSubscriber only works with MemDBVortex manipulator")
+		return nil, fmt.Errorf("NewSubscriber only works with Vortex manipulator")
 	}
 
 	if !v.hasBackendSubscriber() {
 		return nil, fmt.Errorf("Vortex has no upstream subscriber - local subscriptions not supported")
 	}
 
-	s := &Subscriber{
+	s := &vortexSubscriber{
 		v:                       v,
 		subscriberErrorChannel:  make(chan error, queueSize),
 		subscriberEventChannel:  make(chan *elemental.Event, queueSize),
@@ -42,24 +42,24 @@ func NewSubscriber(m manipulate.Manipulator, queueSize int) (manipulate.Subscrib
 }
 
 // Start starts the subscriber.
-func (s *Subscriber) Start(ctx context.Context, e *elemental.PushFilter) {
+func (s *vortexSubscriber) Start(ctx context.Context, e *elemental.PushFilter) {
 	s.filter = e
 	s.v.updateFilter()
 }
 
 // UpdateFilter updates the current filter.
-func (s *Subscriber) UpdateFilter(e *elemental.PushFilter) {
+func (s *vortexSubscriber) UpdateFilter(e *elemental.PushFilter) {
 	s.filter = e
 	s.v.updateFilter()
 }
 
 // Events returns the events channel.
-func (s *Subscriber) Events() chan *elemental.Event { return s.subscriberEventChannel }
+func (s *vortexSubscriber) Events() chan *elemental.Event { return s.subscriberEventChannel }
 
 // Errors returns the errors channel.
-func (s *Subscriber) Errors() chan error { return s.subscriberErrorChannel }
+func (s *vortexSubscriber) Errors() chan error { return s.subscriberErrorChannel }
 
 // Status returns the status channel.
-func (s *Subscriber) Status() chan manipulate.SubscriberStatus {
+func (s *vortexSubscriber) Status() chan manipulate.SubscriberStatus {
 	return s.subscriberStatusChannel
 }

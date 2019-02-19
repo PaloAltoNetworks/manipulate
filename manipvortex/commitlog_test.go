@@ -1,4 +1,4 @@
-package memdbvortex
+package manipvortex
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
-	"go.aporeto.io/elemental/test/model"
+	testmodel "go.aporeto.io/elemental/test/model"
 	"go.aporeto.io/manipulate"
 )
 

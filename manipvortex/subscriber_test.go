@@ -1,13 +1,12 @@
-package memdbvortex
+package manipvortex
 
 import (
 	"context"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
-	"go.aporeto.io/elemental/test/model"
+	testmodel "go.aporeto.io/elemental/test/model"
 	"go.aporeto.io/manipulate/maniptest"
-	"go.aporeto.io/manipulate/manipvortex/config"
 )
 
 func Test_NewSubscriber(t *testing.T) {
@@ -21,13 +20,13 @@ func Test_NewSubscriber(t *testing.T) {
 		d, err := newDatastore()
 		So(err, ShouldBeNil)
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
-			OptionBackendSubscriber(s),
+			OptionUpstreamManipulator(m),
+			OptionUpstreamSubscriber(s),
 		)
 		So(err, ShouldBeNil)
 
@@ -48,12 +47,12 @@ func Test_NewSubscriber(t *testing.T) {
 		d, err := newDatastore()
 		So(err, ShouldBeNil)
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
+			OptionUpstreamManipulator(m),
 		)
 		So(err, ShouldBeNil)
 
@@ -75,13 +74,13 @@ func Test_SubscriberMethods(t *testing.T) {
 		d, err := newDatastore()
 		So(err, ShouldBeNil)
 
-		v, err := NewMemDBVortex(
+		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(config.WriteThrough),
+			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
-			OptionBackendSubscriber(us),
+			OptionUpstreamManipulator(m),
+			OptionUpstreamSubscriber(us),
 		)
 		So(err, ShouldBeNil)
 		So(v, ShouldNotBeNil)

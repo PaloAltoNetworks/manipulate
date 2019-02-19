@@ -69,9 +69,6 @@ func (m *testSubscriber) MockStatus(t *testing.T, impl func() chan manipulate.Su
 
 func (m *testSubscriber) Start(ctx context.Context, filter *elemental.PushFilter) {
 
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.startMock != nil {
 		mock.startMock(ctx, filter)
 	}
@@ -80,9 +77,6 @@ func (m *testSubscriber) Start(ctx context.Context, filter *elemental.PushFilter
 
 func (m *testSubscriber) UpdateFilter(filter *elemental.PushFilter) {
 
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.updateFilerMock != nil {
 		mock.updateFilerMock(filter)
 	}
@@ -90,9 +84,6 @@ func (m *testSubscriber) UpdateFilter(filter *elemental.PushFilter) {
 }
 
 func (m *testSubscriber) Events() chan *elemental.Event {
-
-	m.lock.Lock()
-	defer m.lock.Unlock()
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.eventsMock != nil {
 		return mock.eventsMock()
@@ -103,9 +94,6 @@ func (m *testSubscriber) Events() chan *elemental.Event {
 
 func (m *testSubscriber) Errors() chan error {
 
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.errorsMock != nil {
 		return mock.errorsMock()
 	}
@@ -115,9 +103,6 @@ func (m *testSubscriber) Errors() chan error {
 
 func (m *testSubscriber) Status() chan manipulate.SubscriberStatus {
 
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.statusMock != nil {
 		return mock.statusMock()
 	}
@@ -126,6 +111,9 @@ func (m *testSubscriber) Status() chan manipulate.SubscriberStatus {
 }
 
 func (m *testSubscriber) currentMocks(t *testing.T) *mockedSubscriberMethods {
+
+	m.lock.Lock()
+	defer m.lock.Unlock()
 
 	mocks := m.mocks[t]
 
