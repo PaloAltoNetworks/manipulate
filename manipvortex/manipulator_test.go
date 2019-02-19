@@ -87,7 +87,7 @@ func Test_New(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
+			OptionUpstreamManipulator(m),
 		)
 		So(err, ShouldBeNil)
 		So(v, ShouldNotBeNil)
@@ -140,7 +140,7 @@ func Test_UnsupportedMethods(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
+			OptionUpstreamManipulator(m),
 		)
 		So(err, ShouldBeNil)
 
@@ -171,7 +171,7 @@ func Test_Count(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
+			OptionUpstreamManipulator(m),
 		)
 		So(err, ShouldBeNil)
 
@@ -207,7 +207,7 @@ func Test_run(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
+			OptionUpstreamManipulator(m),
 			OptionTransactionLog("./testlog"),
 		)
 		So(err, ShouldBeNil)
@@ -231,7 +231,7 @@ func Test_run(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
+			OptionUpstreamManipulator(m),
 			OptionTransactionLog("./bad-directory/test"),
 		)
 		So(err, ShouldNotBeNil)
@@ -252,8 +252,8 @@ func Test_run(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
-			OptionBackendSubscriber(s),
+			OptionUpstreamManipulator(m),
+			OptionUpstreamSubscriber(s),
 		)
 		So(err, ShouldNotBeNil)
 	})
@@ -273,8 +273,8 @@ func Test_run(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
-			OptionBackendSubscriber(s),
+			OptionUpstreamManipulator(m),
+			OptionUpstreamSubscriber(s),
 		)
 		So(err, ShouldBeNil)
 	})
@@ -330,7 +330,7 @@ func Test_Resync(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
+			OptionUpstreamManipulator(m),
 		)
 
 		So(err, ShouldBeNil)
@@ -362,7 +362,7 @@ func Test_Resync(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
+			OptionUpstreamManipulator(m),
 		)
 		So(err, ShouldBeNil)
 
@@ -405,7 +405,7 @@ func Test_RetrieveMany(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
+			OptionUpstreamManipulator(m),
 		)
 		So(err, ShouldBeNil)
 
@@ -479,7 +479,7 @@ func Test_Retrieve(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
+			OptionUpstreamManipulator(m),
 		)
 		So(err, ShouldBeNil)
 
@@ -562,7 +562,7 @@ func Test_Create(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
+			OptionUpstreamManipulator(m),
 		)
 		So(err, ShouldBeNil)
 
@@ -656,7 +656,7 @@ func Test_Update(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
+			OptionUpstreamManipulator(m),
 		)
 		So(err, ShouldBeNil)
 
@@ -761,7 +761,7 @@ func Test_Delete(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
+			OptionUpstreamManipulator(m),
 		)
 		So(err, ShouldBeNil)
 
@@ -967,7 +967,7 @@ func Test_WriteThroughBackend(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
+			OptionUpstreamManipulator(m),
 		)
 		So(err, ShouldBeNil)
 
@@ -1139,8 +1139,8 @@ func Test_Monitor(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
-			OptionBackendSubscriber(s),
+			OptionUpstreamManipulator(m),
+			OptionUpstreamSubscriber(s),
 		)
 		So(err, ShouldBeNil)
 
@@ -1304,7 +1304,7 @@ func Test_WriteBackBackend(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteBack),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
+			OptionUpstreamManipulator(m),
 		)
 		So(err, ShouldBeNil)
 
@@ -1475,8 +1475,8 @@ func Test_SubscriberRegistration(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
-			OptionBackendSubscriber(us),
+			OptionUpstreamManipulator(m),
+			OptionUpstreamSubscriber(us),
 		)
 		So(err, ShouldBeNil)
 
@@ -1516,8 +1516,8 @@ func Test_updateFilter(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
-			OptionBackendSubscriber(us),
+			OptionUpstreamManipulator(m),
+			OptionUpstreamSubscriber(us),
 		)
 		So(err, ShouldBeNil)
 

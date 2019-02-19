@@ -13,13 +13,13 @@ func Test_Options(t *testing.T) {
 
 		Convey("When I set the manipulator it should work", func() {
 			m := maniptest.NewTestManipulator()
-			OptionBackendManipulator(m)(v)
+			OptionUpstreamManipulator(m)(v)
 			So(v.upstreamManipulator, ShouldResemble, m)
 		})
 
 		Convey("When I set the subscriber it should work", func() {
 			s := maniptest.NewTestSubscriber()
-			OptionBackendSubscriber(s)(v)
+			OptionUpstreamSubscriber(s)(v)
 			So(v.upstreamSubscriber, ShouldResemble, s)
 		})
 

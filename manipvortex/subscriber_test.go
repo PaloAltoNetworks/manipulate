@@ -25,8 +25,8 @@ func Test_NewSubscriber(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
-			OptionBackendSubscriber(s),
+			OptionUpstreamManipulator(m),
+			OptionUpstreamSubscriber(s),
 		)
 		So(err, ShouldBeNil)
 
@@ -52,7 +52,7 @@ func Test_NewSubscriber(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
+			OptionUpstreamManipulator(m),
 		)
 		So(err, ShouldBeNil)
 
@@ -79,8 +79,8 @@ func Test_SubscriberMethods(t *testing.T) {
 			d,
 			newIdentityProcessor(WriteThrough),
 			testmodel.Manager(),
-			OptionBackendManipulator(m),
-			OptionBackendSubscriber(us),
+			OptionUpstreamManipulator(m),
+			OptionUpstreamSubscriber(us),
 		)
 		So(err, ShouldBeNil)
 		So(v, ShouldNotBeNil)

@@ -7,15 +7,15 @@ import (
 // Option represents an option can can be passed to NewContext.
 type Option func(*vortexManipulator)
 
-// OptionBackendManipulator sets the backend manipulator.
-func OptionBackendManipulator(manipulator manipulate.Manipulator) Option {
+// OptionUpstreamManipulator sets the upstream manipulator.
+func OptionUpstreamManipulator(manipulator manipulate.Manipulator) Option {
 	return func(m *vortexManipulator) {
 		m.upstreamManipulator = manipulator
 	}
 }
 
-// OptionBackendSubscriber sets the backend subscriber.
-func OptionBackendSubscriber(s manipulate.Subscriber) Option {
+// OptionUpstreamSubscriber sets the upstream subscriber.
+func OptionUpstreamSubscriber(s manipulate.Subscriber) Option {
 	return func(m *vortexManipulator) {
 		m.upstreamSubscriber = s
 	}
