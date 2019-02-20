@@ -82,7 +82,7 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 
 	if m.tokenManager != nil {
 
-		ictx, cancel := context.WithTimeout(m.ctx, 10*time.Second)
+		ictx, cancel := context.WithTimeout(m.ctx, 30*time.Second)
 		defer cancel()
 
 		token, err := m.tokenManager.Issue(ictx)
