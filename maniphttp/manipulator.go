@@ -608,7 +608,7 @@ func (s *httpManipulator) send(mctx manipulate.Context, request *http.Request) (
 	}
 
 	if response.StatusCode == http.StatusServiceUnavailable {
-		return response, manipulate.NewErrCannotCommunicate("Service unavaiuable")
+		return response, manipulate.NewErrCannotCommunicate("Service unavailable")
 	}
 
 	if response.StatusCode == http.StatusGatewayTimeout {
