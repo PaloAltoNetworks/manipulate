@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mitchellh/copystructure"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.uber.org/zap"
@@ -354,7 +355,7 @@ func (m *vortexManipulator) updateFilter() {
 	}
 
 	for _, subscriber := range m.subscribers {
-
+		subscriber.RLock()
 		for callerIdentity := range subscriber.filter.Identities {
 
 			cfg, ok := m.processors[callerIdentity]
@@ -373,6 +374,7 @@ func (m *vortexManipulator) updateFilter() {
 			// client.
 			filter.FilterIdentity(callerIdentity)
 		}
+		subscriber.RUnlock()
 	}
 
 	// Update the downstream filter.
@@ -774,9 +776,15 @@ func (m *vortexManipulator) monitor(ctx context.Context) {
 func (m *vortexManipulator) pushEvent(evt *elemental.Event) {
 
 	for _, s := range m.subscribers {
+		sevent, err := copystructure.Copy(evt)
+		if err != nil {
+			zap.L().Error("failed to copy event", zap.Error(err))
+			continue
+		}
+
 		if _, ok := s.filter.Identities[evt.Identity]; ok {
 			select {
-			case s.subscriberEventChannel <- evt:
+			case s.subscriberEventChannel <- sevent.(*elemental.Event):
 			default:
 				zap.L().Error("Subscriber channel is full")
 			}

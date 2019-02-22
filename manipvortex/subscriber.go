@@ -3,6 +3,7 @@ package manipvortex
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
@@ -15,6 +16,8 @@ type vortexSubscriber struct {
 	subscriberEventChannel  chan *elemental.Event
 	subscriberStatusChannel chan manipulate.SubscriberStatus
 	filter                  *elemental.PushFilter
+
+	sync.RWMutex
 }
 
 // NewSubscriber creates a new vortex subscriber.
@@ -54,7 +57,9 @@ func (s *vortexSubscriber) UpdateFilter(e *elemental.PushFilter) {
 		return
 	}
 
+	s.Lock()
 	s.filter = e
+	s.Unlock()
 
 	s.v.updateFilter()
 }
