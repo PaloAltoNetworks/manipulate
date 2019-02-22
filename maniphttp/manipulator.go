@@ -82,7 +82,7 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 
 	if m.tokenManager != nil {
 
-		ictx, cancel := context.WithTimeout(m.ctx, 10*time.Second)
+		ictx, cancel := context.WithTimeout(m.ctx, 30*time.Second)
 		defer cancel()
 
 		token, err := m.tokenManager.Issue(ictx)
@@ -604,7 +604,15 @@ func (s *httpManipulator) send(mctx manipulate.Context, request *http.Request) (
 	}
 
 	if response.StatusCode == http.StatusBadGateway {
+		return response, manipulate.NewErrCannotCommunicate("Bad gateway")
+	}
+
+	if response.StatusCode == http.StatusServiceUnavailable {
 		return response, manipulate.NewErrCannotCommunicate("Service unavailable")
+	}
+
+	if response.StatusCode == http.StatusGatewayTimeout {
+		return response, manipulate.NewErrCannotCommunicate("Gateway timeout")
 	}
 
 	if response.StatusCode == http.StatusLocked {
