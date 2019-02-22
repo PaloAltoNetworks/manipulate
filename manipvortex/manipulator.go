@@ -177,7 +177,6 @@ func (m *vortexManipulator) resync(ctx context.Context) error {
 	}
 
 	for _, cfg := range m.processors {
-
 		if err := m.migrateObject(ctx, cfg); err != nil {
 			return err
 		}
@@ -606,6 +605,7 @@ func (m *vortexManipulator) migrateObject(ctx context.Context, cfg *ProcessorCon
 		mctx := manipulate.NewContext(
 			ctx,
 			manipulate.ContextOptionPage(page, pageSize),
+			manipulate.ContextOptionRecursive(true),
 		)
 
 		subctx, cancel := context.WithDeadline(ctx, time.Now().Add(10*time.Second))

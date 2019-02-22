@@ -125,7 +125,6 @@ func (m *memdbManipulator) Create(mctx manipulate.Context, objects ...elemental.
 	defer txn.Abort()
 
 	for _, object := range objects {
-
 		// In caching scenarios the identifier is already set. Do not insert
 		// here. We will get it pre-populated from the master DB.
 		if object.Identifier() == "" {

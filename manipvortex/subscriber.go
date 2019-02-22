@@ -43,13 +43,19 @@ func NewSubscriber(m manipulate.Manipulator, queueSize int) (manipulate.Subscrib
 
 // Start starts the subscriber.
 func (s *vortexSubscriber) Start(ctx context.Context, e *elemental.PushFilter) {
-	s.filter = e
-	s.v.updateFilter()
+
+	s.UpdateFilter(e)
 }
 
 // UpdateFilter updates the current filter.
 func (s *vortexSubscriber) UpdateFilter(e *elemental.PushFilter) {
+
+	if e == nil {
+		return
+	}
+
 	s.filter = e
+
 	s.v.updateFilter()
 }
 
