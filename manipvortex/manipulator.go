@@ -70,6 +70,7 @@ func New(
 		model:                 model,
 		transactionQueue:      make(chan *Transaction, 1000),
 		subscribers:           []*vortexSubscriber{},
+		commitIdentityEvent:   map[string]struct{}{},
 	}
 
 	for _, option := range options {
@@ -91,6 +92,17 @@ func (m *vortexManipulator) run(ctx context.Context) error {
 	}
 
 	if m.upstreamSubscriber != nil {
+
+		filter := elemental.NewPushFilter()
+		for identity, cfg := range m.processors {
+			if cfg.CommitOnEvent {
+				m.commitIdentityEvent[identity] = struct{}{}
+			}
+			filter.FilterIdentity(identity)
+		}
+
+		m.upstreamSubscriber.Start(ctx, filter)
+
 		go m.monitor(ctx)
 	}
 
@@ -610,7 +622,7 @@ func (m *vortexManipulator) migrateObject(ctx context.Context, cfg *ProcessorCon
 			manipulate.ContextOptionRecursive(true),
 		)
 
-		subctx, cancel := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
+		subctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
 		if err := manipulate.Retry(
@@ -706,26 +718,6 @@ func (m *vortexManipulator) backgroundSync(ctx context.Context) {
 // and keeps the local cache up-to-date with the backend.
 func (m *vortexManipulator) monitor(ctx context.Context) {
 
-	if m.upstreamSubscriber == nil {
-		return
-	}
-
-	filter := elemental.NewPushFilter()
-
-	m.commitIdentityEvent = map[string]struct{}{}
-
-	for identity, cfg := range m.processors {
-		if cfg.CommitOnEvent {
-			m.commitIdentityEvent[identity] = struct{}{}
-		}
-		filter.FilterIdentity(identity)
-	}
-
-	subctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	m.upstreamSubscriber.Start(subctx, filter)
-
 	for {
 
 		select {
@@ -759,7 +751,7 @@ func (m *vortexManipulator) monitor(ctx context.Context) {
 
 			case manipulate.SubscriberStatusReconnection:
 				zap.L().Info("Upstream event channel restored")
-				m.reconnectionHandler(subctx)
+				m.reconnectionHandler(ctx)
 
 			case manipulate.SubscriberStatusFinalDisconnection:
 				return
