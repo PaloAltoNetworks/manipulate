@@ -208,10 +208,10 @@ func IsDisconnectedError(err error) bool {
 	return ok
 }
 
-// ErrTooManyRequests represents the error returned when the server api is locked..
+// ErrTooManyRequests represents the error returned when the server api is locked.
 type ErrTooManyRequests struct{ message string }
 
-// NewErrTooManyRequests returns a new ErrCannotCommunicate.
+// NewErrTooManyRequests returns a new ErrTooManyRequests.
 func NewErrTooManyRequests(message string) ErrTooManyRequests {
 	return ErrTooManyRequests{message: message}
 }
@@ -221,5 +221,21 @@ func (e ErrTooManyRequests) Error() string { return "Cannot communicate: " + e.m
 // IsTooManyRequestsError returns true if the given error is am ErrTooManyRequests.
 func IsTooManyRequestsError(err error) bool {
 	_, ok := err.(ErrTooManyRequests)
+	return ok
+}
+
+// ErrTLS represents the error returned when there is a TLS error.
+type ErrTLS struct{ message string }
+
+// NewErrTLS returns a new ErrTLS.
+func NewErrTLS(message string) ErrTLS {
+	return ErrTLS{message: message}
+}
+
+func (e ErrTLS) Error() string { return "TLS Error: " + e.message }
+
+// IsTLSError returns true if the given error is am ErrTLS.
+func IsTLSError(err error) bool {
+	_, ok := err.(ErrTLS)
 	return ok
 }

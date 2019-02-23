@@ -8,9 +8,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"sync"
 	"time"
@@ -600,6 +602,14 @@ func (s *httpManipulator) send(mctx manipulate.Context, request *http.Request) (
 
 	response, err := s.client.Do(request)
 	if err != nil {
+
+		if uerr, ok := err.(*url.Error); ok {
+			switch uerr.Err.(type) {
+			case x509.UnknownAuthorityError, x509.CertificateInvalidError, x509.HostnameError:
+				return response, manipulate.NewErrTLS(err.Error())
+			}
+		}
+
 		return response, manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
 	}
 
