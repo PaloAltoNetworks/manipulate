@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mitchellh/copystructure"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.uber.org/zap"
@@ -69,6 +70,7 @@ func New(
 		model:                 model,
 		transactionQueue:      make(chan *Transaction, 1000),
 		subscribers:           []*vortexSubscriber{},
+		commitIdentityEvent:   map[string]struct{}{},
 	}
 
 	for _, option := range options {
@@ -84,12 +86,23 @@ func (m *vortexManipulator) run(ctx context.Context) error {
 	if m.enableLog {
 		c, err := newLogWriter(ctx, m.logfile, 100)
 		if err != nil {
-			return fmt.Errorf("cannot open commit log file")
+			return fmt.Errorf("cannot open commit log file: %s", err)
 		}
 		m.logChannel = c
 	}
 
 	if m.upstreamSubscriber != nil {
+
+		filter := elemental.NewPushFilter()
+		for identity, cfg := range m.processors {
+			if cfg.CommitOnEvent {
+				m.commitIdentityEvent[identity] = struct{}{}
+			}
+			filter.FilterIdentity(identity)
+		}
+
+		m.upstreamSubscriber.Start(ctx, filter)
+
 		go m.monitor(ctx)
 	}
 
@@ -137,7 +150,7 @@ func (m *vortexManipulator) Flush(ctx context.Context) error {
 	m.transactionQueue = make(chan *Transaction, 1000)
 
 	if err := f.Flush(ctx); err != nil {
-		return fmt.Errorf("failed to flush the datastore; %s", err)
+		return fmt.Errorf("unable to flush the datastore: %s", err)
 	}
 
 	// Restart the background process on the channel.
@@ -173,13 +186,12 @@ func (m *vortexManipulator) resync(ctx context.Context) error {
 	}
 
 	if err := f.Flush(ctx); err != nil {
-		return fmt.Errorf("failed to flush the datastore; %s", err)
+		return fmt.Errorf("unable to resync the datastore: %s", err)
 	}
 
 	for _, cfg := range m.processors {
-
 		if err := m.migrateObject(ctx, cfg); err != nil {
-			return err
+			return fmt.Errorf("unable to migrate objects: %s", err)
 		}
 	}
 
@@ -249,7 +261,7 @@ func (m *vortexManipulator) Retrieve(mctx manipulate.Context, objects ...element
 
 			// Make sure that we update our cache for future reference.
 			if err := m.downstreamManipulator.Create(mctx, objects...); err != nil {
-				return fmt.Errorf("failed to update local cache from backend: %s", err)
+				return fmt.Errorf("unable to update local cache from backend: %s", err)
 			}
 
 			return nil
@@ -300,11 +312,11 @@ func (m *vortexManipulator) DeleteMany(mctx manipulate.Context, identity element
 	m.RLock()
 	defer m.RUnlock()
 
-	if m.upstreamManipulator != nil {
-		return m.upstreamManipulator.DeleteMany(mctx, identity)
+	if m.upstreamManipulator == nil {
+		return fmt.Errorf("delete many not supported by vortexManipulator")
 	}
 
-	return fmt.Errorf("delete many not supported by vortexManipulator")
+	return m.upstreamManipulator.DeleteMany(mctx, identity)
 }
 
 // Count implements the corresponding interface method.
@@ -355,7 +367,7 @@ func (m *vortexManipulator) updateFilter() {
 	}
 
 	for _, subscriber := range m.subscribers {
-
+		subscriber.RLock()
 		for callerIdentity := range subscriber.filter.Identities {
 
 			cfg, ok := m.processors[callerIdentity]
@@ -374,6 +386,7 @@ func (m *vortexManipulator) updateFilter() {
 			// client.
 			filter.FilterIdentity(callerIdentity)
 		}
+		subscriber.RUnlock()
 	}
 
 	// Update the downstream filter.
@@ -606,9 +619,10 @@ func (m *vortexManipulator) migrateObject(ctx context.Context, cfg *ProcessorCon
 		mctx := manipulate.NewContext(
 			ctx,
 			manipulate.ContextOptionPage(page, pageSize),
+			manipulate.ContextOptionRecursive(true),
 		)
 
-		subctx, cancel := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
+		subctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
 		if err := manipulate.Retry(
@@ -704,26 +718,6 @@ func (m *vortexManipulator) backgroundSync(ctx context.Context) {
 // and keeps the local cache up-to-date with the backend.
 func (m *vortexManipulator) monitor(ctx context.Context) {
 
-	if m.upstreamSubscriber == nil {
-		return
-	}
-
-	filter := elemental.NewPushFilter()
-
-	m.commitIdentityEvent = map[string]struct{}{}
-
-	for identity, cfg := range m.processors {
-		if cfg.CommitOnEvent {
-			m.commitIdentityEvent[identity] = struct{}{}
-		}
-		filter.FilterIdentity(identity)
-	}
-
-	subctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	m.upstreamSubscriber.Start(subctx, filter)
-
 	for {
 
 		select {
@@ -757,7 +751,7 @@ func (m *vortexManipulator) monitor(ctx context.Context) {
 
 			case manipulate.SubscriberStatusReconnection:
 				zap.L().Info("Upstream event channel restored")
-				m.reconnectionHandler(subctx)
+				m.reconnectionHandler(ctx)
 
 			case manipulate.SubscriberStatusFinalDisconnection:
 				return
@@ -774,9 +768,15 @@ func (m *vortexManipulator) monitor(ctx context.Context) {
 func (m *vortexManipulator) pushEvent(evt *elemental.Event) {
 
 	for _, s := range m.subscribers {
+		sevent, err := copystructure.Copy(evt)
+		if err != nil {
+			zap.L().Error("failed to copy event", zap.Error(err))
+			continue
+		}
+
 		if _, ok := s.filter.Identities[evt.Identity]; ok {
 			select {
-			case s.subscriberEventChannel <- evt:
+			case s.subscriberEventChannel <- sevent.(*elemental.Event):
 			default:
 				zap.L().Error("Subscriber channel is full")
 			}
