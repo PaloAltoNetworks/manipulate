@@ -66,6 +66,10 @@ type BufferedManipulator interface {
 	// ReSync forces a complete resync of the cache.
 	ReSync(context.Context) error
 
+	// Prefetch instructs the manipulator to prefetch data given in the
+	// filter.
+	Prefetch(context.Context, Context, elemental.Identity) error
+
 	FlushableManipulator
 	Manipulator
 }
