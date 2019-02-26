@@ -346,7 +346,7 @@ func (m *vortexManipulator) Prefetch(ctx context.Context, mctx manipulate.Contex
 
 	dest := m.model.Identifiables(identity)
 
-	if err := m.upstreamManipulator.RetrieveMany(mctx, dest); err != nil {
+	if err := m.upstreamManipulator.RetrieveMany(mctx.Derive(), dest); err != nil {
 		return fmt.Errorf("unable to prefetch data: %s", err)
 	}
 
