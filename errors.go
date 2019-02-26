@@ -216,7 +216,7 @@ func NewErrTooManyRequests(message string) ErrTooManyRequests {
 	return ErrTooManyRequests{message: message}
 }
 
-func (e ErrTooManyRequests) Error() string { return "Cannot communicate: " + e.message }
+func (e ErrTooManyRequests) Error() string { return "Too many requests: " + e.message }
 
 // IsTooManyRequestsError returns true if the given error is am ErrTooManyRequests.
 func IsTooManyRequestsError(err error) bool {
@@ -232,7 +232,7 @@ func NewErrTLS(message string) ErrTLS {
 	return ErrTLS{message: message}
 }
 
-func (e ErrTLS) Error() string { return "TLS Error: " + e.message }
+func (e ErrTLS) Error() string { return "TLS error: " + e.message }
 
 // IsTLSError returns true if the given error is am ErrTLS.
 func IsTLSError(err error) bool {

@@ -116,4 +116,18 @@ func TestThing_Function(t *testing.T) {
 		func(text string) error { return NewErrDisconnected(text) },
 		IsDisconnectedError,
 	)
+
+	genericErrorTest(
+		t,
+		"Too many requests: ",
+		func(text string) error { return NewErrTooManyRequests(text) },
+		IsTooManyRequestsError,
+	)
+
+	genericErrorTest(
+		t,
+		"TLS error: ",
+		func(text string) error { return NewErrTLS(text) },
+		IsTLSError,
+	)
 }
