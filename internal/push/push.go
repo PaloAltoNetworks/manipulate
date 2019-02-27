@@ -34,6 +34,8 @@ type subscription struct {
 	status                  chan manipulate.SubscriberStatus
 	url                     string
 	filters                 chan *elemental.PushFilter
+	currentFilter           *elemental.PushFilter
+	currentFilterLock       *sync.Mutex
 	tokenRenewed            chan struct{}
 	currentToken            string
 	currentTokenLock        *sync.Mutex
@@ -66,6 +68,7 @@ func NewSubscriber(
 		errors:                  make(chan error, errorChSize),
 		status:                  make(chan manipulate.SubscriberStatus, statusChSize),
 		filters:                 make(chan *elemental.PushFilter, filterChSize),
+		currentFilterLock:       &sync.Mutex{},
 		config: wsc.Config{
 			PongWait:     10 * time.Second,
 			WriteWait:    10 * time.Second,
@@ -76,20 +79,29 @@ func NewSubscriber(
 	}
 }
 
-func (s *subscription) UpdateFilter(filter *elemental.PushFilter) { s.filters <- filter }
-func (s *subscription) Events() chan *elemental.Event             { return s.events }
-func (s *subscription) Errors() chan error                        { return s.errors }
-func (s *subscription) Status() chan manipulate.SubscriberStatus  { return s.status }
+func (s *subscription) Events() chan *elemental.Event            { return s.events }
+func (s *subscription) Errors() chan error                       { return s.errors }
+func (s *subscription) Status() chan manipulate.SubscriberStatus { return s.status }
 
 func (s *subscription) Start(ctx context.Context, filter *elemental.PushFilter) {
 
 	if filter != nil {
-		s.filters <- filter
+		s.setCurrentFilter(filter)
 	}
 
 	s.registerTokenNotifier(s.id, s.setCurrentToken)
 
 	go s.listen(ctx)
+}
+
+func (s *subscription) UpdateFilter(filter *elemental.PushFilter) {
+
+	s.setCurrentFilter(filter)
+
+	select {
+	case s.filters <- filter:
+	default:
+	}
 }
 
 func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
@@ -154,6 +166,14 @@ func (s *subscription) listen(ctx context.Context) {
 			s.publishError(err)
 			return
 		}
+		// If we have a current filter, we send it right away
+		if f := s.getCurrentFilter(); f != nil {
+			select {
+			case s.filters <- f:
+			default:
+			}
+		}
+
 		isReconnection = true
 
 	processingLoop:
@@ -252,4 +272,19 @@ func (s *subscription) getCurrentToken() string {
 	s.currentTokenLock.Unlock()
 
 	return t
+}
+
+func (s *subscription) setCurrentFilter(f *elemental.PushFilter) {
+
+	s.currentFilterLock.Lock()
+	s.currentFilter = f
+	s.currentFilterLock.Unlock()
+}
+
+func (s *subscription) getCurrentFilter() *elemental.PushFilter {
+
+	s.currentFilterLock.Lock()
+	defer s.currentFilterLock.Unlock()
+
+	return s.currentFilter
 }
