@@ -31,6 +31,7 @@ type vortexManipulator struct {
 	defaultReadConsistency  manipulate.ReadConsistency
 	defaultWriteConsistency manipulate.WriteConsistency
 	defaultQueueDuration    time.Duration
+	pageSize                int
 
 	sync.RWMutex
 }
@@ -71,6 +72,7 @@ func New(
 		defaultWriteConsistency: cfg.writeConsistency,
 		enableLog:               cfg.enableLog,
 		logfile:                 cfg.logfile,
+		pageSize:                cfg.defaultPageSize,
 		processors:              processors,
 		model:                   model,
 		transactionQueue:        cfg.transactionQueue,
@@ -132,7 +134,7 @@ func (m *vortexManipulator) RetrieveMany(mctx manipulate.Context, dest elemental
 	m.RLock()
 	defer m.RUnlock()
 
-	if !m.isProcessable(mctx, dest.Identity()) {
+	if !m.shouldProcess(mctx, dest.Identity()) {
 		if m.upstreamManipulator != nil {
 			return m.upstreamManipulator.RetrieveMany(mctx, dest)
 		}
@@ -166,7 +168,7 @@ func (m *vortexManipulator) Retrieve(mctx manipulate.Context, objects ...element
 
 	// If we are not processing the object or the object has a parent
 	// send it upstream. We only deal with CRUDs.
-	if !m.isProcessable(mctx, objects[0].Identity()) {
+	if !m.shouldProcess(mctx, objects[0].Identity()) {
 		if m.upstreamManipulator != nil {
 			return m.upstreamManipulator.Retrieve(mctx, objects...)
 		}
@@ -255,18 +257,17 @@ func (m *vortexManipulator) Prefetch(ctx context.Context, mctx manipulate.Contex
 		return nil
 	}
 
-	dest := m.model.Identifiables(identity)
-
-	if err := m.upstreamManipulator.RetrieveMany(mctx.Derive(), dest); err != nil {
-		return fmt.Errorf("unable to prefetch data: %s", err)
-	}
-
-	objects := dest.List()
-
-	for _, obj := range objects {
-		if err := m.downstreamManipulator.Create(nil, obj); err != nil {
-			return fmt.Errorf("unable to commit prefetched data: %s", err)
-		}
+	if err := manipulate.IterFunc(
+		ctx,
+		m.upstreamManipulator,
+		m.model.Identifiables(identity),
+		mctx,
+		func(block elemental.Identifiables) error {
+			return m.downstreamManipulator.Create(nil, block.List()...)
+		},
+		m.pageSize,
+	); err != nil {
+		return fmt.Errorf("unable to commit prefetched data: %s", err)
 	}
 
 	return nil
@@ -347,7 +348,7 @@ func (m *vortexManipulator) coreCRUDOperation(operation elemental.Operation, mct
 
 	// If the identity is not registered or the request has a parent
 	// send upstream. We are not dealing with this locally.
-	if !m.isProcessable(mctx, objects[0].Identity()) {
+	if !m.shouldProcess(mctx, objects[0].Identity()) {
 		return m.commitUpstream(mctx.Context(), operation, mctx, objects...)
 	}
 
@@ -362,9 +363,9 @@ func (m *vortexManipulator) coreCRUDOperation(operation elemental.Operation, mct
 	return m.commitLocal(operation, mctx, objects)
 }
 
-// isProcessable returns true if the request can be processed by the cache. If false,
+// shouldProcess returns true if the request can be processed by the cache. If false,
 // it must be forwarded to the upstream.
-func (m *vortexManipulator) isProcessable(mctx manipulate.Context, identity elemental.Identity) bool {
+func (m *vortexManipulator) shouldProcess(mctx manipulate.Context, identity elemental.Identity) bool {
 
 	_, ok := m.processors[identity.Name]
 	if !ok {
@@ -587,30 +588,29 @@ func (m *vortexManipulator) resync(ctx context.Context) error {
 		return nil
 	}
 
-	f, ok := m.downstreamManipulator.(manipulate.FlushableManipulator)
-	if !ok {
-		return nil
-	}
-
-	if err := f.Flush(ctx); err != nil {
-		return fmt.Errorf("unable to resync the datastore: %s", err)
+	if f, ok := m.downstreamManipulator.(manipulate.FlushableManipulator); ok {
+		if err := f.Flush(ctx); err != nil {
+			return fmt.Errorf("unable to resync the datastore: %s", err)
+		}
 	}
 
 	for _, cfg := range m.processors {
+
+		if cfg.LazySync {
+			continue
+		}
+
 		if err := manipulate.IterFunc(
 			ctx,
 			m.upstreamManipulator,
 			m.model.Identifiables(cfg.Identity),
 			manipulate.NewContext(ctx, manipulate.ContextOptionRecursive(true)),
 			func(block elemental.Identifiables) error {
-				if err := m.commitLocal(elemental.OperationCreate, nil, block.List()); err != nil {
-					return fmt.Errorf("unable to write objects to local db: %s", err)
-				}
-				return nil
+				return m.commitLocal(elemental.OperationCreate, nil, block.List())
 			},
-			100,
+			m.pageSize,
 		); err != nil {
-			return fmt.Errorf("unable to fetch objects: %s", err)
+			return fmt.Errorf("unable to write objects to local db: %s", err)
 		}
 	}
 
