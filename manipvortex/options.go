@@ -100,7 +100,7 @@ func OptionPrefetcher(p Prefetcher) Option {
 
 // OptionPageSize is the page size during migration.
 func OptionPageSize(n int) Option {
-	return func(m *vortexManipulator) {
-		m.pagesize = n
+	return func(cfg *config) {
+		cfg.defaultPageSize = n
 	}
 }
