@@ -82,7 +82,170 @@ func New(
 	return m, m.run(ctx)
 }
 
-// Run starts the memory cache.
+// Flush implements the flush interface of the Vortex. It will flush
+// all the cache for write-through. For write-back it will wait
+// for a maximum of 10 seconds for transactions to complete. When
+// done it will flush the channel and create a completely fresh
+// db.
+func (m *vortexManipulator) Flush(ctx context.Context) error {
+
+	m.Lock()
+	defer m.Unlock()
+
+	f, ok := m.downstreamManipulator.(manipulate.FlushableManipulator)
+	if !ok {
+		return nil
+	}
+
+	// Wait for the channel to clean up
+	maxDelay := time.Now().Add(10 * time.Second)
+	for len(m.transactionQueue) > 0 && time.Now().Before(maxDelay) {
+		time.Sleep(1 * time.Second)
+	}
+
+	// Flush any outstanding transactions and restart the backgrond sync
+	close(m.transactionQueue)
+	m.transactionQueue = make(chan *Transaction, 1000)
+
+	if err := f.Flush(ctx); err != nil {
+		return fmt.Errorf("unable to flush the datastore: %s", err)
+	}
+
+	// Restart the background process on the channel.
+	go m.backgroundSync(ctx)
+
+	return nil
+}
+
+func (m *vortexManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.Identifiables) error {
+
+	m.RLock()
+	defer m.RUnlock()
+
+	if !m.isProcessable(mctx, dest.Identity()) {
+		if m.upstreamManipulator != nil {
+			return m.upstreamManipulator.RetrieveMany(mctx, dest)
+		}
+		return nil
+	}
+
+	cfg := m.processors[dest.Identity().Name]
+
+	if cfg.RetrieveManyHook != nil {
+		commit, err := cfg.RetrieveManyHook(m.downstreamManipulator, mctx, dest)
+		if !commit {
+			return err
+		}
+	}
+
+	return m.downstreamManipulator.RetrieveMany(mctx, dest)
+}
+
+func (m *vortexManipulator) Retrieve(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+
+	m.RLock()
+	defer m.RUnlock()
+
+	if len(objects) == 0 {
+		return nil
+	}
+
+	if !isCommonIdentity(objects...) {
+		return fmt.Errorf("all objects in operation must be of the same identity")
+	}
+
+	// If we are not processing the object or the object has a parent
+	// send it upstream. We only deal with CRUDs.
+	if !m.isProcessable(mctx, objects[0].Identity()) {
+		if m.upstreamManipulator != nil {
+			return m.upstreamManipulator.Retrieve(mctx, objects...)
+		}
+		return nil
+	}
+
+	if err := m.downstreamManipulator.Retrieve(mctx, objects...); err != nil {
+
+		// If we can't find it locally, and its strong consistency retrieve
+		// we will try the backend if we have one.
+		if m.upstreamManipulator != nil && (mctx != nil && mctx.ReadConsistency() == manipulate.ReadConsistencyStrong) {
+
+			if err := m.upstreamManipulator.Retrieve(mctx, objects...); err != nil {
+				return err
+			}
+
+			// Make sure that we update our cache for future reference.
+			if err := m.downstreamManipulator.Create(mctx, objects...); err != nil {
+				return fmt.Errorf("unable to update local cache from backend: %s", err)
+			}
+
+			return nil
+		}
+
+		return err
+	}
+
+	return nil
+}
+
+func (m *vortexManipulator) Create(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+
+	m.RLock()
+	defer m.RUnlock()
+
+	return m.coreCRUDOperation(elemental.OperationCreate, mctx, objects...)
+}
+
+func (m *vortexManipulator) Update(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+
+	m.RLock()
+	defer m.RUnlock()
+
+	return m.coreCRUDOperation(elemental.OperationUpdate, mctx, objects...)
+}
+
+func (m *vortexManipulator) Delete(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+
+	m.RLock()
+	defer m.RUnlock()
+
+	return m.coreCRUDOperation(elemental.OperationDelete, mctx, objects...)
+}
+
+func (m *vortexManipulator) DeleteMany(mctx manipulate.Context, identity elemental.Identity) error {
+
+	m.RLock()
+	defer m.RUnlock()
+
+	if m.upstreamManipulator == nil {
+		return fmt.Errorf("delete many not supported by vortexManipulator")
+	}
+
+	return m.upstreamManipulator.DeleteMany(mctx, identity)
+}
+
+func (m *vortexManipulator) Count(mctx manipulate.Context, identity elemental.Identity) (int, error) {
+
+	m.RLock()
+	defer m.RUnlock()
+
+	if m.downstreamManipulator == nil {
+		return 0, fmt.Errorf("datastore is not initialized")
+	}
+
+	return m.downstreamManipulator.Count(mctx, identity)
+}
+
+func (m *vortexManipulator) ReSync(ctx context.Context) error {
+
+	m.Lock()
+	defer m.Unlock()
+
+	// Call the internal resync after we lock. Need to make
+	// sure that everyone is blocked while doing resync.
+	return m.resync(ctx)
+
+}
+
 func (m *vortexManipulator) run(ctx context.Context) error {
 
 	if m.enableLog {
@@ -126,53 +289,6 @@ func (m *vortexManipulator) run(ctx context.Context) error {
 	return nil
 }
 
-// Flush implements the flush interface of the Vortex. It will flush
-// all the cache for write-through. For write-back it will wait
-// for a maximum of 10 seconds for transactions to complete. When
-// done it will flush the channel and create a completely fresh
-// db.
-func (m *vortexManipulator) Flush(ctx context.Context) error {
-
-	m.Lock()
-	defer m.Unlock()
-
-	f, ok := m.downstreamManipulator.(manipulate.FlushableManipulator)
-	if !ok {
-		return nil
-	}
-
-	// Wait for the channel to clean up
-	maxDelay := time.Now().Add(10 * time.Second)
-	for len(m.transactionQueue) > 0 && time.Now().Before(maxDelay) {
-		time.Sleep(1 * time.Second)
-	}
-
-	// Flush any outstanding transactions and restart the backgrond sync
-	close(m.transactionQueue)
-	m.transactionQueue = make(chan *Transaction, 1000)
-
-	if err := f.Flush(ctx); err != nil {
-		return fmt.Errorf("unable to flush the datastore: %s", err)
-	}
-
-	// Restart the background process on the channel.
-	go m.backgroundSync(ctx)
-
-	return nil
-}
-
-// ReSync implements the ReSync interface of the vortex.
-func (m *vortexManipulator) ReSync(ctx context.Context) error {
-
-	m.Lock()
-	defer m.Unlock()
-
-	// Call the internal resync after we lock. Need to make
-	// sure that everyone is blocked while doing resync.
-	return m.resync(ctx)
-
-}
-
 // resync is an internal resync that assumes the caller will
 // take the locks. It is called from various places where
 // callers already have the lock.
@@ -192,146 +308,24 @@ func (m *vortexManipulator) resync(ctx context.Context) error {
 	}
 
 	for _, cfg := range m.processors {
-		if err := m.migrateObject(ctx, cfg); err != nil {
-			return fmt.Errorf("unable to migrate objects: %s", err)
+		if err := manipulate.IterFunc(
+			ctx,
+			m.upstreamManipulator,
+			m.model.Identifiables(cfg.Identity),
+			manipulate.NewContext(ctx, manipulate.ContextOptionRecursive(true)),
+			func(block elemental.Identifiables) error {
+				if err := m.commitLocal(elemental.OperationCreate, nil, block.List()); err != nil {
+					return fmt.Errorf("unable to write objects to local db: %s", err)
+				}
+				return nil
+			},
+			100,
+		); err != nil {
+			return fmt.Errorf("unable to fetch objects: %s", err)
 		}
 	}
 
 	return nil
-}
-
-// RetrieveMany implements the manipulate interface. We are retrieving
-// from the cache only.
-func (m *vortexManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.Identifiables) error {
-
-	m.RLock()
-	defer m.RUnlock()
-
-	if !m.isProcessable(mctx, dest.Identity()) {
-		if m.upstreamManipulator != nil {
-			return m.upstreamManipulator.RetrieveMany(mctx, dest)
-		}
-		return nil
-	}
-
-	cfg := m.processors[dest.Identity().Name]
-
-	if cfg.RetrieveManyHook != nil {
-		commit, err := cfg.RetrieveManyHook(m.downstreamManipulator, mctx, dest)
-		if !commit {
-			return err
-		}
-	}
-
-	return m.downstreamManipulator.RetrieveMany(mctx, dest)
-}
-
-// Retrieve implements the manipulate interface. We are retrieving
-// from the cache first, unless  if strong consistency is requested
-// in which case, we can retrieve from the main node.
-func (m *vortexManipulator) Retrieve(mctx manipulate.Context, objects ...elemental.Identifiable) error {
-
-	m.RLock()
-	defer m.RUnlock()
-
-	if len(objects) == 0 {
-		return nil
-	}
-
-	if !m.isCommonIdentity(objects...) {
-		return fmt.Errorf("all objects in operation must be of the same identity")
-	}
-
-	// If we are not processing the object or the object has a parent
-	// send it upstream. We only deal with CRUDs.
-	if !m.isProcessable(mctx, objects[0].Identity()) {
-		if m.upstreamManipulator != nil {
-			return m.upstreamManipulator.Retrieve(mctx, objects...)
-		}
-		return nil
-	}
-
-	if err := m.downstreamManipulator.Retrieve(mctx, objects...); err != nil {
-
-		// If we can't find it locally, and its strong consistency retrieve
-		// we will try the backend if we have one.
-		if m.upstreamManipulator != nil && (mctx != nil && mctx.ReadConsistency() == manipulate.ReadConsistencyStrong) {
-
-			if err := m.upstreamManipulator.Retrieve(mctx, objects...); err != nil {
-				return err
-			}
-
-			// Make sure that we update our cache for future reference.
-			if err := m.downstreamManipulator.Create(mctx, objects...); err != nil {
-				return fmt.Errorf("unable to update local cache from backend: %s", err)
-			}
-
-			return nil
-		}
-
-		return err
-	}
-
-	return nil
-}
-
-// Create implements the manipulate interface for object creation.
-// Depending on the cache mode it will return immediately or after is
-// synchronized.
-func (m *vortexManipulator) Create(mctx manipulate.Context, objects ...elemental.Identifiable) error {
-
-	m.RLock()
-	defer m.RUnlock()
-
-	return m.coreCRUDOperation(elemental.OperationCreate, mctx, objects...)
-}
-
-// Update implements the manipulate interface for object updates.
-// Depending on the cache mode it will return immediately or after
-// it is synchronized.
-func (m *vortexManipulator) Update(mctx manipulate.Context, objects ...elemental.Identifiable) error {
-
-	m.RLock()
-	defer m.RUnlock()
-
-	return m.coreCRUDOperation(elemental.OperationUpdate, mctx, objects...)
-}
-
-// Delete implements the manipulate interface for object deletes.
-// Depending on the cache mode it will return immediately or after
-// it is synchronized.
-func (m *vortexManipulator) Delete(mctx manipulate.Context, objects ...elemental.Identifiable) error {
-
-	m.RLock()
-	defer m.RUnlock()
-
-	return m.coreCRUDOperation(elemental.OperationDelete, mctx, objects...)
-}
-
-// DeleteMany implements the corresponding interface method.
-func (m *vortexManipulator) DeleteMany(mctx manipulate.Context, identity elemental.Identity) error {
-
-	m.RLock()
-	defer m.RUnlock()
-
-	if m.upstreamManipulator == nil {
-		return fmt.Errorf("delete many not supported by vortexManipulator")
-	}
-
-	return m.upstreamManipulator.DeleteMany(mctx, identity)
-}
-
-// Count implements the corresponding interface method.
-func (m *vortexManipulator) Count(mctx manipulate.Context, identity elemental.Identity) (int, error) {
-
-	m.RLock()
-	defer m.RUnlock()
-
-	if m.downstreamManipulator == nil {
-		return 0, fmt.Errorf("datastore is not initialized")
-	}
-
-	return m.downstreamManipulator.Count(mctx, identity)
 }
 
 func (m *vortexManipulator) hasBackendSubscriber() bool {
@@ -399,7 +393,7 @@ func (m *vortexManipulator) updateFilter() {
 // by create, update, and delete.
 func (m *vortexManipulator) coreCRUDOperation(operation elemental.Operation, mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
-	if !m.isCommonIdentity(objects...) {
+	if !isCommonIdentity(objects...) {
 		return fmt.Errorf("all objects in operation must be of the same identity")
 	}
 
@@ -422,23 +416,6 @@ func (m *vortexManipulator) coreCRUDOperation(operation elemental.Operation, mct
 	}
 
 	return m.commitLocal(operation, mctx, objects)
-}
-
-// isCommonIdentity will validate that all objects in the operation have the same identity.
-// We do not support calls with different identities.
-func (m *vortexManipulator) isCommonIdentity(objects ...elemental.Identifiable) bool {
-	if len(objects) == 0 {
-		return false
-	}
-
-	first := objects[0].Identity()
-	for _, obj := range objects {
-		if !first.IsEqual(obj.Identity()) {
-			return false
-		}
-	}
-
-	return true
 }
 
 // isProcessable returns true if the request can be processed by the cache. If false,
@@ -611,53 +588,6 @@ func (m *vortexManipulator) genericUpdater(method elemental.Operation, mctx mani
 		default:
 			return false, fmt.Errorf("commit queue is full: %d", len(m.transactionQueue))
 		}
-	}
-}
-
-// migrateObject will read all the objects from the backend and store them in
-// the internal database.
-func (m *vortexManipulator) migrateObject(ctx context.Context, cfg *ProcessorConfiguration) error {
-
-	// We use pagination. We might 1000s of objects that are
-	// reading at this point.
-
-	page := 1
-	pageSize := 100
-
-	for {
-		objList := m.model.Identifiables(cfg.Identity)
-
-		mctx := manipulate.NewContext(
-			ctx,
-			manipulate.ContextOptionPage(page, pageSize),
-			manipulate.ContextOptionRecursive(true),
-		)
-
-		subctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-		defer cancel()
-
-		if err := manipulate.Retry(
-			subctx,
-			func() error {
-				return m.upstreamManipulator.RetrieveMany(mctx, objList)
-			},
-			nil,
-		); err != nil {
-			return fmt.Errorf("unable to retrieve objects from backend: %s", err)
-		}
-
-		objects := objList.List()
-
-		if len(objects) == 0 {
-			return nil
-		}
-
-		if err := m.commitLocal(elemental.OperationCreate, nil, objList.List()); err != nil {
-			return fmt.Errorf("unable to write objects to local db: %s", err)
-		}
-
-		page = page + 1
-
 	}
 }
 
