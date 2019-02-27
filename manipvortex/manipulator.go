@@ -774,7 +774,7 @@ func (m *vortexManipulator) pushEvent(evt *elemental.Event) {
 			continue
 		}
 
-		if _, ok := s.filter.Identities[evt.Identity]; ok {
+		if !s.filter.IsFilteredOut(evt.Identity, evt.Type) {
 			select {
 			case s.subscriberEventChannel <- sevent.(*elemental.Event):
 			default:
