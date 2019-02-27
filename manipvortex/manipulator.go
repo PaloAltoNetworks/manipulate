@@ -15,16 +15,6 @@ import (
 // updater is the type of all crud functions.
 type updater func(mctx manipulate.Context, objects ...elemental.Identifiable) error
 
-// Transaction is the event that captures the transaction for later processing. It is
-// also the structure stored in the transaction logs.
-type Transaction struct {
-	Date     time.Time
-	mctx     manipulate.Context
-	Objects  []elemental.Identifiable
-	Method   elemental.Operation
-	Deadline time.Time
-}
-
 // vortexManipulator is a Vortex based on the memdb implementation.
 type vortexManipulator struct {
 	upstreamManipulator     manipulate.Manipulator
@@ -40,6 +30,7 @@ type vortexManipulator struct {
 	logChannel              chan *Transaction
 	defaultReadConsistency  manipulate.ReadConsistency
 	defaultWriteConsistency manipulate.WriteConsistency
+	defaultQueueDuration    time.Duration
 
 	sync.RWMutex
 }
@@ -83,6 +74,7 @@ func New(
 		processors:              processors,
 		model:                   model,
 		transactionQueue:        cfg.transactionQueue,
+		defaultQueueDuration:    cfg.defaultQueueDuration,
 		subscribers:             []*vortexSubscriber{},
 		commitIdentityEvent:     map[string]struct{}{},
 	}
@@ -592,6 +584,11 @@ func (m *vortexManipulator) genericUpdater(method elemental.Operation, mctx mani
 		wc = m.defaultWriteConsistency
 	}
 
+	tdeadline := cfg.QueueingDuration
+	if tdeadline == 0 {
+		tdeadline = m.defaultQueueDuration
+	}
+
 	switch wc {
 
 	case manipulate.WriteConsistencyStrong, manipulate.WriteConsistencyStrongest:
@@ -607,7 +604,7 @@ func (m *vortexManipulator) genericUpdater(method elemental.Operation, mctx mani
 			mctx:     mctx,
 			Objects:  objects,
 			Method:   method,
-			Deadline: time.Now().Add(cfg.QueueingDuration),
+			Deadline: time.Now().Add(tdeadline),
 		}:
 			return false, nil
 

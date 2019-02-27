@@ -66,7 +66,6 @@ func newIdentityProcessor(readConsistency manipulate.ReadConsistency, writeConsi
 			Identity:         testmodel.ListIdentity,
 			ReadConsistency:  readConsistency,
 			WriteConsistency: writeConsistency,
-			QueueingDuration: time.Minute,
 			CommitOnEvent:    true,
 		},
 	}

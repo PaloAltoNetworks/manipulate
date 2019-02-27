@@ -96,8 +96,6 @@ func NewMemoryDB(
     processors := map[string]*config.ProcessorConfiguration{
         testmodel.ListIdentity.Name: &config.ProcessorConfiguration{
             Identity:         testmodel.ListIdentity,
-            Mode:             mode,
-            QueueingDuration: time.Minute,
             CommitOnEvent:    true,
         },
 

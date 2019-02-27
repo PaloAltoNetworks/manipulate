@@ -2,6 +2,7 @@ package manipvortex
 
 import (
 	"testing"
+	"time"
 
 	"go.aporeto.io/manipulate"
 
@@ -21,6 +22,7 @@ func Test_newOptions(t *testing.T) {
 			So(cfg.writeConsistency, ShouldEqual, manipulate.WriteConsistencyStrong)
 			So(cfg.upstreamManipulator, ShouldBeNil)
 			So(cfg.upstreamSubscriber, ShouldBeNil)
+			So(cfg.defaultQueueDuration, ShouldEqual, time.Second)
 			So(cfg.transactionQueue, ShouldHaveSameTypeAs, make(chan *Transaction, 1000))
 		})
 	})
@@ -65,6 +67,11 @@ func Test_Options(t *testing.T) {
 			OptionDefaultConsistency(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault)(cfg)
 			So(cfg.readConsistency, ShouldEqual, manipulate.ReadConsistencyEventual)
 			So(cfg.writeConsistency, ShouldEqual, manipulate.WriteConsistencyStrong)
+		})
+
+		Convey("OptionTransactionQueueDuration with defaults should work", func() {
+			OptionTransactionQueueDuration(time.Minute)(cfg)
+			So(cfg.defaultQueueDuration, ShouldEqual, time.Minute)
 		})
 	})
 }
