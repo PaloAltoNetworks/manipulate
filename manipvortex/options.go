@@ -16,6 +16,7 @@ type config struct {
 	readConsistency      manipulate.ReadConsistency
 	writeConsistency     manipulate.WriteConsistency
 	defaultQueueDuration time.Duration
+	defaultPageSize      int
 }
 
 func newConfig() *config {
@@ -24,6 +25,7 @@ func newConfig() *config {
 		readConsistency:      manipulate.ReadConsistencyEventual,
 		writeConsistency:     manipulate.WriteConsistencyStrong,
 		defaultQueueDuration: time.Second,
+		defaultPageSize:      10000,
 	}
 }
 
@@ -77,5 +79,12 @@ func OptionTransactionQueueLength(n int) Option {
 func OptionTransactionQueueDuration(d time.Duration) Option {
 	return func(cfg *config) {
 		cfg.defaultQueueDuration = d
+	}
+}
+
+// OptionDefaultPageSize is the page size during fetching.
+func OptionDefaultPageSize(defaultPageSize int) Option {
+	return func(cfg *config) {
+		cfg.defaultPageSize = defaultPageSize
 	}
 }

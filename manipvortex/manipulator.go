@@ -117,6 +117,16 @@ func (m *vortexManipulator) Flush(ctx context.Context) error {
 	return nil
 }
 
+func (m *vortexManipulator) ReSync(ctx context.Context) error {
+
+	m.Lock()
+	defer m.Unlock()
+
+	// Call the internal resync after we lock. Need to make
+	// sure that everyone is blocked while doing resync.
+	return m.resync(ctx)
+}
+
 func (m *vortexManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.Identifiables) error {
 
 	m.RLock()
@@ -235,93 +245,27 @@ func (m *vortexManipulator) Count(mctx manipulate.Context, identity elemental.Id
 	return m.downstreamManipulator.Count(mctx, identity)
 }
 
-func (m *vortexManipulator) ReSync(ctx context.Context) error {
+// Prefetch implements the corresponding interface method.
+func (m *vortexManipulator) Prefetch(ctx context.Context, mctx manipulate.Context, identity elemental.Identity) error {
 
-	m.Lock()
-	defer m.Unlock()
-
-	// Call the internal resync after we lock. Need to make
-	// sure that everyone is blocked while doing resync.
-	return m.resync(ctx)
-
-}
-
-func (m *vortexManipulator) run(ctx context.Context) error {
-
-	if m.enableLog {
-		c, err := newLogWriter(ctx, m.logfile, 100)
-		if err != nil {
-			return fmt.Errorf("cannot open commit log file: %s", err)
-		}
-		m.logChannel = c
-	}
-
-	if m.upstreamSubscriber != nil {
-
-		filter := elemental.NewPushFilter()
-		for identity, cfg := range m.processors {
-			if cfg.CommitOnEvent {
-				m.commitIdentityEvent[identity] = struct{}{}
-			}
-			filter.FilterIdentity(identity)
-		}
-
-		m.upstreamSubscriber.Start(ctx, filter)
-
-		go m.monitor(ctx)
-	}
-
-	// Start the background thread. It will be blocked
-	// when we do resyncs and this is ok. We want it blocked
-	// so that resync continues while any updates are buffered.
-	go m.backgroundSync(ctx)
-
-	// Do a complete DB resync at this point to download any objects.
-	// Note that we are locked down. Any updates coming will be
-	// queued waiting for us to finish and they will apply
-	// after that. There is a possible race condition here
-	// where our read gets a newer object than a pending update.
-	// Only way to resolve is to use update times.
-	if err := m.resync(ctx); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// resync is an internal resync that assumes the caller will
-// take the locks. It is called from various places where
-// callers already have the lock.
-func (m *vortexManipulator) resync(ctx context.Context) error {
+	m.RLock()
+	defer m.RUnlock()
 
 	if m.upstreamManipulator == nil {
 		return nil
 	}
 
-	f, ok := m.downstreamManipulator.(manipulate.FlushableManipulator)
-	if !ok {
-		return nil
+	dest := m.model.Identifiables(identity)
+
+	if err := m.upstreamManipulator.RetrieveMany(mctx.Derive(), dest); err != nil {
+		return fmt.Errorf("unable to prefetch data: %s", err)
 	}
 
-	if err := f.Flush(ctx); err != nil {
-		return fmt.Errorf("unable to resync the datastore: %s", err)
-	}
+	objects := dest.List()
 
-	for _, cfg := range m.processors {
-		if err := manipulate.IterFunc(
-			ctx,
-			m.upstreamManipulator,
-			m.model.Identifiables(cfg.Identity),
-			manipulate.NewContext(ctx, manipulate.ContextOptionRecursive(true)),
-			func(block elemental.Identifiables) error {
-				if err := m.commitLocal(elemental.OperationCreate, nil, block.List()); err != nil {
-					return fmt.Errorf("unable to write objects to local db: %s", err)
-				}
-				return nil
-			},
-			100,
-		); err != nil {
-			return fmt.Errorf("unable to fetch objects: %s", err)
+	for _, obj := range objects {
+		if err := m.downstreamManipulator.Create(nil, obj); err != nil {
+			return fmt.Errorf("unable to commit prefetched data: %s", err)
 		}
 	}
 
@@ -589,6 +533,88 @@ func (m *vortexManipulator) genericUpdater(method elemental.Operation, mctx mani
 			return false, fmt.Errorf("commit queue is full: %d", len(m.transactionQueue))
 		}
 	}
+}
+
+func (m *vortexManipulator) run(ctx context.Context) error {
+
+	if m.enableLog {
+		c, err := newLogWriter(ctx, m.logfile, 100)
+		if err != nil {
+			return fmt.Errorf("cannot open commit log file: %s", err)
+		}
+		m.logChannel = c
+	}
+
+	if m.upstreamSubscriber != nil {
+
+		filter := elemental.NewPushFilter()
+		for identity, cfg := range m.processors {
+			if cfg.CommitOnEvent {
+				m.commitIdentityEvent[identity] = struct{}{}
+			}
+			filter.FilterIdentity(identity)
+		}
+
+		m.upstreamSubscriber.Start(ctx, filter)
+
+		go m.monitor(ctx)
+	}
+
+	// Start the background thread. It will be blocked
+	// when we do resyncs and this is ok. We want it blocked
+	// so that resync continues while any updates are buffered.
+	go m.backgroundSync(ctx)
+
+	// Do a complete DB resync at this point to download any objects.
+	// Note that we are locked down. Any updates coming will be
+	// queued waiting for us to finish and they will apply
+	// after that. There is a possible race condition here
+	// where our read gets a newer object than a pending update.
+	// Only way to resolve is to use update times.
+	if err := m.resync(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// resync is an internal resync that assumes the caller will
+// take the locks. It is called from various places where
+// callers already have the lock.
+func (m *vortexManipulator) resync(ctx context.Context) error {
+
+	if m.upstreamManipulator == nil {
+		return nil
+	}
+
+	f, ok := m.downstreamManipulator.(manipulate.FlushableManipulator)
+	if !ok {
+		return nil
+	}
+
+	if err := f.Flush(ctx); err != nil {
+		return fmt.Errorf("unable to resync the datastore: %s", err)
+	}
+
+	for _, cfg := range m.processors {
+		if err := manipulate.IterFunc(
+			ctx,
+			m.upstreamManipulator,
+			m.model.Identifiables(cfg.Identity),
+			manipulate.NewContext(ctx, manipulate.ContextOptionRecursive(true)),
+			func(block elemental.Identifiables) error {
+				if err := m.commitLocal(elemental.OperationCreate, nil, block.List()); err != nil {
+					return fmt.Errorf("unable to write objects to local db: %s", err)
+				}
+				return nil
+			},
+			100,
+		); err != nil {
+			return fmt.Errorf("unable to fetch objects: %s", err)
+		}
+	}
+
+	return nil
 }
 
 // backgroundSync will empty the transaction queue and try to sync it

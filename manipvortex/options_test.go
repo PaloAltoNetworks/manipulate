@@ -24,6 +24,7 @@ func Test_newOptions(t *testing.T) {
 			So(cfg.upstreamSubscriber, ShouldBeNil)
 			So(cfg.defaultQueueDuration, ShouldEqual, time.Second)
 			So(cfg.transactionQueue, ShouldHaveSameTypeAs, make(chan *Transaction, 1000))
+			So(cfg.defaultPageSize, ShouldEqual, 10000)
 		})
 	})
 }
@@ -72,6 +73,11 @@ func Test_Options(t *testing.T) {
 		Convey("OptionTransactionQueueDuration with defaults should work", func() {
 			OptionTransactionQueueDuration(time.Minute)(cfg)
 			So(cfg.defaultQueueDuration, ShouldEqual, time.Minute)
+		})
+
+		Convey("OptionDefaultPageSize with defaults should work", func() {
+			OptionDefaultPageSize(12)(cfg)
+			So(cfg.defaultPageSize, ShouldEqual, 12)
 		})
 	})
 }
