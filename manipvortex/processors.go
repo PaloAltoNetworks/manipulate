@@ -13,8 +13,8 @@ type Hook func(method elemental.Operation, mctx manipulate.Context, objects []el
 // RetrieveManyHook is the type of a hook for retrieve many
 type RetrieveManyHook func(m manipulate.Manipulator, mctx manipulate.Context, dest elemental.Identifiables) (reconcile bool, err error)
 
-// ProcessorConfiguration configures the processing details for a specific identity.
-type ProcessorConfiguration struct {
+// Processor configures the processing details for a specific identity.
+type Processor struct {
 
 	// Identity is the identity of the object that is stored in the DB.
 	Identity elemental.Identity
@@ -52,8 +52,4 @@ type ProcessorConfiguration struct {
 	// if no client has subscribed for this event. It will always forward
 	// the event to the clients.
 	CommitOnEvent bool
-
-	// LazySync will not sync all data of the identity on startup, but
-	// will only load data on demand based on the transactions.
-	LazySync bool
 }

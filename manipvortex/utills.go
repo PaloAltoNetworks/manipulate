@@ -1,6 +1,8 @@
 package manipvortex
 
-import "go.aporeto.io/elemental"
+import (
+	"go.aporeto.io/elemental"
+)
 
 // isCommonIdentity will validate that all objects in the operation have the same identity.
 // We do not support calls with different identities.

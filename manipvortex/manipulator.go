@@ -21,7 +21,7 @@ type vortexManipulator struct {
 	upstreamSubscriber      manipulate.Subscriber
 	downstreamManipulator   manipulate.Manipulator
 	model                   elemental.ModelManager
-	processors              map[string]*ProcessorConfiguration
+	processors              map[string]*Processor
 	commitIdentityEvent     map[string]struct{}
 	subscribers             []*vortexSubscriber
 	transactionQueue        chan *Transaction
@@ -32,6 +32,7 @@ type vortexManipulator struct {
 	defaultWriteConsistency manipulate.WriteConsistency
 	defaultQueueDuration    time.Duration
 	pageSize                int
+	prefetcher              Prefetcher
 
 	sync.RWMutex
 }
@@ -42,7 +43,7 @@ type vortexManipulator struct {
 func New(
 	ctx context.Context,
 	downstreamManipulator manipulate.Manipulator,
-	processors map[string]*ProcessorConfiguration,
+	processors map[string]*Processor,
 	model elemental.ModelManager,
 	options ...Option,
 ) (manipulate.BufferedManipulator, error) {
@@ -73,6 +74,7 @@ func New(
 		enableLog:               cfg.enableLog,
 		logfile:                 cfg.logfile,
 		pageSize:                cfg.defaultPageSize,
+		prefetcher:              cfg.prefetcher,
 		processors:              processors,
 		model:                   model,
 		transactionQueue:        cfg.transactionQueue,
@@ -81,7 +83,41 @@ func New(
 		commitIdentityEvent:     map[string]struct{}{},
 	}
 
-	return m, m.run(ctx)
+	if m.enableLog {
+		c, err := newLogWriter(ctx, m.logfile, 100)
+		if err != nil {
+			return nil, fmt.Errorf("unable open commit log file: %s", err)
+		}
+		m.logChannel = c
+	}
+
+	if m.prefetcher != nil {
+		if err := m.warmUp(ctx); err != nil {
+			return nil, fmt.Errorf("unable to warm up: %s", err)
+		}
+	}
+
+	if m.upstreamSubscriber != nil {
+
+		filter := elemental.NewPushFilter()
+		for identity, cfg := range m.processors {
+			if cfg.CommitOnEvent {
+				m.commitIdentityEvent[identity] = struct{}{}
+			}
+			filter.FilterIdentity(identity)
+		}
+
+		m.upstreamSubscriber.Start(ctx, filter)
+
+		go m.monitor(ctx)
+	}
+
+	// Start the background thread. It will be blocked
+	// when we do resyncs and this is ok. We want it blocked
+	// so that resync continues while any updates are buffered.
+	go m.backgroundSync(ctx)
+
+	return m, nil
 }
 
 // Flush implements the flush interface of the Vortex. It will flush
@@ -93,6 +129,10 @@ func (m *vortexManipulator) Flush(ctx context.Context) error {
 
 	m.Lock()
 	defer m.Unlock()
+
+	if m.prefetcher != nil {
+		m.prefetcher.Flush()
+	}
 
 	f, ok := m.downstreamManipulator.(manipulate.FlushableManipulator)
 	if !ok {
@@ -106,33 +146,33 @@ func (m *vortexManipulator) Flush(ctx context.Context) error {
 	}
 
 	// Flush any outstanding transactions and restart the backgrond sync
-	close(m.transactionQueue)
-	m.transactionQueue = make(chan *Transaction, 1000)
-
 	if err := f.Flush(ctx); err != nil {
 		return fmt.Errorf("unable to flush the datastore: %s", err)
 	}
 
-	// Restart the background process on the channel.
-	go m.backgroundSync(ctx)
-
 	return nil
-}
-
-func (m *vortexManipulator) ReSync(ctx context.Context) error {
-
-	m.Lock()
-	defer m.Unlock()
-
-	// Call the internal resync after we lock. Need to make
-	// sure that everyone is blocked while doing resync.
-	return m.resync(ctx)
 }
 
 func (m *vortexManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.Identifiables) error {
 
 	m.RLock()
 	defer m.RUnlock()
+
+	if mctx == nil {
+		mctx = manipulate.NewContext(context.Background())
+	}
+
+	if m.prefetcher != nil {
+
+		prefetched, err := m.prefetcher.Prefetch(mctx.Context(), elemental.OperationRetrieveMany, dest.Identity(), m.upstreamManipulator, mctx.Derive())
+		if err != nil {
+			return fmt.Errorf("unable to prefetch data for retrieve many operation: %s", err)
+		}
+
+		if err := m.insertPrefetchedData(prefetched); err != nil {
+			return fmt.Errorf("unable to insert prefetched data for retrieve many operation: %s", err)
+		}
+	}
 
 	if !m.shouldProcess(mctx, dest.Identity()) {
 		if m.upstreamManipulator != nil {
@@ -164,6 +204,20 @@ func (m *vortexManipulator) Retrieve(mctx manipulate.Context, objects ...element
 
 	if !isCommonIdentity(objects...) {
 		return fmt.Errorf("all objects in operation must be of the same identity")
+	}
+
+	if mctx == nil {
+		mctx = manipulate.NewContext(context.Background())
+	}
+
+	if m.prefetcher != nil {
+		prefetched, err := m.prefetcher.Prefetch(mctx.Context(), elemental.OperationRetrieve, objects[0].Identity(), m.upstreamManipulator, mctx.Derive())
+		if err != nil {
+			return fmt.Errorf("unable to prefetch data for retrieve operation: %s", err)
+		}
+		if err := m.insertPrefetchedData(prefetched); err != nil {
+			return fmt.Errorf("unable to insert prefetched data for retrieve operation: %s", err)
+		}
 	}
 
 	// If we are not processing the object or the object has a parent
@@ -204,6 +258,10 @@ func (m *vortexManipulator) Create(mctx manipulate.Context, objects ...elemental
 	m.RLock()
 	defer m.RUnlock()
 
+	if mctx == nil {
+		mctx = manipulate.NewContext(context.Background())
+	}
+
 	return m.coreCRUDOperation(elemental.OperationCreate, mctx, objects...)
 }
 
@@ -211,6 +269,10 @@ func (m *vortexManipulator) Update(mctx manipulate.Context, objects ...elemental
 
 	m.RLock()
 	defer m.RUnlock()
+
+	if mctx == nil {
+		mctx = manipulate.NewContext(context.Background())
+	}
 
 	return m.coreCRUDOperation(elemental.OperationUpdate, mctx, objects...)
 }
@@ -220,6 +282,10 @@ func (m *vortexManipulator) Delete(mctx manipulate.Context, objects ...elemental
 	m.RLock()
 	defer m.RUnlock()
 
+	if mctx == nil {
+		mctx = manipulate.NewContext(context.Background())
+	}
+
 	return m.coreCRUDOperation(elemental.OperationDelete, mctx, objects...)
 }
 
@@ -227,6 +293,10 @@ func (m *vortexManipulator) DeleteMany(mctx manipulate.Context, identity element
 
 	m.RLock()
 	defer m.RUnlock()
+
+	if mctx == nil {
+		mctx = manipulate.NewContext(context.Background())
+	}
 
 	if m.upstreamManipulator == nil {
 		return fmt.Errorf("delete many not supported by vortexManipulator")
@@ -240,37 +310,15 @@ func (m *vortexManipulator) Count(mctx manipulate.Context, identity elemental.Id
 	m.RLock()
 	defer m.RUnlock()
 
+	if mctx == nil {
+		mctx = manipulate.NewContext(context.Background())
+	}
+
 	if m.downstreamManipulator == nil {
 		return 0, fmt.Errorf("datastore is not initialized")
 	}
 
 	return m.downstreamManipulator.Count(mctx, identity)
-}
-
-// Prefetch implements the corresponding interface method.
-func (m *vortexManipulator) Prefetch(ctx context.Context, mctx manipulate.Context, identity elemental.Identity) error {
-
-	m.RLock()
-	defer m.RUnlock()
-
-	if m.upstreamManipulator == nil {
-		return nil
-	}
-
-	if err := manipulate.IterFunc(
-		ctx,
-		m.upstreamManipulator,
-		m.model.Identifiables(identity),
-		mctx,
-		func(block elemental.Identifiables) error {
-			return m.downstreamManipulator.Create(nil, block.List()...)
-		},
-		m.pageSize,
-	); err != nil {
-		return fmt.Errorf("unable to commit prefetched data: %s", err)
-	}
-
-	return nil
 }
 
 func (m *vortexManipulator) hasBackendSubscriber() bool {
@@ -536,87 +584,6 @@ func (m *vortexManipulator) genericUpdater(method elemental.Operation, mctx mani
 	}
 }
 
-func (m *vortexManipulator) run(ctx context.Context) error {
-
-	if m.enableLog {
-		c, err := newLogWriter(ctx, m.logfile, 100)
-		if err != nil {
-			return fmt.Errorf("cannot open commit log file: %s", err)
-		}
-		m.logChannel = c
-	}
-
-	if m.upstreamSubscriber != nil {
-
-		filter := elemental.NewPushFilter()
-		for identity, cfg := range m.processors {
-			if cfg.CommitOnEvent {
-				m.commitIdentityEvent[identity] = struct{}{}
-			}
-			filter.FilterIdentity(identity)
-		}
-
-		m.upstreamSubscriber.Start(ctx, filter)
-
-		go m.monitor(ctx)
-	}
-
-	// Start the background thread. It will be blocked
-	// when we do resyncs and this is ok. We want it blocked
-	// so that resync continues while any updates are buffered.
-	go m.backgroundSync(ctx)
-
-	// Do a complete DB resync at this point to download any objects.
-	// Note that we are locked down. Any updates coming will be
-	// queued waiting for us to finish and they will apply
-	// after that. There is a possible race condition here
-	// where our read gets a newer object than a pending update.
-	// Only way to resolve is to use update times.
-	if err := m.resync(ctx); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// resync is an internal resync that assumes the caller will
-// take the locks. It is called from various places where
-// callers already have the lock.
-func (m *vortexManipulator) resync(ctx context.Context) error {
-
-	if m.upstreamManipulator == nil {
-		return nil
-	}
-
-	if f, ok := m.downstreamManipulator.(manipulate.FlushableManipulator); ok {
-		if err := f.Flush(ctx); err != nil {
-			return fmt.Errorf("unable to resync the datastore: %s", err)
-		}
-	}
-
-	for _, cfg := range m.processors {
-
-		if cfg.LazySync {
-			continue
-		}
-
-		if err := manipulate.IterFunc(
-			ctx,
-			m.upstreamManipulator,
-			m.model.Identifiables(cfg.Identity),
-			manipulate.NewContext(ctx, manipulate.ContextOptionRecursive(true)),
-			func(block elemental.Identifiables) error {
-				return m.commitLocal(elemental.OperationCreate, nil, block.List())
-			},
-			m.pageSize,
-		); err != nil {
-			return fmt.Errorf("unable to write objects to local db: %s", err)
-		}
-	}
-
-	return nil
-}
-
 // backgroundSync will empty the transaction queue and try to sync it
 // with the backend.
 func (m *vortexManipulator) backgroundSync(ctx context.Context) {
@@ -627,12 +594,7 @@ func (m *vortexManipulator) backgroundSync(ctx context.Context) {
 
 	for {
 		select {
-		case t, ok := <-m.transactionQueue:
-
-			// If the channel is closed, then exit.
-			if !ok {
-				return
-			}
+		case t := <-m.transactionQueue:
 
 			// If the dealine is exceeded we just drop the request
 			// no matter what. This allows us to clean up the queue
@@ -718,7 +680,18 @@ func (m *vortexManipulator) monitor(ctx context.Context) {
 
 			case manipulate.SubscriberStatusReconnection:
 				zap.L().Info("Upstream event channel restored")
-				m.reconnectionHandler(ctx)
+
+				// We flush everything
+				if err := m.Flush(ctx); err != nil {
+					zap.L().Error("Unable to flush", zap.Error(err))
+				}
+
+				// We flush everything
+				if m.prefetcher != nil {
+					if err := m.warmUp(ctx); err != nil {
+						zap.L().Error("Unable to warm up after reconnection", zap.Error(err))
+					}
+				}
 
 			case manipulate.SubscriberStatusFinalDisconnection:
 				return
@@ -817,11 +790,34 @@ func (m *vortexManipulator) eventHandler(ctx context.Context, evt *elemental.Eve
 	}
 }
 
-// reconnectionHandler will kick a re-sync when the push channel is
-// restored. This might be heavy, but unclear if we have better
-// mechanisms to react on a bad push channel.
-func (m *vortexManipulator) reconnectionHandler(ctx context.Context) {
-	if err := m.ReSync(ctx); err != nil {
-		zap.L().Error("Failed to resync DB", zap.Error(err))
+func (m *vortexManipulator) insertPrefetchedData(prefetched []elemental.Identifiables) error {
+
+	for _, identifiables := range prefetched {
+		if err := m.downstreamManipulator.Create(nil, identifiables.List()...); err != nil {
+			return err
+		}
 	}
+
+	return nil
+}
+
+func (m *vortexManipulator) warmUp(ctx context.Context) error {
+
+	if m.upstreamManipulator == nil {
+		return nil
+	}
+
+	for _, proc := range m.processors {
+
+		prefetched, err := m.prefetcher.WarmUp(ctx, m.upstreamManipulator, m.model, proc.Identity)
+		if err != nil {
+			return fmt.Errorf("unable to prefetch '%s for warm up operation: %s", proc.Identity, err)
+		}
+
+		if err := m.insertPrefetchedData(append([]elemental.Identifiables{}, prefetched)); err != nil {
+			return fmt.Errorf("unable to insert prefetched '%s' for warm up operation: %s", proc.Identity, err)
+		}
+	}
+
+	return nil
 }

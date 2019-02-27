@@ -17,6 +17,7 @@ type config struct {
 	writeConsistency     manipulate.WriteConsistency
 	defaultQueueDuration time.Duration
 	defaultPageSize      int
+	prefetcher           Prefetcher
 }
 
 func newConfig() *config {
@@ -26,6 +27,7 @@ func newConfig() *config {
 		writeConsistency:     manipulate.WriteConsistencyStrong,
 		defaultQueueDuration: time.Second,
 		defaultPageSize:      10000,
+		prefetcher:           NewDefaultPrefetcher(),
 	}
 }
 
@@ -86,5 +88,12 @@ func OptionTransactionQueueDuration(d time.Duration) Option {
 func OptionDefaultPageSize(defaultPageSize int) Option {
 	return func(cfg *config) {
 		cfg.defaultPageSize = defaultPageSize
+	}
+}
+
+// OptionPrefetcher sets the Prefetcher to use.
+func OptionPrefetcher(p Prefetcher) Option {
+	return func(cfg *config) {
+		cfg.prefetcher = p
 	}
 }

@@ -79,5 +79,11 @@ func Test_Options(t *testing.T) {
 			OptionDefaultPageSize(12)(cfg)
 			So(cfg.defaultPageSize, ShouldEqual, 12)
 		})
+
+		Convey("OptionPrefetcher with defaults should work", func() {
+			p := NewTestPrefetcher()
+			OptionPrefetcher(p)(cfg)
+			So(cfg.prefetcher, ShouldEqual, p)
+		})
 	})
 }
