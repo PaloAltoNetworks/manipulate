@@ -52,4 +52,8 @@ type Processor struct {
 	// if no client has subscribed for this event. It will always forward
 	// the event to the clients.
 	CommitOnEvent bool
+
+	// LazySync will not sync all data of the identity on startup, but
+	// will only load data on demand based on the transactions.
+	LazySync bool
 }
