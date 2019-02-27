@@ -51,45 +51,72 @@ func NewTestManipulator() TestManipulator {
 
 func (m *testManipulator) MockRetrieveMany(t *testing.T, impl func(context manipulate.Context, dest elemental.Identifiables) error) {
 
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	m.currentMocks(t).retrieveManyMock = impl
 }
 
 func (m *testManipulator) MockRetrieve(t *testing.T, impl func(context manipulate.Context, objects ...elemental.Identifiable) error) {
+
+	m.lock.Lock()
+	defer m.lock.Unlock()
 
 	m.currentMocks(t).retrieveMock = impl
 }
 
 func (m *testManipulator) MockCreate(t *testing.T, impl func(context manipulate.Context, objects ...elemental.Identifiable) error) {
 
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	m.currentMocks(t).createMock = impl
 }
 
 func (m *testManipulator) MockUpdate(t *testing.T, impl func(context manipulate.Context, objects ...elemental.Identifiable) error) {
+
+	m.lock.Lock()
+	defer m.lock.Unlock()
 
 	m.currentMocks(t).updateMock = impl
 }
 
 func (m *testManipulator) MockDelete(t *testing.T, impl func(context manipulate.Context, objects ...elemental.Identifiable) error) {
 
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	m.currentMocks(t).deleteMock = impl
 }
 
 func (m *testManipulator) MockDeleteMany(t *testing.T, impl func(context manipulate.Context, identity elemental.Identity) error) {
+
+	m.lock.Lock()
+	defer m.lock.Unlock()
 
 	m.currentMocks(t).deleteManyMock = impl
 }
 
 func (m *testManipulator) MockCount(t *testing.T, impl func(context manipulate.Context, identity elemental.Identity) (int, error)) {
 
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	m.currentMocks(t).countMock = impl
 }
 
 func (m *testManipulator) MockCommit(t *testing.T, impl func(id manipulate.TransactionID) error) {
 
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	m.currentMocks(t).commitMock = impl
 }
 
 func (m *testManipulator) MockAbort(t *testing.T, impl func(id manipulate.TransactionID) bool) {
+
+	m.lock.Lock()
+	defer m.lock.Unlock()
 
 	m.currentMocks(t).abortMock = impl
 }

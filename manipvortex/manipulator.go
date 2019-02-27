@@ -27,17 +27,20 @@ type Transaction struct {
 
 // vortexManipulator is a Vortex based on the memdb implementation.
 type vortexManipulator struct {
-	upstreamManipulator   manipulate.Manipulator
-	upstreamSubscriber    manipulate.Subscriber
-	downstreamManipulator manipulate.Manipulator
-	model                 elemental.ModelManager
-	processors            map[string]*ProcessorConfiguration
-	commitIdentityEvent   map[string]struct{}
-	subscribers           []*vortexSubscriber
-	transactionQueue      chan *Transaction
-	enableLog             bool
-	logfile               string
-	logChannel            chan *Transaction
+	upstreamManipulator     manipulate.Manipulator
+	upstreamSubscriber      manipulate.Subscriber
+	downstreamManipulator   manipulate.Manipulator
+	model                   elemental.ModelManager
+	processors              map[string]*ProcessorConfiguration
+	commitIdentityEvent     map[string]struct{}
+	subscribers             []*vortexSubscriber
+	transactionQueue        chan *Transaction
+	enableLog               bool
+	logfile                 string
+	logChannel              chan *Transaction
+	defaultReadConsistency  manipulate.ReadConsistency
+	defaultWriteConsistency manipulate.WriteConsistency
+
 	sync.RWMutex
 }
 
@@ -64,17 +67,24 @@ func New(
 		panic("processors must not be empty")
 	}
 
-	m := &vortexManipulator{
-		downstreamManipulator: downstreamManipulator,
-		processors:            processors,
-		model:                 model,
-		transactionQueue:      make(chan *Transaction, 1000),
-		subscribers:           []*vortexSubscriber{},
-		commitIdentityEvent:   map[string]struct{}{},
+	cfg := newConfig()
+	for _, option := range options {
+		option(cfg)
 	}
 
-	for _, option := range options {
-		option(m)
+	m := &vortexManipulator{
+		downstreamManipulator:   downstreamManipulator,
+		upstreamManipulator:     cfg.upstreamManipulator,
+		upstreamSubscriber:      cfg.upstreamSubscriber,
+		defaultReadConsistency:  cfg.readConsistency,
+		defaultWriteConsistency: cfg.writeConsistency,
+		enableLog:               cfg.enableLog,
+		logfile:                 cfg.logfile,
+		processors:              processors,
+		model:                   model,
+		transactionQueue:        cfg.transactionQueue,
+		subscribers:             []*vortexSubscriber{},
+		commitIdentityEvent:     map[string]struct{}{},
 	}
 
 	return m, m.run(ctx)
@@ -575,14 +585,21 @@ func (m *vortexManipulator) genericUpdater(method elemental.Operation, mctx mani
 	// We are guaranteed that there is at least one object and the identity is processable.
 	cfg := m.processors[objects[0].Identity().Name]
 
-	switch cfg.Mode {
+	wc := cfg.WriteConsistency
+	if mctx.WriteConsistency() != manipulate.WriteConsistencyDefault {
+		wc = mctx.WriteConsistency()
+	} else if wc == manipulate.WriteConsistencyDefault || wc == "" {
+		wc = m.defaultWriteConsistency
+	}
 
-	case WriteThrough:
-		// In WriteThrough mode make sure that the backend gets the create.
+	switch wc {
+
+	case manipulate.WriteConsistencyStrong, manipulate.WriteConsistencyStrongest:
+		// In Stroing consistency we make sure that the backend gets the create.
 		// Only then store in the cache.
 		return true, m.commitUpstream(mctx.Context(), method, mctx, objects...)
 
-	case WriteBack:
+	default:
 
 		select {
 
@@ -597,9 +614,6 @@ func (m *vortexManipulator) genericUpdater(method elemental.Operation, mctx mani
 		default:
 			return false, fmt.Errorf("commit queue is full: %d", len(m.transactionQueue))
 		}
-
-	default:
-		return false, fmt.Errorf("unknown caching mode: %d", cfg.Mode)
 	}
 }
 
