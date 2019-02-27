@@ -38,6 +38,7 @@ type vortexManipulator struct {
 	enableLog             bool
 	logfile               string
 	logChannel            chan *Transaction
+	pagesize              int
 	sync.RWMutex
 }
 
@@ -71,6 +72,7 @@ func New(
 		transactionQueue:      make(chan *Transaction, 1000),
 		subscribers:           []*vortexSubscriber{},
 		commitIdentityEvent:   map[string]struct{}{},
+		pagesize:              10000,
 	}
 
 	for _, option := range options {
@@ -330,6 +332,33 @@ func (m *vortexManipulator) Count(mctx manipulate.Context, identity elemental.Id
 	}
 
 	return m.downstreamManipulator.Count(mctx, identity)
+}
+
+// Prefetch implements the corresponding interface method.
+func (m *vortexManipulator) Prefetch(ctx context.Context, mctx manipulate.Context, identity elemental.Identity) error {
+
+	m.RLock()
+	defer m.RUnlock()
+
+	if m.upstreamManipulator == nil {
+		return nil
+	}
+
+	dest := m.model.Identifiables(identity)
+
+	if err := m.upstreamManipulator.RetrieveMany(mctx.Derive(), dest); err != nil {
+		return fmt.Errorf("unable to prefetch data: %s", err)
+	}
+
+	objects := dest.List()
+
+	for _, obj := range objects {
+		if err := m.downstreamManipulator.Create(nil, obj); err != nil {
+			return fmt.Errorf("unable to commit prefetched data: %s", err)
+		}
+	}
+
+	return nil
 }
 
 func (m *vortexManipulator) hasBackendSubscriber() bool {
@@ -607,18 +636,21 @@ func (m *vortexManipulator) genericUpdater(method elemental.Operation, mctx mani
 // the internal database.
 func (m *vortexManipulator) migrateObject(ctx context.Context, cfg *ProcessorConfiguration) error {
 
+	// If we are doing lazy sync do not load the objects at startup.
+	if cfg.LazySync {
+		return nil
+	}
+
 	// We use pagination. We might 1000s of objects that are
 	// reading at this point.
-
 	page := 1
-	pageSize := 100
 
 	for {
 		objList := m.model.Identifiables(cfg.Identity)
 
 		mctx := manipulate.NewContext(
 			ctx,
-			manipulate.ContextOptionPage(page, pageSize),
+			manipulate.ContextOptionPage(page, m.pagesize),
 			manipulate.ContextOptionRecursive(true),
 		)
 

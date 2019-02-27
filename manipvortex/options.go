@@ -36,3 +36,10 @@ func OptionTransactionQueueLength(n int) Option {
 		m.transactionQueue = make(chan *Transaction, n)
 	}
 }
+
+// OptionPageSize is the page size during migration.
+func OptionPageSize(n int) Option {
+	return func(m *vortexManipulator) {
+		m.pagesize = n
+	}
+}
