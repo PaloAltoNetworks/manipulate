@@ -61,8 +61,8 @@ func TestTestPrefetcher(t *testing.T) {
 
 		Convey("When I mock and call Prefetch", func() {
 
-			p.MockPrefetch(t, func(context.Context, elemental.Operation, elemental.Identity, manipulate.Manipulator, manipulate.Context) ([]elemental.Identifiables, error) {
-				return []elemental.Identifiables{}, fmt.Errorf("boom")
+			p.MockPrefetch(t, func(context.Context, elemental.Operation, elemental.Identity, manipulate.Manipulator, manipulate.Context) (elemental.Identifiables, error) {
+				return testmodel.ListsList{}, fmt.Errorf("boom")
 			})
 
 			out, err := p.Prefetch(nil, elemental.OperationRetrieve, elemental.EmptyIdentity, nil, nil)

@@ -37,7 +37,7 @@ type Prefetcher interface {
 	//
 	// If prefetch returns an error, the upstream operation will be canceled and the error returned.
 	// You can use the provided manipulator to retrieve the needed data.
-	Prefetch(context.Context, elemental.Operation, elemental.Identity, manipulate.Manipulator, manipulate.Context) ([]elemental.Identifiables, error)
+	Prefetch(context.Context, elemental.Operation, elemental.Identity, manipulate.Manipulator, manipulate.Context) (elemental.Identifiables, error)
 
 	// If the prefetcher uses some internal state
 	// if must reset it when this is called.
@@ -76,7 +76,7 @@ func (p *defaultPrefetcher) WarmUp(ctx context.Context, m manipulate.Manipulator
 	return out, nil
 }
 
-func (p *defaultPrefetcher) Prefetch(context.Context, elemental.Operation, elemental.Identity, manipulate.Manipulator, manipulate.Context) ([]elemental.Identifiables, error) {
+func (p *defaultPrefetcher) Prefetch(context.Context, elemental.Operation, elemental.Identity, manipulate.Manipulator, manipulate.Context) (elemental.Identifiables, error) {
 	return nil, nil
 }
 
@@ -86,15 +86,15 @@ func (p *defaultPrefetcher) Flush() {}
 // testing purposes.
 type TestPrefetcher interface {
 	Prefetcher
-	MockPrefetch(t *testing.T, impl func(context.Context, elemental.Operation, elemental.Identity, manipulate.Manipulator, manipulate.Context) ([]elemental.Identifiables, error))
-	MockFlush(t *testing.T, impl func())
 	MockWarmUp(t *testing.T, impl func(context.Context, manipulate.Manipulator, elemental.ModelManager, elemental.Identity) (elemental.Identifiables, error))
+	MockPrefetch(t *testing.T, impl func(context.Context, elemental.Operation, elemental.Identity, manipulate.Manipulator, manipulate.Context) (elemental.Identifiables, error))
+	MockFlush(t *testing.T, impl func())
 }
 
 type mockedPrefetcherMethods struct {
-	prefetchMock func(context.Context, elemental.Operation, elemental.Identity, manipulate.Manipulator, manipulate.Context) ([]elemental.Identifiables, error)
-	flushMock    func()
 	warmUpMock   func(context.Context, manipulate.Manipulator, elemental.ModelManager, elemental.Identity) (elemental.Identifiables, error)
+	prefetchMock func(context.Context, elemental.Operation, elemental.Identity, manipulate.Manipulator, manipulate.Context) (elemental.Identifiables, error)
+	flushMock    func()
 }
 
 type testPrefetcher struct {
@@ -117,7 +117,7 @@ func (p *testPrefetcher) MockWarmUp(t *testing.T, impl func(context.Context, man
 }
 
 // MockPrefetch sets the mocked implementation of Prefetch.
-func (p *testPrefetcher) MockPrefetch(t *testing.T, impl func(context.Context, elemental.Operation, elemental.Identity, manipulate.Manipulator, manipulate.Context) ([]elemental.Identifiables, error)) {
+func (p *testPrefetcher) MockPrefetch(t *testing.T, impl func(context.Context, elemental.Operation, elemental.Identity, manipulate.Manipulator, manipulate.Context) (elemental.Identifiables, error)) {
 	p.currentMocks(t).prefetchMock = impl
 }
 
@@ -134,7 +134,7 @@ func (p *testPrefetcher) WarmUp(ctx context.Context, m manipulate.Manipulator, m
 	return nil, nil
 }
 
-func (p *testPrefetcher) Prefetch(ctx context.Context, op elemental.Operation, identity elemental.Identity, m manipulate.Manipulator, mctx manipulate.Context) ([]elemental.Identifiables, error) {
+func (p *testPrefetcher) Prefetch(ctx context.Context, op elemental.Operation, identity elemental.Identity, m manipulate.Manipulator, mctx manipulate.Context) (elemental.Identifiables, error) {
 
 	if mock := p.currentMocks(p.currentTest); mock != nil && mock.prefetchMock != nil {
 		return mock.prefetchMock(ctx, op, identity, m, mctx)

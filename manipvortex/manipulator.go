@@ -778,25 +778,18 @@ func (m *vortexManipulator) eventHandler(ctx context.Context, evt *elemental.Eve
 	}
 }
 
-func (m *vortexManipulator) insertPrefetchedData(prefetched []elemental.Identifiables) error {
+func (m *vortexManipulator) insertPrefetchedData(prefetched elemental.Identifiables) error {
 
-	for _, identifiables := range prefetched {
-
-		if identifiables == nil {
-			continue
-		}
-
-		lst := identifiables.List()
-		if len(lst) == 0 {
-			continue
-		}
-
-		if err := m.commitLocal(elemental.OperationCreate, nil, lst); err != nil {
-			return err
-		}
+	if prefetched == nil {
+		return nil
 	}
 
-	return nil
+	lst := prefetched.List()
+	if len(lst) == 0 {
+		return nil
+	}
+
+	return m.commitLocal(elemental.OperationCreate, nil, lst)
 }
 
 func (m *vortexManipulator) warmUp(ctx context.Context) error {
@@ -812,7 +805,7 @@ func (m *vortexManipulator) warmUp(ctx context.Context) error {
 			return fmt.Errorf("unable to prefetch '%s for warm up operation: %s", proc.Identity, err)
 		}
 
-		if err := m.insertPrefetchedData(append([]elemental.Identifiables{}, prefetched)); err != nil {
+		if err := m.insertPrefetchedData(prefetched); err != nil {
 			return fmt.Errorf("unable to insert prefetched '%s' for warm up operation: %s", proc.Identity, err)
 		}
 	}
