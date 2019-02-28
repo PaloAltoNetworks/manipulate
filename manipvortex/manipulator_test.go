@@ -59,13 +59,13 @@ func newDatastore() (manipulate.Manipulator, error) {
 	return d, nil
 }
 
-func newIdentityProcessor(mode CacheMode) map[string]*ProcessorConfiguration {
+func newIdentityProcessor(readConsistency manipulate.ReadConsistency, writeConsistency manipulate.WriteConsistency) map[string]*Processor {
 
-	return map[string]*ProcessorConfiguration{
-		testmodel.ListIdentity.Name: &ProcessorConfiguration{
+	return map[string]*Processor{
+		testmodel.ListIdentity.Name: &Processor{
 			Identity:         testmodel.ListIdentity,
-			Mode:             mode,
-			QueueingDuration: time.Minute,
+			ReadConsistency:  readConsistency,
+			WriteConsistency: writeConsistency,
 			CommitOnEvent:    true,
 		},
 	}
@@ -85,7 +85,7 @@ func Test_New(t *testing.T) {
 		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 		)
@@ -116,7 +116,7 @@ func Test_UnsupportedMethods(t *testing.T) {
 		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 		)
 		So(err, ShouldBeNil)
@@ -138,7 +138,7 @@ func Test_UnsupportedMethods(t *testing.T) {
 		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 		)
@@ -169,7 +169,7 @@ func Test_Count(t *testing.T) {
 		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 		)
@@ -205,7 +205,7 @@ func Test_run(t *testing.T) {
 		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 			OptionTransactionLog("./testlog"),
@@ -229,7 +229,7 @@ func Test_run(t *testing.T) {
 		_, err = New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 			OptionTransactionLog("./bad-directory/test"),
@@ -250,7 +250,7 @@ func Test_run(t *testing.T) {
 		_, err = New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 			OptionUpstreamSubscriber(s),
@@ -271,106 +271,12 @@ func Test_run(t *testing.T) {
 		_, err = New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 			OptionUpstreamSubscriber(s),
 		)
 		So(err, ShouldBeNil)
-	})
-}
-
-func Test_Resync(t *testing.T) {
-
-	t.Parallel()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	Convey("Given a new memdb vortex with no backend", t, func() {
-		d, err := newDatastore()
-		So(err, ShouldBeNil)
-
-		v, err := New(
-			ctx,
-			d,
-			newIdentityProcessor(WriteThrough),
-			testmodel.Manager(),
-		)
-
-		So(err, ShouldBeNil)
-
-		Convey("When I try to Re-sync it, nothing should happen", func() {
-			err = v.ReSync(ctx)
-			So(err, ShouldBeNil)
-		})
-	})
-
-	Convey("Given a new memdb vortex with a backend and objects", t, func() {
-		d, err := newDatastore()
-		So(err, ShouldBeNil)
-		m := maniptest.NewTestManipulator()
-
-		obj1 := newObject("obj1", []string{"a=b"})
-		obj1.ID = "ID1"
-		obj2 := newObject("obj2", []string{"x=y"})
-		obj2.ID = "ID2"
-
-		m.MockRetrieveMany(t, func(mctx manipulate.Context, dest elemental.Identifiables) error {
-			if mctx.Page() > 1 {
-				return nil
-			}
-			objects := testmodel.ListsList{obj1, obj2}
-			*dest.(*testmodel.ListsList) = objects
-			return nil
-		})
-
-		v, err := New(
-			ctx,
-			d,
-			newIdentityProcessor(WriteThrough),
-			testmodel.Manager(),
-			OptionUpstreamManipulator(m),
-		)
-
-		So(err, ShouldBeNil)
-
-		Convey("When I try to Re-sync it with no data, the db should be empty", func() {
-			retrieveRespose := func(mctx manipulate.Context, dest elemental.Identifiables) error {
-				return nil
-			}
-			m.MockRetrieveMany(t, retrieveRespose)
-
-			err := v.ReSync(ctx)
-			So(err, ShouldBeNil)
-
-			objects := testmodel.ListsList{}
-			err = v.RetrieveMany(nil, &objects)
-			So(err, ShouldBeNil)
-			So(len(objects), ShouldEqual, 0)
-		})
-	})
-
-	Convey("Given a new memdb vortex with a backend, where the backend fails", t, func() {
-		d, err := newDatastore()
-		So(err, ShouldBeNil)
-
-		m := maniptest.NewTestManipulator()
-
-		v, err := New(
-			ctx,
-			d,
-			newIdentityProcessor(WriteThrough),
-			testmodel.Manager(),
-			OptionUpstreamManipulator(m),
-		)
-		So(err, ShouldBeNil)
-
-		m.MockRetrieveMany(t, func(mctx manipulate.Context, dest elemental.Identifiables) error {
-			return manipulate.NewErrObjectNotFound("error test")
-		})
-
-		So(v.ReSync(ctx), ShouldNotBeNil)
 	})
 }
 
@@ -403,7 +309,7 @@ func Test_RetrieveMany(t *testing.T) {
 		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 		)
@@ -477,7 +383,7 @@ func Test_Retrieve(t *testing.T) {
 		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 		)
@@ -560,7 +466,7 @@ func Test_Create(t *testing.T) {
 		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 		)
@@ -654,7 +560,7 @@ func Test_Update(t *testing.T) {
 		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 		)
@@ -759,7 +665,7 @@ func Test_Delete(t *testing.T) {
 		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 		)
@@ -858,15 +764,10 @@ func Test_WithNoBackend(t *testing.T) {
 		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 		)
 		So(err, ShouldBeNil)
-
-		Convey("If I try to resync with no backend, I should get no error", func() {
-			err := v.ReSync(ctx)
-			So(err, ShouldBeNil)
-		})
 
 		obj1 := newObject("obj1", []string{"a=b", "c=de", "common"})
 		obj2 := newObject("obj2", []string{"x=y", "w=z", "common"})
@@ -965,7 +866,7 @@ func Test_WriteThroughBackend(t *testing.T) {
 		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 		)
@@ -1137,7 +1038,7 @@ func Test_Monitor(t *testing.T) {
 		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 			OptionUpstreamSubscriber(s),
@@ -1302,7 +1203,7 @@ func Test_WriteBackBackend(t *testing.T) {
 		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteBack),
+			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyNone),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 		)
@@ -1473,7 +1374,7 @@ func Test_SubscriberRegistration(t *testing.T) {
 		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 			OptionUpstreamSubscriber(us),
@@ -1514,7 +1415,7 @@ func Test_updateFilter(t *testing.T) {
 		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 			OptionUpstreamSubscriber(us),

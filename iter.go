@@ -20,8 +20,7 @@ const iterDefaultBlockSize = 10000
 //
 // The given context will be used if the underlying manipulator honors it.
 //
-// The given manipulate.Context will be derived for each loop and will set the pagination
-// information. If the given context already has page information, then it will be ignored.
+// The given manipulate.Context will be used to retry any failed batch recovery.
 //
 // The identifiablesTemplate parameter is must be an empty elemental.Identifiables that will be used to
 // hold the data block. It is reset at every iteration. Do not rely on it to be filled
@@ -64,7 +63,13 @@ func IterFunc(
 
 		objects := identifiablesTemplate.Copy()
 
-		if err := manipulator.RetrieveMany(mctx.Derive(ContextOptionPage(page, blockSize)), objects); err != nil {
+		if err := Retry(
+			ctx,
+			func() error {
+				return manipulator.RetrieveMany(mctx.Derive(ContextOptionPage(page, blockSize)), objects)
+			},
+			nil,
+		); err != nil {
 			return fmt.Errorf("unable to retrieve objects for page %d: %s", page, err.Error())
 		}
 

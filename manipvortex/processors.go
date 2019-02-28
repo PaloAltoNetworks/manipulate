@@ -7,39 +7,25 @@ import (
 	"go.aporeto.io/manipulate"
 )
 
-// CacheMode is the mode of the cache.
-type CacheMode int
-
-// Values of CacheMode
-const (
-	// WriteThrough means that all transactions must be
-	// first written the main data store and then to the local
-	// memory.
-	WriteThrough CacheMode = iota
-
-	// WriteBack means that writes will be committed locally
-	// and lazily synced with the main data store. These objects
-	// will not be accessible until they are actually synced
-	// with the backend since they don't have a unique ID
-	// yet.
-	WriteBack
-)
-
 // Hook is the hook function type that is called by the processors.
 type Hook func(method elemental.Operation, mctx manipulate.Context, objects []elemental.Identifiable) (reconcile bool, err error)
 
 // RetrieveManyHook is the type of a hook for retrieve many
 type RetrieveManyHook func(m manipulate.Manipulator, mctx manipulate.Context, dest elemental.Identifiables) (reconcile bool, err error)
 
-// ProcessorConfiguration configures the processing details for a specific identity.
-type ProcessorConfiguration struct {
+// Processor configures the processing details for a specific identity.
+type Processor struct {
 
 	// Identity is the identity of the object that is stored in the DB.
 	Identity elemental.Identity
 
-	// Mode is the type of default consistency mode required from the cache.
+	// TODO: Mode is the type of default consistency mode required from the cache.
 	// This consistency can be overwritten by manipulate options.
-	Mode CacheMode
+	WriteConsistency manipulate.WriteConsistency
+
+	// TODO: Mode is the type of default consistency mode required from the cache.
+	// This consistency can be overwritten by manipulate options.
+	ReadConsistency manipulate.ReadConsistency
 
 	// QueueingDuration is the maximum time that an object should be
 	// cached if the backend is not responding.

@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"go.aporeto.io/manipulate"
+
 	. "github.com/smartystreets/goconvey/convey"
 	testmodel "go.aporeto.io/elemental/test/model"
 	"go.aporeto.io/manipulate/maniptest"
@@ -23,7 +25,7 @@ func Test_NewSubscriber(t *testing.T) {
 		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyEventual, manipulate.WriteConsistencyStrong),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 			OptionUpstreamSubscriber(s),
@@ -50,7 +52,7 @@ func Test_NewSubscriber(t *testing.T) {
 		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyEventual, manipulate.WriteConsistencyStrong),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 		)
@@ -77,7 +79,7 @@ func Test_SubscriberMethods(t *testing.T) {
 		v, err := New(
 			ctx,
 			d,
-			newIdentityProcessor(WriteThrough),
+			newIdentityProcessor(manipulate.ReadConsistencyEventual, manipulate.WriteConsistencyStrong),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 			OptionUpstreamSubscriber(us),
