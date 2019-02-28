@@ -11,7 +11,6 @@ type config struct {
 	upstreamSubscriber   manipulate.Subscriber
 	logfile              string
 	enableLog            bool
-	poolLimit            int
 	transactionQueue     chan *Transaction
 	readConsistency      manipulate.ReadConsistency
 	writeConsistency     manipulate.WriteConsistency
