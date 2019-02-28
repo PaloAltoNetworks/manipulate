@@ -166,11 +166,11 @@ func (m *vortexManipulator) RetrieveMany(mctx manipulate.Context, dest elemental
 
 		prefetched, err := m.prefetcher.Prefetch(mctx.Context(), elemental.OperationRetrieveMany, dest.Identity(), m.upstreamManipulator, mctx.Derive())
 		if err != nil {
-			return fmt.Errorf("unable to prefetch data for retrieve many operation: %s", err)
+			return fmt.Errorf("unable to prefetch data for retrieve many operation for '%s': %s", dest.Identity(), err)
 		}
 
 		if err := m.insertPrefetchedData(prefetched); err != nil {
-			return fmt.Errorf("unable to insert prefetched data for retrieve many operation: %s", err)
+			return fmt.Errorf("unable to insert prefetched data for retrieve many operation for '%s': %s", dest.Identity(), err)
 		}
 	}
 
@@ -213,10 +213,10 @@ func (m *vortexManipulator) Retrieve(mctx manipulate.Context, objects ...element
 	if m.prefetcher != nil {
 		prefetched, err := m.prefetcher.Prefetch(mctx.Context(), elemental.OperationRetrieve, objects[0].Identity(), m.upstreamManipulator, mctx.Derive())
 		if err != nil {
-			return fmt.Errorf("unable to prefetch data for retrieve operation: %s", err)
+			return fmt.Errorf("unable to prefetch data for retrieve operation for '%s': %s", objects[0].Identity(), err)
 		}
 		if err := m.insertPrefetchedData(prefetched); err != nil {
-			return fmt.Errorf("unable to insert prefetched data for retrieve operation: %s", err)
+			return fmt.Errorf("unable to insert prefetched data for retrieve operation for '%s': %s", objects[0].Identity(), err)
 		}
 	}
 
@@ -258,10 +258,6 @@ func (m *vortexManipulator) Create(mctx manipulate.Context, objects ...elemental
 	m.RLock()
 	defer m.RUnlock()
 
-	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
-	}
-
 	return m.coreCRUDOperation(elemental.OperationCreate, mctx, objects...)
 }
 
@@ -270,10 +266,6 @@ func (m *vortexManipulator) Update(mctx manipulate.Context, objects ...elemental
 	m.RLock()
 	defer m.RUnlock()
 
-	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
-	}
-
 	return m.coreCRUDOperation(elemental.OperationUpdate, mctx, objects...)
 }
 
@@ -281,10 +273,6 @@ func (m *vortexManipulator) Delete(mctx manipulate.Context, objects ...elemental
 
 	m.RLock()
 	defer m.RUnlock()
-
-	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
-	}
 
 	return m.coreCRUDOperation(elemental.OperationDelete, mctx, objects...)
 }
@@ -562,7 +550,7 @@ func (m *vortexManipulator) genericUpdater(method elemental.Operation, mctx mani
 	switch wc {
 
 	case manipulate.WriteConsistencyStrong, manipulate.WriteConsistencyStrongest:
-		// In Stroing consistency we make sure that the backend gets the create.
+		// In Strong consistency we make sure that the backend gets the create.
 		// Only then store in the cache.
 		return true, m.commitUpstream(mctx.Context(), method, mctx, objects...)
 
@@ -793,7 +781,17 @@ func (m *vortexManipulator) eventHandler(ctx context.Context, evt *elemental.Eve
 func (m *vortexManipulator) insertPrefetchedData(prefetched []elemental.Identifiables) error {
 
 	for _, identifiables := range prefetched {
-		if err := m.downstreamManipulator.Create(nil, identifiables.List()...); err != nil {
+
+		if identifiables == nil {
+			continue
+		}
+
+		lst := identifiables.List()
+		if len(lst) == 0 {
+			continue
+		}
+
+		if err := m.commitLocal(elemental.OperationCreate, nil, lst); err != nil {
 			return err
 		}
 	}

@@ -7,6 +7,7 @@ import (
 // isCommonIdentity will validate that all objects in the operation have the same identity.
 // We do not support calls with different identities.
 func isCommonIdentity(objects ...elemental.Identifiable) bool {
+
 	if len(objects) == 0 {
 		return false
 	}
