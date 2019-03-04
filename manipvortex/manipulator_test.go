@@ -38,13 +38,11 @@ func newDatastore() (manipulate.Manipulator, error) {
 				&manipmemory.Index{
 					Name:      "Name",
 					Type:      manipmemory.IndexTypeString,
-					Unique:    false,
 					Attribute: "Name",
 				},
 				&manipmemory.Index{
 					Name:      "Slice",
 					Type:      manipmemory.IndexTypeSlice,
-					Unique:    false,
 					Attribute: "Slice",
 				},
 			},

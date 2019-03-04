@@ -73,13 +73,11 @@ func NewMemoryDB(
                 &config.IndexConfig{
                     Name:      "Name",
                     Type:      config.String,
-                    Unique:    false,
                     Attribute: "Name",
                 ,
                 &config.IndexConfig{
                     Name:      "Slice",
                     Type:      config.Slice,
-                    Unique:    false,
                     Attribute: "Slice",
                 },
             },

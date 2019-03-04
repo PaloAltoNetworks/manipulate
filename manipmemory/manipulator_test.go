@@ -28,19 +28,16 @@ func datastoreIndexConfig() map[string]*IdentitySchema {
 				&Index{
 					Name:      "name",
 					Type:      IndexTypeString,
-					Unique:    false,
 					Attribute: "Name",
 				},
 				&Index{
 					Name:      "name_prefix",
 					Type:      IndexTypeString,
-					Unique:    false,
 					Attribute: "Name",
 				},
 				&Index{
 					Name:      "slice",
 					Type:      IndexTypeSlice,
-					Unique:    false,
 					Attribute: "Slice",
 				},
 			},
@@ -74,31 +71,26 @@ func TestMemManipulator_New(t *testing.T) {
 						&Index{
 							Name:      "Name",
 							Type:      IndexTypeString,
-							Unique:    false,
 							Attribute: "Name",
 						},
 						&Index{
 							Name:      "Slice",
 							Type:      IndexTypeSlice,
-							Unique:    false,
 							Attribute: "Slice",
 						},
 						&Index{
 							Name:      "Map",
 							Type:      IndexTypeMap,
-							Unique:    false,
 							Attribute: "Map",
 						},
 						&Index{
 							Name:      "Bool",
 							Type:      IndexTypeBoolean,
-							Unique:    false,
 							Attribute: "Bool",
 						},
 						&Index{
 							Name:      "StringBased",
 							Type:      IndexTypeStringBased,
-							Unique:    false,
 							Attribute: "StringBased",
 						},
 					},
