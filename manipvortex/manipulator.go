@@ -33,6 +33,7 @@ type vortexManipulator struct {
 	defaultQueueDuration    time.Duration
 	pageSize                int
 	prefetcher              Prefetcher
+	accepter                Accepter
 
 	sync.RWMutex
 }
@@ -75,6 +76,7 @@ func New(
 		logfile:                 cfg.logfile,
 		pageSize:                cfg.defaultPageSize,
 		prefetcher:              cfg.prefetcher,
+		accepter:                cfg.accepter,
 		processors:              processors,
 		model:                   model,
 		transactionQueue:        cfg.transactionQueue,
@@ -382,6 +384,17 @@ func (m *vortexManipulator) coreCRUDOperation(operation elemental.Operation, mct
 		mctx = manipulate.NewContext(context.Background())
 	}
 
+	// If we have an accepter, we see if it accepts the write
+	if m.accepter != nil {
+		accept, err := m.accepter.Accept(mctx.Context(), objects...)
+		if err != nil {
+			return err
+		}
+		if !accept {
+			return nil
+		}
+	}
+
 	// If the identity is not registered or the request has a parent
 	// send upstream. We are not dealing with this locally.
 	if !m.shouldProcess(mctx, objects[0].Identity()) {
@@ -646,7 +659,10 @@ func (m *vortexManipulator) monitor(ctx context.Context) {
 			m.RUnlock()
 
 			if commit {
-				m.eventHandler(ctx, evt)
+				if err := m.eventHandler(ctx, evt); err != nil {
+					zap.L().Error("Unable to handle event", zap.Error(err))
+					continue
+				}
 			}
 
 			m.pushEvent(evt)
@@ -733,17 +749,27 @@ func (m *vortexManipulator) pushErrors(err error) {
 	}
 }
 
-func (m *vortexManipulator) eventHandler(ctx context.Context, evt *elemental.Event) {
+func (m *vortexManipulator) eventHandler(ctx context.Context, evt *elemental.Event) error {
 
 	if m.upstreamManipulator == nil {
-		return
+		return nil
 	}
 
 	obj := m.model.IdentifiableFromString(evt.Identity)
 
 	if err := evt.Decode(obj); err != nil {
-		zap.L().Error("Unable to unmarshal received event", zap.Error(err))
-		return
+		return fmt.Errorf("unable to unmarshal received event: %s", err)
+	}
+
+	// If we have an accepter, we see if it accepts the write
+	if m.accepter != nil {
+		accept, err := m.accepter.Accept(ctx, obj)
+		if err != nil {
+			return err
+		}
+		if !accept {
+			return nil
+		}
 	}
 
 	m.RLock()
@@ -767,15 +793,16 @@ func (m *vortexManipulator) eventHandler(ctx context.Context, evt *elemental.Eve
 		method = elemental.OperationDelete
 
 	default:
-		zap.L().Error("unsupported event received", zap.String("Event", string(evt.Type)))
-		return
+		return fmt.Errorf("unsupported event received: %s", evt.Type)
 	}
 
 	if err := m.commitLocal(method, nil, elemental.IdentifiablesList{obj}); err != nil {
 		if method != elemental.OperationDelete {
-			zap.L().Error("failed to commit locally an event notification", zap.String("event", evt.String()), zap.Error(err))
+			return fmt.Errorf("unable to commit event of type '%s': %s", evt.Type, err)
 		}
 	}
+
+	return nil
 }
 
 func (m *vortexManipulator) insertPrefetchedData(prefetched elemental.Identifiables) error {

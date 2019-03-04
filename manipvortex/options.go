@@ -17,6 +17,7 @@ type config struct {
 	defaultQueueDuration time.Duration
 	defaultPageSize      int
 	prefetcher           Prefetcher
+	accepter             Accepter
 }
 
 func newConfig() *config {
@@ -94,6 +95,13 @@ func OptionDefaultPageSize(defaultPageSize int) Option {
 func OptionPrefetcher(p Prefetcher) Option {
 	return func(cfg *config) {
 		cfg.prefetcher = p
+	}
+}
+
+// OptionAccepter sets the Accepter to use.
+func OptionAccepter(a Accepter) Option {
+	return func(cfg *config) {
+		cfg.accepter = a
 	}
 }
 
