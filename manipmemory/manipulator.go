@@ -199,23 +199,13 @@ func (m *memdbManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 // Count is part of the implementation of the Manipulator interface. Count is very expensive.
 func (m *memdbManipulator) Count(mctx manipulate.Context, identity elemental.Identity) (int, error) {
 
-	txn := m.db.Txn(false)
+	items := map[string]elemental.Identifiable{}
 
-	iterator, err := txn.Get(identity.Category, "id")
-	if err != nil {
-		return 0, fmt.Errorf("failed to create iterator for %s: %s", identity.Category, err)
+	if err := m.retrieveFromFilter(identity.Category, mctx.Filter(), &items, true); err != nil {
+		return 0, err
 	}
 
-	count := 0
-
-	raw := iterator.Next()
-	for raw != nil {
-		count = count + 1
-		raw = iterator.Next()
-	}
-
-	return count, nil
-
+	return len(items), nil
 }
 
 // Commit is part of the implementation of the TransactionalManipulator interface.
