@@ -17,7 +17,8 @@ type config struct {
 	defaultQueueDuration time.Duration
 	defaultPageSize      int
 	prefetcher           Prefetcher
-	accepter             Accepter
+	upstreamReconciler   Reconciler
+	downstreamReconciler Reconciler
 }
 
 func newConfig() *config {
@@ -98,16 +99,16 @@ func OptionPrefetcher(p Prefetcher) Option {
 	}
 }
 
-// OptionAccepter sets the Accepter to use.
-func OptionAccepter(a Accepter) Option {
+// OptionDownstreamReconciler sets the global downstream Reconcilers to use.
+func OptionDownstreamReconciler(r Reconciler) Option {
 	return func(cfg *config) {
-		cfg.accepter = a
+		cfg.downstreamReconciler = r
 	}
 }
 
-// OptionPageSize is the page size during migration.
-func OptionPageSize(n int) Option {
+// OptionUpstreamReconciler sets the global upstream Reconcilers to use.
+func OptionUpstreamReconciler(r Reconciler) Option {
 	return func(cfg *config) {
-		cfg.defaultPageSize = n
+		cfg.upstreamReconciler = r
 	}
 }

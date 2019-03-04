@@ -462,6 +462,7 @@ func Test_Create(t *testing.T) {
 		d, err := newDatastore()
 		So(err, ShouldBeNil)
 		m := maniptest.NewTestManipulator()
+		a := NewTestReconciler()
 
 		v, err := New(
 			ctx,
@@ -469,16 +470,18 @@ func Test_Create(t *testing.T) {
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionDownstreamReconciler(a),
 		)
 		So(err, ShouldBeNil)
 
 		objConfig := v.(*vortexManipulator).processors[testmodel.ListIdentity.Name]
-		objConfig.UpstreamHook = func(method elemental.Operation, mctx manipulate.Context, objects []elemental.Identifiable) (bool, error) {
+		objConfig.UpstreamReconciler = NewTestReconciler()
+		objConfig.UpstreamReconciler.(TestReconciler).MockReconcile(t, func(mctx manipulate.Context, op elemental.Operation, i ...elemental.Identifiable) (bool, error) {
 			if mctx.Parent() != nil {
 				return false, nil
 			}
 			return true, nil
-		}
+		})
 
 		Convey("When I create objects", func() {
 
@@ -501,6 +504,31 @@ func Test_Create(t *testing.T) {
 				err = v.Retrieve(nil, newObject)
 				So(err, ShouldBeNil)
 				So(newObject, ShouldResemble, obj)
+			})
+
+			Convey("When the backend succeeds, the object must not be stored in the DB if accepter did not accept", func() {
+
+				a.MockReconcile(t, func(manipulate.Context, elemental.Operation, ...elemental.Identifiable) (bool, error) {
+					return false, nil
+				})
+
+				m.MockCreate(t, func(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+					o := objects[0].(*testmodel.List)
+					o.ID = "ID1"
+					return nil
+				})
+
+				obj := newObject("obj1", []string{"label"})
+
+				err := v.Create(nil, obj)
+				So(err, ShouldBeNil)
+
+				newObject := newObject("", []string{})
+				newObject.ID = "ID1"
+
+				err = v.Retrieve(nil, newObject)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "Object not found: cannot find the object for the given ID")
 			})
 
 			Convey("When the backend fails, the object must be not be stored in the DB", func() {
@@ -556,6 +584,7 @@ func Test_Update(t *testing.T) {
 		d, err := newDatastore()
 		So(err, ShouldBeNil)
 		m := maniptest.NewTestManipulator()
+		a := NewTestReconciler()
 
 		v, err := New(
 			ctx,
@@ -563,16 +592,18 @@ func Test_Update(t *testing.T) {
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionDownstreamReconciler(a),
 		)
 		So(err, ShouldBeNil)
 
 		objConfig := v.(*vortexManipulator).processors[testmodel.ListIdentity.Name]
-		objConfig.UpstreamHook = func(method elemental.Operation, mctx manipulate.Context, objects []elemental.Identifiable) (bool, error) {
+		objConfig.UpstreamReconciler = NewTestReconciler()
+		objConfig.UpstreamReconciler.(TestReconciler).MockReconcile(t, func(mctx manipulate.Context, op elemental.Operation, i ...elemental.Identifiable) (bool, error) {
 			if mctx.Parent() != nil {
 				return false, nil
 			}
 			return true, nil
-		}
+		})
 
 		obj := newObject("obj1", []string{"label"})
 		obj.ID = "obj1"
@@ -605,6 +636,29 @@ func Test_Update(t *testing.T) {
 				err = v.Retrieve(nil, readobject)
 				So(err, ShouldBeNil)
 				So(updatedObject.Name, ShouldResemble, readobject.Name)
+			})
+
+			Convey("When the backend succeeds, the object must not be stored in the DB if accepter did not accept", func() {
+
+				a.MockReconcile(t, func(manipulate.Context, elemental.Operation, ...elemental.Identifiable) (bool, error) {
+					return false, nil
+				})
+
+				m.MockUpdate(t, func(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+					return nil
+				})
+
+				obj := newObject("obj1", []string{"hello"})
+
+				err := v.Update(nil, obj)
+				So(err, ShouldBeNil)
+
+				readobject := newObject("", []string{})
+				readobject.ID = "ID1"
+
+				err = v.Retrieve(nil, readobject)
+				So(err, ShouldBeNil)
+				So(readobject.Slice, ShouldResemble, []string{"label"})
 			})
 
 			Convey("When the backend fails, the object must not be updated", func() {
@@ -662,22 +716,26 @@ func Test_Delete(t *testing.T) {
 		d, err := newDatastore()
 		So(err, ShouldBeNil)
 		m := maniptest.NewTestManipulator()
+		a := NewTestReconciler()
+
 		v, err := New(
 			ctx,
 			d,
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionDownstreamReconciler(a),
 		)
 		So(err, ShouldBeNil)
 
 		objConfig := v.(*vortexManipulator).processors[testmodel.ListIdentity.Name]
-		objConfig.UpstreamHook = func(method elemental.Operation, mctx manipulate.Context, objects []elemental.Identifiable) (bool, error) {
+		objConfig.UpstreamReconciler = NewTestReconciler()
+		objConfig.UpstreamReconciler.(TestReconciler).MockReconcile(t, func(mctx manipulate.Context, op elemental.Operation, i ...elemental.Identifiable) (bool, error) {
 			if mctx.Parent() != nil {
 				return false, nil
 			}
 			return true, nil
-		}
+		})
 
 		obj := newObject("obj1", []string{"label"})
 		obj.ID = "obj1"
@@ -708,6 +766,28 @@ func Test_Delete(t *testing.T) {
 
 				err = v.Retrieve(nil, readobject)
 				So(err, ShouldNotBeNil)
+			})
+
+			Convey("When the backend succeeds, the object must not be deleted in the DB if accepter did not accept", func() {
+
+				a.MockReconcile(t, func(manipulate.Context, elemental.Operation, ...elemental.Identifiable) (bool, error) {
+					return false, nil
+				})
+
+				m.MockDelete(t, func(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+					return nil
+				})
+
+				obj := newObject("obj1", []string{"hello"})
+
+				err := v.Delete(nil, obj)
+				So(err, ShouldBeNil)
+
+				readobject := newObject("", []string{})
+				readobject.ID = "ID1"
+
+				err = v.Retrieve(nil, readobject)
+				So(err, ShouldBeNil)
 			})
 
 			Convey("When the backend fail, the object must not be deleted", func() {
@@ -1035,6 +1115,8 @@ func Test_Monitor(t *testing.T) {
 		d, err := newDatastore()
 		So(err, ShouldBeNil)
 
+		a := NewTestReconciler()
+
 		v, err := New(
 			ctx,
 			d,
@@ -1042,6 +1124,7 @@ func Test_Monitor(t *testing.T) {
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
 			OptionUpstreamSubscriber(s),
+			OptionDownstreamReconciler(a),
 		)
 		So(err, ShouldBeNil)
 
@@ -1097,6 +1180,27 @@ func Test_Monitor(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(len(objects), ShouldEqual, 0)
 			})
+		})
+
+		Convey("When I push a create event, the object must not be written in the DB when accepter rejects it", func() {
+
+			a.MockReconcile(t, func(manipulate.Context, elemental.Operation, ...elemental.Identifiable) (bool, error) {
+				return false, nil
+			})
+
+			obj := newObject("push1", []string{"test=push"})
+			obj.ID = "push"
+
+			event := elemental.NewEvent(elemental.EventCreate, obj)
+			eventChannel <- event
+
+			// Necessary sleep to allow event to be processed.
+			time.Sleep(100 * time.Millisecond)
+
+			objects := testmodel.ListsList{}
+			err := v.RetrieveMany(nil, &objects)
+			So(err, ShouldBeNil)
+			So(len(objects), ShouldEqual, 0)
 		})
 
 		Convey("When I push a reconnection status, the db must be resyced", func() {

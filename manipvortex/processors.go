@@ -7,9 +7,6 @@ import (
 	"go.aporeto.io/manipulate"
 )
 
-// Hook is the hook function type that is called by the processors.
-type Hook func(method elemental.Operation, mctx manipulate.Context, objects []elemental.Identifiable) (reconcile bool, err error)
-
 // RetrieveManyHook is the type of a hook for retrieve many
 type RetrieveManyHook func(m manipulate.Manipulator, mctx manipulate.Context, dest elemental.Identifiables) (reconcile bool, err error)
 
@@ -37,15 +34,23 @@ type Processor struct {
 	// additional calls.
 	RetrieveManyHook RetrieveManyHook
 
-	// UpstreamHook is a hook function that can be called before a transaction
-	// is performed on the upstream. If the hook returns an error or reconcile
-	// equals to fals, the transaction is aborted.
-	UpstreamHook Hook
+	// DownstreamReconciler is the custom Reconciler for the processor that
+	// will be called to reconcile downstream writes.
+	DownstreamReconciler Reconciler
 
-	// LocalHook is a hook function that can be called before a transaction
-	// is committed locally. If the hook returns an error or reconcile
-	// is false, the transaction will be aborted. The error will be returned.
-	LocalHook Hook
+	// UpstreamReconciler is the custom Reconciler for the processor that
+	// will be called to reconcile upstream writes.
+	UpstreamReconciler Reconciler
+
+	// // UpstreamHook is a hook function that can be called before a transaction
+	// // is performed on the upstream. If the hook returns an error or reconcile
+	// // equals to fals, the transaction is aborted.
+	// UpstreamHook Hook
+
+	// // LocalHook is a hook function that can be called before a transaction
+	// // is committed locally. If the hook returns an error or reconcile
+	// // is false, the transaction will be aborted. The error will be returned.
+	// LocalHook Hook
 
 	// CommitOnEvent with commit the event in the cache even if a client
 	// is subscribed for this event. If left false, it will only commit

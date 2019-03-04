@@ -33,7 +33,8 @@ type vortexManipulator struct {
 	defaultQueueDuration    time.Duration
 	pageSize                int
 	prefetcher              Prefetcher
-	accepter                Accepter
+	upstreamReconciler      Reconciler
+	downstreamReconciler    Reconciler
 
 	sync.RWMutex
 }
@@ -76,7 +77,8 @@ func New(
 		logfile:                 cfg.logfile,
 		pageSize:                cfg.defaultPageSize,
 		prefetcher:              cfg.prefetcher,
-		accepter:                cfg.accepter,
+		upstreamReconciler:      cfg.upstreamReconciler,
+		downstreamReconciler:    cfg.downstreamReconciler,
 		processors:              processors,
 		model:                   model,
 		transactionQueue:        cfg.transactionQueue,
@@ -183,9 +185,7 @@ func (m *vortexManipulator) RetrieveMany(mctx manipulate.Context, dest elemental
 		return nil
 	}
 
-	cfg := m.processors[dest.Identity().Name]
-
-	if cfg.RetrieveManyHook != nil {
+	if cfg := m.processors[dest.Identity().Name]; cfg != nil && cfg.RetrieveManyHook != nil {
 		commit, err := cfg.RetrieveManyHook(m.downstreamManipulator, mctx, dest)
 		if !commit {
 			return err
@@ -384,17 +384,6 @@ func (m *vortexManipulator) coreCRUDOperation(operation elemental.Operation, mct
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	// If we have an accepter, we see if it accepts the write
-	if m.accepter != nil {
-		accept, err := m.accepter.Accept(mctx.Context(), objects...)
-		if err != nil {
-			return err
-		}
-		if !accept {
-			return nil
-		}
-	}
-
 	// If the identity is not registered or the request has a parent
 	// send upstream. We are not dealing with this locally.
 	if !m.shouldProcess(mctx, objects[0].Identity()) {
@@ -426,18 +415,32 @@ func (m *vortexManipulator) shouldProcess(mctx manipulate.Context, identity elem
 
 // commitUpstream will commit a transaction to the upstream if it is not nil. It will
 // return the upstream error.
-func (m *vortexManipulator) commitUpstream(ctx context.Context, method elemental.Operation, mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *vortexManipulator) commitUpstream(ctx context.Context, operation elemental.Operation, mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if m.upstreamManipulator == nil {
 		return nil
 	}
 
+	// If we have an accepter, we see if it accepts the write
+	if m.upstreamReconciler != nil {
+		reconcile, err := m.upstreamReconciler.Reconcile(mctx, operation, objects...)
+		if err != nil {
+			return err
+		}
+		if !reconcile {
+			return nil
+		}
+	}
+
 	// If it is managed object we apply the pre-hook.
 	cfg, ok := m.processors[objects[0].Identity().Name]
-	if ok {
-		reconcile, err := m.processHook(method, cfg.UpstreamHook, mctx, objects...)
-		if !reconcile {
+	if ok && cfg.UpstreamReconciler != nil {
+		accept, err := cfg.UpstreamReconciler.Reconcile(mctx, operation, objects...)
+		if err != nil {
 			return err
+		}
+		if !accept {
+			return nil
 		}
 	}
 
@@ -445,7 +448,7 @@ func (m *vortexManipulator) commitUpstream(ctx context.Context, method elemental
 	if err := manipulate.Retry(
 		ctx,
 		func() error {
-			return m.methodFromType(method)(mctx, objects...)
+			return m.methodFromType(operation)(mctx, objects...)
 		},
 		nil,
 	); err != nil {
@@ -458,10 +461,25 @@ func (m *vortexManipulator) commitUpstream(ctx context.Context, method elemental
 // commitLocal will commit a transaction locally after processing any
 // hooks. It will return error if either the hook or the local commit
 // fail for some reason.
-func (m *vortexManipulator) commitLocal(method elemental.Operation, mctx manipulate.Context, objects []elemental.Identifiable) error {
+func (m *vortexManipulator) commitLocal(operation elemental.Operation, mctx manipulate.Context, objects []elemental.Identifiable) error {
 
 	if objects == nil || len(objects) == 0 {
 		return nil
+	}
+
+	if mctx == nil {
+		mctx = manipulate.NewContext(context.Background())
+	}
+
+	// If we have a global Reconciler, we see if it accepts the write.
+	if m.downstreamReconciler != nil {
+		accept, err := m.downstreamReconciler.Reconcile(mctx, operation, objects...)
+		if err != nil {
+			return err
+		}
+		if !accept {
+			return nil
+		}
 	}
 
 	cfg, ok := m.processors[objects[0].Identity().Name]
@@ -469,12 +487,18 @@ func (m *vortexManipulator) commitLocal(method elemental.Operation, mctx manipul
 		return nil
 	}
 
-	reconcile, err := m.processHook(method, cfg.LocalHook, mctx, objects...)
-	if !reconcile {
-		return err
+	// If we have a processor Reconciler, we see if it accepts the write.
+	if cfg.DownstreamReconciler != nil {
+		accept, err := cfg.DownstreamReconciler.Reconcile(mctx, operation, objects...)
+		if err != nil {
+			return err
+		}
+		if !accept {
+			return nil
+		}
 	}
 
-	if err := m.localMethodFromType(method)(mctx, objects...); err != nil {
+	if err := m.localMethodFromType(operation)(mctx, objects...); err != nil {
 		return err
 	}
 
@@ -483,7 +507,7 @@ func (m *vortexManipulator) commitLocal(method elemental.Operation, mctx manipul
 			Date:    time.Now(),
 			mctx:    mctx,
 			Objects: objects,
-			Method:  method,
+			Method:  operation,
 		}
 	}
 
@@ -521,15 +545,6 @@ func (m *vortexManipulator) methodFromType(method elemental.Operation) updater {
 	default:
 		return m.upstreamManipulator.Delete
 	}
-}
-
-func (m *vortexManipulator) processHook(method elemental.Operation, hook Hook, mctx manipulate.Context, objects ...elemental.Identifiable) (reconcile bool, err error) {
-
-	if hook != nil {
-		return hook(method, mctx, objects)
-	}
-
-	return true, nil
 }
 
 // genericUpdate will implement the updates. It takes as parameters the methods
@@ -759,17 +774,6 @@ func (m *vortexManipulator) eventHandler(ctx context.Context, evt *elemental.Eve
 
 	if err := evt.Decode(obj); err != nil {
 		return fmt.Errorf("unable to unmarshal received event: %s", err)
-	}
-
-	// If we have an accepter, we see if it accepts the write
-	if m.accepter != nil {
-		accept, err := m.accepter.Accept(ctx, obj)
-		if err != nil {
-			return err
-		}
-		if !accept {
-			return nil
-		}
 	}
 
 	m.RLock()

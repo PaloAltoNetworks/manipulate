@@ -25,7 +25,8 @@ func Test_newOptions(t *testing.T) {
 			So(cfg.defaultQueueDuration, ShouldEqual, time.Second)
 			So(cfg.transactionQueue, ShouldHaveSameTypeAs, make(chan *Transaction, 1000))
 			So(cfg.defaultPageSize, ShouldEqual, 10000)
-			So(cfg.accepter, ShouldBeNil)
+			So(cfg.upstreamReconciler, ShouldBeNil)
+			So(cfg.downstreamReconciler, ShouldBeNil)
 		})
 	})
 }
@@ -87,5 +88,16 @@ func Test_Options(t *testing.T) {
 			So(cfg.prefetcher, ShouldEqual, p)
 		})
 
+		Convey("OptionUpstreamReconciler with defaults should work", func() {
+			r := NewTestReconciler()
+			OptionUpstreamReconciler(r)(cfg)
+			So(cfg.upstreamReconciler, ShouldEqual, r)
+		})
+
+		Convey("OptionDownstreamReconciler with defaults should work", func() {
+			r := NewTestReconciler()
+			OptionDownstreamReconciler(r)(cfg)
+			So(cfg.downstreamReconciler, ShouldEqual, r)
+		})
 	})
 }

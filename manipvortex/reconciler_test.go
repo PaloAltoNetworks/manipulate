@@ -7,23 +7,24 @@ import (
 
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
+	"go.aporeto.io/manipulate"
 )
 
-func TestTestAccepter(t *testing.T) {
+func TestTestReconciler(t *testing.T) {
 
-	Convey("Given I create a new TestAccepter", t, func() {
+	Convey("Given I create a new TestReconciler", t, func() {
 
-		p := NewTestAccepter()
+		r := NewTestReconciler()
 
 		Convey("Then it should be initialized", func() {
-			So(p, ShouldImplement, (*TestAccepter)(nil))
-			So(p.(*testAccepter).lock, ShouldNotBeNil)
-			So(p.(*testAccepter).mocks, ShouldNotBeNil)
+			So(r, ShouldImplement, (*TestReconciler)(nil))
+			So(r.(*testReconciler).lock, ShouldNotBeNil)
+			So(r.(*testReconciler).mocks, ShouldNotBeNil)
 		})
 
 		Convey("When I call the Accept method without mock", func() {
 
-			ok, err := p.Accept(context.Background(), nil)
+			ok, err := r.Reconcile(manipulate.NewContext(context.Background()), elemental.OperationCreate, nil)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
@@ -36,11 +37,11 @@ func TestTestAccepter(t *testing.T) {
 
 		Convey("When I call the Accept method with a mock", func() {
 
-			p.MockAccept(t, func(context.Context, ...elemental.Identifiable) (bool, error) {
+			r.MockReconcile(t, func(manipulate.Context, elemental.Operation, ...elemental.Identifiable) (bool, error) {
 				return false, fmt.Errorf("boom")
 			})
 
-			ok, err := p.Accept(context.Background(), nil)
+			ok, err := r.Reconcile(manipulate.NewContext(context.Background()), elemental.OperationCreate, nil)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -52,5 +53,4 @@ func TestTestAccepter(t *testing.T) {
 			})
 		})
 	})
-
 }
