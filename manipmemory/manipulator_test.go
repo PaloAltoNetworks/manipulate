@@ -32,6 +32,12 @@ func datastoreIndexConfig() map[string]*IdentitySchema {
 					Attribute: "Name",
 				},
 				&Index{
+					Name:      "name_prefix",
+					Type:      IndexTypeString,
+					Unique:    false,
+					Attribute: "Name",
+				},
+				&Index{
 					Name:      "slice",
 					Type:      IndexTypeSlice,
 					Unique:    false,
@@ -342,7 +348,7 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 			})
 		})
 
-		Convey("When I retrieve the lists with a filter that matches l1", func() {
+		Convey("When I retrieve the lists with a filter that matches l1 Equals", func() {
 
 			ps := testmodel.ListsList{}
 
@@ -367,15 +373,39 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 			})
 		})
 
+		Convey("When I retrieve the lists with a filter that matches l1 using Matches", func() {
+
+			ps := testmodel.ListsList{}
+
+			mctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionFilter(
+					manipulate.NewFilterComposer().WithKey("Name").Matches("^Antoine$").Done(),
+				),
+			)
+
+			err := m.RetrieveMany(mctx, &ps)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then I should only have retrieved l1 and l2", func() {
+				So(len(ps), ShouldEqual, 2)
+				So(ps, ShouldContain, l1)
+				So(ps, ShouldContain, l2)
+			})
+		})
+
 		Convey("When I retrieve the lists with an OR filter that matches l1 and l2", func() {
 
 			ps := testmodel.ListsList{}
 
 			filter := manipulate.NewFilterComposer().Or(
 				manipulate.NewFilterComposer().
-					WithKey("Name").Equals("Antoine1").Done(),
+					WithKey("Name").Matches("^Antoine1").Done(),
 				manipulate.NewFilterComposer().
-					WithKey("Name").Equals("Antoine2").Done(),
+					WithKey("Name").Matches("^Antoine2").Done(),
 			).Done()
 
 			mctx := manipulate.NewContext(
@@ -484,7 +514,7 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 			})
 		})
 
-		Convey("When I retrieve the lists with a bad filter", func() {
+		Convey("When I retrieve the lists with a bad filter with non existing key", func() {
 
 			ps := testmodel.ListsList{}
 
@@ -492,6 +522,25 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 				context.Background(),
 				manipulate.ContextOptionFilter(
 					manipulate.NewFilterComposer().WithKey("Bad").Equals("Antoine1").Done(),
+				),
+			)
+
+			err := m.RetrieveMany(mctx, &ps)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotExecuteQuery{})
+			})
+		})
+
+		Convey("When I retrieve the lists with a bad match filter not starting with carret", func() {
+
+			ps := testmodel.ListsList{}
+
+			mctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionFilter(
+					manipulate.NewFilterComposer().WithKey("Bad").Matches("Antoine1").Done(),
 				),
 			)
 

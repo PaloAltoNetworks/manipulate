@@ -319,6 +319,26 @@ func (m *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 					return err
 				}
 
+			case manipulate.MatchComparator:
+
+				values := f.Values()[i]
+
+				for _, v := range values {
+
+					if !strings.HasPrefix(v.(string), "^") {
+						return manipulate.NewErrCannotExecuteQuery("Matches filter only works for prefix matching and must always start with a '^'")
+					}
+
+					fv := strings.TrimPrefix(v.(string), "^")
+					fv = strings.TrimSuffix(fv, "$")
+
+					valueItems := map[string]elemental.Identifiable{}
+					if err := m.retrieveIntersection(identity, k+"_prefix", fv, &valueItems, fullQuery); err != nil {
+						return err
+					}
+					mergeIn(items, &valueItems)
+				}
+
 			case manipulate.ContainComparator:
 
 				values := f.Values()[i]
