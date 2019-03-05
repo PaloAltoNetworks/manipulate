@@ -139,19 +139,23 @@ func (m *vortexManipulator) Flush(ctx context.Context) error {
 	}
 
 	f, ok := m.downstreamManipulator.(manipulate.FlushableManipulator)
-	if !ok {
-		return nil
+	if ok {
+		// Wait for the channel to clean up
+		maxDelay := time.Now().Add(10 * time.Second)
+		for len(m.transactionQueue) > 0 && time.Now().Before(maxDelay) {
+			time.Sleep(1 * time.Second)
+		}
+
+		// Flush any outstanding transactions and restart the backgrond sync
+		if err := f.Flush(ctx); err != nil {
+			return fmt.Errorf("unable to flush the datastore: %s", err)
+		}
 	}
 
-	// Wait for the channel to clean up
-	maxDelay := time.Now().Add(10 * time.Second)
-	for len(m.transactionQueue) > 0 && time.Now().Before(maxDelay) {
-		time.Sleep(1 * time.Second)
-	}
-
-	// Flush any outstanding transactions and restart the backgrond sync
-	if err := f.Flush(ctx); err != nil {
-		return fmt.Errorf("unable to flush the datastore: %s", err)
+	if m.prefetcher != nil {
+		if err := m.warmUp(ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil
