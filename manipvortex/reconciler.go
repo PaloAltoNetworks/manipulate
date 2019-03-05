@@ -45,7 +45,7 @@ func NewTestReconciler() TestReconciler {
 	}
 }
 
-// MockPrefetch sets the mocked implementation of Prefetch.
+// MockPrefetch sets the mocked implementation of Reconcile.
 func (p *testReconciler) MockReconcile(t *testing.T, impl func(manipulate.Context, elemental.Operation, ...elemental.Identifiable) (bool, error)) {
 	p.currentMocks(t).reconcileMock = impl
 }

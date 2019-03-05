@@ -55,6 +55,8 @@ func OptionUpstreamManipulator(manipulator manipulate.Manipulator) Option {
 }
 
 // OptionUpstreamSubscriber sets the upstream subscriber.
+// Note the given subscriber must NOT be started or the events
+// will be received twice, needlessly loading the VortexDB.
 func OptionUpstreamSubscriber(s manipulate.Subscriber) Option {
 	return func(cfg *config) {
 		cfg.upstreamSubscriber = s
