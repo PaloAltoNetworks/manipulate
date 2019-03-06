@@ -239,21 +239,18 @@ func (m *vortexManipulator) Retrieve(mctx manipulate.Context, objects ...element
 
 		// If we can't find it locally, and its strong consistency retrieve
 		// we will try the backend if we have one.
-		if m.upstreamManipulator != nil && (mctx != nil && mctx.ReadConsistency() == manipulate.ReadConsistencyStrong) {
-
-			if err := m.upstreamManipulator.Retrieve(mctx, objects...); err != nil {
-				return err
-			}
-
-			// Make sure that we update our cache for future reference.
-			if err := m.downstreamManipulator.Create(mctx, objects...); err != nil {
-				return fmt.Errorf("unable to update local cache from backend: %s", err)
-			}
-
-			return nil
+		if m.upstreamManipulator == nil || !isStrongReadConsistency(mctx, m.processors[objects[0].Identity().Name], m.defaultReadConsistency) {
+			return err
 		}
 
-		return err
+		if err := m.upstreamManipulator.Retrieve(mctx, objects...); err != nil {
+			return err
+		}
+
+		// Make sure that we update our cache for future reference.
+		if err := m.downstreamManipulator.Create(mctx, objects...); err != nil {
+			return fmt.Errorf("unable to update local cache from backend: %s", err)
+		}
 	}
 
 	return nil
@@ -565,42 +562,32 @@ func (m *vortexManipulator) genericUpdater(method elemental.Operation, mctx mani
 	}
 
 	// We are guaranteed that there is at least one object and the identity is processable.
-	cfg := m.processors[objects[0].Identity().Name]
+	processor := m.processors[objects[0].Identity().Name]
 
-	wc := cfg.WriteConsistency
-	if mctx.WriteConsistency() != manipulate.WriteConsistencyDefault {
-		wc = mctx.WriteConsistency()
-	} else if wc == manipulate.WriteConsistencyDefault || wc == "" {
-		wc = m.defaultWriteConsistency
+	// In Strong consistency we make sure that the backend gets the create.
+	// Only then store in the cache.
+
+	if isStrongWriteConsistency(mctx, processor, m.defaultWriteConsistency) {
+		return true, m.commitUpstream(mctx.Context(), method, mctx, objects...)
 	}
 
-	tdeadline := cfg.QueueingDuration
+	tdeadline := processor.QueueingDuration
 	if tdeadline == 0 {
 		tdeadline = m.defaultQueueDuration
 	}
 
-	switch wc {
+	select {
 
-	case manipulate.WriteConsistencyStrong, manipulate.WriteConsistencyStrongest:
-		// In Strong consistency we make sure that the backend gets the create.
-		// Only then store in the cache.
-		return true, m.commitUpstream(mctx.Context(), method, mctx, objects...)
+	case m.transactionQueue <- &Transaction{
+		mctx:     mctx,
+		Objects:  objects,
+		Method:   method,
+		Deadline: time.Now().Add(tdeadline),
+	}:
+		return false, nil
 
 	default:
-
-		select {
-
-		case m.transactionQueue <- &Transaction{
-			mctx:     mctx,
-			Objects:  objects,
-			Method:   method,
-			Deadline: time.Now().Add(tdeadline),
-		}:
-			return false, nil
-
-		default:
-			return false, fmt.Errorf("commit queue is full: %d", len(m.transactionQueue))
-		}
+		return false, fmt.Errorf("commit queue is full: %d", len(m.transactionQueue))
 	}
 }
 
