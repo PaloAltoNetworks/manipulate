@@ -42,16 +42,6 @@ type Processor struct {
 	// will be called to reconcile upstream writes.
 	UpstreamReconciler Reconciler
 
-	// // UpstreamHook is a hook function that can be called before a transaction
-	// // is performed on the upstream. If the hook returns an error or reconcile
-	// // equals to fals, the transaction is aborted.
-	// UpstreamHook Hook
-
-	// // LocalHook is a hook function that can be called before a transaction
-	// // is committed locally. If the hook returns an error or reconcile
-	// // is false, the transaction will be aborted. The error will be returned.
-	// LocalHook Hook
-
 	// CommitOnEvent with commit the event in the cache even if a client
 	// is subscribed for this event. If left false, it will only commit
 	// if no client has subscribed for this event. It will always forward
