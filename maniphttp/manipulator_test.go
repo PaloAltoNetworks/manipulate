@@ -1012,7 +1012,7 @@ func TestHTTP_send(t *testing.T) {
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
-				So(err.Error(), ShouldEqual, "Cannot communicate: Service unavailable")
+				So(err.Error(), ShouldEqual, "Cannot communicate: Bad gateway")
 			})
 		})
 	})

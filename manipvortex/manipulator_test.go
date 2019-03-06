@@ -436,17 +436,19 @@ func Test_Retrieve(t *testing.T) {
 			})
 		})
 
-		Convey("When I read an invalid object, with consistency and the backend succeeds but cache fails", func() {
-			o := newObject("", []string{""})
-			o.ID = "bad-id"
+		// That doesn't seem possible now that memdb index are set to AllowingMissing
 
-			mctx := manipulate.NewContext(ctx, manipulate.ContextOptionReadConsistency(manipulate.ReadConsistencyStrong))
-			m.MockRetrieve(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
-				return nil
-			})
-			err := v.Retrieve(mctx, o)
-			So(err, ShouldNotBeNil)
-		})
+		// Convey("When I read an invalid object, with consistency and the backend succeeds but cache fails", func() {
+		// 	o := newObject("", []string{""})
+		// 	o.ID = "bad-id"
+
+		// 	mctx := manipulate.NewContext(ctx, manipulate.ContextOptionReadConsistency(manipulate.ReadConsistencyStrong))
+		// 	m.MockRetrieve(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
+		// 		return nil
+		// 	})
+		// 	err := v.Retrieve(mctx, o)
+		// 	So(err, ShouldNotBeNil)
+		// })
 	})
 
 }

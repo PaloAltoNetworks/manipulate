@@ -155,6 +155,12 @@ func (m *memdbManipulator) Update(mctx manipulate.Context, objects ...elemental.
 	defer txn.Abort()
 
 	for _, object := range objects {
+
+		o, err := txn.Get(object.Identity().Category, "id", object.Identifier())
+		if err != nil || o.Next() == nil {
+			return manipulate.NewErrObjectNotFound("Cannot find object with given ID")
+		}
+
 		if err := txn.Insert(object.Identity().Category, object); err != nil {
 			return manipulate.NewErrCannotExecuteQuery(err.Error())
 		}

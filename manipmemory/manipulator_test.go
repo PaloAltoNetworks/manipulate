@@ -118,41 +118,46 @@ func TestMemManipulator_New(t *testing.T) {
 			So(d.schema.Tables[testmodel.ListIdentity.Category].Indexes["id"],
 				ShouldResemble,
 				&memdb.IndexSchema{
-					Name:    "id",
-					Unique:  true,
-					Indexer: &memdb.StringFieldIndex{Field: "ID"},
+					Name:         "id",
+					Unique:       true,
+					Indexer:      &memdb.StringFieldIndex{Field: "ID"},
+					AllowMissing: true,
 				},
 			)
 			So(d.schema.Tables[testmodel.ListIdentity.Category].Indexes["Name"],
 				ShouldResemble,
 				&memdb.IndexSchema{
-					Name:    "Name",
-					Unique:  false,
-					Indexer: &memdb.StringFieldIndex{Field: "Name"},
+					Name:         "Name",
+					Unique:       false,
+					Indexer:      &memdb.StringFieldIndex{Field: "Name"},
+					AllowMissing: true,
 				},
 			)
 			So(d.schema.Tables[testmodel.ListIdentity.Category].Indexes["Slice"],
 				ShouldResemble,
 				&memdb.IndexSchema{
-					Name:    "Slice",
-					Unique:  false,
-					Indexer: &memdb.StringSliceFieldIndex{Field: "Slice"},
+					Name:         "Slice",
+					Unique:       false,
+					Indexer:      &memdb.StringSliceFieldIndex{Field: "Slice"},
+					AllowMissing: true,
 				},
 			)
 			So(d.schema.Tables[testmodel.ListIdentity.Category].Indexes["Map"],
 				ShouldResemble,
 				&memdb.IndexSchema{
-					Name:    "Map",
-					Unique:  false,
-					Indexer: &memdb.StringMapFieldIndex{Field: "Map"},
+					Name:         "Map",
+					Unique:       false,
+					Indexer:      &memdb.StringMapFieldIndex{Field: "Map"},
+					AllowMissing: true,
 				},
 			)
 			So(d.schema.Tables[testmodel.ListIdentity.Category].Indexes["StringBased"],
 				ShouldResemble,
 				&memdb.IndexSchema{
-					Name:    "StringBased",
-					Unique:  false,
-					Indexer: &stringBasedFieldIndex{Field: "StringBased"},
+					Name:         "StringBased",
+					Unique:       false,
+					Indexer:      &stringBasedFieldIndex{Field: "StringBased"},
+					AllowMissing: true,
 				},
 			)
 			boolIndex := d.schema.Tables[testmodel.ListIdentity.Category].Indexes["Bool"]
@@ -593,6 +598,7 @@ func TestMemManipulator_Update(t *testing.T) {
 				})
 			})
 
+			// This test seems to be invalid sinnce
 			Convey("When I update the a non existing list", func() {
 
 				pp := &testmodel.List{

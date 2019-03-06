@@ -226,8 +226,8 @@ func (m *vortexManipulator) Retrieve(mctx manipulate.Context, objects ...element
 		}
 	}
 
-	// If we are not processing the object or the object has a parent
-	// send it upstream. We only deal with CRUDs.
+	// If we are not processing the object, we send it upstream.
+	// We only deal with CRUDs.
 	if !m.shouldProcess(mctx, objects[0].Identity()) {
 		if m.upstreamManipulator != nil {
 			return m.upstreamManipulator.Retrieve(mctx, objects...)
@@ -679,7 +679,7 @@ func (m *vortexManipulator) monitor(ctx context.Context) {
 
 			if commit {
 				if err := m.eventHandler(ctx, evt); err != nil {
-					zap.L().Error("Unable to handle event", zap.Error(err))
+					m.pushErrors(fmt.Errorf("unable to handle event: %s", err))
 					continue
 				}
 			}
@@ -687,36 +687,21 @@ func (m *vortexManipulator) monitor(ctx context.Context) {
 			m.pushEvent(evt)
 
 		case err := <-m.upstreamSubscriber.Errors():
-			zap.L().Error("Received error from the push channel", zap.Error(err))
-			// Push event upstream.
-			m.pushErrors(err)
+			m.pushErrors(fmt.Errorf("upstream error: %s", err))
 
 		case status := <-m.upstreamSubscriber.Status():
 
 			switch status {
 
-			case manipulate.SubscriberStatusDisconnection:
-				zap.L().Warn("Upstream event channel interrupted. Reconnecting...")
-
-			case manipulate.SubscriberStatusInitialConnection:
-				zap.L().Info("Upstream event channel connected")
-
 			case manipulate.SubscriberStatusReconnection:
-				zap.L().Info("Upstream event channel restored")
 
-				// We flush everything
+				// We resync everything
 				if err := m.Flush(ctx); err != nil {
-					zap.L().Error("Unable to flush", zap.Error(err))
-				}
-
-				// We flush everything
-				if m.prefetcher != nil {
-					if err := m.warmUp(ctx); err != nil {
-						zap.L().Error("Unable to warm up after reconnection", zap.Error(err))
-					}
+					m.pushErrors(fmt.Errorf("unable to flush: %s", err))
 				}
 
 			case manipulate.SubscriberStatusFinalDisconnection:
+				m.pushStatus(status)
 				return
 			}
 
