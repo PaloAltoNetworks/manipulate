@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"testing"
 
+	"go.aporeto.io/elemental"
+
 	memdb "github.com/hashicorp/go-memdb"
 	. "github.com/smartystreets/goconvey/convey"
 	testmodel "go.aporeto.io/elemental/test/model"
@@ -28,13 +30,16 @@ func datastoreIndexConfig() map[string]*IdentitySchema {
 				&Index{
 					Name:      "name",
 					Type:      IndexTypeString,
-					Unique:    false,
+					Attribute: "Name",
+				},
+				&Index{
+					Name:      "name_prefix",
+					Type:      IndexTypeString,
 					Attribute: "Name",
 				},
 				&Index{
 					Name:      "slice",
 					Type:      IndexTypeSlice,
-					Unique:    false,
 					Attribute: "Slice",
 				},
 			},
@@ -68,31 +73,26 @@ func TestMemManipulator_New(t *testing.T) {
 						&Index{
 							Name:      "Name",
 							Type:      IndexTypeString,
-							Unique:    false,
 							Attribute: "Name",
 						},
 						&Index{
 							Name:      "Slice",
 							Type:      IndexTypeSlice,
-							Unique:    false,
 							Attribute: "Slice",
 						},
 						&Index{
 							Name:      "Map",
 							Type:      IndexTypeMap,
-							Unique:    false,
 							Attribute: "Map",
 						},
 						&Index{
 							Name:      "Bool",
 							Type:      IndexTypeBoolean,
-							Unique:    false,
 							Attribute: "Bool",
 						},
 						&Index{
 							Name:      "StringBased",
 							Type:      IndexTypeStringBased,
-							Unique:    false,
 							Attribute: "StringBased",
 						},
 					},
@@ -120,41 +120,46 @@ func TestMemManipulator_New(t *testing.T) {
 			So(d.schema.Tables[testmodel.ListIdentity.Category].Indexes["id"],
 				ShouldResemble,
 				&memdb.IndexSchema{
-					Name:    "id",
-					Unique:  true,
-					Indexer: &memdb.StringFieldIndex{Field: "ID"},
+					Name:         "id",
+					Unique:       true,
+					Indexer:      &memdb.StringFieldIndex{Field: "ID"},
+					AllowMissing: true,
 				},
 			)
 			So(d.schema.Tables[testmodel.ListIdentity.Category].Indexes["Name"],
 				ShouldResemble,
 				&memdb.IndexSchema{
-					Name:    "Name",
-					Unique:  false,
-					Indexer: &memdb.StringFieldIndex{Field: "Name"},
+					Name:         "Name",
+					Unique:       false,
+					Indexer:      &memdb.StringFieldIndex{Field: "Name"},
+					AllowMissing: true,
 				},
 			)
 			So(d.schema.Tables[testmodel.ListIdentity.Category].Indexes["Slice"],
 				ShouldResemble,
 				&memdb.IndexSchema{
-					Name:    "Slice",
-					Unique:  false,
-					Indexer: &memdb.StringSliceFieldIndex{Field: "Slice"},
+					Name:         "Slice",
+					Unique:       false,
+					Indexer:      &memdb.StringSliceFieldIndex{Field: "Slice"},
+					AllowMissing: true,
 				},
 			)
 			So(d.schema.Tables[testmodel.ListIdentity.Category].Indexes["Map"],
 				ShouldResemble,
 				&memdb.IndexSchema{
-					Name:    "Map",
-					Unique:  false,
-					Indexer: &memdb.StringMapFieldIndex{Field: "Map"},
+					Name:         "Map",
+					Unique:       false,
+					Indexer:      &memdb.StringMapFieldIndex{Field: "Map"},
+					AllowMissing: true,
 				},
 			)
 			So(d.schema.Tables[testmodel.ListIdentity.Category].Indexes["StringBased"],
 				ShouldResemble,
 				&memdb.IndexSchema{
-					Name:    "StringBased",
-					Unique:  false,
-					Indexer: &stringBasedFieldIndex{Field: "StringBased"},
+					Name:         "StringBased",
+					Unique:       false,
+					Indexer:      &stringBasedFieldIndex{Field: "StringBased"},
+					AllowMissing: true,
 				},
 			)
 			boolIndex := d.schema.Tables[testmodel.ListIdentity.Category].Indexes["Bool"]
@@ -342,7 +347,7 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 			})
 		})
 
-		Convey("When I retrieve the lists with a filter that matches l1", func() {
+		Convey("When I retrieve the lists with a filter that matches l1 Equals", func() {
 
 			ps := testmodel.ListsList{}
 
@@ -367,15 +372,39 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 			})
 		})
 
+		Convey("When I retrieve the lists with a filter that matches l1 using Matches", func() {
+
+			ps := testmodel.ListsList{}
+
+			mctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionFilter(
+					manipulate.NewFilterComposer().WithKey("Name").Matches("^Antoine$").Done(),
+				),
+			)
+
+			err := m.RetrieveMany(mctx, &ps)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then I should only have retrieved l1 and l2", func() {
+				So(len(ps), ShouldEqual, 2)
+				So(ps, ShouldContain, l1)
+				So(ps, ShouldContain, l2)
+			})
+		})
+
 		Convey("When I retrieve the lists with an OR filter that matches l1 and l2", func() {
 
 			ps := testmodel.ListsList{}
 
 			filter := manipulate.NewFilterComposer().Or(
 				manipulate.NewFilterComposer().
-					WithKey("Name").Equals("Antoine1").Done(),
+					WithKey("Name").Matches("^Antoine1").Done(),
 				manipulate.NewFilterComposer().
-					WithKey("Name").Equals("Antoine2").Done(),
+					WithKey("Name").Matches("^Antoine2").Done(),
 			).Done()
 
 			mctx := manipulate.NewContext(
@@ -484,7 +513,7 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 			})
 		})
 
-		Convey("When I retrieve the lists with a bad filter", func() {
+		Convey("When I retrieve the lists with a bad filter with non existing key", func() {
 
 			ps := testmodel.ListsList{}
 
@@ -492,6 +521,25 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 				context.Background(),
 				manipulate.ContextOptionFilter(
 					manipulate.NewFilterComposer().WithKey("Bad").Equals("Antoine1").Done(),
+				),
+			)
+
+			err := m.RetrieveMany(mctx, &ps)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotExecuteQuery{})
+			})
+		})
+
+		Convey("When I retrieve the lists with a bad match filter not starting with carret", func() {
+
+			ps := testmodel.ListsList{}
+
+			mctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionFilter(
+					manipulate.NewFilterComposer().WithKey("Bad").Matches("Antoine1").Done(),
 				),
 			)
 
@@ -552,6 +600,7 @@ func TestMemManipulator_Update(t *testing.T) {
 				})
 			})
 
+			// This test seems to be invalid sinnce
 			Convey("When I update the a non existing list", func() {
 
 				pp := &testmodel.List{
@@ -640,6 +689,25 @@ func TestMemManipulator_Delete(t *testing.T) {
 				Convey("Then err should not be nil", func() {
 					So(err, ShouldNotBeNil)
 				})
+			})
+		})
+	})
+}
+
+func TestMemManipulator_DeleteMany(t *testing.T) {
+
+	Convey("Given I have a memory manipulator and a list", t, func() {
+
+		m, err := New(datastoreIndexConfig())
+		So(err, ShouldBeNil)
+
+		Convey("When I call DeleteMany", func() {
+
+			err := m.DeleteMany(nil, elemental.EmptyIdentity)
+
+			Convey("Then err should be correct", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "Not implemented: DeleteMany not implemented in manipmemory")
 			})
 		})
 	})

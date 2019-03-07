@@ -155,6 +155,12 @@ func (m *memdbManipulator) Update(mctx manipulate.Context, objects ...elemental.
 	defer txn.Abort()
 
 	for _, object := range objects {
+
+		o, err := txn.Get(object.Identity().Category, "id", object.Identifier())
+		if err != nil || o.Next() == nil {
+			return manipulate.NewErrObjectNotFound("Cannot find object with given ID")
+		}
+
 		if err := txn.Insert(object.Identity().Category, object); err != nil {
 			return manipulate.NewErrCannotExecuteQuery(err.Error())
 		}
@@ -199,23 +205,13 @@ func (m *memdbManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 // Count is part of the implementation of the Manipulator interface. Count is very expensive.
 func (m *memdbManipulator) Count(mctx manipulate.Context, identity elemental.Identity) (int, error) {
 
-	txn := m.db.Txn(false)
+	items := map[string]elemental.Identifiable{}
 
-	iterator, err := txn.Get(identity.Category, "id")
-	if err != nil {
-		return 0, fmt.Errorf("failed to create iterator for %s: %s", identity.Category, err)
+	if err := m.retrieveFromFilter(identity.Category, mctx.Filter(), &items, true); err != nil {
+		return 0, err
 	}
 
-	count := 0
-
-	raw := iterator.Next()
-	for raw != nil {
-		count = count + 1
-		raw = iterator.Next()
-	}
-
-	return count, nil
-
+	return len(items), nil
 }
 
 // Commit is part of the implementation of the TransactionalManipulator interface.
@@ -317,6 +313,26 @@ func (m *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 
 				if err := m.retrieveIntersection(identity, k, f.Values()[i][0], items, fullQuery); err != nil {
 					return err
+				}
+
+			case manipulate.MatchComparator:
+
+				values := f.Values()[i]
+
+				for _, v := range values {
+
+					if !strings.HasPrefix(v.(string), "^") {
+						return manipulate.NewErrCannotExecuteQuery("Matches filter only works for prefix matching and must always start with a '^'")
+					}
+
+					fv := strings.TrimPrefix(v.(string), "^")
+					fv = strings.TrimSuffix(fv, "$")
+
+					valueItems := map[string]elemental.Identifiable{}
+					if err := m.retrieveIntersection(identity, k+"_prefix", fv, &valueItems, fullQuery); err != nil {
+						return err
+					}
+					mergeIn(items, &valueItems)
 				}
 
 			case manipulate.ContainComparator:

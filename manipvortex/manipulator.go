@@ -33,6 +33,8 @@ type vortexManipulator struct {
 	defaultQueueDuration    time.Duration
 	pageSize                int
 	prefetcher              Prefetcher
+	upstreamReconciler      Reconciler
+	downstreamReconciler    Reconciler
 
 	sync.RWMutex
 }
@@ -75,6 +77,8 @@ func New(
 		logfile:                 cfg.logfile,
 		pageSize:                cfg.defaultPageSize,
 		prefetcher:              cfg.prefetcher,
+		upstreamReconciler:      cfg.upstreamReconciler,
+		downstreamReconciler:    cfg.downstreamReconciler,
 		processors:              processors,
 		model:                   model,
 		transactionQueue:        cfg.transactionQueue,
@@ -135,19 +139,23 @@ func (m *vortexManipulator) Flush(ctx context.Context) error {
 	}
 
 	f, ok := m.downstreamManipulator.(manipulate.FlushableManipulator)
-	if !ok {
-		return nil
+	if ok {
+		// Wait for the channel to clean up
+		maxDelay := time.Now().Add(10 * time.Second)
+		for len(m.transactionQueue) > 0 && time.Now().Before(maxDelay) {
+			time.Sleep(1 * time.Second)
+		}
+
+		// Flush any outstanding transactions and restart the backgrond sync
+		if err := f.Flush(ctx); err != nil {
+			return fmt.Errorf("unable to flush the datastore: %s", err)
+		}
 	}
 
-	// Wait for the channel to clean up
-	maxDelay := time.Now().Add(10 * time.Second)
-	for len(m.transactionQueue) > 0 && time.Now().Before(maxDelay) {
-		time.Sleep(1 * time.Second)
-	}
-
-	// Flush any outstanding transactions and restart the backgrond sync
-	if err := f.Flush(ctx); err != nil {
-		return fmt.Errorf("unable to flush the datastore: %s", err)
+	if m.prefetcher != nil {
+		if err := m.warmUp(ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -181,9 +189,7 @@ func (m *vortexManipulator) RetrieveMany(mctx manipulate.Context, dest elemental
 		return nil
 	}
 
-	cfg := m.processors[dest.Identity().Name]
-
-	if cfg.RetrieveManyHook != nil {
+	if cfg := m.processors[dest.Identity().Name]; cfg != nil && cfg.RetrieveManyHook != nil {
 		commit, err := cfg.RetrieveManyHook(m.downstreamManipulator, mctx, dest)
 		if !commit {
 			return err
@@ -220,8 +226,8 @@ func (m *vortexManipulator) Retrieve(mctx manipulate.Context, objects ...element
 		}
 	}
 
-	// If we are not processing the object or the object has a parent
-	// send it upstream. We only deal with CRUDs.
+	// If we are not processing the object, we send it upstream.
+	// We only deal with CRUDs.
 	if !m.shouldProcess(mctx, objects[0].Identity()) {
 		if m.upstreamManipulator != nil {
 			return m.upstreamManipulator.Retrieve(mctx, objects...)
@@ -233,21 +239,18 @@ func (m *vortexManipulator) Retrieve(mctx manipulate.Context, objects ...element
 
 		// If we can't find it locally, and its strong consistency retrieve
 		// we will try the backend if we have one.
-		if m.upstreamManipulator != nil && (mctx != nil && mctx.ReadConsistency() == manipulate.ReadConsistencyStrong) {
-
-			if err := m.upstreamManipulator.Retrieve(mctx, objects...); err != nil {
-				return err
-			}
-
-			// Make sure that we update our cache for future reference.
-			if err := m.downstreamManipulator.Create(mctx, objects...); err != nil {
-				return fmt.Errorf("unable to update local cache from backend: %s", err)
-			}
-
-			return nil
+		if m.upstreamManipulator == nil || !isStrongReadConsistency(mctx, m.processors[objects[0].Identity().Name], m.defaultReadConsistency) {
+			return err
 		}
 
-		return err
+		if err := m.upstreamManipulator.Retrieve(mctx, objects...); err != nil {
+			return err
+		}
+
+		// Make sure that we update our cache for future reference.
+		if err := m.downstreamManipulator.Create(mctx, objects...); err != nil {
+			return fmt.Errorf("unable to update local cache from backend: %s", err)
+		}
 	}
 
 	return nil
@@ -413,18 +416,32 @@ func (m *vortexManipulator) shouldProcess(mctx manipulate.Context, identity elem
 
 // commitUpstream will commit a transaction to the upstream if it is not nil. It will
 // return the upstream error.
-func (m *vortexManipulator) commitUpstream(ctx context.Context, method elemental.Operation, mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *vortexManipulator) commitUpstream(ctx context.Context, operation elemental.Operation, mctx manipulate.Context, objects ...elemental.Identifiable) error {
 
 	if m.upstreamManipulator == nil {
 		return nil
 	}
 
+	// If we have an accepter, we see if it accepts the write
+	if m.upstreamReconciler != nil {
+		reconcile, err := m.upstreamReconciler.Reconcile(mctx, operation, objects...)
+		if err != nil {
+			return err
+		}
+		if !reconcile {
+			return nil
+		}
+	}
+
 	// If it is managed object we apply the pre-hook.
 	cfg, ok := m.processors[objects[0].Identity().Name]
-	if ok {
-		reconcile, err := m.processHook(method, cfg.UpstreamHook, mctx, objects...)
-		if !reconcile {
+	if ok && cfg.UpstreamReconciler != nil {
+		accept, err := cfg.UpstreamReconciler.Reconcile(mctx, operation, objects...)
+		if err != nil {
 			return err
+		}
+		if !accept {
+			return nil
 		}
 	}
 
@@ -432,7 +449,7 @@ func (m *vortexManipulator) commitUpstream(ctx context.Context, method elemental
 	if err := manipulate.Retry(
 		ctx,
 		func() error {
-			return m.methodFromType(method)(mctx, objects...)
+			return m.methodFromType(operation)(mctx, objects...)
 		},
 		nil,
 	); err != nil {
@@ -445,10 +462,25 @@ func (m *vortexManipulator) commitUpstream(ctx context.Context, method elemental
 // commitLocal will commit a transaction locally after processing any
 // hooks. It will return error if either the hook or the local commit
 // fail for some reason.
-func (m *vortexManipulator) commitLocal(method elemental.Operation, mctx manipulate.Context, objects []elemental.Identifiable) error {
+func (m *vortexManipulator) commitLocal(operation elemental.Operation, mctx manipulate.Context, objects []elemental.Identifiable) error {
 
 	if objects == nil || len(objects) == 0 {
 		return nil
+	}
+
+	if mctx == nil {
+		mctx = manipulate.NewContext(context.Background())
+	}
+
+	// If we have a global Reconciler, we see if it accepts the write.
+	if m.downstreamReconciler != nil {
+		accept, err := m.downstreamReconciler.Reconcile(mctx, operation, objects...)
+		if err != nil {
+			return err
+		}
+		if !accept {
+			return nil
+		}
 	}
 
 	cfg, ok := m.processors[objects[0].Identity().Name]
@@ -456,12 +488,18 @@ func (m *vortexManipulator) commitLocal(method elemental.Operation, mctx manipul
 		return nil
 	}
 
-	reconcile, err := m.processHook(method, cfg.LocalHook, mctx, objects...)
-	if !reconcile {
-		return err
+	// If we have a processor Reconciler, we see if it accepts the write.
+	if cfg.DownstreamReconciler != nil {
+		accept, err := cfg.DownstreamReconciler.Reconcile(mctx, operation, objects...)
+		if err != nil {
+			return err
+		}
+		if !accept {
+			return nil
+		}
 	}
 
-	if err := m.localMethodFromType(method)(mctx, objects...); err != nil {
+	if err := m.localMethodFromType(operation)(mctx, objects...); err != nil {
 		return err
 	}
 
@@ -470,7 +508,7 @@ func (m *vortexManipulator) commitLocal(method elemental.Operation, mctx manipul
 			Date:    time.Now(),
 			mctx:    mctx,
 			Objects: objects,
-			Method:  method,
+			Method:  operation,
 		}
 	}
 
@@ -510,15 +548,6 @@ func (m *vortexManipulator) methodFromType(method elemental.Operation) updater {
 	}
 }
 
-func (m *vortexManipulator) processHook(method elemental.Operation, hook Hook, mctx manipulate.Context, objects ...elemental.Identifiable) (reconcile bool, err error) {
-
-	if hook != nil {
-		return hook(method, mctx, objects)
-	}
-
-	return true, nil
-}
-
 // genericUpdate will implement the updates. It takes as parameters the methods
 // to be used (update, create, delete) and avoids repeating code. It will
 // return true if the transaction has to be committed in the local DB. It will
@@ -533,42 +562,32 @@ func (m *vortexManipulator) genericUpdater(method elemental.Operation, mctx mani
 	}
 
 	// We are guaranteed that there is at least one object and the identity is processable.
-	cfg := m.processors[objects[0].Identity().Name]
+	processor := m.processors[objects[0].Identity().Name]
 
-	wc := cfg.WriteConsistency
-	if mctx.WriteConsistency() != manipulate.WriteConsistencyDefault {
-		wc = mctx.WriteConsistency()
-	} else if wc == manipulate.WriteConsistencyDefault || wc == "" {
-		wc = m.defaultWriteConsistency
+	// In Strong consistency we make sure that the backend gets the create.
+	// Only then store in the cache.
+
+	if isStrongWriteConsistency(mctx, processor, m.defaultWriteConsistency) {
+		return true, m.commitUpstream(mctx.Context(), method, mctx, objects...)
 	}
 
-	tdeadline := cfg.QueueingDuration
+	tdeadline := processor.QueueingDuration
 	if tdeadline == 0 {
 		tdeadline = m.defaultQueueDuration
 	}
 
-	switch wc {
+	select {
 
-	case manipulate.WriteConsistencyStrong, manipulate.WriteConsistencyStrongest:
-		// In Strong consistency we make sure that the backend gets the create.
-		// Only then store in the cache.
-		return true, m.commitUpstream(mctx.Context(), method, mctx, objects...)
+	case m.transactionQueue <- &Transaction{
+		mctx:     mctx,
+		Objects:  objects,
+		Method:   method,
+		Deadline: time.Now().Add(tdeadline),
+	}:
+		return false, nil
 
 	default:
-
-		select {
-
-		case m.transactionQueue <- &Transaction{
-			mctx:     mctx,
-			Objects:  objects,
-			Method:   method,
-			Deadline: time.Now().Add(tdeadline),
-		}:
-			return false, nil
-
-		default:
-			return false, fmt.Errorf("commit queue is full: %d", len(m.transactionQueue))
-		}
+		return false, fmt.Errorf("commit queue is full: %d", len(m.transactionQueue))
 	}
 }
 
@@ -646,42 +665,30 @@ func (m *vortexManipulator) monitor(ctx context.Context) {
 			m.RUnlock()
 
 			if commit {
-				m.eventHandler(ctx, evt)
+				if err := m.eventHandler(ctx, evt); err != nil {
+					m.pushErrors(fmt.Errorf("unable to handle event: %s", err))
+					continue
+				}
 			}
 
 			m.pushEvent(evt)
 
 		case err := <-m.upstreamSubscriber.Errors():
-			zap.L().Error("Received error from the push channel", zap.Error(err))
-			// Push event upstream.
-			m.pushErrors(err)
+			m.pushErrors(fmt.Errorf("upstream error: %s", err))
 
 		case status := <-m.upstreamSubscriber.Status():
 
 			switch status {
 
-			case manipulate.SubscriberStatusDisconnection:
-				zap.L().Warn("Upstream event channel interrupted. Reconnecting...")
-
-			case manipulate.SubscriberStatusInitialConnection:
-				zap.L().Info("Upstream event channel connected")
-
 			case manipulate.SubscriberStatusReconnection:
-				zap.L().Info("Upstream event channel restored")
 
-				// We flush everything
+				// We resync everything
 				if err := m.Flush(ctx); err != nil {
-					zap.L().Error("Unable to flush", zap.Error(err))
-				}
-
-				// We flush everything
-				if m.prefetcher != nil {
-					if err := m.warmUp(ctx); err != nil {
-						zap.L().Error("Unable to warm up after reconnection", zap.Error(err))
-					}
+					m.pushErrors(fmt.Errorf("unable to flush: %s", err))
 				}
 
 			case manipulate.SubscriberStatusFinalDisconnection:
+				m.pushStatus(status)
 				return
 			}
 
@@ -733,17 +740,16 @@ func (m *vortexManipulator) pushErrors(err error) {
 	}
 }
 
-func (m *vortexManipulator) eventHandler(ctx context.Context, evt *elemental.Event) {
+func (m *vortexManipulator) eventHandler(ctx context.Context, evt *elemental.Event) error {
 
 	if m.upstreamManipulator == nil {
-		return
+		return nil
 	}
 
 	obj := m.model.IdentifiableFromString(evt.Identity)
 
 	if err := evt.Decode(obj); err != nil {
-		zap.L().Error("Unable to unmarshal received event", zap.Error(err))
-		return
+		return fmt.Errorf("unable to unmarshal received event: %s", err)
 	}
 
 	m.RLock()
@@ -767,15 +773,16 @@ func (m *vortexManipulator) eventHandler(ctx context.Context, evt *elemental.Eve
 		method = elemental.OperationDelete
 
 	default:
-		zap.L().Error("unsupported event received", zap.String("Event", string(evt.Type)))
-		return
+		return fmt.Errorf("unsupported event received: %s", evt.Type)
 	}
 
 	if err := m.commitLocal(method, nil, elemental.IdentifiablesList{obj}); err != nil {
 		if method != elemental.OperationDelete {
-			zap.L().Error("failed to commit locally an event notification", zap.String("event", evt.String()), zap.Error(err))
+			return fmt.Errorf("unable to commit event of type '%s': %s", evt.Type, err)
 		}
 	}
+
+	return nil
 }
 
 func (m *vortexManipulator) insertPrefetchedData(prefetched elemental.Identifiables) error {

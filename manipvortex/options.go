@@ -17,6 +17,8 @@ type config struct {
 	defaultQueueDuration time.Duration
 	defaultPageSize      int
 	prefetcher           Prefetcher
+	upstreamReconciler   Reconciler
+	downstreamReconciler Reconciler
 }
 
 func newConfig() *config {
@@ -53,6 +55,8 @@ func OptionUpstreamManipulator(manipulator manipulate.Manipulator) Option {
 }
 
 // OptionUpstreamSubscriber sets the upstream subscriber.
+// Note the given subscriber must NOT be started or the events
+// will be received twice, needlessly loading the VortexDB.
 func OptionUpstreamSubscriber(s manipulate.Subscriber) Option {
 	return func(cfg *config) {
 		cfg.upstreamSubscriber = s
@@ -97,9 +101,16 @@ func OptionPrefetcher(p Prefetcher) Option {
 	}
 }
 
-// OptionPageSize is the page size during migration.
-func OptionPageSize(n int) Option {
+// OptionDownstreamReconciler sets the global downstream Reconcilers to use.
+func OptionDownstreamReconciler(r Reconciler) Option {
 	return func(cfg *config) {
-		cfg.defaultPageSize = n
+		cfg.downstreamReconciler = r
+	}
+}
+
+// OptionUpstreamReconciler sets the global upstream Reconcilers to use.
+func OptionUpstreamReconciler(r Reconciler) Option {
+	return func(cfg *config) {
+		cfg.upstreamReconciler = r
 	}
 }

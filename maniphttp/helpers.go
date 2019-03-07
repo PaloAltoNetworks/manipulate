@@ -47,16 +47,20 @@ func ExtractNamespace(manipulator manipulate.Manipulator) string {
 	return m.namespace
 }
 
-// ExtractTLSConfig extracts the tls config from the given manipulator.
+// ExtractTLSConfig returns a copy of the tls config from the given manipulator.
 // Note: the given manipulator must be an HTTP Manipulator or it will return an error.
 func ExtractTLSConfig(manipulator manipulate.Manipulator) *tls.Config {
 
 	m, ok := manipulator.(*httpManipulator)
 	if !ok {
-		panic("You can only pass a HTTP Manipulator to ExtractEndpoint")
+		panic("You can only pass a HTTP Manipulator to ExtractTLSConfig")
 	}
 
-	return m.tlsConfig
+	return &tls.Config{
+		RootCAs:            m.tlsConfig.RootCAs,
+		Certificates:       m.tlsConfig.Certificates,
+		InsecureSkipVerify: m.tlsConfig.InsecureSkipVerify,
+	}
 }
 
 // SetGlobalHeaders sets the given headers to all requests that will be sent.

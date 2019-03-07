@@ -104,9 +104,10 @@ func createSchema(c *IdentitySchema) (*memdb.TableSchema, error) {
 		}
 
 		tableSchema.Indexes[index.Name] = &memdb.IndexSchema{
-			Name:    index.Name,
-			Unique:  index.Unique,
-			Indexer: indexConfig,
+			Name:         index.Name,
+			Unique:       index.Unique,
+			Indexer:      indexConfig,
+			AllowMissing: true,
 		}
 	}
 
