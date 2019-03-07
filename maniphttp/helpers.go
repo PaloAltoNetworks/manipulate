@@ -53,7 +53,7 @@ func ExtractTLSConfig(manipulator manipulate.Manipulator) *tls.Config {
 
 	m, ok := manipulator.(*httpManipulator)
 	if !ok {
-		panic("You can only pass a HTTP Manipulator to ExtractEndpoint")
+		panic("You can only pass a HTTP Manipulator to ExtractTLSConfig")
 	}
 
 	return &tls.Config{

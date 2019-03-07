@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"testing"
 
+	"go.aporeto.io/elemental"
+
 	memdb "github.com/hashicorp/go-memdb"
 	. "github.com/smartystreets/goconvey/convey"
 	testmodel "go.aporeto.io/elemental/test/model"
@@ -687,6 +689,25 @@ func TestMemManipulator_Delete(t *testing.T) {
 				Convey("Then err should not be nil", func() {
 					So(err, ShouldNotBeNil)
 				})
+			})
+		})
+	})
+}
+
+func TestMemManipulator_DeleteMany(t *testing.T) {
+
+	Convey("Given I have a memory manipulator and a list", t, func() {
+
+		m, err := New(datastoreIndexConfig())
+		So(err, ShouldBeNil)
+
+		Convey("When I call DeleteMany", func() {
+
+			err := m.DeleteMany(nil, elemental.EmptyIdentity)
+
+			Convey("Then err should be correct", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "Not implemented: DeleteMany not implemented in manipmemory")
 			})
 		})
 	})

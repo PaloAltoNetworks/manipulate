@@ -257,6 +257,36 @@ func TestTestManipulator_MockCount(t *testing.T) {
 	})
 }
 
+func TestTestManipulator_MockDeleteMany(t *testing.T) {
+
+	Convey("Given I have TestManipulator", t, func() {
+
+		m := NewTestManipulator()
+
+		Convey("When I call DeleteMany without mock", func() {
+
+			err := m.DeleteMany(nil, testmodel.ListIdentity)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("When I mock it to return an error", func() {
+
+				m.MockDeleteMany(t, func(mctx manipulate.Context, identity elemental.Identity) error {
+					return fmt.Errorf("wow such error")
+				})
+
+				err := m.DeleteMany(nil, testmodel.ListIdentity)
+
+				Convey("Then err should not be nil", func() {
+					So(err, ShouldNotBeNil)
+				})
+			})
+		})
+	})
+}
+
 func TestTestManipulator_MockCommit(t *testing.T) {
 
 	Convey("Given I have TestManipulator", t, func() {
