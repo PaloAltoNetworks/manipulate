@@ -935,7 +935,7 @@ func TestHTTP_send(t *testing.T) {
 		Convey("When I call send", func() {
 
 			req, _ := http.NewRequest(http.MethodPost, "nop", nil)
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(context.Background()), req)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(context.Background()), req, 0)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -955,7 +955,7 @@ func TestHTTP_send(t *testing.T) {
 			defer cancel()
 
 			req, _ := http.NewRequest(http.MethodPost, "https://google.com", nil)
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req, 0)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -981,7 +981,7 @@ func TestHTTP_send(t *testing.T) {
 			defer cancel()
 
 			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req, 0)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -1007,7 +1007,7 @@ func TestHTTP_send(t *testing.T) {
 			defer cancel()
 
 			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req, 0)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -1033,7 +1033,7 @@ func TestHTTP_send(t *testing.T) {
 			defer cancel()
 
 			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req, 0)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -1059,7 +1059,7 @@ func TestHTTP_send(t *testing.T) {
 			defer cancel()
 
 			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req, 0)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -1087,7 +1087,7 @@ func TestHTTP_send(t *testing.T) {
 			defer cancel()
 
 			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req, 0)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)

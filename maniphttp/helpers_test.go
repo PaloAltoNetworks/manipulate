@@ -28,7 +28,7 @@ func TestManiphttp_ExtractCredentials(t *testing.T) {
 	Convey("Given I have an httpmanipulator with credentials", t, func() {
 
 		m := &httpManipulator{
-			renewLock: &sync.Mutex{},
+			renewLock: &sync.RWMutex{},
 			username:  "a",
 			password:  "b",
 		}
@@ -158,7 +158,7 @@ func TestManiphttp_SetGlobalHeaders(t *testing.T) {
 	Convey("Given I have a manipulator and some header", t, func() {
 
 		m := &httpManipulator{
-			renewLock: &sync.Mutex{},
+			renewLock: &sync.RWMutex{},
 		}
 
 		h := http.Header{

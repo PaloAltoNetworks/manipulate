@@ -30,9 +30,9 @@ type httpManipulator struct {
 	password           string
 	url                string
 	namespace          string
-	renewLock          *sync.Mutex
+	renewLock          *sync.RWMutex
 	renewNotifiers     map[string]func(string)
-	renewNotifiersLock *sync.Mutex
+	renewNotifiersLock *sync.RWMutex
 
 	// optionnable
 	ctx           context.Context
@@ -52,8 +52,8 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 
 	// initialize solid varialbles.
 	m := &httpManipulator{
-		renewLock:          &sync.Mutex{},
-		renewNotifiersLock: &sync.Mutex{},
+		renewLock:          &sync.RWMutex{},
+		renewNotifiersLock: &sync.RWMutex{},
 		renewNotifiers:     map[string]func(string){},
 		ctx:                ctx,
 		url:                url,
@@ -145,7 +145,7 @@ func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.I
 		return err
 	}
 
-	response, err := s.send(mctx, request)
+	response, err := s.send(mctx, request, 0)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -209,7 +209,7 @@ func (s *httpManipulator) Retrieve(mctx manipulate.Context, objects ...elemental
 			return err
 		}
 
-		response, err := s.send(mctx, request)
+		response, err := s.send(mctx, request, 0)
 		if err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
@@ -276,7 +276,7 @@ func (s *httpManipulator) Create(mctx manipulate.Context, objects ...elemental.I
 			return err
 		}
 
-		response, err := s.send(mctx, request)
+		response, err := s.send(mctx, request, 0)
 		if err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
@@ -352,7 +352,7 @@ func (s *httpManipulator) Update(mctx manipulate.Context, objects ...elemental.I
 			return err
 		}
 
-		response, err := s.send(mctx, request)
+		response, err := s.send(mctx, request, 0)
 		if err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
@@ -412,7 +412,7 @@ func (s *httpManipulator) Delete(mctx manipulate.Context, objects ...elemental.I
 			return err
 		}
 
-		response, err := s.send(mctx, request)
+		response, err := s.send(mctx, request, 0)
 		if err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
@@ -476,7 +476,7 @@ func (s *httpManipulator) Count(mctx manipulate.Context, identity elemental.Iden
 		return 0, err
 	}
 
-	if _, err = s.send(mctx, request); err != nil {
+	if _, err = s.send(mctx, request, 0); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return 0, err
@@ -594,7 +594,7 @@ func (s *httpManipulator) getURLForChildrenIdentity(
 	return url + "/" + childrenIdentity.Category, nil
 }
 
-func (s *httpManipulator) send(mctx manipulate.Context, request *http.Request) (*http.Response, error) {
+func (s *httpManipulator) send(mctx manipulate.Context, request *http.Request, try int) (*http.Response, error) {
 
 	s.prepareHeaders(request, mctx)
 
@@ -627,6 +627,19 @@ func (s *httpManipulator) send(mctx manipulate.Context, request *http.Request) (
 
 	if response.StatusCode == http.StatusLocked {
 		return response, manipulate.NewErrLocked("The api has been locked down by the server.")
+	}
+
+	// If we get a forbidden or auth error, we try to renew the token and retry the request 3 times
+	if (response.StatusCode == http.StatusForbidden || response.StatusCode == http.StatusUnauthorized) && s.tokenManager != nil && try <= 3 {
+
+		<-time.After(time.Duration(try) * time.Second)
+		try++
+
+		token, err := s.tokenManager.Issue(mctx.Context())
+		if err == nil {
+			s.setPassword(token)
+			return s.send(mctx, request, try)
+		}
 	}
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
@@ -680,18 +693,18 @@ func (s *httpManipulator) setPassword(password string) {
 	s.password = password
 	s.renewLock.Unlock()
 
-	s.renewNotifiersLock.Lock()
+	s.renewNotifiersLock.RLock()
 	for _, f := range s.renewNotifiers {
 		if f != nil {
 			f(password)
 		}
 	}
-	s.renewNotifiersLock.Unlock()
+	s.renewNotifiersLock.RUnlock()
 }
 
 func (s *httpManipulator) currentPassword() string {
-	s.renewLock.Lock()
+	s.renewLock.RLock()
 	p := s.password
-	s.renewLock.Unlock()
+	s.renewLock.RUnlock()
 	return p
 }
