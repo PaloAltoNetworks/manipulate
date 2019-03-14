@@ -56,7 +56,25 @@ func CompileFilter(f *manipulate.Filter) bson.M {
 			switch f.Comparators()[i] {
 
 			case manipulate.EqualComparator:
-				items = append(items, bson.M{k: bson.M{"$eq": massageValue(f.Values()[i][0])}})
+				v := f.Values()[i][0]
+				switch b := v.(type) {
+				case bool:
+					if b {
+						items = append(items, bson.M{k: bson.M{"$eq": v}})
+					} else {
+						items = append(
+							items,
+							bson.M{
+								"$or": []bson.M{
+									bson.M{k: bson.M{"$eq": v}},
+									bson.M{k: bson.M{"$exists": false}},
+								},
+							},
+						)
+					}
+				default:
+					items = append(items, bson.M{k: bson.M{"$eq": massageValue(v)}})
+				}
 
 			case manipulate.NotEqualComparator:
 				items = append(items, bson.M{k: bson.M{"$ne": massageValue(f.Values()[i][0])}})
