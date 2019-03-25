@@ -35,10 +35,10 @@ type subscription struct {
 	url                     string
 	filters                 chan *elemental.PushFilter
 	currentFilter           *elemental.PushFilter
-	currentFilterLock       *sync.Mutex
+	currentFilterLock       sync.RWMutex
 	tokenRenewed            chan struct{}
 	currentToken            string
-	currentTokenLock        *sync.Mutex
+	currentTokenLock        sync.RWMutex
 	unregisterTokenNotifier func(string)
 	registerTokenNotifier   func(string, func(string))
 }
@@ -61,14 +61,14 @@ func NewSubscriber(
 		recursive:               recursive,
 		currentToken:            token,
 		tokenRenewed:            make(chan struct{}),
-		currentTokenLock:        &sync.Mutex{},
+		currentTokenLock:        sync.RWMutex{},
 		unregisterTokenNotifier: unregisterTokenNotifier,
 		registerTokenNotifier:   registerTokenNotifier,
 		events:                  make(chan *elemental.Event, eventChSize),
 		errors:                  make(chan error, errorChSize),
 		status:                  make(chan manipulate.SubscriberStatus, statusChSize),
 		filters:                 make(chan *elemental.PushFilter, filterChSize),
-		currentFilterLock:       &sync.Mutex{},
+		currentFilterLock:       sync.RWMutex{},
 		config: wsc.Config{
 			PongWait:     10 * time.Second,
 			WriteWait:    10 * time.Second,
@@ -267,9 +267,9 @@ func (s *subscription) setCurrentToken(t string) {
 
 func (s *subscription) getCurrentToken() string {
 
-	s.currentTokenLock.Lock()
+	s.currentTokenLock.RLock()
 	t := s.currentToken
-	s.currentTokenLock.Unlock()
+	s.currentTokenLock.RUnlock()
 
 	return t
 }
@@ -283,8 +283,8 @@ func (s *subscription) setCurrentFilter(f *elemental.PushFilter) {
 
 func (s *subscription) getCurrentFilter() *elemental.PushFilter {
 
-	s.currentFilterLock.Lock()
-	defer s.currentFilterLock.Unlock()
+	s.currentFilterLock.RLock()
+	defer s.currentFilterLock.RUnlock()
 
 	return s.currentFilter
 }
