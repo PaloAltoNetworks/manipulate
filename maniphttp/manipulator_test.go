@@ -104,21 +104,36 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 				})
 			})
 
-			Convey("When I prepareHeaders with a no tracked context", func() {
+			Convey("When I prepareHeaders with various options", func() {
 
 				ctx := manipulate.NewContext(
 					context.Background(),
 					manipulate.ContextOptionTracking("tid", "type"),
+					manipulate.ContextOptionReadConsistency(manipulate.ReadConsistencyStrong),
+					manipulate.ContextOptionWriteConsistency(manipulate.WriteConsistencyStrong),
+					manipulate.ContextOptionFields([]string{"a", "b"}),
 				)
 
 				m.prepareHeaders(req, ctx)
 
-				Convey("Then I should have a the X-Namespace set to 'myns'", func() {
+				Convey("Then I should have a value for X-External-Tracking-ID", func() {
 					So(req.Header.Get("X-External-Tracking-ID"), ShouldEqual, "tid")
 				})
 
-				Convey("Then I should not have a value for X-Count-Total", func() {
+				Convey("Then I should have a value for X-External-Tracking-Type", func() {
 					So(req.Header.Get("X-External-Tracking-Type"), ShouldEqual, "type")
+				})
+
+				Convey("Then I should have a value for X-Read-Consistency", func() {
+					So(req.Header.Get("X-Read-Consistency"), ShouldEqual, "strong")
+				})
+
+				Convey("Then I should have a value for X-Write-Consistency", func() {
+					So(req.Header.Get("X-Write-Consistency"), ShouldEqual, "strong")
+				})
+
+				Convey("Then I should have a value for X-Fields", func() {
+					So(req.Header["X-Fields"], ShouldResemble, []string{"a", "b"})
 				})
 			})
 		})
