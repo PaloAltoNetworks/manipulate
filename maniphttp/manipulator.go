@@ -34,6 +34,7 @@ type httpManipulator struct {
 	renewLock          *sync.RWMutex
 	renewNotifiers     map[string]func(string)
 	renewNotifiersLock *sync.RWMutex
+	disableAutoRetry   bool
 
 	// optionnable
 	ctx           context.Context
@@ -516,6 +517,20 @@ func (s *httpManipulator) send(mctx manipulate.Context, method string, requrl st
 		return nil, err
 	}
 
+	retryErrCom := func(resp *http.Response, err error) (*http.Response, error) {
+
+		if s.disableAutoRetry {
+			return resp, err
+		}
+
+		if try >= 3 {
+			return resp, err
+		}
+		<-time.After(time.Duration(try) * time.Second)
+		try++
+		return s.send(mctx, method, requrl, body, sp, try)
+	}
+
 	s.prepareHeaders(request, mctx)
 
 	request = request.WithContext(mctx.Context())
@@ -529,27 +544,27 @@ func (s *httpManipulator) send(mctx manipulate.Context, method string, requrl st
 			}
 		}
 
-		return response, manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
+		return retryErrCom(response, manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error()))
 	}
 
 	if response.StatusCode == http.StatusBadGateway {
-		return response, manipulate.NewErrCannotCommunicate("Bad gateway")
+		return retryErrCom(response, manipulate.NewErrCannotCommunicate("Bad gateway"))
 	}
 
 	if response.StatusCode == http.StatusServiceUnavailable {
-		return response, manipulate.NewErrCannotCommunicate("Service unavailable")
+		return retryErrCom(response, manipulate.NewErrCannotCommunicate("Service unavailable"))
 	}
 
 	if response.StatusCode == http.StatusGatewayTimeout {
-		return response, manipulate.NewErrCannotCommunicate("Gateway timeout")
+		return retryErrCom(response, manipulate.NewErrCannotCommunicate("Gateway timeout"))
 	}
 
 	if response.StatusCode == http.StatusLocked {
-		return response, manipulate.NewErrLocked("The api has been locked down by the server.")
+		return retryErrCom(response, manipulate.NewErrLocked("The api has been locked down by the server."))
 	}
 
 	// If we get a forbidden or auth error, we try to renew the token and retry the request 3 times
-	if (response.StatusCode == http.StatusForbidden || response.StatusCode == http.StatusUnauthorized) && s.tokenManager != nil && try <= 3 {
+	if (response.StatusCode == http.StatusForbidden || response.StatusCode == http.StatusUnauthorized) && s.tokenManager != nil && try < 3 {
 
 		<-time.After(time.Duration(try) * time.Second)
 		try++
@@ -577,11 +592,11 @@ func (s *httpManipulator) send(mctx manipulate.Context, method string, requrl st
 		}
 
 		if response.StatusCode == http.StatusRequestTimeout {
-			return response, manipulate.NewErrCannotCommunicate(errs.Error())
+			return retryErrCom(response, manipulate.NewErrCannotCommunicate(errs.Error()))
 		}
 
 		if response.StatusCode == http.StatusTooManyRequests {
-			return response, manipulate.NewErrTooManyRequests(errs.Error())
+			return retryErrCom(response, manipulate.NewErrTooManyRequests(errs.Error()))
 		}
 
 		return response, errs

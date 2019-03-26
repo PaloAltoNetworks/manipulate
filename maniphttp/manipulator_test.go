@@ -980,7 +980,7 @@ func TestHTTP_send(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
 			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)
@@ -1005,7 +1005,7 @@ func TestHTTP_send(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
 			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)
@@ -1030,7 +1030,7 @@ func TestHTTP_send(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
 			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)
@@ -1055,7 +1055,7 @@ func TestHTTP_send(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
 			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)
@@ -1080,7 +1080,7 @@ func TestHTTP_send(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
 			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)
@@ -1105,7 +1105,7 @@ func TestHTTP_send(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
 			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)
@@ -1137,7 +1137,7 @@ func TestHTTP_send(t *testing.T) {
 
 		Convey("When I call send", func() {
 
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
 			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)
@@ -1160,7 +1160,7 @@ func TestHTTP_send(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
 			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)
@@ -1185,7 +1185,7 @@ func TestHTTP_send(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
 			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)
@@ -1212,7 +1212,7 @@ func TestHTTP_send(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
 			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)

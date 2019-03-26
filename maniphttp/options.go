@@ -78,3 +78,13 @@ func OptionTLSConfig(tlsConfig *tls.Config) Option {
 		m.tlsConfig = tlsConfig
 	}
 }
+
+// OptionDisableBuiltInRetry disables the auto retry mechanism
+// built in maniphttp Manipulator.
+// By default, the manipulator will silently retry on communication
+// error 3 times after 1s, 2s, and 3s.
+func OptionDisableBuiltInRetry() Option {
+	return func(m *httpManipulator) {
+		m.disableAutoRetry = true
+	}
+}
