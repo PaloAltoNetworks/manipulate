@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -129,23 +130,7 @@ func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.I
 		return manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	request, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		sp.SetTag("error", true)
-		sp.LogFields(log.Error(err))
-		return manipulate.NewErrCannotExecuteQuery(err.Error())
-	}
-	if err = addQueryParameters(request, mctx); err != nil {
-		return err
-	}
-
-	if err = sp.Tracer().Inject(sp.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(request.Header)); err != nil {
-		sp.SetTag("error", true)
-		sp.LogFields(log.Error(err))
-		return err
-	}
-
-	response, err := s.send(mctx, request, 0)
+	response, err := s.send(mctx, http.MethodGet, url, nil, sp, 0)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -193,23 +178,7 @@ func (s *httpManipulator) Retrieve(mctx manipulate.Context, objects ...elemental
 			return manipulate.NewErrCannotBuildQuery(err.Error())
 		}
 
-		request, err := http.NewRequest(http.MethodGet, url, nil)
-		if err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return manipulate.NewErrCannotExecuteQuery(err.Error())
-		}
-		if err = addQueryParameters(request, mctx); err != nil {
-			return err
-		}
-
-		if err = sp.Tracer().Inject(sp.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(request.Header)); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return err
-		}
-
-		response, err := s.send(mctx, request, 0)
+		response, err := s.send(mctx, http.MethodGet, url, nil, sp, 0)
 		if err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
@@ -260,23 +229,7 @@ func (s *httpManipulator) Create(mctx manipulate.Context, objects ...elemental.I
 			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
-		request, err := http.NewRequest(http.MethodPost, url, buffer)
-		if err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return manipulate.NewErrCannotExecuteQuery(err.Error())
-		}
-		if err = addQueryParameters(request, mctx); err != nil {
-			return err
-		}
-
-		if err = sp.Tracer().Inject(sp.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(request.Header)); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return err
-		}
-
-		response, err := s.send(mctx, request, 0)
+		response, err := s.send(mctx, http.MethodPost, url, buffer, sp, 0)
 		if err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
@@ -336,23 +289,7 @@ func (s *httpManipulator) Update(mctx manipulate.Context, objects ...elemental.I
 			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
-		request, err := http.NewRequest(method, url, buffer)
-		if err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return manipulate.NewErrCannotExecuteQuery(err.Error())
-		}
-		if err = addQueryParameters(request, mctx); err != nil {
-			return err
-		}
-
-		if err = sp.Tracer().Inject(sp.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(request.Header)); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return err
-		}
-
-		response, err := s.send(mctx, request, 0)
+		response, err := s.send(mctx, method, url, buffer, sp, 0)
 		if err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
@@ -396,23 +333,7 @@ func (s *httpManipulator) Delete(mctx manipulate.Context, objects ...elemental.I
 			return manipulate.NewErrCannotBuildQuery(err.Error())
 		}
 
-		request, err := http.NewRequest(http.MethodDelete, url, nil)
-		if err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return manipulate.NewErrCannotExecuteQuery(err.Error())
-		}
-		if err = addQueryParameters(request, mctx); err != nil {
-			return err
-		}
-
-		if err = sp.Tracer().Inject(sp.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(request.Header)); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return err
-		}
-
-		response, err := s.send(mctx, request, 0)
+		response, err := s.send(mctx, http.MethodDelete, url, nil, sp, 0)
 		if err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
@@ -457,26 +378,7 @@ func (s *httpManipulator) Count(mctx manipulate.Context, identity elemental.Iden
 		return 0, manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	request, err := http.NewRequest(http.MethodHead, url, nil)
-	if err != nil {
-		sp.SetTag("error", true)
-		sp.LogFields(log.Error(err))
-		return 0, manipulate.NewErrCannotExecuteQuery(err.Error())
-	}
-
-	if err = addQueryParameters(request, mctx); err != nil {
-		sp.SetTag("error", true)
-		sp.LogFields(log.Error(err))
-		return 0, err
-	}
-
-	if err = sp.Tracer().Inject(sp.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(request.Header)); err != nil {
-		sp.SetTag("error", true)
-		sp.LogFields(log.Error(err))
-		return 0, err
-	}
-
-	if _, err = s.send(mctx, request, 0); err != nil {
+	if _, err = s.send(mctx, http.MethodHead, url, nil, sp, 0); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return 0, err
@@ -594,7 +496,25 @@ func (s *httpManipulator) getURLForChildrenIdentity(
 	return url + "/" + childrenIdentity.Category, nil
 }
 
-func (s *httpManipulator) send(mctx manipulate.Context, request *http.Request, try int) (*http.Response, error) {
+func (s *httpManipulator) send(mctx manipulate.Context, method string, requrl string, body io.Reader, sp opentracing.Span, try int) (*http.Response, error) {
+
+	request, err := http.NewRequest(method, requrl, body)
+	if err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return nil, manipulate.NewErrCannotExecuteQuery(err.Error())
+	}
+	if err = addQueryParameters(request, mctx); err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return nil, err
+	}
+
+	if err = sp.Tracer().Inject(sp.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(request.Header)); err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return nil, err
+	}
 
 	s.prepareHeaders(request, mctx)
 
@@ -602,7 +522,6 @@ func (s *httpManipulator) send(mctx manipulate.Context, request *http.Request, t
 
 	response, err := s.client.Do(request)
 	if err != nil {
-
 		if uerr, ok := err.(*url.Error); ok {
 			switch uerr.Err.(type) {
 			case x509.UnknownAuthorityError, x509.CertificateInvalidError, x509.HostnameError:
@@ -638,7 +557,7 @@ func (s *httpManipulator) send(mctx manipulate.Context, request *http.Request, t
 		token, err := s.tokenManager.Issue(mctx.Context())
 		if err == nil {
 			s.setPassword(token)
-			return s.send(mctx, request, try)
+			return s.send(mctx, method, requrl, body, sp, try)
 		}
 	}
 

@@ -37,15 +37,24 @@ func NewTestTokenManager() TestTokenManager {
 
 func (m *testTokenManager) MockIssue(t *testing.T, impl func(context.Context) (string, error)) {
 
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	m.currentMocks(t).issueMock = impl
 }
 
 func (m *testTokenManager) MockRun(t *testing.T, impl func(ctx context.Context, tokenCh chan string)) {
 
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	m.currentMocks(t).runMock = impl
 }
 
 func (m *testTokenManager) Issue(ctx context.Context) (string, error) {
+
+	m.lock.Lock()
+	defer m.lock.Unlock()
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.issueMock != nil {
 		return mock.issueMock(ctx)
@@ -56,15 +65,15 @@ func (m *testTokenManager) Issue(ctx context.Context) (string, error) {
 
 func (m *testTokenManager) Run(ctx context.Context, tokenCh chan string) {
 
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.runMock != nil {
 		mock.runMock(ctx, tokenCh)
 	}
 }
 
 func (m *testTokenManager) currentMocks(t *testing.T) *mockedTokenManagerMethods {
-
-	m.lock.Lock()
-	defer m.lock.Unlock()
 
 	mocks := m.mocks[t]
 
