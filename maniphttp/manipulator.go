@@ -11,7 +11,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -223,14 +222,14 @@ func (s *httpManipulator) Create(mctx manipulate.Context, objects ...elemental.I
 			return manipulate.NewErrCannotBuildQuery(err.Error())
 		}
 
-		buffer := &bytes.Buffer{}
-		if err = json.NewEncoder(buffer).Encode(&object); err != nil {
+		data, err := json.Marshal(object)
+		if err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
 			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
-		response, err := s.send(mctx, http.MethodPost, url, buffer, sp, 0)
+		response, err := s.send(mctx, http.MethodPost, url, data, sp, 0)
 		if err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
@@ -283,14 +282,14 @@ func (s *httpManipulator) Update(mctx manipulate.Context, objects ...elemental.I
 			return manipulate.NewErrCannotBuildQuery(err.Error())
 		}
 
-		buffer := &bytes.Buffer{}
-		if err = json.NewEncoder(buffer).Encode(object); err != nil {
+		data, err := json.Marshal(object)
+		if err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
 			return manipulate.NewErrCannotMarshal(err.Error())
 		}
 
-		response, err := s.send(mctx, method, url, buffer, sp, 0)
+		response, err := s.send(mctx, method, url, data, sp, 0)
 		if err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
@@ -497,9 +496,9 @@ func (s *httpManipulator) getURLForChildrenIdentity(
 	return url + "/" + childrenIdentity.Category, nil
 }
 
-func (s *httpManipulator) send(mctx manipulate.Context, method string, requrl string, body io.Reader, sp opentracing.Span, try int) (*http.Response, error) {
+func (s *httpManipulator) send(mctx manipulate.Context, method string, requrl string, body []byte, sp opentracing.Span, try int) (*http.Response, error) {
 
-	request, err := http.NewRequest(method, requrl, body)
+	request, err := http.NewRequest(method, requrl, bytes.NewBuffer(body))
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
