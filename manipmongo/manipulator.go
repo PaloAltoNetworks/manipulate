@@ -297,7 +297,7 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, objects ...elemental.
 			}
 		}
 
-		if err := c.Update(filter, o); err != nil {
+		if err := c.Update(filter, bson.M{"$set": o}); err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
 			return handleQueryError(err)
