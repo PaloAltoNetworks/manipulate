@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -201,6 +202,9 @@ func (s *subscription) listen(ctx context.Context) {
 
 				s.publishEvent(event)
 
+			case <-s.tokenRenewed:
+				s.publishStatus(manipulate.SubscriberStatusTokenRenewal)
+
 			case err = <-s.conn.Error():
 				s.publishError(err)
 
@@ -210,11 +214,6 @@ func (s *subscription) listen(ctx context.Context) {
 					s.publishError(err)
 				}
 
-				break processingLoop
-
-			case <-s.tokenRenewed:
-
-				s.publishStatus(manipulate.SubscriberStatusTokenRenewal)
 				break processingLoop
 
 			case <-ctx.Done():
@@ -257,6 +256,16 @@ func (s *subscription) setCurrentToken(t string) {
 	s.currentTokenLock.Lock()
 	s.currentToken = t
 	s.currentTokenLock.Unlock()
+
+	// We get the current filter
+	filter := s.getCurrentFilter()
+	if filter == nil {
+		// if it's nil, we create an empty one.
+		filter = &elemental.PushFilter{}
+	}
+	filter.Params = url.Values{"token": []string{t}}
+
+	s.UpdateFilter(filter)
 
 	// notify the main loop if needed
 	select {
