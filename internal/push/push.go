@@ -36,7 +36,6 @@ type subscription struct {
 	filters                 chan *elemental.PushFilter
 	currentFilter           *elemental.PushFilter
 	currentFilterLock       sync.RWMutex
-	tokenRenewed            chan struct{}
 	currentToken            string
 	currentTokenLock        sync.RWMutex
 	unregisterTokenNotifier func(string)
@@ -60,7 +59,6 @@ func NewSubscriber(
 		ns:                      ns,
 		recursive:               recursive,
 		currentToken:            token,
-		tokenRenewed:            make(chan struct{}, 2),
 		currentTokenLock:        sync.RWMutex{},
 		unregisterTokenNotifier: unregisterTokenNotifier,
 		registerTokenNotifier:   registerTokenNotifier,
@@ -201,9 +199,6 @@ func (s *subscription) listen(ctx context.Context) {
 
 				s.publishEvent(event)
 
-			case <-s.tokenRenewed:
-				s.publishStatus(manipulate.SubscriberStatusTokenRenewal)
-
 			case err = <-s.conn.Error():
 				s.publishError(err)
 
@@ -265,12 +260,7 @@ func (s *subscription) setCurrentToken(t string) {
 	filter.SetParameter("token", t)
 
 	s.UpdateFilter(filter)
-
-	// notify the main loop if needed
-	select {
-	case s.tokenRenewed <- struct{}{}:
-	default:
-	}
+	s.publishStatus(manipulate.SubscriberStatusTokenRenewal)
 }
 
 func (s *subscription) getCurrentToken() string {
