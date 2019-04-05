@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"sync"
 	"time"
 
@@ -61,7 +60,7 @@ func NewSubscriber(
 		ns:                      ns,
 		recursive:               recursive,
 		currentToken:            token,
-		tokenRenewed:            make(chan struct{}),
+		tokenRenewed:            make(chan struct{}, 2),
 		currentTokenLock:        sync.RWMutex{},
 		unregisterTokenNotifier: unregisterTokenNotifier,
 		registerTokenNotifier:   registerTokenNotifier,
@@ -261,9 +260,9 @@ func (s *subscription) setCurrentToken(t string) {
 	filter := s.getCurrentFilter()
 	if filter == nil {
 		// if it's nil, we create an empty one.
-		filter = &elemental.PushFilter{}
+		filter = elemental.NewPushFilter()
 	}
-	filter.Params = url.Values{"token": []string{t}}
+	filter.SetParameter("token", t)
 
 	s.UpdateFilter(filter)
 
