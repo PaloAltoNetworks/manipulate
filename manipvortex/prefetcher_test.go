@@ -26,7 +26,7 @@ func TestTestPrefetcher(t *testing.T) {
 
 		Convey("When I call Prefetch", func() {
 
-			out, err := p.Prefetch(nil, elemental.OperationRetrieve, elemental.EmptyIdentity, nil, nil)
+			out, err := p.Prefetch(context.Background(), elemental.OperationRetrieve, elemental.EmptyIdentity, nil, nil)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
@@ -39,7 +39,7 @@ func TestTestPrefetcher(t *testing.T) {
 
 		Convey("When I call WarmUp", func() {
 
-			out, err := p.WarmUp(nil, nil, nil, elemental.EmptyIdentity)
+			out, err := p.WarmUp(context.Background(), nil, nil, elemental.EmptyIdentity)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
@@ -65,7 +65,7 @@ func TestTestPrefetcher(t *testing.T) {
 				return testmodel.ListsList{}, fmt.Errorf("boom")
 			})
 
-			out, err := p.Prefetch(nil, elemental.OperationRetrieve, elemental.EmptyIdentity, nil, nil)
+			out, err := p.Prefetch(context.Background(), elemental.OperationRetrieve, elemental.EmptyIdentity, nil, nil)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -83,7 +83,7 @@ func TestTestPrefetcher(t *testing.T) {
 				return testmodel.ListsList{}, fmt.Errorf("boom")
 			})
 
-			out, err := p.WarmUp(nil, nil, nil, elemental.EmptyIdentity)
+			out, err := p.WarmUp(context.Background(), nil, nil, elemental.EmptyIdentity)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)

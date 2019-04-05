@@ -991,7 +991,7 @@ func TestHTTP_send(t *testing.T) {
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				http.Error(w, `[{"code": 408, "title": "nope", "description": "boom"}]`, 408)
+				http.Error(w, `[{"code": 408, "title": "nope", "description": "boom"}]`, http.StatusRequestTimeout)
 			}))
 			defer ts.Close()
 
@@ -1016,7 +1016,7 @@ func TestHTTP_send(t *testing.T) {
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				http.Error(w, `[{"code": 502, "title": "nope", "description": "boom"}]`, 502)
+				http.Error(w, `[{"code": 502, "title": "nope", "description": "boom"}]`, http.StatusBadGateway)
 			}))
 			defer ts.Close()
 
@@ -1041,7 +1041,7 @@ func TestHTTP_send(t *testing.T) {
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				http.Error(w, `[{"code": 503, "title": "nope", "description": "boom"}]`, 503)
+				http.Error(w, `[{"code": 503, "title": "nope", "description": "boom"}]`, http.StatusServiceUnavailable)
 			}))
 			defer ts.Close()
 
@@ -1066,7 +1066,7 @@ func TestHTTP_send(t *testing.T) {
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				http.Error(w, `[{"code": 504, "title": "nope", "description": "boom"}]`, 504)
+				http.Error(w, `[{"code": 504, "title": "nope", "description": "boom"}]`, http.StatusGatewayTimeout)
 			}))
 			defer ts.Close()
 
@@ -1091,7 +1091,7 @@ func TestHTTP_send(t *testing.T) {
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				http.Error(w, `[{"code": 429, "title": "nope", "description": "boom"}]`, 429)
+				http.Error(w, `[{"code": 429, "title": "nope", "description": "boom"}]`, http.StatusTooManyRequests)
 			}))
 			defer ts.Close()
 
@@ -1116,7 +1116,7 @@ func TestHTTP_send(t *testing.T) {
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				http.Error(w, `[{"code": 403, "title": "nope", "description": "boom"}]`, 403)
+				http.Error(w, `[{"code": 403, "title": "nope", "description": "boom"}]`, http.StatusForbidden)
 			}))
 			defer ts.Close()
 
@@ -1139,7 +1139,7 @@ func TestHTTP_send(t *testing.T) {
 			call++
 			if call == 1 {
 				w.Header().Set("Content-Type", "application/json")
-				http.Error(w, `[{"code": 403, "title": "nope", "description": "boom"}]`, 403)
+				http.Error(w, `[{"code": 403, "title": "nope", "description": "boom"}]`, http.StatusForbidden)
 			} else {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusNoContent)
@@ -1171,7 +1171,7 @@ func TestHTTP_send(t *testing.T) {
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				http.Error(w, `[{"code": 423, "title": "nope", "description": "boom"}]`, 423)
+				http.Error(w, `[{"code": 423, "title": "nope", "description": "boom"}]`, http.StatusLocked)
 			}))
 			defer ts.Close()
 

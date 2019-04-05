@@ -79,10 +79,9 @@ func TestIterFunc(t *testing.T) {
 	Convey("Given I call IterFunc with no manipulator", t, func() {
 
 		Convey("Then it should panic", func() {
-			// nolint
 			So(
 				func() {
-					IterFunc(nil, nil, nil, nil, nil, 0)
+					_ = IterFunc(nil, nil, nil, nil, nil, 0) // nolint
 				},
 				ShouldPanicWith,
 				"manipulator must not be nil",
@@ -93,17 +92,9 @@ func TestIterFunc(t *testing.T) {
 	Convey("Given I call IterFunc with no iterator", t, func() {
 
 		Convey("Then it should panic", func() {
-			// nolint
 			So(
 				func() {
-					IterFunc(
-						nil,
-						&testManipulator{},
-						nil,
-						nil,
-						nil,
-						0,
-					)
+					_ = IterFunc(nil, &testManipulator{}, nil, nil, nil, 0) // nolint
 				},
 				ShouldPanicWith,
 				"iteratorFunc must not be nil",
@@ -114,17 +105,10 @@ func TestIterFunc(t *testing.T) {
 	Convey("Given I call IterFunc with no identifiablesTemplate", t, func() {
 
 		Convey("Then it should panic", func() {
-			// nolint
-			So(func() {
-				IterFunc(
-					nil,
-					&testManipulator{},
-					nil,
-					nil,
-					func(elemental.Identifiables) error { return nil },
-					0,
-				)
-			},
+			So(
+				func() {
+					_ = IterFunc(nil, &testManipulator{}, nil, nil, func(elemental.Identifiables) error { return nil }, 0) // nolint
+				},
 				ShouldPanicWith,
 				"identifiablesTemplate must not be nil",
 			)

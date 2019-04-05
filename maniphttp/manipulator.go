@@ -470,7 +470,7 @@ func (s *httpManipulator) getGeneralURL(o elemental.Identifiable, mctxVersion in
 func (s *httpManipulator) getPersonalURL(o elemental.Identifiable, mctxVersion int) (string, error) {
 
 	if o.Identifier() == "" {
-		return "", fmt.Errorf("Cannot GetPersonalURL of an object with no ID set")
+		return "", fmt.Errorf("cannot GetPersonalURL of an object with no ID set")
 	}
 
 	return s.getGeneralURL(o, mctxVersion) + "/" + o.Identifier(), nil

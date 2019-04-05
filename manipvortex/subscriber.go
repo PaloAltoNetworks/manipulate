@@ -29,7 +29,7 @@ func NewSubscriber(m manipulate.Manipulator, queueSize int) (manipulate.Subscrib
 	}
 
 	if !v.hasBackendSubscriber() {
-		return nil, fmt.Errorf("Vortex has no upstream subscriber - local subscriptions not supported")
+		return nil, fmt.Errorf("vortex has no upstream subscriber: local subscriptions not supported")
 	}
 
 	s := &vortexSubscriber{

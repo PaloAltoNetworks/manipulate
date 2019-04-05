@@ -411,7 +411,7 @@ func (m *vortexManipulator) shouldProcess(mctx manipulate.Context, identity elem
 		return false
 	}
 
-	return mctx == nil || (mctx != nil && mctx.Parent() == nil)
+	return mctx == nil || mctx.Parent() == nil
 }
 
 // commitUpstream will commit a transaction to the upstream if it is not nil. It will
@@ -464,7 +464,7 @@ func (m *vortexManipulator) commitUpstream(ctx context.Context, operation elemen
 // fail for some reason.
 func (m *vortexManipulator) commitLocal(operation elemental.Operation, mctx manipulate.Context, objects []elemental.Identifiable) error {
 
-	if objects == nil || len(objects) == 0 {
+	if len(objects) == 0 {
 		return nil
 	}
 
