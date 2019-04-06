@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"go.aporeto.io/manipulate/internal/idempotency"
+
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
 	testmodel "go.aporeto.io/elemental/test/model"
@@ -114,6 +116,8 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 					manipulate.ContextOptionFields([]string{"a", "b"}),
 				)
 
+				ctx.(idempotency.Keyer).SetIdempotencyKey("coucou")
+
 				m.prepareHeaders(req, ctx)
 
 				Convey("Then I should have a value for X-External-Tracking-ID", func() {
@@ -130,6 +134,10 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 
 				Convey("Then I should have a value for X-Write-Consistency", func() {
 					So(req.Header.Get("X-Write-Consistency"), ShouldEqual, "strong")
+				})
+
+				Convey("Then I should have a value for Idempotency-Key", func() {
+					So(req.Header.Get("Idempotency-Key"), ShouldEqual, "coucou")
 				})
 
 				Convey("Then I should have a value for X-Fields", func() {

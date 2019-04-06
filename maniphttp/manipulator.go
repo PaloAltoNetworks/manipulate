@@ -17,10 +17,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gofrs/uuid"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/internal/idempotency"
 	"go.aporeto.io/manipulate/internal/snip"
 	"go.aporeto.io/manipulate/internal/tracing"
 )
@@ -209,6 +211,10 @@ func (s *httpManipulator) Create(mctx manipulate.Context, objects ...elemental.I
 		mctx = manipulate.NewContext(context.Background())
 	}
 
+	if k, ok := mctx.(idempotency.Keyer); ok && k.IdempotencyKey() == "" {
+		k.SetIdempotencyKey(uuid.Must(uuid.NewV4()).String())
+	}
+
 	for _, object := range objects {
 
 		sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.create.object.%s", object.Identity().Name))
@@ -262,6 +268,10 @@ func (s *httpManipulator) Update(mctx manipulate.Context, objects ...elemental.I
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
+	}
+
+	if k, ok := mctx.(idempotency.Keyer); ok && k.IdempotencyKey() == "" {
+		k.SetIdempotencyKey(uuid.Must(uuid.NewV4()).String())
 	}
 
 	method := http.MethodPut
@@ -428,6 +438,10 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.
 
 	if v := mctx.WriteConsistency(); v != manipulate.WriteConsistencyDefault {
 		request.Header.Set("X-Write-Consistency", string(v))
+	}
+
+	if k, ok := mctx.(idempotency.Keyer); ok && k.IdempotencyKey() != "" {
+		request.Header.Set("Idempotency-Key", k.IdempotencyKey())
 	}
 
 	for _, field := range mctx.Fields() {
