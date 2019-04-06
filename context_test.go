@@ -136,14 +136,31 @@ func TestContext_Derive(t *testing.T) {
 
 		Convey("When I Derive without option", func() {
 
-			copy := mctx.Derive()
+			copy := mctx.Derive().(*mcontext)
 
 			Convey("Then the copy should resemble to the original", func() {
-				So(copy, ShouldResemble, mctx)
+				So(copy.Page(), ShouldEqual, 1)
+				So(copy.PageSize(), ShouldEqual, 2)
+				So(copy.Parent(), ShouldEqual, mctx.parent)
+				So(copy.Count(), ShouldEqual, mctx.countTotal)
+				So(copy.filter.String(), ShouldEqual, `k == "v"`)
+				So(copy.Parameters(), ShouldEqual, mctx.parameters)
+				So(copy.TransactionID(), ShouldEqual, mctx.transactionID)
+				So(copy.Namespace(), ShouldEqual, mctx.namespace)
+				So(copy.Recursive(), ShouldEqual, mctx.recursive)
+				So(copy.Override(), ShouldEqual, mctx.overrideProtection)
+				So(copy.Finalizer(), ShouldEqual, mctx.createFinalizer)
+				So(copy.Version(), ShouldEqual, mctx.version)
+				So(copy.ExternalTrackingID(), ShouldEqual, mctx.externalTrackingID)
+				So(copy.ExternalTrackingType(), ShouldEqual, mctx.externalTrackingType)
+				So(copy.Order(), ShouldResemble, mctx.order)
+				So(copy.Fields(), ShouldResemble, mctx.fields)
+				So(copy.ctx, ShouldEqual, mctx.ctx)
+				So(copy.IdempotencyKey(), ShouldEqual, "")
 			})
 		})
 
-		Convey("When I Derive without witah options", func() {
+		Convey("When I Derive without with options", func() {
 
 			copy := mctx.Derive(
 				ContextOptionPage(11, 12),
@@ -168,7 +185,7 @@ func TestContext_Derive(t *testing.T) {
 				So(copy.Order(), ShouldResemble, mctx.order)
 				So(copy.Fields(), ShouldResemble, mctx.fields)
 				So(copy.ctx, ShouldEqual, mctx.ctx)
-				So(copy.IdempotencyKey(), ShouldEqual, mctx.idempotencyKey)
+				So(copy.IdempotencyKey(), ShouldEqual, "")
 			})
 		})
 	})

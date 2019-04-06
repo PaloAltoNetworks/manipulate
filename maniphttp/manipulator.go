@@ -211,8 +211,9 @@ func (s *httpManipulator) Create(mctx manipulate.Context, objects ...elemental.I
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	if k, ok := mctx.(idempotency.Keyer); ok && k.IdempotencyKey() == "" {
-		k.SetIdempotencyKey(uuid.Must(uuid.NewV4()).String())
+	kmctx, _ := mctx.(idempotency.Keyer)
+	if kmctx != nil && kmctx.IdempotencyKey() == "" {
+		kmctx.SetIdempotencyKey(uuid.Must(uuid.NewV4()).String())
 	}
 
 	for _, object := range objects {
@@ -257,6 +258,10 @@ func (s *httpManipulator) Create(mctx manipulate.Context, objects ...elemental.I
 		}
 	}
 
+	if kmctx != nil {
+		kmctx.SetIdempotencyKey("")
+	}
+
 	return nil
 }
 
@@ -270,8 +275,9 @@ func (s *httpManipulator) Update(mctx manipulate.Context, objects ...elemental.I
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	if k, ok := mctx.(idempotency.Keyer); ok && k.IdempotencyKey() == "" {
-		k.SetIdempotencyKey(uuid.Must(uuid.NewV4()).String())
+	kmctx, _ := mctx.(idempotency.Keyer)
+	if kmctx != nil && kmctx.IdempotencyKey() == "" {
+		kmctx.SetIdempotencyKey(uuid.Must(uuid.NewV4()).String())
 	}
 
 	method := http.MethodPut
@@ -319,6 +325,10 @@ func (s *httpManipulator) Update(mctx manipulate.Context, objects ...elemental.I
 		if a, ok := object.(elemental.AttributeSpecifiable); ok {
 			elemental.ResetDefaultForZeroValues(a)
 		}
+	}
+
+	if kmctx != nil {
+		kmctx.SetIdempotencyKey("")
 	}
 
 	return nil

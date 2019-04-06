@@ -216,7 +216,6 @@ func (c *mcontext) Derive(options ...ContextOption) Context {
 		order:                c.order,
 		fields:               c.fields,
 		ctx:                  c.ctx,
-		idempotencyKey:       c.idempotencyKey,
 	}
 
 	for _, opt := range options {
