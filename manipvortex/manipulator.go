@@ -13,7 +13,7 @@ import (
 )
 
 // updater is the type of all crud functions.
-type updater func(mctx manipulate.Context, objects ...elemental.Identifiable) error
+type updater func(mctx manipulate.Context, object elemental.Identifiable) error
 
 // vortexManipulator is a Vortex based on the memdb implementation.
 type vortexManipulator struct {
@@ -199,56 +199,48 @@ func (m *vortexManipulator) RetrieveMany(mctx manipulate.Context, dest elemental
 	return m.downstreamManipulator.RetrieveMany(mctx, dest)
 }
 
-func (m *vortexManipulator) Retrieve(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *vortexManipulator) Retrieve(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	m.RLock()
 	defer m.RUnlock()
-
-	if len(objects) == 0 {
-		return nil
-	}
-
-	if !isCommonIdentity(objects...) {
-		return fmt.Errorf("all objects in operation must be of the same identity")
-	}
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
 	}
 
 	if m.prefetcher != nil {
-		prefetched, err := m.prefetcher.Prefetch(mctx.Context(), elemental.OperationRetrieve, objects[0].Identity(), m.upstreamManipulator, mctx.Derive())
+		prefetched, err := m.prefetcher.Prefetch(mctx.Context(), elemental.OperationRetrieve, object.Identity(), m.upstreamManipulator, mctx.Derive())
 		if err != nil {
-			return fmt.Errorf("unable to prefetch data for retrieve operation for '%s': %s", objects[0].Identity(), err)
+			return fmt.Errorf("unable to prefetch data for retrieve operation for '%s': %s", object.Identity(), err)
 		}
 		if err := m.insertPrefetchedData(prefetched); err != nil {
-			return fmt.Errorf("unable to insert prefetched data for retrieve operation for '%s': %s", objects[0].Identity(), err)
+			return fmt.Errorf("unable to insert prefetched data for retrieve operation for '%s': %s", object.Identity(), err)
 		}
 	}
 
 	// If we are not processing the object, we send it upstream.
 	// We only deal with CRUDs.
-	if !m.shouldProcess(mctx, objects[0].Identity()) {
+	if !m.shouldProcess(mctx, object.Identity()) {
 		if m.upstreamManipulator != nil {
-			return m.upstreamManipulator.Retrieve(mctx, objects...)
+			return m.upstreamManipulator.Retrieve(mctx, object)
 		}
 		return nil
 	}
 
-	if err := m.downstreamManipulator.Retrieve(mctx, objects...); err != nil {
+	if err := m.downstreamManipulator.Retrieve(mctx, object); err != nil {
 
 		// If we can't find it locally, and its strong consistency retrieve
 		// we will try the backend if we have one.
-		if m.upstreamManipulator == nil || !isStrongReadConsistency(mctx, m.processors[objects[0].Identity().Name], m.defaultReadConsistency) {
+		if m.upstreamManipulator == nil || !isStrongReadConsistency(mctx, m.processors[object.Identity().Name], m.defaultReadConsistency) {
 			return err
 		}
 
-		if err := m.upstreamManipulator.Retrieve(mctx, objects...); err != nil {
+		if err := m.upstreamManipulator.Retrieve(mctx, object); err != nil {
 			return err
 		}
 
 		// Make sure that we update our cache for future reference.
-		if err := m.downstreamManipulator.Create(mctx, objects...); err != nil {
+		if err := m.downstreamManipulator.Create(mctx, object); err != nil {
 			return fmt.Errorf("unable to update local cache from backend: %s", err)
 		}
 	}
@@ -256,28 +248,28 @@ func (m *vortexManipulator) Retrieve(mctx manipulate.Context, objects ...element
 	return nil
 }
 
-func (m *vortexManipulator) Create(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *vortexManipulator) Create(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	m.RLock()
 	defer m.RUnlock()
 
-	return m.coreCRUDOperation(elemental.OperationCreate, mctx, objects...)
+	return m.coreCRUDOperation(elemental.OperationCreate, mctx, object)
 }
 
-func (m *vortexManipulator) Update(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *vortexManipulator) Update(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	m.RLock()
 	defer m.RUnlock()
 
-	return m.coreCRUDOperation(elemental.OperationUpdate, mctx, objects...)
+	return m.coreCRUDOperation(elemental.OperationUpdate, mctx, object)
 }
 
-func (m *vortexManipulator) Delete(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *vortexManipulator) Delete(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	m.RLock()
 	defer m.RUnlock()
 
-	return m.coreCRUDOperation(elemental.OperationDelete, mctx, objects...)
+	return m.coreCRUDOperation(elemental.OperationDelete, mctx, object)
 }
 
 func (m *vortexManipulator) DeleteMany(mctx manipulate.Context, identity elemental.Identity) error {
@@ -375,11 +367,7 @@ func (m *vortexManipulator) updateFilter() {
 
 // coreCRUDOperation implements the basic operation for updates of the db. This is used
 // by create, update, and delete.
-func (m *vortexManipulator) coreCRUDOperation(operation elemental.Operation, mctx manipulate.Context, objects ...elemental.Identifiable) error {
-
-	if !isCommonIdentity(objects...) {
-		return fmt.Errorf("all objects in operation must be of the same identity")
-	}
+func (m *vortexManipulator) coreCRUDOperation(operation elemental.Operation, mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
@@ -387,11 +375,11 @@ func (m *vortexManipulator) coreCRUDOperation(operation elemental.Operation, mct
 
 	// If the identity is not registered or the request has a parent
 	// send upstream. We are not dealing with this locally.
-	if !m.shouldProcess(mctx, objects[0].Identity()) {
-		return m.commitUpstream(mctx.Context(), operation, mctx, objects...)
+	if !m.shouldProcess(mctx, object.Identity()) {
+		return m.commitUpstream(mctx.Context(), operation, mctx, object)
 	}
 
-	reconcile, err := m.genericUpdater(operation, mctx, objects...)
+	reconcile, err := m.genericUpdater(operation, mctx, object)
 	if err != nil {
 		return err
 	}
@@ -399,7 +387,7 @@ func (m *vortexManipulator) coreCRUDOperation(operation elemental.Operation, mct
 		return nil
 	}
 
-	return m.commitLocal(operation, mctx, objects)
+	return m.commitLocal(operation, mctx, object)
 }
 
 // shouldProcess returns true if the request can be processed by the cache. If false,
@@ -416,7 +404,7 @@ func (m *vortexManipulator) shouldProcess(mctx manipulate.Context, identity elem
 
 // commitUpstream will commit a transaction to the upstream if it is not nil. It will
 // return the upstream error.
-func (m *vortexManipulator) commitUpstream(ctx context.Context, operation elemental.Operation, mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *vortexManipulator) commitUpstream(ctx context.Context, operation elemental.Operation, mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if m.upstreamManipulator == nil {
 		return nil
@@ -424,7 +412,7 @@ func (m *vortexManipulator) commitUpstream(ctx context.Context, operation elemen
 
 	// If we have an accepter, we see if it accepts the write
 	if m.upstreamReconciler != nil {
-		reconcile, err := m.upstreamReconciler.Reconcile(mctx, operation, objects...)
+		reconcile, err := m.upstreamReconciler.Reconcile(mctx, operation, object)
 		if err != nil {
 			return err
 		}
@@ -434,9 +422,9 @@ func (m *vortexManipulator) commitUpstream(ctx context.Context, operation elemen
 	}
 
 	// If it is managed object we apply the pre-hook.
-	cfg, ok := m.processors[objects[0].Identity().Name]
+	cfg, ok := m.processors[object.Identity().Name]
 	if ok && cfg.UpstreamReconciler != nil {
-		accept, err := cfg.UpstreamReconciler.Reconcile(mctx, operation, objects...)
+		accept, err := cfg.UpstreamReconciler.Reconcile(mctx, operation, object)
 		if err != nil {
 			return err
 		}
@@ -449,7 +437,7 @@ func (m *vortexManipulator) commitUpstream(ctx context.Context, operation elemen
 	if err := manipulate.Retry(
 		ctx,
 		func() error {
-			return m.methodFromType(operation)(mctx, objects...)
+			return m.methodFromType(operation)(mctx, object)
 		},
 		nil,
 	); err != nil {
@@ -462,11 +450,7 @@ func (m *vortexManipulator) commitUpstream(ctx context.Context, operation elemen
 // commitLocal will commit a transaction locally after processing any
 // hooks. It will return error if either the hook or the local commit
 // fail for some reason.
-func (m *vortexManipulator) commitLocal(operation elemental.Operation, mctx manipulate.Context, objects []elemental.Identifiable) error {
-
-	if len(objects) == 0 {
-		return nil
-	}
+func (m *vortexManipulator) commitLocal(operation elemental.Operation, mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
@@ -474,7 +458,7 @@ func (m *vortexManipulator) commitLocal(operation elemental.Operation, mctx mani
 
 	// If we have a global Reconciler, we see if it accepts the write.
 	if m.downstreamReconciler != nil {
-		accept, err := m.downstreamReconciler.Reconcile(mctx, operation, objects...)
+		accept, err := m.downstreamReconciler.Reconcile(mctx, operation, object)
 		if err != nil {
 			return err
 		}
@@ -483,14 +467,14 @@ func (m *vortexManipulator) commitLocal(operation elemental.Operation, mctx mani
 		}
 	}
 
-	cfg, ok := m.processors[objects[0].Identity().Name]
+	cfg, ok := m.processors[object.Identity().Name]
 	if !ok {
 		return nil
 	}
 
 	// If we have a processor Reconciler, we see if it accepts the write.
 	if cfg.DownstreamReconciler != nil {
-		accept, err := cfg.DownstreamReconciler.Reconcile(mctx, operation, objects...)
+		accept, err := cfg.DownstreamReconciler.Reconcile(mctx, operation, object)
 		if err != nil {
 			return err
 		}
@@ -499,16 +483,16 @@ func (m *vortexManipulator) commitLocal(operation elemental.Operation, mctx mani
 		}
 	}
 
-	if err := m.localMethodFromType(operation)(mctx, objects...); err != nil {
+	if err := m.localMethodFromType(operation)(mctx, object); err != nil {
 		return err
 	}
 
 	if m.enableLog {
 		m.logChannel <- &Transaction{
-			Date:    time.Now(),
-			mctx:    mctx,
-			Objects: objects,
-			Method:  operation,
+			Date:   time.Now(),
+			mctx:   mctx,
+			Object: object,
+			Method: operation,
 		}
 	}
 
@@ -555,20 +539,20 @@ func (m *vortexManipulator) methodFromType(method elemental.Operation) updater {
 // For WriteThrough: it will return an error if the backend fails.
 // For WriteBack it will cache it and return commit=false. The commit will happen
 // later after the object is stored in the backend.
-func (m *vortexManipulator) genericUpdater(method elemental.Operation, mctx manipulate.Context, objects ...elemental.Identifiable) (bool, error) {
+func (m *vortexManipulator) genericUpdater(method elemental.Operation, mctx manipulate.Context, object elemental.Identifiable) (bool, error) {
 
 	if m.upstreamManipulator == nil {
 		return true, nil
 	}
 
 	// We are guaranteed that there is at least one object and the identity is processable.
-	processor := m.processors[objects[0].Identity().Name]
+	processor := m.processors[object.Identity().Name]
 
 	// In Strong consistency we make sure that the backend gets the create.
 	// Only then store in the cache.
 
 	if isStrongWriteConsistency(mctx, processor, m.defaultWriteConsistency) {
-		return true, m.commitUpstream(mctx.Context(), method, mctx, objects...)
+		return true, m.commitUpstream(mctx.Context(), method, mctx, object)
 	}
 
 	tdeadline := processor.QueueingDuration
@@ -580,7 +564,7 @@ func (m *vortexManipulator) genericUpdater(method elemental.Operation, mctx mani
 
 	case m.transactionQueue <- &Transaction{
 		mctx:     mctx,
-		Objects:  objects,
+		Object:   object,
 		Method:   method,
 		Deadline: time.Now().Add(tdeadline),
 	}:
@@ -610,7 +594,7 @@ func (m *vortexManipulator) backgroundSync(ctx context.Context) {
 				continue
 			}
 
-			if len(t.Objects) == 0 {
+			if t.Object == nil {
 				continue
 			}
 
@@ -620,7 +604,7 @@ func (m *vortexManipulator) backgroundSync(ctx context.Context) {
 			// the ID has been populated.
 			m.RLock()
 
-			if _, ok := m.processors[t.Objects[0].Identity().Name]; !ok {
+			if _, ok := m.processors[t.Object.Identity().Name]; !ok {
 				m.RUnlock()
 				continue
 			}
@@ -628,14 +612,14 @@ func (m *vortexManipulator) backgroundSync(ctx context.Context) {
 			retryCtx, cancel := context.WithDeadline(ctx, t.Deadline)
 			cancel()
 
-			if err := m.commitUpstream(retryCtx, t.Method, t.mctx, t.Objects...); err != nil {
+			if err := m.commitUpstream(retryCtx, t.Method, t.mctx, t.Object); err != nil {
 				m.RUnlock()
 				zap.L().Error("failed to commit object upstream", zap.Error(err))
 				continue
 			}
 
 			// Update the local copy of the object now.
-			if err := m.commitLocal(t.Method, t.mctx, t.Objects); err != nil {
+			if err := m.commitLocal(t.Method, t.mctx, t.Object); err != nil {
 				zap.L().Error("failed to delete local object after failed resync", zap.Error(err))
 			}
 
@@ -776,7 +760,7 @@ func (m *vortexManipulator) eventHandler(ctx context.Context, evt *elemental.Eve
 		return fmt.Errorf("unsupported event received: %s", evt.Type)
 	}
 
-	if err := m.commitLocal(method, nil, elemental.IdentifiablesList{obj}); err != nil {
+	if err := m.commitLocal(method, nil, obj); err != nil {
 		if method != elemental.OperationDelete {
 			return fmt.Errorf("unable to commit event of type '%s': %s", evt.Type, err)
 		}
@@ -796,7 +780,13 @@ func (m *vortexManipulator) insertPrefetchedData(prefetched elemental.Identifiab
 		return nil
 	}
 
-	return m.commitLocal(elemental.OperationCreate, nil, lst)
+	for _, item := range lst {
+		if err := m.commitLocal(elemental.OperationCreate, nil, item); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (m *vortexManipulator) warmUp(ctx context.Context) error {

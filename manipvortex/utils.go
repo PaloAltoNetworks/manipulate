@@ -1,26 +1,8 @@
 package manipvortex
 
 import (
-	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 )
-
-// isCommonIdentity will validate that all objects in the operation have the same identity.
-// We do not support calls with different identities.
-func isCommonIdentity(objects ...elemental.Identifiable) bool {
-
-	identites := map[string]struct{}{}
-
-	for _, obj := range objects {
-		if obj == nil {
-			continue
-		}
-
-		identites[obj.Identity().Name] = struct{}{}
-	}
-
-	return len(identites) <= 1
-}
 
 func isStrongReadConsistency(mctx manipulate.Context, processor *Processor, defaultConsistency manipulate.ReadConsistency) bool {
 

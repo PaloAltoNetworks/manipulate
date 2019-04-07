@@ -10,10 +10,10 @@ import (
 
 type mockedMethods struct {
 	retrieveManyMock func(mctx manipulate.Context, dest elemental.Identifiables) error
-	retrieveMock     func(mctx manipulate.Context, objects ...elemental.Identifiable) error
-	createMock       func(mctx manipulate.Context, objects ...elemental.Identifiable) error
-	updateMock       func(mctx manipulate.Context, objects ...elemental.Identifiable) error
-	deleteMock       func(mctx manipulate.Context, objects ...elemental.Identifiable) error
+	retrieveMock     func(mctx manipulate.Context, object elemental.Identifiable) error
+	createMock       func(mctx manipulate.Context, object elemental.Identifiable) error
+	updateMock       func(mctx manipulate.Context, object elemental.Identifiable) error
+	deleteMock       func(mctx manipulate.Context, object elemental.Identifiable) error
 	deleteManyMock   func(mctx manipulate.Context, identity elemental.Identity) error
 	countMock        func(mctx manipulate.Context, identity elemental.Identity) (int, error)
 	commitMock       func(id manipulate.TransactionID) error
@@ -24,10 +24,10 @@ type mockedMethods struct {
 type TestManipulator interface {
 	manipulate.TransactionalManipulator
 	MockRetrieveMany(t *testing.T, impl func(mctx manipulate.Context, dest elemental.Identifiables) error)
-	MockRetrieve(t *testing.T, impl func(mctx manipulate.Context, objects ...elemental.Identifiable) error)
-	MockCreate(t *testing.T, impl func(mctx manipulate.Context, objects ...elemental.Identifiable) error)
-	MockUpdate(t *testing.T, impl func(mctx manipulate.Context, objects ...elemental.Identifiable) error)
-	MockDelete(t *testing.T, impl func(mctx manipulate.Context, objects ...elemental.Identifiable) error)
+	MockRetrieve(t *testing.T, impl func(mctx manipulate.Context, object elemental.Identifiable) error)
+	MockCreate(t *testing.T, impl func(mctx manipulate.Context, object elemental.Identifiable) error)
+	MockUpdate(t *testing.T, impl func(mctx manipulate.Context, object elemental.Identifiable) error)
+	MockDelete(t *testing.T, impl func(mctx manipulate.Context, object elemental.Identifiable) error)
 	MockDeleteMany(t *testing.T, impl func(mctx manipulate.Context, identity elemental.Identity) error)
 	MockCount(t *testing.T, impl func(mctx manipulate.Context, identity elemental.Identity) (int, error))
 	MockCommit(t *testing.T, impl func(tid manipulate.TransactionID) error)
@@ -57,7 +57,7 @@ func (m *testManipulator) MockRetrieveMany(t *testing.T, impl func(mctx manipula
 	m.currentMocks(t).retrieveManyMock = impl
 }
 
-func (m *testManipulator) MockRetrieve(t *testing.T, impl func(mctx manipulate.Context, objects ...elemental.Identifiable) error) {
+func (m *testManipulator) MockRetrieve(t *testing.T, impl func(mctx manipulate.Context, object elemental.Identifiable) error) {
 
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -65,7 +65,7 @@ func (m *testManipulator) MockRetrieve(t *testing.T, impl func(mctx manipulate.C
 	m.currentMocks(t).retrieveMock = impl
 }
 
-func (m *testManipulator) MockCreate(t *testing.T, impl func(mctx manipulate.Context, objects ...elemental.Identifiable) error) {
+func (m *testManipulator) MockCreate(t *testing.T, impl func(mctx manipulate.Context, object elemental.Identifiable) error) {
 
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -73,7 +73,7 @@ func (m *testManipulator) MockCreate(t *testing.T, impl func(mctx manipulate.Con
 	m.currentMocks(t).createMock = impl
 }
 
-func (m *testManipulator) MockUpdate(t *testing.T, impl func(mctx manipulate.Context, objects ...elemental.Identifiable) error) {
+func (m *testManipulator) MockUpdate(t *testing.T, impl func(mctx manipulate.Context, object elemental.Identifiable) error) {
 
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -81,7 +81,7 @@ func (m *testManipulator) MockUpdate(t *testing.T, impl func(mctx manipulate.Con
 	m.currentMocks(t).updateMock = impl
 }
 
-func (m *testManipulator) MockDelete(t *testing.T, impl func(mctx manipulate.Context, objects ...elemental.Identifiable) error) {
+func (m *testManipulator) MockDelete(t *testing.T, impl func(mctx manipulate.Context, object elemental.Identifiable) error) {
 
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -133,49 +133,49 @@ func (m *testManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.I
 	return nil
 }
 
-func (m *testManipulator) Retrieve(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *testManipulator) Retrieve(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.retrieveMock != nil {
-		return mock.retrieveMock(mctx, objects...)
+		return mock.retrieveMock(mctx, object)
 	}
 
 	return nil
 }
 
-func (m *testManipulator) Create(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *testManipulator) Create(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.createMock != nil {
-		return mock.createMock(mctx, objects...)
+		return mock.createMock(mctx, object)
 	}
 
 	return nil
 }
 
-func (m *testManipulator) Update(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *testManipulator) Update(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.updateMock != nil {
-		return mock.updateMock(mctx, objects...)
+		return mock.updateMock(mctx, object)
 	}
 
 	return nil
 }
 
-func (m *testManipulator) Delete(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *testManipulator) Delete(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
 	if mock := m.currentMocks(m.currentTest); mock != nil && mock.deleteMock != nil {
-		return mock.deleteMock(mctx, objects...)
+		return mock.deleteMock(mctx, object)
 	}
 
 	return nil

@@ -92,29 +92,26 @@ func (m *memdbManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 }
 
 // Retrieve is part of the implementation of the Manipulator interface.
-func (m *memdbManipulator) Retrieve(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *memdbManipulator) Retrieve(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	txn := m.db.Txn(false)
 
-	for _, object := range objects {
-
-		raw, err := txn.First(object.Identity().Category, "id", object.Identifier())
-		if err != nil {
-			return manipulate.NewErrCannotExecuteQuery(err.Error())
-		}
-
-		if raw == nil {
-			return manipulate.NewErrObjectNotFound("cannot find the object for the given ID")
-		}
-
-		reflect.ValueOf(object).Elem().Set(reflect.ValueOf(raw).Elem())
+	raw, err := txn.First(object.Identity().Category, "id", object.Identifier())
+	if err != nil {
+		return manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
+
+	if raw == nil {
+		return manipulate.NewErrObjectNotFound("cannot find the object for the given ID")
+	}
+
+	reflect.ValueOf(object).Elem().Set(reflect.ValueOf(raw).Elem())
 
 	return nil
 }
 
 // Create is part of the implementation of the Manipulator interface.
-func (m *memdbManipulator) Create(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *memdbManipulator) Create(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
@@ -124,16 +121,14 @@ func (m *memdbManipulator) Create(mctx manipulate.Context, objects ...elemental.
 	txn := m.txnForID(tid)
 	defer txn.Abort()
 
-	for _, object := range objects {
-		// In caching scenarios the identifier is already set. Do not insert
-		// here. We will get it pre-populated from the master DB.
-		if object.Identifier() == "" {
-			object.SetIdentifier(bson.NewObjectId().Hex())
-		}
+	// In caching scenarios the identifier is already set. Do not insert
+	// here. We will get it pre-populated from the master DB.
+	if object.Identifier() == "" {
+		object.SetIdentifier(bson.NewObjectId().Hex())
+	}
 
-		if err := txn.Insert(object.Identity().Category, object); err != nil {
-			return manipulate.NewErrCannotExecuteQuery(err.Error())
-		}
+	if err := txn.Insert(object.Identity().Category, object); err != nil {
+		return manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
 
 	if tid == "" {
@@ -144,7 +139,7 @@ func (m *memdbManipulator) Create(mctx manipulate.Context, objects ...elemental.
 }
 
 // Update is part of the implementation of the Manipulator interface.
-func (m *memdbManipulator) Update(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *memdbManipulator) Update(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
@@ -154,16 +149,13 @@ func (m *memdbManipulator) Update(mctx manipulate.Context, objects ...elemental.
 	txn := m.txnForID(tid)
 	defer txn.Abort()
 
-	for _, object := range objects {
+	o, err := txn.Get(object.Identity().Category, "id", object.Identifier())
+	if err != nil || o.Next() == nil {
+		return manipulate.NewErrObjectNotFound("Cannot find object with given ID")
+	}
 
-		o, err := txn.Get(object.Identity().Category, "id", object.Identifier())
-		if err != nil || o.Next() == nil {
-			return manipulate.NewErrObjectNotFound("Cannot find object with given ID")
-		}
-
-		if err := txn.Insert(object.Identity().Category, object); err != nil {
-			return manipulate.NewErrCannotExecuteQuery(err.Error())
-		}
+	if err := txn.Insert(object.Identity().Category, object); err != nil {
+		return manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
 
 	if tid == "" {
@@ -174,7 +166,7 @@ func (m *memdbManipulator) Update(mctx manipulate.Context, objects ...elemental.
 }
 
 // Delete is part of the implementation of the Manipulator interface.
-func (m *memdbManipulator) Delete(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (m *memdbManipulator) Delete(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
@@ -184,10 +176,8 @@ func (m *memdbManipulator) Delete(mctx manipulate.Context, objects ...elemental.
 	txn := m.txnForID(tid)
 	defer txn.Abort()
 
-	for _, object := range objects {
-		if err := txn.Delete(object.Identity().Category, object); err != nil {
-			return manipulate.NewErrCannotExecuteQuery(err.Error())
-		}
+	if err := txn.Delete(object.Identity().Category, object); err != nil {
+		return manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
 
 	if tid == "" {

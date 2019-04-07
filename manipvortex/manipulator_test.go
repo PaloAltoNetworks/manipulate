@@ -409,7 +409,7 @@ func Test_Retrieve(t *testing.T) {
 			o.ID = "bad-id"
 
 			mctx := manipulate.NewContext(ctx, manipulate.ContextOptionReadConsistency(manipulate.ReadConsistencyStrong))
-			m.MockRetrieve(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
+			m.MockRetrieve(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
 				return manipulate.NewErrCannotCommunicate("test")
 			})
 			err := v.Retrieve(mctx, o)
@@ -422,7 +422,7 @@ func Test_Retrieve(t *testing.T) {
 			o.ID = "bad-id"
 
 			mctx := manipulate.NewContext(ctx, manipulate.ContextOptionReadConsistency(manipulate.ReadConsistencyStrong))
-			m.MockRetrieve(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
+			m.MockRetrieve(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
 				return nil
 			})
 			err := v.Retrieve(mctx, o)
@@ -443,7 +443,7 @@ func Test_Retrieve(t *testing.T) {
 		// 	o.ID = "bad-id"
 
 		// 	mctx := manipulate.NewContext(ctx, manipulate.ContextOptionReadConsistency(manipulate.ReadConsistencyStrong))
-		// 	m.MockRetrieve(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
+		// 	m.MockRetrieve(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
 		// 		return nil
 		// 	})
 		// 	err := v.Retrieve(mctx, o)
@@ -486,8 +486,8 @@ func Test_Create(t *testing.T) {
 		Convey("When I create objects", func() {
 
 			Convey("When the backend succeeds, the object must be stored in the DB", func() {
-				m.MockCreate(t, func(mctx manipulate.Context, objects ...elemental.Identifiable) error {
-					o := objects[0].(*testmodel.List)
+				m.MockCreate(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
+					o := object.(*testmodel.List)
 					o.ID = "ID1"
 					return nil
 				})
@@ -512,8 +512,8 @@ func Test_Create(t *testing.T) {
 					return false, nil
 				})
 
-				m.MockCreate(t, func(mctx manipulate.Context, objects ...elemental.Identifiable) error {
-					o := objects[0].(*testmodel.List)
+				m.MockCreate(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
+					o := object.(*testmodel.List)
 					o.ID = "ID1"
 					return nil
 				})
@@ -532,7 +532,7 @@ func Test_Create(t *testing.T) {
 			})
 
 			Convey("When the backend fails, the object must be not be stored in the DB", func() {
-				m.MockCreate(t, func(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockCreate(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
 					return manipulate.NewErrConstraintViolation("test")
 				})
 
@@ -551,7 +551,7 @@ func Test_Create(t *testing.T) {
 
 			Convey("When the has a hook function that prevents execution, it should not commit to the DB", func() {
 
-				m.MockCreate(t, func(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockCreate(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
 					return manipulate.NewErrConstraintViolation("test")
 				})
 
@@ -608,8 +608,8 @@ func Test_Update(t *testing.T) {
 		obj := newObject("obj1", []string{"label"})
 		obj.ID = "obj1"
 
-		m.MockCreate(t, func(mctx manipulate.Context, objects ...elemental.Identifiable) error {
-			o := objects[0].(*testmodel.List)
+		m.MockCreate(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
+			o := object.(*testmodel.List)
 			o.ID = "ID1"
 			return nil
 		})
@@ -620,7 +620,7 @@ func Test_Update(t *testing.T) {
 		Convey("When I update the object", func() {
 
 			Convey("When the backend succeeds, the object must be stored in the DB", func() {
-				m.MockUpdate(t, func(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockUpdate(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
 					return nil
 				})
 
@@ -644,7 +644,7 @@ func Test_Update(t *testing.T) {
 					return false, nil
 				})
 
-				m.MockUpdate(t, func(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockUpdate(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
 					return nil
 				})
 
@@ -662,7 +662,7 @@ func Test_Update(t *testing.T) {
 			})
 
 			Convey("When the backend fails, the object must not be updated", func() {
-				m.MockUpdate(t, func(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockUpdate(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
 					return manipulate.NewErrCannotBuildQuery("test")
 				})
 
@@ -681,7 +681,7 @@ func Test_Update(t *testing.T) {
 			})
 
 			Convey("When the vortex has a hook function that prevents updates, the object must not be updated", func() {
-				m.MockUpdate(t, func(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockUpdate(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
 					return manipulate.NewErrCannotBuildQuery("test")
 				})
 
@@ -740,8 +740,8 @@ func Test_Delete(t *testing.T) {
 		obj := newObject("obj1", []string{"label"})
 		obj.ID = "obj1"
 
-		m.MockCreate(t, func(mctx manipulate.Context, objects ...elemental.Identifiable) error {
-			o := objects[0].(*testmodel.List)
+		m.MockCreate(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
+			o := object.(*testmodel.List)
 			o.ID = "ID1"
 			return nil
 		})
@@ -752,7 +752,7 @@ func Test_Delete(t *testing.T) {
 		Convey("When I delete the object", func() {
 
 			Convey("When the backend succeeds, the object must be deleted", func() {
-				m.MockDelete(t, func(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockDelete(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
 					return nil
 				})
 
@@ -774,7 +774,7 @@ func Test_Delete(t *testing.T) {
 					return false, nil
 				})
 
-				m.MockDelete(t, func(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockDelete(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
 					return nil
 				})
 
@@ -791,7 +791,7 @@ func Test_Delete(t *testing.T) {
 			})
 
 			Convey("When the backend fail, the object must not be deleted", func() {
-				m.MockDelete(t, func(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockDelete(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
 					return manipulate.NewErrCannotBuildQuery("test")
 				})
 
@@ -808,7 +808,7 @@ func Test_Delete(t *testing.T) {
 			})
 
 			Convey("When the vortex has a hook function that prevents deletes, the object must not be deleted", func() {
-				m.MockDelete(t, func(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockDelete(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
 					return manipulate.NewErrCannotBuildQuery("test")
 				})
 
@@ -853,8 +853,11 @@ func Test_WithNoBackend(t *testing.T) {
 		obj2 := newObject("obj2", []string{"x=y", "w=z", "common"})
 
 		Convey("When I create an objects I should get no errors", func() {
-			err := v.Create(nil, obj1, obj2)
-			So(err, ShouldBeNil)
+			err1 := v.Create(nil, obj1)
+			So(err1, ShouldBeNil)
+
+			err2 := v.Create(nil, obj2)
+			So(err2, ShouldBeNil)
 
 			Convey("When I retrieve the objects I created with retrieve many", func() {
 				objects := testmodel.ListsList{}
@@ -966,7 +969,7 @@ func Test_WriteThroughBackend(t *testing.T) {
 			Convey("When the backend fails, the creation should fail", func() {
 				obj3 := newObject("obj3", []string{"w=z"})
 
-				m.MockCreate(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockCreate(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
 					return fmt.Errorf("backend failed")
 				})
 
@@ -981,9 +984,8 @@ func Test_WriteThroughBackend(t *testing.T) {
 
 			obj3 := newObject("obj3", []string{"w=z"})
 
-			m.MockCreate(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
-				o := objects[0]
-				o.SetIdentifier("ID3")
+			m.MockCreate(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
+				object.SetIdentifier("ID3")
 				return nil
 			})
 
@@ -1008,7 +1010,7 @@ func Test_WriteThroughBackend(t *testing.T) {
 					updatedObj.Name = "newname"
 					updatedObj.ID = obj3.ID
 
-					m.MockUpdate(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
+					m.MockUpdate(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
 						return fmt.Errorf("backend is not there")
 					})
 
@@ -1030,7 +1032,7 @@ func Test_WriteThroughBackend(t *testing.T) {
 					updatedObj.ID = obj3.ID
 					updatedObj.Slice = obj3.Slice
 
-					m.MockUpdate(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
+					m.MockUpdate(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
 						return nil
 					})
 
@@ -1053,7 +1055,7 @@ func Test_WriteThroughBackend(t *testing.T) {
 						ID: "ID3",
 					}
 
-					m.MockDelete(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
+					m.MockDelete(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
 						return manipulate.NewErrCannotCommit("failed")
 					})
 					err = v.Delete(nil, newObject)
@@ -1071,7 +1073,7 @@ func Test_WriteThroughBackend(t *testing.T) {
 					newObject := &testmodel.List{
 						ID: "ID3",
 					}
-					m.MockDelete(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
+					m.MockDelete(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
 						return nil
 					})
 					err = v.Delete(nil, newObject)
@@ -1328,7 +1330,7 @@ func Test_WriteBackBackend(t *testing.T) {
 				obj3 := newObject("obj3", []string{"w=z"})
 				obj3.ID = "ID3"
 
-				m.MockCreate(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockCreate(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
 					return manipulate.NewErrCannotCommunicate("testing")
 				})
 
@@ -1353,7 +1355,7 @@ func Test_WriteBackBackend(t *testing.T) {
 				obj3 := newObject("obj3", []string{"w=z"})
 				obj3.ID = "ID3"
 
-				m.MockCreate(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockCreate(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
 					return nil
 				})
 
@@ -1393,11 +1395,11 @@ func Test_WriteBackBackend(t *testing.T) {
 				updatedObject := newObject("obj3updated", []string{"w=z"})
 				updatedObject.ID = "ID3"
 
-				m.MockCreate(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockCreate(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
 					return nil
 				})
 
-				m.MockUpdate(t, func(ctx manipulate.Context, object ...elemental.Identifiable) error {
+				m.MockUpdate(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
 					return manipulate.NewErrCannotCommunicate("test")
 				})
 
@@ -1431,11 +1433,11 @@ func Test_WriteBackBackend(t *testing.T) {
 				updatedObject := newObject("obj3updated", []string{"w=z"})
 				updatedObject.ID = "ID3"
 
-				m.MockCreate(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockCreate(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
 					return nil
 				})
 
-				m.MockUpdate(t, func(ctx manipulate.Context, object ...elemental.Identifiable) error {
+				m.MockUpdate(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
 					return nil
 				})
 

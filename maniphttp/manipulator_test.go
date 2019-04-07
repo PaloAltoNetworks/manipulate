@@ -788,15 +788,14 @@ func TestHTTP_Create(t *testing.T) {
 			defer ts.Close()
 
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
-			task := testmodel.NewTask()
-			errs := m.Create(nil, list, task)
+			errs := m.Create(nil, list)
 
 			Convey("Then the error should not be nil", func() {
 				So(errs, ShouldBeNil)
 			})
 
 			Convey("Then ID of the new children should be zzz", func() {
-				So(task.Identifier(), ShouldEqual, "zzz")
+				So(list.Identifier(), ShouldEqual, "zzz")
 			})
 		})
 
@@ -820,8 +819,7 @@ func TestHTTP_Create(t *testing.T) {
 		Convey("When I create a child that is nil", func() {
 
 			m := NewHTTPManipulator("username", "password", "http://fake.com", "")
-			task := testmodel.NewUnmarshalableList()
-			errs := m.Create(nil, list, task)
+			errs := m.Create(nil, list)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -836,8 +834,7 @@ func TestHTTP_Create(t *testing.T) {
 			defer ts.Close()
 
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
-			task := testmodel.NewTask()
-			errs := m.Create(nil, list, task)
+			errs := m.Create(nil, list)
 
 			Convey("Then error should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -854,8 +851,7 @@ func TestHTTP_Create(t *testing.T) {
 			defer ts.Close()
 
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
-			task := testmodel.NewTask()
-			errs := m.Create(nil, list, task)
+			errs := m.Create(nil, list)
 
 			Convey("Then the error should not be nil", func() {
 				So(errs, ShouldNotBeNil)
