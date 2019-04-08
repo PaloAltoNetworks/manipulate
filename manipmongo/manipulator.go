@@ -171,17 +171,13 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	return nil
 }
 
-func (s *mongoManipulator) Retrieve(mctx manipulate.Context, objects ...elemental.Identifiable) error {
-
-	if len(objects) == 0 {
-		return nil
-	}
+func (s *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	c, close := s.makeSession(objects[0].Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
+	c, close := s.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
 	filter := bson.M{}
@@ -190,162 +186,138 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, objects ...elementa
 		filter = compiler.CompileFilter(f)
 	}
 
-	for _, o := range objects {
+	filter["_id"] = object.Identifier()
 
-		filter["_id"] = o.Identifier()
-
-		if s.sharder != nil {
-			sq := s.sharder.FilterOne(o)
-			if sq != nil {
-				filter = bson.M{"$and": []bson.M{sq, filter}}
-			}
+	if s.sharder != nil {
+		sq := s.sharder.FilterOne(object)
+		if sq != nil {
+			filter = bson.M{"$and": []bson.M{sq, filter}}
 		}
+	}
 
-		sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve.object.%s", objects[0].Identity().Name))
-		sp.LogFields(log.String("object_id", o.Identifier()), log.Object("filter", filter))
-		defer sp.Finish()
+	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve.object.%s", object.Identity().Name))
+	sp.LogFields(log.String("object_id", object.Identifier()), log.Object("filter", filter))
+	defer sp.Finish()
 
-		query := c.Find(filter)
-		if sels := makeFieldsSelector(mctx.Fields()); sels != nil {
-			query = query.Select(sels)
-		}
+	query := c.Find(filter)
+	if sels := makeFieldsSelector(mctx.Fields()); sels != nil {
+		query = query.Select(sels)
+	}
 
-		if err := query.One(o); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return handleQueryError(err)
-		}
+	if err := query.One(object); err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return handleQueryError(err)
+	}
 
-		// backport all default values that are empty.
-		if a, ok := o.(elemental.AttributeSpecifiable); ok {
-			elemental.ResetDefaultForZeroValues(a)
-		}
+	// backport all default values that are empty.
+	if a, ok := object.(elemental.AttributeSpecifiable); ok {
+		elemental.ResetDefaultForZeroValues(a)
 	}
 
 	return nil
 }
 
-func (s *mongoManipulator) Create(mctx manipulate.Context, objects ...elemental.Identifiable) error {
-
-	if len(objects) == 0 {
-		return nil
-	}
+func (s *mongoManipulator) Create(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	c, close := s.makeSession(objects[0].Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
+	c, close := s.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
-	for _, obj := range objects {
+	object.SetIdentifier(bson.NewObjectId().Hex())
 
-		obj.SetIdentifier(bson.NewObjectId().Hex())
+	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.create.object.%s", object.Identity().Name))
+	sp.LogFields(log.String("object_id", object.Identifier()))
+	defer sp.Finish()
 
-		sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.create.object.%s", obj.Identity().Name))
-		sp.LogFields(log.String("object_id", obj.Identifier()))
-		defer sp.Finish()
-
-		if f := mctx.Finalizer(); f != nil {
-			if err := f(obj); err != nil {
-				sp.SetTag("error", true)
-				sp.LogFields(log.Error(err))
-				return err
-			}
-		}
-
-		if s.sharder != nil {
-			s.sharder.Shard(obj)
-		}
-
-		if err := c.Insert(obj); err != nil {
+	if f := mctx.Finalizer(); f != nil {
+		if err := f(object); err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
-			return handleQueryError(err)
+			return err
 		}
+	}
+
+	if s.sharder != nil {
+		s.sharder.Shard(object)
+	}
+
+	if err := c.Insert(object); err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return handleQueryError(err)
 	}
 
 	return nil
 }
 
-func (s *mongoManipulator) Update(mctx manipulate.Context, objects ...elemental.Identifiable) error {
-
-	if len(objects) == 0 {
-		return nil
-	}
+func (s *mongoManipulator) Update(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	c, close := s.makeSession(objects[0].Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
+	c, close := s.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
 	var filter bson.M
 
-	for _, o := range objects {
+	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.update.object.%s", object.Identity().Name))
+	sp.LogFields(log.String("object_id", object.Identifier()))
+	defer sp.Finish()
 
-		sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.update.object.%s", o.Identity().Name))
-		sp.LogFields(log.String("object_id", o.Identifier()))
-		defer sp.Finish()
-
-		filter = bson.M{"_id": o.Identifier()}
-		if s.sharder != nil {
-			sq := s.sharder.FilterOne(o)
-			if sq != nil {
-				filter = bson.M{"$and": []bson.M{sq, filter}}
-			}
+	filter = bson.M{"_id": object.Identifier()}
+	if s.sharder != nil {
+		sq := s.sharder.FilterOne(object)
+		if sq != nil {
+			filter = bson.M{"$and": []bson.M{sq, filter}}
 		}
+	}
 
-		if err := c.Update(filter, bson.M{"$set": o}); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return handleQueryError(err)
-		}
+	if err := c.Update(filter, bson.M{"$set": object}); err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return handleQueryError(err)
 	}
 
 	return nil
 }
 
-func (s *mongoManipulator) Delete(mctx manipulate.Context, objects ...elemental.Identifiable) error {
-
-	if len(objects) == 0 {
-		return nil
-	}
+func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	c, close := s.makeSession(objects[0].Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
+	c, close := s.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
 	var filter bson.M
 
-	for _, o := range objects {
+	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongobject.delete.object.%s", object.Identity().Name))
+	sp.LogFields(log.String("object_id", object.Identifier()))
+	defer sp.Finish()
 
-		sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.delete.object.%s", o.Identity().Name))
-		sp.LogFields(log.String("object_id", o.Identifier()))
-		defer sp.Finish()
-
-		filter = bson.M{"_id": o.Identifier()}
-		if s.sharder != nil {
-			sq := s.sharder.FilterOne(o)
-			if sq != nil {
-				filter = bson.M{"$and": []bson.M{sq, filter}}
-			}
+	filter = bson.M{"_id": object.Identifier()}
+	if s.sharder != nil {
+		sq := s.sharder.FilterOne(object)
+		if sq != nil {
+			filter = bson.M{"$and": []bson.M{sq, filter}}
 		}
+	}
 
-		if err := c.Remove(filter); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return handleQueryError(err)
-		}
+	if err := c.Remove(filter); err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return handleQueryError(err)
+	}
 
-		// backport all default values that are empty.
-		if a, ok := o.(elemental.AttributeSpecifiable); ok {
-			elemental.ResetDefaultForZeroValues(a)
-		}
+	// backport all default values that are empty.
+	if a, ok := object.(elemental.AttributeSpecifiable); ok {
+		elemental.ResetDefaultForZeroValues(a)
 	}
 
 	return nil

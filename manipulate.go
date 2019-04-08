@@ -18,18 +18,18 @@ type Manipulator interface {
 
 	// Retrieve retrieves one or multiple elemental.Identifiables.
 	// In order to be retrievable, the elemental.Identifiable needs to have their Identifier correctly set.
-	Retrieve(mctx Context, objects ...elemental.Identifiable) error
+	Retrieve(mctx Context, object elemental.Identifiable) error
 
 	// Create creates a the given elemental.Identifiables.
-	Create(mctx Context, objects ...elemental.Identifiable) error
+	Create(mctx Context, object elemental.Identifiable) error
 
 	// Update updates one or multiple elemental.Identifiables.
 	// In order to be updatable, the elemental.Identifiable needs to have their Identifier correctly set.
-	Update(mctx Context, objects ...elemental.Identifiable) error
+	Update(mctx Context, object elemental.Identifiable) error
 
 	// Delete deletes one or multiple elemental.Identifiables.
 	// In order to be deletable, the elemental.Identifiable needs to have their Identifier correctly set.
-	Delete(mctx Context, objects ...elemental.Identifiable) error
+	Delete(mctx Context, object elemental.Identifiable) error
 
 	// DeleteMany deletes all objects of with the given identity or
 	// all the ones matching the filter in the given context.

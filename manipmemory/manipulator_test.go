@@ -326,7 +326,10 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 			Slice: []string{"$name=dimitri2", "category=dimitri", "a=b", "x=y"},
 		}
 
-		_ = m.Create(nil, l1, l2, l3, l4)
+		_ = m.Create(nil, l1)
+		_ = m.Create(nil, l2)
+		_ = m.Create(nil, l3)
+		_ = m.Create(nil, l4)
 
 		Convey("When I retrieve the lists", func() {
 
@@ -731,10 +734,14 @@ func TestMemManipulator_Count(t *testing.T) {
 
 		Convey("When I create the list", func() {
 
-			err := m.Create(nil, l1, l2)
+			err1 := m.Create(nil, l1)
+			Convey("Then err1 should be nil", func() {
+				So(err1, ShouldBeNil)
+			})
 
-			Convey("Then err should be nil", func() {
-				So(err, ShouldBeNil)
+			err2 := m.Create(nil, l2)
+			Convey("Then err2 should be nil", func() {
+				So(err2, ShouldBeNil)
 			})
 
 			// Convey("When I count the lists", func() {

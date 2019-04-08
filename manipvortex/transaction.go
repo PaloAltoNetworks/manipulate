@@ -12,7 +12,7 @@ import (
 type Transaction struct {
 	Date     time.Time
 	mctx     manipulate.Context
-	Objects  []elemental.Identifiable
+	Object   elemental.Identifiable
 	Method   elemental.Operation
 	Deadline time.Time
 }

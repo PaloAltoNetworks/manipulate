@@ -49,19 +49,19 @@ func (m *testManipulator) RetrieveMany(mctx Context, dest elemental.Identifiable
 	return nil
 }
 
-func (m *testManipulator) Retrieve(mctx Context, objects ...elemental.Identifiable) error {
+func (m *testManipulator) Retrieve(mctx Context, object elemental.Identifiable) error {
 	return nil
 }
 
-func (m *testManipulator) Create(mctx Context, objects ...elemental.Identifiable) error {
+func (m *testManipulator) Create(mctx Context, object elemental.Identifiable) error {
 	return nil
 }
 
-func (m *testManipulator) Update(mctx Context, objects ...elemental.Identifiable) error {
+func (m *testManipulator) Update(mctx Context, object elemental.Identifiable) error {
 	return nil
 }
 
-func (m *testManipulator) Delete(mctx Context, objects ...elemental.Identifiable) error {
+func (m *testManipulator) Delete(mctx Context, object elemental.Identifiable) error {
 	return nil
 }
 

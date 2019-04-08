@@ -16,7 +16,7 @@ import (
 
 type testDataType struct {
 	Date     time.Time
-	Objects  []testmodel.List
+	Object   testmodel.List
 	Method   elemental.Operation
 	Deadline time.Time
 }
@@ -43,16 +43,16 @@ func Test_newLogWriter(t *testing.T) {
 
 		Convey("When I send an event in the channel, the data should be in the file", func() {
 			now := time.Now()
-			objects := []elemental.Identifiable{
-				&testmodel.List{
-					ID:   "1",
-					Name: "Object",
-				},
+
+			object := &testmodel.List{
+				ID:   "1",
+				Name: "Object",
 			}
+
 			e := &Transaction{
 				Date:     now,
 				mctx:     manipulate.NewContext(ctx),
-				Objects:  objects,
+				Object:   object,
 				Method:   elemental.OperationCreate,
 				Deadline: now.Add(10 * time.Second),
 			}
@@ -67,9 +67,8 @@ func Test_newLogWriter(t *testing.T) {
 			err = json.Unmarshal(data, &model)
 			So(err, ShouldBeNil)
 			So(model.Method, ShouldResemble, e.Method)
-			So(len(model.Objects), ShouldEqual, 1)
-			So(model.Objects[0].ID, ShouldEqual, "1")
-			So(model.Objects[0].Name, ShouldEqual, "Object")
+			So(model.Object.ID, ShouldEqual, "1")
+			So(model.Object.Name, ShouldEqual, "Object")
 		})
 	})
 }
