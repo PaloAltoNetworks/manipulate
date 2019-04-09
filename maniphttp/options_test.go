@@ -70,4 +70,10 @@ func TestManipHttp_Optionions(t *testing.T) {
 		OptionAdditonalHeaders(h)(m)
 		So(m.globalHeaders, ShouldEqual, h)
 	})
+
+	Convey("Calling OptionDisableBuiltInRetry should work", t, func() {
+		m := &httpManipulator{}
+		OptionDisableBuiltInRetry()(m)
+		So(m.disableAutoRetry, ShouldBeTrue)
+	})
 }

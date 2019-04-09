@@ -112,6 +112,7 @@ type mcontext struct {
 	writeConsistency     WriteConsistency
 	readConsistency      ReadConsistency
 	messages             []string
+	idempotencyKey       string
 }
 
 // Count returns the count
@@ -180,6 +181,13 @@ func (c *mcontext) SetMessages(messages []string) { c.messages = messages }
 
 // Context returns the internal context.Context.
 func (c *mcontext) Context() context.Context { return c.ctx }
+
+// IdempotencyKey returns the idempotency key.
+func (c *mcontext) IdempotencyKey() string { return c.idempotencyKey }
+
+// SetIdempotencyKey sets the IdempotencyKey. This is used internally
+// by manipulator implementation supporting it.
+func (c *mcontext) SetIdempotencyKey(k string) { c.idempotencyKey = k }
 
 // String returns the string representation of the Context.
 func (c *mcontext) String() string {

@@ -34,9 +34,10 @@ type subscription struct {
 	status                  chan manipulate.SubscriberStatus
 	url                     string
 	filters                 chan *elemental.PushFilter
-	tokenRenewed            chan struct{}
+	currentFilter           *elemental.PushFilter
+	currentFilterLock       sync.RWMutex
 	currentToken            string
-	currentTokenLock        *sync.Mutex
+	currentTokenLock        sync.RWMutex
 	unregisterTokenNotifier func(string)
 	registerTokenNotifier   func(string, func(string))
 }
@@ -58,14 +59,14 @@ func NewSubscriber(
 		ns:                      ns,
 		recursive:               recursive,
 		currentToken:            token,
-		tokenRenewed:            make(chan struct{}),
-		currentTokenLock:        &sync.Mutex{},
+		currentTokenLock:        sync.RWMutex{},
 		unregisterTokenNotifier: unregisterTokenNotifier,
 		registerTokenNotifier:   registerTokenNotifier,
 		events:                  make(chan *elemental.Event, eventChSize),
 		errors:                  make(chan error, errorChSize),
 		status:                  make(chan manipulate.SubscriberStatus, statusChSize),
 		filters:                 make(chan *elemental.PushFilter, filterChSize),
+		currentFilterLock:       sync.RWMutex{},
 		config: wsc.Config{
 			PongWait:     10 * time.Second,
 			WriteWait:    10 * time.Second,
@@ -76,20 +77,29 @@ func NewSubscriber(
 	}
 }
 
-func (s *subscription) UpdateFilter(filter *elemental.PushFilter) { s.filters <- filter }
-func (s *subscription) Events() chan *elemental.Event             { return s.events }
-func (s *subscription) Errors() chan error                        { return s.errors }
-func (s *subscription) Status() chan manipulate.SubscriberStatus  { return s.status }
+func (s *subscription) Events() chan *elemental.Event            { return s.events }
+func (s *subscription) Errors() chan error                       { return s.errors }
+func (s *subscription) Status() chan manipulate.SubscriberStatus { return s.status }
 
 func (s *subscription) Start(ctx context.Context, filter *elemental.PushFilter) {
 
 	if filter != nil {
-		s.filters <- filter
+		s.setCurrentFilter(filter)
 	}
 
 	s.registerTokenNotifier(s.id, s.setCurrentToken)
 
 	go s.listen(ctx)
+}
+
+func (s *subscription) UpdateFilter(filter *elemental.PushFilter) {
+
+	s.setCurrentFilter(filter)
+
+	select {
+	case s.filters <- filter:
+	default:
+	}
 }
 
 func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
@@ -154,6 +164,14 @@ func (s *subscription) listen(ctx context.Context) {
 			s.publishError(err)
 			return
 		}
+		// If we have a current filter, we send it right away
+		if f := s.getCurrentFilter(); f != nil {
+			select {
+			case s.filters <- f:
+			default:
+			}
+		}
+
 		isReconnection = true
 
 	processingLoop:
@@ -190,11 +208,6 @@ func (s *subscription) listen(ctx context.Context) {
 					s.publishError(err)
 				}
 
-				break processingLoop
-
-			case <-s.tokenRenewed:
-
-				s.publishStatus(manipulate.SubscriberStatusTokenRenewal)
 				break processingLoop
 
 			case <-ctx.Done():
@@ -238,18 +251,38 @@ func (s *subscription) setCurrentToken(t string) {
 	s.currentToken = t
 	s.currentTokenLock.Unlock()
 
-	// notify the main loop if needed
-	select {
-	case s.tokenRenewed <- struct{}{}:
-	default:
+	// We get the current filter
+	filter := s.getCurrentFilter()
+	if filter == nil {
+		// if it's nil, we create an empty one.
+		filter = elemental.NewPushFilter()
 	}
+	filter.SetParameter("token", t)
+
+	s.UpdateFilter(filter)
+	s.publishStatus(manipulate.SubscriberStatusTokenRenewal)
 }
 
 func (s *subscription) getCurrentToken() string {
 
-	s.currentTokenLock.Lock()
+	s.currentTokenLock.RLock()
 	t := s.currentToken
-	s.currentTokenLock.Unlock()
+	s.currentTokenLock.RUnlock()
 
 	return t
+}
+
+func (s *subscription) setCurrentFilter(f *elemental.PushFilter) {
+
+	s.currentFilterLock.Lock()
+	s.currentFilter = f
+	s.currentFilterLock.Unlock()
+}
+
+func (s *subscription) getCurrentFilter() *elemental.PushFilter {
+
+	s.currentFilterLock.RLock()
+	defer s.currentFilterLock.RUnlock()
+
+	return s.currentFilter
 }

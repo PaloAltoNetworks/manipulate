@@ -12,10 +12,14 @@ import (
 	"testing"
 	"time"
 
+	"go.aporeto.io/manipulate/internal/idempotency"
+
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
 	testmodel "go.aporeto.io/elemental/test/model"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/internal/tracing"
+	"go.aporeto.io/manipulate/maniptest"
 )
 
 func TestHTTP_NewSHTTPm(t *testing.T) {
@@ -102,21 +106,42 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 				})
 			})
 
-			Convey("When I prepareHeaders with a no tracked context", func() {
+			Convey("When I prepareHeaders with various options", func() {
 
 				ctx := manipulate.NewContext(
 					context.Background(),
 					manipulate.ContextOptionTracking("tid", "type"),
+					manipulate.ContextOptionReadConsistency(manipulate.ReadConsistencyStrong),
+					manipulate.ContextOptionWriteConsistency(manipulate.WriteConsistencyStrong),
+					manipulate.ContextOptionFields([]string{"a", "b"}),
 				)
+
+				ctx.(idempotency.Keyer).SetIdempotencyKey("coucou")
 
 				m.prepareHeaders(req, ctx)
 
-				Convey("Then I should have a the X-Namespace set to 'myns'", func() {
+				Convey("Then I should have a value for X-External-Tracking-ID", func() {
 					So(req.Header.Get("X-External-Tracking-ID"), ShouldEqual, "tid")
 				})
 
-				Convey("Then I should not have a value for X-Count-Total", func() {
+				Convey("Then I should have a value for X-External-Tracking-Type", func() {
 					So(req.Header.Get("X-External-Tracking-Type"), ShouldEqual, "type")
+				})
+
+				Convey("Then I should have a value for X-Read-Consistency", func() {
+					So(req.Header.Get("X-Read-Consistency"), ShouldEqual, "strong")
+				})
+
+				Convey("Then I should have a value for X-Write-Consistency", func() {
+					So(req.Header.Get("X-Write-Consistency"), ShouldEqual, "strong")
+				})
+
+				Convey("Then I should have a value for Idempotency-Key", func() {
+					So(req.Header.Get("Idempotency-Key"), ShouldEqual, "coucou")
+				})
+
+				Convey("Then I should have a value for X-Fields", func() {
+					So(req.Header["X-Fields"], ShouldResemble, []string{"a", "b"})
 				})
 			})
 		})
@@ -763,15 +788,14 @@ func TestHTTP_Create(t *testing.T) {
 			defer ts.Close()
 
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
-			task := testmodel.NewTask()
-			errs := m.Create(nil, list, task)
+			errs := m.Create(nil, list)
 
 			Convey("Then the error should not be nil", func() {
 				So(errs, ShouldBeNil)
 			})
 
 			Convey("Then ID of the new children should be zzz", func() {
-				So(task.Identifier(), ShouldEqual, "zzz")
+				So(list.Identifier(), ShouldEqual, "zzz")
 			})
 		})
 
@@ -795,8 +819,7 @@ func TestHTTP_Create(t *testing.T) {
 		Convey("When I create a child that is nil", func() {
 
 			m := NewHTTPManipulator("username", "password", "http://fake.com", "")
-			task := testmodel.NewUnmarshalableList()
-			errs := m.Create(nil, list, task)
+			errs := m.Create(nil, list)
 
 			Convey("Then err should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -811,8 +834,7 @@ func TestHTTP_Create(t *testing.T) {
 			defer ts.Close()
 
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
-			task := testmodel.NewTask()
-			errs := m.Create(nil, list, task)
+			errs := m.Create(nil, list)
 
 			Convey("Then error should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -829,8 +851,7 @@ func TestHTTP_Create(t *testing.T) {
 			defer ts.Close()
 
 			m := NewHTTPManipulator(ts.URL, "username", "password", "")
-			task := testmodel.NewTask()
-			errs := m.Create(nil, list, task)
+			errs := m.Create(nil, list)
 
 			Convey("Then the error should not be nil", func() {
 				So(errs, ShouldNotBeNil)
@@ -928,14 +949,16 @@ func TestHTTP_Count(t *testing.T) {
 
 func TestHTTP_send(t *testing.T) {
 
+	sp := tracing.StartTrace(nil, "test")
+	defer sp.Finish()
+
 	Convey("Given I have a m with bad url", t, func() {
 
 		m := NewHTTPManipulator("username", "password", "", "")
 
 		Convey("When I call send", func() {
 
-			req, _ := http.NewRequest(http.MethodPost, "nop", nil)
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(context.Background()), req)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(context.Background()), http.MethodPost, "nop", nil, sp, 0)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -954,8 +977,7 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 0)
 			defer cancel()
 
-			req, _ := http.NewRequest(http.MethodPost, "https://google.com", nil)
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, "https://google.com", nil, sp, 0)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -973,15 +995,14 @@ func TestHTTP_send(t *testing.T) {
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				http.Error(w, `[{"code": 408, "title": "nope", "description": "boom"}]`, 408)
+				http.Error(w, `[{"code": 408, "title": "nope", "description": "boom"}]`, http.StatusRequestTimeout)
 			}))
 			defer ts.Close()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
-			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -999,20 +1020,149 @@ func TestHTTP_send(t *testing.T) {
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				http.Error(w, `[{"code": 502, "title": "nope", "description": "boom"}]`, 502)
+				http.Error(w, `[{"code": 502, "title": "nope", "description": "boom"}]`, http.StatusBadGateway)
 			}))
 			defer ts.Close()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
-			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+				So(err.Error(), ShouldEqual, "Cannot communicate: Bad gateway")
+			})
+		})
+	})
+
+	Convey("Given I have a m with with a 503", t, func() {
+
+		m := NewHTTPManipulator("username", "password", "", "")
+
+		Convey("When I call send", func() {
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				http.Error(w, `[{"code": 503, "title": "nope", "description": "boom"}]`, http.StatusServiceUnavailable)
+			}))
+			defer ts.Close()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
 				So(err.Error(), ShouldEqual, "Cannot communicate: Service unavailable")
+			})
+		})
+	})
+
+	Convey("Given I have a m with with a 504", t, func() {
+
+		m := NewHTTPManipulator("username", "password", "", "")
+
+		Convey("When I call send", func() {
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				http.Error(w, `[{"code": 504, "title": "nope", "description": "boom"}]`, http.StatusGatewayTimeout)
+			}))
+			defer ts.Close()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+				So(err.Error(), ShouldEqual, "Cannot communicate: Gateway timeout")
+			})
+		})
+	})
+
+	Convey("Given I have a m with with a 429", t, func() {
+
+		m := NewHTTPManipulator("username", "password", "", "")
+
+		Convey("When I call send", func() {
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				http.Error(w, `[{"code": 429, "title": "nope", "description": "boom"}]`, http.StatusTooManyRequests)
+			}))
+			defer ts.Close()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldHaveSameTypeAs, manipulate.ErrTooManyRequests{})
+				So(err.Error(), ShouldEqual, "Too many requests: error 429 (): nope: boom")
+			})
+		})
+	})
+
+	Convey("Given I have a m with with a 403 and no token manager", t, func() {
+
+		m := NewHTTPManipulator("username", "password", "", "")
+
+		Convey("When I call send", func() {
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				http.Error(w, `[{"code": 403, "title": "nope", "description": "boom"}]`, http.StatusForbidden)
+			}))
+			defer ts.Close()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "error 403 (): nope: boom")
+			})
+		})
+	})
+
+	Convey("Given I have a m with with a 403 and with a token manager", t, func() {
+
+		var call int
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			call++
+			if call == 1 {
+				w.Header().Set("Content-Type", "application/json")
+				http.Error(w, `[{"code": 403, "title": "nope", "description": "boom"}]`, http.StatusForbidden)
+			} else {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusNoContent)
+			}
+		}))
+		defer ts.Close()
+
+		m := NewHTTPManipulator("username", "password", "", "")
+		m.(*httpManipulator).tokenManager = maniptest.NewTestTokenManager()
+
+		Convey("When I call send", func() {
+
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
 			})
 		})
 	})
@@ -1025,15 +1175,14 @@ func TestHTTP_send(t *testing.T) {
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				http.Error(w, `[{"code": 423, "title": "nope", "description": "boom"}]`, 423)
+				http.Error(w, `[{"code": 423, "title": "nope", "description": "boom"}]`, http.StatusLocked)
 			}))
 			defer ts.Close()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
-			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -1055,11 +1204,10 @@ func TestHTTP_send(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
-			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -1083,11 +1231,10 @@ func TestHTTP_send(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
-			req, _ := http.NewRequest(http.MethodPost, ts.URL, nil)
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), req)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)

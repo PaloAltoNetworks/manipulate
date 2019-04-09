@@ -66,7 +66,7 @@ func TestTestManipulator_MockRetrieve(t *testing.T) {
 
 			Convey("When I mock it to return an error", func() {
 
-				m.MockRetrieve(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockRetrieve(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
 					return fmt.Errorf("wow such error")
 				})
 
@@ -105,7 +105,7 @@ func TestTestManipulator_MockCreate(t *testing.T) {
 
 			Convey("When I mock it to return an error", func() {
 
-				m.MockCreate(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockCreate(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
 					return fmt.Errorf("wow such error")
 				})
 
@@ -144,7 +144,7 @@ func TestTestManipulator_MockUpdate(t *testing.T) {
 
 			Convey("When I mock it to return an error", func() {
 
-				m.MockUpdate(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockUpdate(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
 					return fmt.Errorf("wow such error")
 				})
 
@@ -183,7 +183,7 @@ func TestTestManipulator_MockDelete(t *testing.T) {
 
 			Convey("When I mock it to return an error", func() {
 
-				m.MockDelete(t, func(ctx manipulate.Context, objects ...elemental.Identifiable) error {
+				m.MockDelete(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
 					return fmt.Errorf("wow such error")
 				})
 
@@ -251,6 +251,36 @@ func TestTestManipulator_MockCount(t *testing.T) {
 
 				Convey("Then c should be 0", func() {
 					So(c, ShouldEqual, 0)
+				})
+			})
+		})
+	})
+}
+
+func TestTestManipulator_MockDeleteMany(t *testing.T) {
+
+	Convey("Given I have TestManipulator", t, func() {
+
+		m := NewTestManipulator()
+
+		Convey("When I call DeleteMany without mock", func() {
+
+			err := m.DeleteMany(nil, testmodel.ListIdentity)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("When I mock it to return an error", func() {
+
+				m.MockDeleteMany(t, func(mctx manipulate.Context, identity elemental.Identity) error {
+					return fmt.Errorf("wow such error")
+				})
+
+				err := m.DeleteMany(nil, testmodel.ListIdentity)
+
+				Convey("Then err should not be nil", func() {
+					So(err, ShouldNotBeNil)
 				})
 			})
 		})

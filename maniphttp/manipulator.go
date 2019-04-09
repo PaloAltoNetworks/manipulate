@@ -8,17 +8,21 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/gofrs/uuid"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/internal/idempotency"
 	"go.aporeto.io/manipulate/internal/snip"
 	"go.aporeto.io/manipulate/internal/tracing"
 )
@@ -28,9 +32,10 @@ type httpManipulator struct {
 	password           string
 	url                string
 	namespace          string
-	renewLock          *sync.Mutex
+	renewLock          *sync.RWMutex
 	renewNotifiers     map[string]func(string)
-	renewNotifiersLock *sync.Mutex
+	renewNotifiersLock *sync.RWMutex
+	disableAutoRetry   bool
 
 	// optionnable
 	ctx           context.Context
@@ -50,8 +55,8 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 
 	// initialize solid varialbles.
 	m := &httpManipulator{
-		renewLock:          &sync.Mutex{},
-		renewNotifiersLock: &sync.Mutex{},
+		renewLock:          &sync.RWMutex{},
+		renewNotifiersLock: &sync.RWMutex{},
 		renewNotifiers:     map[string]func(string){},
 		ctx:                ctx,
 		url:                url,
@@ -82,7 +87,7 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 
 	if m.tokenManager != nil {
 
-		ictx, cancel := context.WithTimeout(m.ctx, 10*time.Second)
+		ictx, cancel := context.WithTimeout(m.ctx, 30*time.Second)
 		defer cancel()
 
 		token, err := m.tokenManager.Issue(ictx)
@@ -127,23 +132,7 @@ func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.I
 		return manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	request, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		sp.SetTag("error", true)
-		sp.LogFields(log.Error(err))
-		return manipulate.NewErrCannotExecuteQuery(err.Error())
-	}
-	if err = addQueryParameters(request, mctx); err != nil {
-		return err
-	}
-
-	if err = sp.Tracer().Inject(sp.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(request.Header)); err != nil {
-		sp.SetTag("error", true)
-		sp.LogFields(log.Error(err))
-		return err
-	}
-
-	response, err := s.send(mctx, request)
+	response, err := s.send(mctx, http.MethodGet, url, nil, sp, 0)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -173,263 +162,201 @@ func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.I
 	return nil
 }
 
-func (s *httpManipulator) Retrieve(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (s *httpManipulator) Retrieve(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(s.ctx)
 	}
 
-	for _, object := range objects {
+	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.retrieve.object.%s", object.Identity().Name))
+	defer sp.Finish()
 
-		sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.retrieve.object.%s", object.Identity().Name))
-		defer sp.Finish()
+	url, err := s.getPersonalURL(object, mctx.Version())
+	if err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return manipulate.NewErrCannotBuildQuery(err.Error())
+	}
 
-		url, err := s.getPersonalURL(object, mctx.Version())
-		if err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return manipulate.NewErrCannotBuildQuery(err.Error())
-		}
+	response, err := s.send(mctx, http.MethodGet, url, nil, sp, 0)
+	if err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return err
+	}
 
-		request, err := http.NewRequest(http.MethodGet, url, nil)
-		if err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return manipulate.NewErrCannotExecuteQuery(err.Error())
-		}
-		if err = addQueryParameters(request, mctx); err != nil {
-			return err
-		}
-
-		if err = sp.Tracer().Inject(sp.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(request.Header)); err != nil {
+	if response.StatusCode != http.StatusNoContent {
+		defer response.Body.Close() // nolint: errcheck
+		if err := decodeData(response, &object); err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
 			return err
 		}
+	}
 
-		response, err := s.send(mctx, request)
-		if err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return err
-		}
-
-		if response.StatusCode != http.StatusNoContent {
-			defer response.Body.Close() // nolint: errcheck
-			if err := decodeData(response, &object); err != nil {
-				sp.SetTag("error", true)
-				sp.LogFields(log.Error(err))
-				return err
-			}
-		}
-
-		// backport all default values that are empty.
-		if a, ok := object.(elemental.AttributeSpecifiable); ok {
-			elemental.ResetDefaultForZeroValues(a)
-		}
+	// backport all default values that are empty.
+	if a, ok := object.(elemental.AttributeSpecifiable); ok {
+		elemental.ResetDefaultForZeroValues(a)
 	}
 
 	return nil
 }
 
-func (s *httpManipulator) Create(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (s *httpManipulator) Create(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	for _, object := range objects {
+	kmctx, _ := mctx.(idempotency.Keyer)
+	if kmctx != nil && kmctx.IdempotencyKey() == "" {
+		kmctx.SetIdempotencyKey(uuid.Must(uuid.NewV4()).String())
+	}
 
-		sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.create.object.%s", object.Identity().Name))
-		sp.LogFields(log.String("object_id", object.Identifier()))
-		defer sp.Finish()
+	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.create.object.%s", object.Identity().Name))
+	sp.LogFields(log.String("object_id", object.Identifier()))
+	defer sp.Finish()
 
-		url, err := s.getURLForChildrenIdentity(mctx.Parent(), object.Identity(), object.Version(), mctx.Version())
-		if err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return manipulate.NewErrCannotBuildQuery(err.Error())
-		}
+	url, err := s.getURLForChildrenIdentity(mctx.Parent(), object.Identity(), object.Version(), mctx.Version())
+	if err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return manipulate.NewErrCannotBuildQuery(err.Error())
+	}
 
-		buffer := &bytes.Buffer{}
-		if err = json.NewEncoder(buffer).Encode(&object); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return manipulate.NewErrCannotMarshal(err.Error())
-		}
+	data, err := json.Marshal(object)
+	if err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return manipulate.NewErrCannotMarshal(err.Error())
+	}
 
-		request, err := http.NewRequest(http.MethodPost, url, buffer)
-		if err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return manipulate.NewErrCannotExecuteQuery(err.Error())
-		}
-		if err = addQueryParameters(request, mctx); err != nil {
-			return err
-		}
+	response, err := s.send(mctx, http.MethodPost, url, data, sp, 0)
+	if err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return err
+	}
 
-		if err = sp.Tracer().Inject(sp.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(request.Header)); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return err
-		}
-
-		response, err := s.send(mctx, request)
-		if err != nil {
+	if response.StatusCode != http.StatusNoContent {
+		defer response.Body.Close() // nolint: errcheck
+		if err := decodeData(response, &object); err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
 			return err
 		}
+	}
 
-		if response.StatusCode != http.StatusNoContent {
-			defer response.Body.Close() // nolint: errcheck
-			if err := decodeData(response, &object); err != nil {
-				sp.SetTag("error", true)
-				sp.LogFields(log.Error(err))
-				return err
-			}
-		}
+	// backport all default values that are empty.
+	if a, ok := object.(elemental.AttributeSpecifiable); ok {
+		elemental.ResetDefaultForZeroValues(a)
+	}
 
-		// backport all default values that are empty.
-		if a, ok := object.(elemental.AttributeSpecifiable); ok {
-			elemental.ResetDefaultForZeroValues(a)
-		}
+	if kmctx != nil {
+		kmctx.SetIdempotencyKey("")
 	}
 
 	return nil
 }
 
-func (s *httpManipulator) Update(mctx manipulate.Context, objects ...elemental.Identifiable) error {
-
-	if len(objects) == 0 {
-		return nil
-	}
+func (s *httpManipulator) Update(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
+	}
+
+	kmctx, _ := mctx.(idempotency.Keyer)
+	if kmctx != nil && kmctx.IdempotencyKey() == "" {
+		kmctx.SetIdempotencyKey(uuid.Must(uuid.NewV4()).String())
 	}
 
 	method := http.MethodPut
-	if _, ok := objects[0].(elemental.SparseIdentifiable); ok {
+	if _, ok := object.(elemental.SparseIdentifiable); ok {
 		method = http.MethodPatch
 	}
 
-	for _, object := range objects {
+	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.update.object.%s", object.Identity().Name))
+	sp.LogFields(log.String("object_id", object.Identifier()))
+	defer sp.Finish()
 
-		sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.update.object.%s", object.Identity().Name))
-		sp.LogFields(log.String("object_id", object.Identifier()))
-		defer sp.Finish()
+	url, err := s.getPersonalURL(object, mctx.Version())
+	if err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return manipulate.NewErrCannotBuildQuery(err.Error())
+	}
 
-		url, err := s.getPersonalURL(object, mctx.Version())
-		if err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return manipulate.NewErrCannotBuildQuery(err.Error())
-		}
+	data, err := json.Marshal(object)
+	if err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return manipulate.NewErrCannotMarshal(err.Error())
+	}
 
-		buffer := &bytes.Buffer{}
-		if err = json.NewEncoder(buffer).Encode(object); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return manipulate.NewErrCannotMarshal(err.Error())
-		}
+	response, err := s.send(mctx, method, url, data, sp, 0)
+	if err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return err
+	}
 
-		request, err := http.NewRequest(method, url, buffer)
-		if err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return manipulate.NewErrCannotExecuteQuery(err.Error())
-		}
-		if err = addQueryParameters(request, mctx); err != nil {
-			return err
-		}
-
-		if err = sp.Tracer().Inject(sp.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(request.Header)); err != nil {
+	if response.StatusCode != http.StatusNoContent {
+		defer response.Body.Close() // nolint: errcheck
+		if err := decodeData(response, &object); err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
 			return err
 		}
+	}
 
-		response, err := s.send(mctx, request)
-		if err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return err
-		}
+	// backport all default values that are empty.
+	if a, ok := object.(elemental.AttributeSpecifiable); ok {
+		elemental.ResetDefaultForZeroValues(a)
+	}
 
-		if response.StatusCode != http.StatusNoContent {
-			defer response.Body.Close() // nolint: errcheck
-			if err := decodeData(response, &object); err != nil {
-				sp.SetTag("error", true)
-				sp.LogFields(log.Error(err))
-				return err
-			}
-		}
-
-		// backport all default values that are empty.
-		if a, ok := object.(elemental.AttributeSpecifiable); ok {
-			elemental.ResetDefaultForZeroValues(a)
-		}
+	if kmctx != nil {
+		kmctx.SetIdempotencyKey("")
 	}
 
 	return nil
 }
 
-func (s *httpManipulator) Delete(mctx manipulate.Context, objects ...elemental.Identifiable) error {
+func (s *httpManipulator) Delete(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	for _, object := range objects {
+	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.delete.object.%s", object.Identity().Name))
+	sp.LogFields(log.String("object_id", object.Identifier()))
+	defer sp.Finish()
 
-		sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.delete.object.%s", object.Identity().Name))
-		sp.LogFields(log.String("object_id", object.Identifier()))
-		defer sp.Finish()
+	url, err := s.getPersonalURL(object, mctx.Version())
+	if err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return manipulate.NewErrCannotBuildQuery(err.Error())
+	}
 
-		url, err := s.getPersonalURL(object, mctx.Version())
-		if err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return manipulate.NewErrCannotBuildQuery(err.Error())
-		}
+	response, err := s.send(mctx, http.MethodDelete, url, nil, sp, 0)
+	if err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return err
+	}
 
-		request, err := http.NewRequest(http.MethodDelete, url, nil)
-		if err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return manipulate.NewErrCannotExecuteQuery(err.Error())
-		}
-		if err = addQueryParameters(request, mctx); err != nil {
-			return err
-		}
-
-		if err = sp.Tracer().Inject(sp.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(request.Header)); err != nil {
+	if response.StatusCode != http.StatusNoContent {
+		defer response.Body.Close() // nolint: errcheck
+		if err := decodeData(response, &object); err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
 			return err
 		}
+	}
 
-		response, err := s.send(mctx, request)
-		if err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return err
-		}
-
-		if response.StatusCode != http.StatusNoContent {
-			defer response.Body.Close() // nolint: errcheck
-			if err := decodeData(response, &object); err != nil {
-				sp.SetTag("error", true)
-				sp.LogFields(log.Error(err))
-				return err
-			}
-		}
-
-		// backport all default values that are empty.
-		if a, ok := object.(elemental.AttributeSpecifiable); ok {
-			elemental.ResetDefaultForZeroValues(a)
-		}
+	// backport all default values that are empty.
+	if a, ok := object.(elemental.AttributeSpecifiable); ok {
+		elemental.ResetDefaultForZeroValues(a)
 	}
 
 	return nil
@@ -455,26 +382,7 @@ func (s *httpManipulator) Count(mctx manipulate.Context, identity elemental.Iden
 		return 0, manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	request, err := http.NewRequest(http.MethodHead, url, nil)
-	if err != nil {
-		sp.SetTag("error", true)
-		sp.LogFields(log.Error(err))
-		return 0, manipulate.NewErrCannotExecuteQuery(err.Error())
-	}
-
-	if err = addQueryParameters(request, mctx); err != nil {
-		sp.SetTag("error", true)
-		sp.LogFields(log.Error(err))
-		return 0, err
-	}
-
-	if err = sp.Tracer().Inject(sp.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(request.Header)); err != nil {
-		sp.SetTag("error", true)
-		sp.LogFields(log.Error(err))
-		return 0, err
-	}
-
-	if _, err = s.send(mctx, request); err != nil {
+	if _, err = s.send(mctx, http.MethodHead, url, nil, sp, 0); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return 0, err
@@ -526,6 +434,10 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.
 		request.Header.Set("X-Write-Consistency", string(v))
 	}
 
+	if k, ok := mctx.(idempotency.Keyer); ok && k.IdempotencyKey() != "" {
+		request.Header.Set("Idempotency-Key", k.IdempotencyKey())
+	}
+
 	for _, field := range mctx.Fields() {
 		request.Header.Add("X-Fields", field)
 	}
@@ -566,7 +478,7 @@ func (s *httpManipulator) getGeneralURL(o elemental.Identifiable, mctxVersion in
 func (s *httpManipulator) getPersonalURL(o elemental.Identifiable, mctxVersion int) (string, error) {
 
 	if o.Identifier() == "" {
-		return "", fmt.Errorf("Cannot GetPersonalURL of an object with no ID set")
+		return "", fmt.Errorf("cannot GetPersonalURL of an object with no ID set")
 	}
 
 	return s.getGeneralURL(o, mctxVersion) + "/" + o.Identifier(), nil
@@ -592,7 +504,39 @@ func (s *httpManipulator) getURLForChildrenIdentity(
 	return url + "/" + childrenIdentity.Category, nil
 }
 
-func (s *httpManipulator) send(mctx manipulate.Context, request *http.Request) (*http.Response, error) {
+func (s *httpManipulator) send(mctx manipulate.Context, method string, requrl string, body []byte, sp opentracing.Span, try int) (*http.Response, error) {
+
+	request, err := http.NewRequest(method, requrl, bytes.NewBuffer(body))
+	if err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return nil, manipulate.NewErrCannotExecuteQuery(err.Error())
+	}
+	if err = addQueryParameters(request, mctx); err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return nil, err
+	}
+
+	if err = sp.Tracer().Inject(sp.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(request.Header)); err != nil {
+		sp.SetTag("error", true)
+		sp.LogFields(log.Error(err))
+		return nil, err
+	}
+
+	retryErrCom := func(resp *http.Response, err error) (*http.Response, error) {
+
+		if s.disableAutoRetry {
+			return resp, err
+		}
+
+		if try >= 3 {
+			return resp, err
+		}
+		<-time.After(time.Duration(try) * time.Second)
+		try++
+		return s.send(mctx, method, requrl, body, sp, try)
+	}
 
 	s.prepareHeaders(request, mctx)
 
@@ -600,15 +544,43 @@ func (s *httpManipulator) send(mctx manipulate.Context, request *http.Request) (
 
 	response, err := s.client.Do(request)
 	if err != nil {
-		return response, manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
+		if uerr, ok := err.(*url.Error); ok {
+			switch uerr.Err.(type) {
+			case x509.UnknownAuthorityError, x509.CertificateInvalidError, x509.HostnameError:
+				return response, manipulate.NewErrTLS(err.Error())
+			}
+		}
+
+		return retryErrCom(response, manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error()))
 	}
 
 	if response.StatusCode == http.StatusBadGateway {
-		return response, manipulate.NewErrCannotCommunicate("Service unavailable")
+		return retryErrCom(response, manipulate.NewErrCannotCommunicate("Bad gateway"))
+	}
+
+	if response.StatusCode == http.StatusServiceUnavailable {
+		return retryErrCom(response, manipulate.NewErrCannotCommunicate("Service unavailable"))
+	}
+
+	if response.StatusCode == http.StatusGatewayTimeout {
+		return retryErrCom(response, manipulate.NewErrCannotCommunicate("Gateway timeout"))
 	}
 
 	if response.StatusCode == http.StatusLocked {
-		return response, manipulate.NewErrLocked("The api has been locked down by the server.")
+		return retryErrCom(response, manipulate.NewErrLocked("The api has been locked down by the server."))
+	}
+
+	// If we get a forbidden or auth error, we try to renew the token and retry the request 3 times
+	if (response.StatusCode == http.StatusForbidden || response.StatusCode == http.StatusUnauthorized) && s.tokenManager != nil && try < 3 {
+
+		<-time.After(time.Duration(try) * time.Second)
+		try++
+
+		token, err := s.tokenManager.Issue(mctx.Context())
+		if err == nil {
+			s.setPassword(token)
+			return s.send(mctx, method, requrl, body, sp, try)
+		}
 	}
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
@@ -627,11 +599,11 @@ func (s *httpManipulator) send(mctx manipulate.Context, request *http.Request) (
 		}
 
 		if response.StatusCode == http.StatusRequestTimeout {
-			return response, manipulate.NewErrCannotCommunicate(errs.Error())
+			return retryErrCom(response, manipulate.NewErrCannotCommunicate(errs.Error()))
 		}
 
 		if response.StatusCode == http.StatusTooManyRequests {
-			return response, manipulate.NewErrTooManyRequests(errs.Error())
+			return retryErrCom(response, manipulate.NewErrTooManyRequests(errs.Error()))
 		}
 
 		return response, errs
@@ -662,18 +634,18 @@ func (s *httpManipulator) setPassword(password string) {
 	s.password = password
 	s.renewLock.Unlock()
 
-	s.renewNotifiersLock.Lock()
+	s.renewNotifiersLock.RLock()
 	for _, f := range s.renewNotifiers {
 		if f != nil {
 			f(password)
 		}
 	}
-	s.renewNotifiersLock.Unlock()
+	s.renewNotifiersLock.RUnlock()
 }
 
 func (s *httpManipulator) currentPassword() string {
-	s.renewLock.Lock()
+	s.renewLock.RLock()
 	p := s.password
-	s.renewLock.Unlock()
+	s.renewLock.RUnlock()
 	return p
 }
