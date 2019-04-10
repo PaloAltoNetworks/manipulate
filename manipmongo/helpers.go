@@ -1,6 +1,7 @@
 package manipmongo
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/globalsign/mgo"
@@ -69,7 +70,7 @@ func CreateIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 			index.Name = "index_" + identity.Name + "_" + strconv.Itoa(i)
 		}
 		if err := collection.EnsureIndex(index); err != nil {
-			return err
+			return fmt.Errorf("unable to ensure index '%s': %s", index.Name, err)
 		}
 	}
 
