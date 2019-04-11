@@ -3,7 +3,6 @@ package push
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
@@ -183,7 +182,7 @@ func (s *subscription) listen(ctx context.Context) {
 
 			case filter := <-s.filters:
 
-				filterData, err = json.Marshal(filter)
+				filterData, err = elemental.Encode(s.getContentType(), filter)
 				if err != nil {
 					s.publishError(err)
 					continue
@@ -194,7 +193,7 @@ func (s *subscription) listen(ctx context.Context) {
 			case data := <-s.conn.Read():
 
 				event := &elemental.Event{}
-				if err = json.Unmarshal(data, event); err != nil {
+				if err = elemental.Decode(s.getAcceptType(), data, event); err != nil {
 					s.publishError(err)
 					continue
 				}
@@ -287,4 +286,20 @@ func (s *subscription) getCurrentFilter() *elemental.PushFilter {
 	defer s.currentFilterLock.RUnlock()
 
 	return s.currentFilter
+}
+
+func (s *subscription) getContentType() elemental.EncodingType {
+
+	if len(s.config.Headers) == 0 {
+		return elemental.EncodingTypeJSON
+	}
+	return elemental.EncodingType(s.config.Headers.Get("Content-Type"))
+}
+
+func (s *subscription) getAcceptType() elemental.EncodingType {
+
+	if len(s.config.Headers) == 0 {
+		return elemental.EncodingTypeJSON
+	}
+	return elemental.EncodingType(s.config.Headers.Get("Accept"))
 }

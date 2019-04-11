@@ -732,7 +732,7 @@ func (m *vortexManipulator) eventHandler(ctx context.Context, evt *elemental.Eve
 
 	obj := m.model.IdentifiableFromString(evt.Identity)
 
-	if err := elemental.Decode(elemental.EncodingTypeJSON, evt.Entity, obj); err != nil {
+	if err := evt.Decode(obj); err != nil {
 		return fmt.Errorf("unable to unmarshal received event: %s", err)
 	}
 
