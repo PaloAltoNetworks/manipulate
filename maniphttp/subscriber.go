@@ -3,6 +3,7 @@ package maniphttp
 import (
 	"crypto/tls"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"go.aporeto.io/manipulate"
@@ -75,6 +76,10 @@ func NewSubscriber(manipulator manipulate.Manipulator, options ...SubscriberOpti
 		m.registerRenewNotifier,
 		m.unregisterRenewNotifier,
 		cfg.tlsConfig,
+		http.Header{
+			"Content-Type": []string{string(m.encoding)},
+			"Accept":       []string{string(m.encoding)},
+		},
 		cfg.recursive,
 	)
 }

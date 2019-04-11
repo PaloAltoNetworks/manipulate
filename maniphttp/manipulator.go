@@ -9,7 +9,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -44,6 +43,7 @@ type httpManipulator struct {
 	tokenManager  manipulate.TokenManager
 	globalHeaders http.Header
 	transport     *http.Transport
+	encoding      elemental.EncodingType
 }
 
 // New returns a maniphttp.Manipulator configured according to the given suite of Option.
@@ -60,6 +60,7 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 		renewNotifiers:     map[string]func(string){},
 		ctx:                ctx,
 		url:                url,
+		encoding:           elemental.EncodingTypeJSON,
 	}
 
 	// Apply the options.
@@ -145,7 +146,7 @@ func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.I
 
 	if response.StatusCode != http.StatusNoContent {
 		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response, dest); err != nil {
+		if err := decodeData(response, s.encoding, dest); err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
 			return err
@@ -187,7 +188,7 @@ func (s *httpManipulator) Retrieve(mctx manipulate.Context, object elemental.Ide
 
 	if response.StatusCode != http.StatusNoContent {
 		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response, &object); err != nil {
+		if err := decodeData(response, s.encoding, object); err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
 			return err
@@ -224,7 +225,7 @@ func (s *httpManipulator) Create(mctx manipulate.Context, object elemental.Ident
 		return manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	data, err := json.Marshal(object)
+	data, err := elemental.Encode(s.encoding, object)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -240,7 +241,7 @@ func (s *httpManipulator) Create(mctx manipulate.Context, object elemental.Ident
 
 	if response.StatusCode != http.StatusNoContent {
 		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response, &object); err != nil {
+		if err := decodeData(response, s.encoding, object); err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
 			return err
@@ -286,7 +287,7 @@ func (s *httpManipulator) Update(mctx manipulate.Context, object elemental.Ident
 		return manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	data, err := json.Marshal(object)
+	data, err := elemental.Encode(s.encoding, object)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -302,7 +303,7 @@ func (s *httpManipulator) Update(mctx manipulate.Context, object elemental.Ident
 
 	if response.StatusCode != http.StatusNoContent {
 		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response, &object); err != nil {
+		if err := decodeData(response, s.encoding, object); err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
 			return err
@@ -347,7 +348,7 @@ func (s *httpManipulator) Delete(mctx manipulate.Context, object elemental.Ident
 
 	if response.StatusCode != http.StatusNoContent {
 		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response, &object); err != nil {
+		if err := decodeData(response, s.encoding, object); err != nil {
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
 			return err
@@ -407,7 +408,8 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.
 		request.Header[k] = v
 	}
 
-	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	request.Header.Set("Content-Type", string(s.encoding))
+	request.Header.Set("Accept", string(s.encoding))
 	request.Header.Set("Accept-Encoding", "gzip")
 
 	if ns != "" {
@@ -585,10 +587,10 @@ func (s *httpManipulator) send(mctx manipulate.Context, method string, requrl st
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 
-		es := []elemental.Error{}
+		es := elemental.Errors{}
 
 		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response, &es); err != nil {
+		if err := decodeData(response, s.encoding, &es); err != nil {
 			return nil, err
 		}
 

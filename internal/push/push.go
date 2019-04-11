@@ -50,6 +50,7 @@ func NewSubscriber(
 	registerTokenNotifier func(string, func(string)),
 	unregisterTokenNotifier func(string),
 	tlsConfig *tls.Config,
+	headers http.Header,
 	recursive bool,
 ) manipulate.Subscriber {
 
@@ -73,6 +74,7 @@ func NewSubscriber(
 			PingPeriod:   5 * time.Second,
 			ReadChanSize: 2048,
 			TLSConfig:    tlsConfig,
+			Headers:      headers,
 		},
 	}
 }

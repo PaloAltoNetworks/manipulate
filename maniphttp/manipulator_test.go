@@ -54,9 +54,6 @@ func TestHTTP_NewSHTTPm(t *testing.T) {
 	})
 }
 
-/*
-	Privates
-*/
 func TestHTTP_makeAuthorizationHeaders(t *testing.T) {
 
 	Convey("Given I create a new HTTP manipulator", t, func() {
@@ -399,7 +396,7 @@ func TestHTTP_Retrieve(t *testing.T) {
 			Convey("Then error should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err.(elemental.Errors).Code(), ShouldEqual, 422)
-				So(err.(elemental.Errors)[0].(elemental.Error).Description, ShouldEqual, "nope.")
+				So(err.(elemental.Errors)[0].Description, ShouldEqual, "nope.")
 			})
 		})
 	})
@@ -1212,7 +1209,7 @@ func TestHTTP_send(t *testing.T) {
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotUnmarshal{})
-				So(err.Error(), ShouldEqual, `Unable to unmarshal data: invalid character '\n' in string literal. original data:
+				So(err.Error(), ShouldEqual, `Unable to unmarshal data: unable to decode json: invalid character '\n' in string literal. original data:
 [{"code": 423, "]
 `)
 			})
