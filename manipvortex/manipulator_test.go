@@ -476,7 +476,7 @@ func Test_Create(t *testing.T) {
 
 		objConfig := v.(*vortexManipulator).processors[testmodel.ListIdentity.Name]
 		objConfig.UpstreamReconciler = NewTestReconciler()
-		objConfig.UpstreamReconciler.(TestReconciler).MockReconcile(t, func(mctx manipulate.Context, op elemental.Operation, i elemental.Identifiable) (bool, error) {
+		objConfig.UpstreamReconciler.(TestReconciler).MockReconcile(t, func(mctx manipulate.Context, op elemental.Operation, i *elemental.Identifiable) (bool, error) {
 			if mctx.Parent() != nil {
 				return false, nil
 			}
@@ -508,7 +508,7 @@ func Test_Create(t *testing.T) {
 
 			Convey("When the backend succeeds, the object must not be stored in the DB if accepter did not accept", func() {
 
-				a.MockReconcile(t, func(manipulate.Context, elemental.Operation, elemental.Identifiable) (bool, error) {
+				a.MockReconcile(t, func(manipulate.Context, elemental.Operation, *elemental.Identifiable) (bool, error) {
 					return false, nil
 				})
 
@@ -598,7 +598,7 @@ func Test_Update(t *testing.T) {
 
 		objConfig := v.(*vortexManipulator).processors[testmodel.ListIdentity.Name]
 		objConfig.UpstreamReconciler = NewTestReconciler()
-		objConfig.UpstreamReconciler.(TestReconciler).MockReconcile(t, func(mctx manipulate.Context, op elemental.Operation, i elemental.Identifiable) (bool, error) {
+		objConfig.UpstreamReconciler.(TestReconciler).MockReconcile(t, func(mctx manipulate.Context, op elemental.Operation, i *elemental.Identifiable) (bool, error) {
 			if mctx.Parent() != nil {
 				return false, nil
 			}
@@ -640,7 +640,7 @@ func Test_Update(t *testing.T) {
 
 			Convey("When the backend succeeds, the object must not be stored in the DB if accepter did not accept", func() {
 
-				a.MockReconcile(t, func(manipulate.Context, elemental.Operation, elemental.Identifiable) (bool, error) {
+				a.MockReconcile(t, func(manipulate.Context, elemental.Operation, *elemental.Identifiable) (bool, error) {
 					return false, nil
 				})
 
@@ -730,7 +730,7 @@ func Test_Delete(t *testing.T) {
 
 		objConfig := v.(*vortexManipulator).processors[testmodel.ListIdentity.Name]
 		objConfig.UpstreamReconciler = NewTestReconciler()
-		objConfig.UpstreamReconciler.(TestReconciler).MockReconcile(t, func(mctx manipulate.Context, op elemental.Operation, i elemental.Identifiable) (bool, error) {
+		objConfig.UpstreamReconciler.(TestReconciler).MockReconcile(t, func(mctx manipulate.Context, op elemental.Operation, i *elemental.Identifiable) (bool, error) {
 			if mctx.Parent() != nil {
 				return false, nil
 			}
@@ -770,7 +770,7 @@ func Test_Delete(t *testing.T) {
 
 			Convey("When the backend succeeds, the object must not be deleted in the DB if accepter did not accept", func() {
 
-				a.MockReconcile(t, func(manipulate.Context, elemental.Operation, elemental.Identifiable) (bool, error) {
+				a.MockReconcile(t, func(manipulate.Context, elemental.Operation, *elemental.Identifiable) (bool, error) {
 					return false, nil
 				})
 
@@ -1186,7 +1186,7 @@ func Test_Monitor(t *testing.T) {
 
 		Convey("When I push a create event, the object must not be written in the DB when accepter rejects it", func() {
 
-			a.MockReconcile(t, func(manipulate.Context, elemental.Operation, elemental.Identifiable) (bool, error) {
+			a.MockReconcile(t, func(manipulate.Context, elemental.Operation, *elemental.Identifiable) (bool, error) {
 				return false, nil
 			})
 

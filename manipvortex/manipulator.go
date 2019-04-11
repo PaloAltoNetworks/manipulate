@@ -412,7 +412,7 @@ func (m *vortexManipulator) commitUpstream(ctx context.Context, operation elemen
 
 	// If we have an accepter, we see if it accepts the write
 	if m.upstreamReconciler != nil {
-		reconcile, err := m.upstreamReconciler.Reconcile(mctx, operation, object)
+		reconcile, err := m.upstreamReconciler.Reconcile(mctx, operation, &object)
 		if err != nil {
 			return err
 		}
@@ -424,7 +424,7 @@ func (m *vortexManipulator) commitUpstream(ctx context.Context, operation elemen
 	// If it is managed object we apply the pre-hook.
 	cfg, ok := m.processors[object.Identity().Name]
 	if ok && cfg.UpstreamReconciler != nil {
-		accept, err := cfg.UpstreamReconciler.Reconcile(mctx, operation, object)
+		accept, err := cfg.UpstreamReconciler.Reconcile(mctx, operation, &object)
 		if err != nil {
 			return err
 		}
@@ -458,7 +458,7 @@ func (m *vortexManipulator) commitLocal(operation elemental.Operation, mctx mani
 
 	// If we have a global Reconciler, we see if it accepts the write.
 	if m.downstreamReconciler != nil {
-		accept, err := m.downstreamReconciler.Reconcile(mctx, operation, object)
+		accept, err := m.downstreamReconciler.Reconcile(mctx, operation, &object)
 		if err != nil {
 			return err
 		}
@@ -474,7 +474,7 @@ func (m *vortexManipulator) commitLocal(operation elemental.Operation, mctx mani
 
 	// If we have a processor Reconciler, we see if it accepts the write.
 	if cfg.DownstreamReconciler != nil {
-		accept, err := cfg.DownstreamReconciler.Reconcile(mctx, operation, object)
+		accept, err := cfg.DownstreamReconciler.Reconcile(mctx, operation, &object)
 		if err != nil {
 			return err
 		}

@@ -37,7 +37,7 @@ func TestTestReconciler(t *testing.T) {
 
 		Convey("When I call the Accept method with a mock", func() {
 
-			r.MockReconcile(t, func(manipulate.Context, elemental.Operation, elemental.Identifiable) (bool, error) {
+			r.MockReconcile(t, func(manipulate.Context, elemental.Operation, *elemental.Identifiable) (bool, error) {
 				return false, fmt.Errorf("boom")
 			})
 
