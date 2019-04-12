@@ -406,13 +406,16 @@ func (m *vortexManipulator) shouldProcess(mctx manipulate.Context, identity elem
 // return the upstream error.
 func (m *vortexManipulator) commitUpstream(ctx context.Context, operation elemental.Operation, mctx manipulate.Context, object elemental.Identifiable) error {
 
+	var reconcile bool
+	var err error
+
 	if m.upstreamManipulator == nil {
 		return nil
 	}
 
 	// If we have an accepter, we see if it accepts the write
 	if m.upstreamReconciler != nil {
-		reconcile, err := m.upstreamReconciler.Reconcile(mctx, operation, &object)
+		object, reconcile, err = m.upstreamReconciler.Reconcile(mctx, operation, object)
 		if err != nil {
 			return err
 		}
@@ -424,11 +427,11 @@ func (m *vortexManipulator) commitUpstream(ctx context.Context, operation elemen
 	// If it is managed object we apply the pre-hook.
 	cfg, ok := m.processors[object.Identity().Name]
 	if ok && cfg.UpstreamReconciler != nil {
-		accept, err := cfg.UpstreamReconciler.Reconcile(mctx, operation, &object)
+		object, reconcile, err = cfg.UpstreamReconciler.Reconcile(mctx, operation, object)
 		if err != nil {
 			return err
 		}
-		if !accept {
+		if !reconcile {
 			return nil
 		}
 	}
@@ -452,17 +455,20 @@ func (m *vortexManipulator) commitUpstream(ctx context.Context, operation elemen
 // fail for some reason.
 func (m *vortexManipulator) commitLocal(operation elemental.Operation, mctx manipulate.Context, object elemental.Identifiable) error {
 
+	var reconcile bool
+	var err error
+
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
 	}
 
 	// If we have a global Reconciler, we see if it accepts the write.
 	if m.downstreamReconciler != nil {
-		accept, err := m.downstreamReconciler.Reconcile(mctx, operation, &object)
+		object, reconcile, err = m.downstreamReconciler.Reconcile(mctx, operation, object)
 		if err != nil {
 			return err
 		}
-		if !accept {
+		if !reconcile {
 			return nil
 		}
 	}
@@ -474,11 +480,11 @@ func (m *vortexManipulator) commitLocal(operation elemental.Operation, mctx mani
 
 	// If we have a processor Reconciler, we see if it accepts the write.
 	if cfg.DownstreamReconciler != nil {
-		accept, err := cfg.DownstreamReconciler.Reconcile(mctx, operation, &object)
+		object, reconcile, err = cfg.DownstreamReconciler.Reconcile(mctx, operation, object)
 		if err != nil {
 			return err
 		}
-		if !accept {
+		if !reconcile {
 			return nil
 		}
 	}
