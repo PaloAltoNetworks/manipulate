@@ -476,11 +476,11 @@ func Test_Create(t *testing.T) {
 
 		objConfig := v.(*vortexManipulator).processors[testmodel.ListIdentity.Name]
 		objConfig.UpstreamReconciler = NewTestReconciler()
-		objConfig.UpstreamReconciler.(TestReconciler).MockReconcile(t, func(mctx manipulate.Context, op elemental.Operation, i ...elemental.Identifiable) (bool, error) {
+		objConfig.UpstreamReconciler.(TestReconciler).MockReconcile(t, func(mctx manipulate.Context, op elemental.Operation, i elemental.Identifiable) (elemental.Identifiable, bool, error) {
 			if mctx.Parent() != nil {
-				return false, nil
+				return i, false, nil
 			}
-			return true, nil
+			return i, true, nil
 		})
 
 		Convey("When I create objects", func() {
@@ -508,8 +508,8 @@ func Test_Create(t *testing.T) {
 
 			Convey("When the backend succeeds, the object must not be stored in the DB if accepter did not accept", func() {
 
-				a.MockReconcile(t, func(manipulate.Context, elemental.Operation, ...elemental.Identifiable) (bool, error) {
-					return false, nil
+				a.MockReconcile(t, func(manipulate.Context, elemental.Operation, elemental.Identifiable) (elemental.Identifiable, bool, error) {
+					return nil, false, nil
 				})
 
 				m.MockCreate(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
@@ -598,11 +598,11 @@ func Test_Update(t *testing.T) {
 
 		objConfig := v.(*vortexManipulator).processors[testmodel.ListIdentity.Name]
 		objConfig.UpstreamReconciler = NewTestReconciler()
-		objConfig.UpstreamReconciler.(TestReconciler).MockReconcile(t, func(mctx manipulate.Context, op elemental.Operation, i ...elemental.Identifiable) (bool, error) {
+		objConfig.UpstreamReconciler.(TestReconciler).MockReconcile(t, func(mctx manipulate.Context, op elemental.Operation, i elemental.Identifiable) (elemental.Identifiable, bool, error) {
 			if mctx.Parent() != nil {
-				return false, nil
+				return i, false, nil
 			}
-			return true, nil
+			return i, true, nil
 		})
 
 		obj := newObject("obj1", []string{"label"})
@@ -640,8 +640,8 @@ func Test_Update(t *testing.T) {
 
 			Convey("When the backend succeeds, the object must not be stored in the DB if accepter did not accept", func() {
 
-				a.MockReconcile(t, func(manipulate.Context, elemental.Operation, ...elemental.Identifiable) (bool, error) {
-					return false, nil
+				a.MockReconcile(t, func(ctx manipulate.Context, op elemental.Operation, obj elemental.Identifiable) (elemental.Identifiable, bool, error) {
+					return obj, false, nil
 				})
 
 				m.MockUpdate(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
@@ -730,11 +730,11 @@ func Test_Delete(t *testing.T) {
 
 		objConfig := v.(*vortexManipulator).processors[testmodel.ListIdentity.Name]
 		objConfig.UpstreamReconciler = NewTestReconciler()
-		objConfig.UpstreamReconciler.(TestReconciler).MockReconcile(t, func(mctx manipulate.Context, op elemental.Operation, i ...elemental.Identifiable) (bool, error) {
+		objConfig.UpstreamReconciler.(TestReconciler).MockReconcile(t, func(mctx manipulate.Context, op elemental.Operation, i elemental.Identifiable) (elemental.Identifiable, bool, error) {
 			if mctx.Parent() != nil {
-				return false, nil
+				return i, false, nil
 			}
-			return true, nil
+			return i, true, nil
 		})
 
 		obj := newObject("obj1", []string{"label"})
@@ -770,8 +770,8 @@ func Test_Delete(t *testing.T) {
 
 			Convey("When the backend succeeds, the object must not be deleted in the DB if accepter did not accept", func() {
 
-				a.MockReconcile(t, func(manipulate.Context, elemental.Operation, ...elemental.Identifiable) (bool, error) {
-					return false, nil
+				a.MockReconcile(t, func(_ manipulate.Context, _ elemental.Operation, obj elemental.Identifiable) (elemental.Identifiable, bool, error) {
+					return obj, false, nil
 				})
 
 				m.MockDelete(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
@@ -1186,8 +1186,8 @@ func Test_Monitor(t *testing.T) {
 
 		Convey("When I push a create event, the object must not be written in the DB when accepter rejects it", func() {
 
-			a.MockReconcile(t, func(manipulate.Context, elemental.Operation, ...elemental.Identifiable) (bool, error) {
-				return false, nil
+			a.MockReconcile(t, func(_ manipulate.Context, _ elemental.Operation, obj elemental.Identifiable) (elemental.Identifiable, bool, error) {
+				return obj, false, nil
 			})
 
 			obj := newObject("push1", []string{"test=push"})
