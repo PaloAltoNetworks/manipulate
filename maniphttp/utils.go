@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -15,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"go.aporeto.io/elemental"
 
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/maniphttp/internal/compiler"
@@ -67,7 +68,7 @@ func addQueryParameters(req *http.Request, ctx manipulate.Context) error {
 	return nil
 }
 
-func decodeData(r *http.Response, dest interface{}) (err error) {
+func decodeData(r *http.Response, encodingType elemental.EncodingType, dest interface{}) (err error) {
 
 	if r.Body == nil {
 		return manipulate.NewErrCannotUnmarshal("nil reader")
@@ -96,7 +97,7 @@ func decodeData(r *http.Response, dest interface{}) (err error) {
 		return manipulate.NewErrCannotUnmarshal(fmt.Sprintf("unable to read data: %s", err.Error()))
 	}
 
-	if err = json.Unmarshal(data, dest); err != nil {
+	if err = elemental.Decode(encodingType, data, dest); err != nil {
 		return manipulate.NewErrCannotUnmarshal(fmt.Sprintf("%s. original data:\n%s", err.Error(), string(data)))
 	}
 

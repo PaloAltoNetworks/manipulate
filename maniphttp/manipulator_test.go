@@ -12,12 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"go.aporeto.io/manipulate/internal/idempotency"
-
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
 	testmodel "go.aporeto.io/elemental/test/model"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/internal/idempotency"
 	"go.aporeto.io/manipulate/internal/tracing"
 	"go.aporeto.io/manipulate/maniptest"
 )
@@ -54,9 +53,6 @@ func TestHTTP_NewSHTTPm(t *testing.T) {
 	})
 }
 
-/*
-	Privates
-*/
 func TestHTTP_makeAuthorizationHeaders(t *testing.T) {
 
 	Convey("Given I create a new HTTP manipulator", t, func() {
@@ -399,7 +395,7 @@ func TestHTTP_Retrieve(t *testing.T) {
 			Convey("Then error should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err.(elemental.Errors).Code(), ShouldEqual, 422)
-				So(err.(elemental.Errors)[0].(elemental.Error).Description, ShouldEqual, "nope.")
+				So(err.(elemental.Errors)[0].Description, ShouldEqual, "nope.")
 			})
 		})
 	})
@@ -548,7 +544,7 @@ func TestHTTP_Delete(t *testing.T) {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, `[{"ID": "yyy"}]`)
+			w.Write([]byte(`{"ID":"yyy"}`)) // nolint
 		}))
 		defer ts.Close()
 
@@ -559,10 +555,13 @@ func TestHTTP_Delete(t *testing.T) {
 			list := testmodel.NewList()
 			list.ID = "xxx"
 
-			_ = m.Delete(nil, list)
+			err := m.Delete(nil, list)
+			if err != nil {
+				panic(err)
+			}
 
-			Convey("Then ID should 'xxx'", func() {
-				So(list.Identifier(), ShouldEqual, "xxx")
+			Convey("Then ID should 'yyy'", func() {
+				So(list.Identifier(), ShouldEqual, "yyy")
 			})
 		})
 
@@ -1212,7 +1211,7 @@ func TestHTTP_send(t *testing.T) {
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotUnmarshal{})
-				So(err.Error(), ShouldEqual, `Unable to unmarshal data: invalid character '\n' in string literal. original data:
+				So(err.Error(), ShouldEqual, `Unable to unmarshal data: unable to decode application/json: EOF. original data:
 [{"code": 423, "]
 `)
 			})

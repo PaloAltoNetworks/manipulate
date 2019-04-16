@@ -171,7 +171,7 @@ func Test_decodeData(t *testing.T) {
 		Convey("When I call decodeData", func() {
 
 			dest := map[string]interface{}{}
-			err := decodeData(r, &dest)
+			err := decodeData(r, "", &dest)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
@@ -180,7 +180,7 @@ func Test_decodeData(t *testing.T) {
 			Convey("Then the dest should be correct", func() {
 				So(len(dest), ShouldEqual, 2)
 				So(dest["name"].(string), ShouldEqual, "thename")
-				So(dest["age"].(float64), ShouldEqual, 2)
+				So(dest["age"].(uint64), ShouldEqual, 2)
 			})
 		})
 	})
@@ -205,7 +205,7 @@ func Test_decodeData(t *testing.T) {
 		Convey("When I call decodeData", func() {
 
 			dest := map[string]interface{}{}
-			err := decodeData(r, &dest)
+			err := decodeData(r, "", &dest)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
@@ -214,7 +214,7 @@ func Test_decodeData(t *testing.T) {
 			Convey("Then the dest should be correct", func() {
 				So(len(dest), ShouldEqual, 2)
 				So(dest["name"].(string), ShouldEqual, "thename")
-				So(dest["age"].(float64), ShouldEqual, 2)
+				So(dest["age"].(uint64), ShouldEqual, 2)
 			})
 		})
 	})
@@ -228,11 +228,11 @@ func Test_decodeData(t *testing.T) {
 		Convey("When I call decodeData", func() {
 
 			dest := map[string]interface{}{}
-			err := decodeData(r, &dest)
+			err := decodeData(r, "", &dest)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "Unable to unmarshal data: invalid character '<' looking for beginning of value. original data:\n<html><body>not json</body></html>")
+				So(err.Error(), ShouldEqual, "Unable to unmarshal data: unable to decode application/json: json decode error [pos 1]: read map - expect char '{' but got char '<'. original data:\n<html><body>not json</body></html>")
 			})
 
 			Convey("Then the dest should be empty", func() {
@@ -250,7 +250,7 @@ func Test_decodeData(t *testing.T) {
 			}
 
 			dest := map[string]interface{}{}
-			err := decodeData(r, &dest)
+			err := decodeData(r, "", &dest)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -272,7 +272,7 @@ func Test_decodeData(t *testing.T) {
 		Convey("When I call decodeData", func() {
 
 			dest := map[string]interface{}{}
-			err := decodeData(r, &dest)
+			err := decodeData(r, "", &dest)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
