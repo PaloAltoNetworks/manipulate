@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"net/http"
 
+	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 )
 
@@ -61,6 +62,17 @@ func ExtractTLSConfig(manipulator manipulate.Manipulator) *tls.Config {
 		Certificates:       m.tlsConfig.Certificates,
 		InsecureSkipVerify: m.tlsConfig.InsecureSkipVerify,
 	}
+}
+
+// ExtractEncoding returns the encoding used by the given manipulator.
+func ExtractEncoding(manipulator manipulate.Manipulator) elemental.EncodingType {
+
+	m, ok := manipulator.(*httpManipulator)
+	if !ok {
+		panic("You can only pass a HTTP Manipulator to ExtractEncoding")
+	}
+
+	return m.encoding
 }
 
 // SetGlobalHeaders sets the given headers to all requests that will be sent.
