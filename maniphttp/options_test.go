@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"go.aporeto.io/elemental"
 )
 
 type testTokenManager struct{}
@@ -75,5 +76,11 @@ func TestManipHttp_Optionions(t *testing.T) {
 		m := &httpManipulator{}
 		OptionDisableBuiltInRetry()(m)
 		So(m.disableAutoRetry, ShouldBeTrue)
+	})
+
+	Convey("Calling OptionEncoding should work", t, func() {
+		m := &httpManipulator{}
+		OptionEncoding(elemental.EncodingTypeMSGPACK)(m)
+		So(m.encoding, ShouldEqual, elemental.EncodingTypeMSGPACK)
 	})
 }

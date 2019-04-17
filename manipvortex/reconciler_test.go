@@ -24,7 +24,7 @@ func TestTestReconciler(t *testing.T) {
 
 		Convey("When I call the Accept method without mock", func() {
 
-			ok, err := r.Reconcile(manipulate.NewContext(context.Background()), elemental.OperationCreate, nil)
+			obj, ok, err := r.Reconcile(manipulate.NewContext(context.Background()), elemental.OperationCreate, nil)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
@@ -33,15 +33,19 @@ func TestTestReconciler(t *testing.T) {
 			Convey("Then ok should be true", func() {
 				So(ok, ShouldBeTrue)
 			})
+
+			Convey("The object should be nil", func() {
+				So(obj, ShouldBeNil)
+			})
 		})
 
 		Convey("When I call the Accept method with a mock", func() {
 
-			r.MockReconcile(t, func(manipulate.Context, elemental.Operation, ...elemental.Identifiable) (bool, error) {
-				return false, fmt.Errorf("boom")
+			r.MockReconcile(t, func(_ manipulate.Context, _ elemental.Operation, obj elemental.Identifiable) (elemental.Identifiable, bool, error) {
+				return obj, false, fmt.Errorf("boom")
 			})
 
-			ok, err := r.Reconcile(manipulate.NewContext(context.Background()), elemental.OperationCreate, nil)
+			obj, ok, err := r.Reconcile(manipulate.NewContext(context.Background()), elemental.OperationCreate, nil)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -51,6 +55,11 @@ func TestTestReconciler(t *testing.T) {
 			Convey("Then ok should be false", func() {
 				So(ok, ShouldBeFalse)
 			})
+
+			Convey("The object should be nil", func() {
+				So(obj, ShouldBeNil)
+			})
+
 		})
 	})
 }

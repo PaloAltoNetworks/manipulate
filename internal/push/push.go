@@ -3,7 +3,6 @@ package push
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
@@ -40,6 +39,8 @@ type subscription struct {
 	currentTokenLock        sync.RWMutex
 	unregisterTokenNotifier func(string)
 	registerTokenNotifier   func(string, func(string))
+	readEncoding            elemental.EncodingType
+	writeEncoding           elemental.EncodingType
 }
 
 // NewSubscriber creates a new Subscription.
@@ -50,8 +51,14 @@ func NewSubscriber(
 	registerTokenNotifier func(string, func(string)),
 	unregisterTokenNotifier func(string),
 	tlsConfig *tls.Config,
+	headers http.Header,
 	recursive bool,
 ) manipulate.Subscriber {
+
+	readEncoding, writeEncoding, err := elemental.EncodingFromHeaders(headers)
+	if err != nil {
+		panic(err)
+	}
 
 	return &subscription{
 		id:                      uuid.Must(uuid.NewV4()).String(),
@@ -67,12 +74,15 @@ func NewSubscriber(
 		status:                  make(chan manipulate.SubscriberStatus, statusChSize),
 		filters:                 make(chan *elemental.PushFilter, filterChSize),
 		currentFilterLock:       sync.RWMutex{},
+		readEncoding:            readEncoding,
+		writeEncoding:           writeEncoding,
 		config: wsc.Config{
 			PongWait:     10 * time.Second,
 			WriteWait:    10 * time.Second,
 			PingPeriod:   5 * time.Second,
 			ReadChanSize: 2048,
 			TLSConfig:    tlsConfig,
+			Headers:      headers,
 		},
 	}
 }
@@ -181,7 +191,7 @@ func (s *subscription) listen(ctx context.Context) {
 
 			case filter := <-s.filters:
 
-				filterData, err = json.Marshal(filter)
+				filterData, err = elemental.Encode(s.writeEncoding, filter)
 				if err != nil {
 					s.publishError(err)
 					continue
@@ -192,7 +202,7 @@ func (s *subscription) listen(ctx context.Context) {
 			case data := <-s.conn.Read():
 
 				event := &elemental.Event{}
-				if err = json.Unmarshal(data, event); err != nil {
+				if err = elemental.Decode(s.readEncoding, data, event); err != nil {
 					s.publishError(err)
 					continue
 				}

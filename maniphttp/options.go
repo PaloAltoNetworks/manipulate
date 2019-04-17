@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"net/http"
 
+	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 )
 
@@ -86,5 +87,12 @@ func OptionTLSConfig(tlsConfig *tls.Config) Option {
 func OptionDisableBuiltInRetry() Option {
 	return func(m *httpManipulator) {
 		m.disableAutoRetry = true
+	}
+}
+
+// OptionEncoding sets the encoding/decoding type to use.
+func OptionEncoding(enc elemental.EncodingType) Option {
+	return func(m *httpManipulator) {
+		m.encoding = enc
 	}
 }
