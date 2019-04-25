@@ -68,7 +68,7 @@ func addQueryParameters(req *http.Request, ctx manipulate.Context) error {
 	return nil
 }
 
-func decodeData(r *http.Response, encodingType elemental.EncodingType, dest interface{}) (err error) {
+func decodeData(r *http.Response, dest interface{}) (err error) {
 
 	if r.Body == nil {
 		return manipulate.NewErrCannotUnmarshal("nil reader")
@@ -97,7 +97,15 @@ func decodeData(r *http.Response, encodingType elemental.EncodingType, dest inte
 		return manipulate.NewErrCannotUnmarshal(fmt.Sprintf("unable to read data: %s", err.Error()))
 	}
 
-	if err = elemental.Decode(encodingType, data, dest); err != nil {
+	encoding := elemental.EncodingTypeJSON
+	if r.Header.Get("Content-Type") != "" {
+		encoding, _, err = elemental.EncodingFromHeaders(r.Header)
+		if err != nil {
+			return elemental.NewErrors(err)
+		}
+	}
+
+	if err = elemental.Decode(encoding, data, dest); err != nil {
 		return manipulate.NewErrCannotUnmarshal(fmt.Sprintf("%s. original data:\n%s", err.Error(), string(data)))
 	}
 
