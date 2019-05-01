@@ -9,25 +9,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package snip
-
-import (
-	"fmt"
-	"strings"
-)
-
-// Snip snips the given token from the given error.
-func Snip(err error, token string) error {
-
-	if len(token) == 0 || err == nil {
-		return err
-	}
-
-	return fmt.Errorf("%s",
-		strings.Replace(
-			err.Error(),
-			token,
-			"[snip]",
-			-1),
-	)
-}
+// Package manipvortex contains a Manipulator that can be used
+// as cache in front of another Manipulator.
+package manipvortex // import "go.aporeto.io/manipulate/manipvortex"
