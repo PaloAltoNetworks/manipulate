@@ -11,31 +11,35 @@
 
 package manipulate
 
-// type Filter = elemental.Filter
-// type FilterComparator = elemental.FilterComparator
-// type FilterComparators = elemental.FilterComparators
-// type FilterOperator = elemental.FilterOperator
-// type FilterValue = elemental.FilterValue
-// type FilterValues = elemental.FilterValues
-// type SubFilter = elemental.SubFilter
-// type SubFilters = elemental.SubFilters
-// type FilterValueComposer = elemental.FilterValueComposer
-// type FilterKeyComposer = elemental.FilterKeyComposer
+import (
+	"fmt"
 
-// func NewFilter() *Filter {
-// 	return elemental.NewFilter()
-// }
+	"go.aporeto.io/elemental"
+)
 
-// func NewFilterComposer() FilterKeyComposer {
-// 	return elemental.NewFilter()
-// }
+// This package provides type mapping for backward compatilility
+// as manipulate.Filter moved to elemental.
 
-// func NewFilterFromString(filter string) (*Filter, error) {
-// 	return elemental.NewFilterFromString(filter)
-// }
+type Filter = elemental.Filter
+type FilterKeyComposer = elemental.FilterKeyComposer
+type FilterParser = elemental.FilterParser
 
-// type FilterParser = elemental.FilterParser
+func NewFilter() *Filter {
+	fmt.Println("DEPRECATED: manipulate.NewFilter is deprecated and aliased to elemental.NewFilter")
+	return elemental.NewFilter()
+}
 
-// func NewFilterParser(input string) *FilterParser {
-// 	return elemental.NewFilterParser(input)
-// }
+func NewFilterComposer() FilterKeyComposer {
+	fmt.Println("DEPRECATED: manipulate.NewFilterComposer is deprecated and aliased to elemental.NewFilterComposer")
+	return elemental.NewFilter()
+}
+
+func NewFilterFromString(filter string) (*Filter, error) {
+	fmt.Println("DEPRECATED: manipulate.NewFilterFromString is deprecated and aliased to elemental.NewFilterFromString")
+	return elemental.NewFilterFromString(filter)
+}
+
+func NewFilterParser(input string) *FilterParser {
+	fmt.Println("DEPRECATED: manipulate.NewFilterParser is deprecated and aliased to elemental.NewFilterParser")
+	return elemental.NewFilterParser(input)
+}
