@@ -368,7 +368,7 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 			mctx := manipulate.NewContext(
 				context.Background(),
 				manipulate.ContextOptionFilter(
-					manipulate.NewFilterComposer().WithKey("Name").Equals("Antoine1").
+					elemental.NewFilterComposer().WithKey("Name").Equals("Antoine1").
 						WithKey("Slice").Contains("a=b").Done(),
 				),
 			)
@@ -393,7 +393,7 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 			mctx := manipulate.NewContext(
 				context.Background(),
 				manipulate.ContextOptionFilter(
-					manipulate.NewFilterComposer().WithKey("Name").Matches("^Antoine$").Done(),
+					elemental.NewFilterComposer().WithKey("Name").Matches("^Antoine$").Done(),
 				),
 			)
 
@@ -414,10 +414,10 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 			ps := testmodel.ListsList{}
 
-			filter := manipulate.NewFilterComposer().Or(
-				manipulate.NewFilterComposer().
+			filter := elemental.NewFilterComposer().Or(
+				elemental.NewFilterComposer().
 					WithKey("Name").Matches("^Antoine1").Done(),
-				manipulate.NewFilterComposer().
+				elemental.NewFilterComposer().
 					WithKey("Name").Matches("^Antoine2").Done(),
 			).Done()
 
@@ -443,10 +443,10 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 			ps := testmodel.ListsList{}
 
-			filter := manipulate.NewFilterComposer().And(
-				manipulate.NewFilterComposer().
+			filter := elemental.NewFilterComposer().And(
+				elemental.NewFilterComposer().
 					WithKey("Slice").Equals("category=dimitri").Done(),
-				manipulate.NewFilterComposer().
+				elemental.NewFilterComposer().
 					WithKey("Slice").Equals("a=b").Done(),
 			).Done()
 
@@ -472,7 +472,7 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 			ps := testmodel.ListsList{}
 
-			filter := manipulate.NewFilterComposer().
+			filter := elemental.NewFilterComposer().
 				WithKey("Slice").Contains("category=dimitri", "a=b").Done()
 
 			mctx := manipulate.NewContext(
@@ -498,12 +498,12 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 
 			ps := testmodel.ListsList{}
 
-			filter := manipulate.NewFilterComposer().Or(
-				manipulate.NewFilterComposer().
+			filter := elemental.NewFilterComposer().Or(
+				elemental.NewFilterComposer().
 					WithKey("Slice").Contains("category=dimitri", "a=b").Done(),
-				manipulate.NewFilterComposer().
+				elemental.NewFilterComposer().
 					WithKey("Slice").Contains("category=antoine").Done(),
-				manipulate.NewFilterComposer().
+				elemental.NewFilterComposer().
 					WithKey("Slice").Contains("x=y").Done(),
 			).Done()
 
@@ -534,7 +534,7 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 			mctx := manipulate.NewContext(
 				context.Background(),
 				manipulate.ContextOptionFilter(
-					manipulate.NewFilterComposer().WithKey("Bad").Equals("Antoine1").Done(),
+					elemental.NewFilterComposer().WithKey("Bad").Equals("Antoine1").Done(),
 				),
 			)
 
@@ -553,7 +553,7 @@ func TestMemManipulator_RetrieveMany(t *testing.T) {
 			mctx := manipulate.NewContext(
 				context.Background(),
 				manipulate.ContextOptionFilter(
-					manipulate.NewFilterComposer().WithKey("Bad").Matches("Antoine1").Done(),
+					elemental.NewFilterComposer().WithKey("Bad").Matches("Antoine1").Done(),
 				),
 			)
 
@@ -793,7 +793,7 @@ func TestMemManipulator_Count(t *testing.T) {
 			// Convey("When I count with a bad filter", func() {
 			//
 			// 	ctx := manipulate.NewContextWithFilter(
-			// 		manipulate.NewFilterComposer().WithKey("Bad").Equals("Antoine1").Done(),
+			// 		elemental.NewFilterComposer().WithKey("Bad").Equals("Antoine1").Done(),
 			// 	)
 			//
 			// 	c, err := m.Count(ctx, PersonIdentity)
@@ -917,11 +917,11 @@ func BenchmarkRetrieveMany(b *testing.B) {
 	err = populateDB(m, 10000)
 	So(err, ShouldBeNil)
 
-	filters := []*manipulate.Filter{
-		manipulate.NewFilterComposer().
+	filters := []*elemental.Filter{
+		elemental.NewFilterComposer().
 			WithKey("Slice").Contains("label1=10", "label2=10").
 			Done(),
-		manipulate.NewFilterComposer().
+		elemental.NewFilterComposer().
 			WithKey("Slice").Contains("label1=10", "label2=10", "label=common").
 			Done(),
 	}

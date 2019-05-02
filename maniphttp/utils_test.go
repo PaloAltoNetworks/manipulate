@@ -62,7 +62,7 @@ func Test_addQueryParameters(t *testing.T) {
 			ctx := manipulate.NewContext(
 				context.Background(),
 				manipulate.ContextOptionFilter(
-					manipulate.NewFilterComposer().WithKey("name").Equals("toto").WithKey("description").Equals("hello").Done(),
+					elemental.NewFilterComposer().WithKey("name").Equals("toto").WithKey("description").Equals("hello").Done(),
 				),
 			)
 

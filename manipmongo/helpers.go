@@ -23,7 +23,7 @@ import (
 )
 
 // CompileFilter compiles the given manipulate filter into a raw mongo filter.
-func CompileFilter(f *manipulate.Filter) bson.M {
+func CompileFilter(f *elemental.Filter) bson.M {
 	return compiler.CompileFilter(f)
 }
 

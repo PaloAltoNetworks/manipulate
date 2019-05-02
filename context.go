@@ -53,7 +53,7 @@ type FinalizerFunc func(o elemental.Identifiable) error
 type Context interface {
 	Count() int
 	SetCount(count int)
-	Filter() *Filter
+	Filter() *elemental.Filter
 	Finalizer() FinalizerFunc
 	Version() int
 	TransactionID() TransactionID
@@ -103,7 +103,7 @@ type mcontext struct {
 	pageSize             int
 	parent               elemental.Identifiable
 	countTotal           int
-	filter               *Filter
+	filter               *elemental.Filter
 	parameters           url.Values
 	transactionID        TransactionID
 	namespace            string
@@ -129,7 +129,7 @@ func (c *mcontext) Count() int { return c.countTotal }
 func (c *mcontext) SetCount(count int) { c.countTotal = count }
 
 // Filter returns the filter.
-func (c *mcontext) Filter() *Filter { return c.filter }
+func (c *mcontext) Filter() *elemental.Filter { return c.filter }
 
 // Finalizer returns the finalizer.
 func (c *mcontext) Finalizer() FinalizerFunc { return c.createFinalizer }

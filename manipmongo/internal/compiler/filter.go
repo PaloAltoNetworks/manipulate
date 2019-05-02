@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo/bson"
-	"go.aporeto.io/manipulate"
+	"go.aporeto.io/elemental"
 )
 
 func massageKey(key string) string {
@@ -47,7 +47,7 @@ func massageValue(v interface{}) interface{} {
 }
 
 // CompileFilter compiles the given manipulate Filter into a mongo filter.
-func CompileFilter(f *manipulate.Filter) bson.M {
+func CompileFilter(f *elemental.Filter) bson.M {
 
 	if len(f.Operators()) == 0 {
 		return bson.M{}
@@ -59,14 +59,14 @@ func CompileFilter(f *manipulate.Filter) bson.M {
 
 		switch operator {
 
-		case manipulate.AndOperator:
+		case elemental.AndOperator:
 
 			items := []bson.M{}
 			k := massageKey(f.Keys()[i])
 
 			switch f.Comparators()[i] {
 
-			case manipulate.EqualComparator:
+			case elemental.EqualComparator:
 				v := f.Values()[i][0]
 				switch b := v.(type) {
 				case bool:
@@ -87,34 +87,34 @@ func CompileFilter(f *manipulate.Filter) bson.M {
 					items = append(items, bson.M{k: bson.M{"$eq": massageValue(v)}})
 				}
 
-			case manipulate.NotEqualComparator:
+			case elemental.NotEqualComparator:
 				items = append(items, bson.M{k: bson.M{"$ne": massageValue(f.Values()[i][0])}})
 
-			case manipulate.InComparator, manipulate.ContainComparator:
+			case elemental.InComparator, elemental.ContainComparator:
 				items = append(items, bson.M{k: bson.M{"$in": f.Values()[i]}})
 
-			case manipulate.NotInComparator, manipulate.NotContainComparator:
+			case elemental.NotInComparator, elemental.NotContainComparator:
 				items = append(items, bson.M{k: bson.M{"$nin": f.Values()[i]}})
 
-			case manipulate.GreaterOrEqualComparator:
+			case elemental.GreaterOrEqualComparator:
 				items = append(items, bson.M{k: bson.M{"$gte": massageValue(f.Values()[i][0])}})
 
-			case manipulate.GreaterComparator:
+			case elemental.GreaterComparator:
 				items = append(items, bson.M{k: bson.M{"$gt": massageValue(f.Values()[i][0])}})
 
-			case manipulate.LesserOrEqualComparator:
+			case elemental.LesserOrEqualComparator:
 				items = append(items, bson.M{k: bson.M{"$lte": massageValue(f.Values()[i][0])}})
 
-			case manipulate.LesserComparator:
+			case elemental.LesserComparator:
 				items = append(items, bson.M{k: bson.M{"$lt": massageValue(f.Values()[i][0])}})
 
-			case manipulate.ExistsComparator:
+			case elemental.ExistsComparator:
 				items = append(items, bson.M{k: bson.M{"$exists": true}})
 
-			case manipulate.NotExistsComparator:
+			case elemental.NotExistsComparator:
 				items = append(items, bson.M{k: bson.M{"$exists": false}})
 
-			case manipulate.MatchComparator:
+			case elemental.MatchComparator:
 				dest := []bson.M{}
 				for _, v := range f.Values()[i] {
 					dest = append(dest, bson.M{k: bson.M{"$regex": v}})
@@ -124,14 +124,14 @@ func CompileFilter(f *manipulate.Filter) bson.M {
 
 			ands = append(ands, items...)
 
-		case manipulate.AndFilterOperator:
+		case elemental.AndFilterOperator:
 			subs := []bson.M{}
 			for _, sub := range f.AndFilters()[i] {
 				subs = append(subs, CompileFilter(sub))
 			}
 			ands = append(ands, bson.M{"$and": subs})
 
-		case manipulate.OrFilterOperator:
+		case elemental.OrFilterOperator:
 			subs := []bson.M{}
 			for _, sub := range f.OrFilters()[i] {
 				subs = append(subs, CompileFilter(sub))

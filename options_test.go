@@ -26,7 +26,7 @@ func TestManipulate_ContextOption(t *testing.T) {
 	mctx := NewContext(context.Background())
 
 	Convey("Calling ContextOptionFilter should work", t, func() {
-		ContextOptionFilter(NewFilterComposer().WithKey("a").Equals("b").Done())(mctx.(*mcontext))
+		ContextOptionFilter(elemental.NewFilterComposer().WithKey("a").Equals("b").Done())(mctx.(*mcontext))
 		So(mctx.Filter().String(), ShouldEqual, `a == "b"`)
 	})
 

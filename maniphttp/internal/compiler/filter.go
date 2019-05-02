@@ -14,10 +14,10 @@ package compiler
 import (
 	"net/url"
 
-	"go.aporeto.io/manipulate"
+	"go.aporeto.io/elemental"
 )
 
 // CompileFilter compiles the given filter into a http query filter.
-func CompileFilter(f *manipulate.Filter) (url.Values, error) {
+func CompileFilter(f *elemental.Filter) (url.Values, error) {
 	return url.Values{"q": []string{f.String()}}, nil
 }
