@@ -21,7 +21,7 @@ import (
 type ContextOption func(*mcontext)
 
 // ContextOptionFilter sets the filter.
-func ContextOptionFilter(f *Filter) ContextOption {
+func ContextOptionFilter(f *elemental.Filter) ContextOption {
 	return func(c *mcontext) {
 		c.filter = f
 	}

@@ -290,7 +290,7 @@ func (m *memdbManipulator) registeredTxnWithID(id manipulate.TransactionID) *mem
 }
 
 // RetrieveFromFilter compiles the given manipulate Filter into a mongo filter.
-func (m *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Filter, items *map[string]elemental.Identifiable, fullQuery bool) error {
+func (m *memdbManipulator) retrieveFromFilter(identity string, f *elemental.Filter, items *map[string]elemental.Identifiable, fullQuery bool) error {
 
 	if f == nil {
 		return m.retrieveIntersection(identity, "id", nil, items, fullQuery)
@@ -304,19 +304,19 @@ func (m *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 
 		switch operator {
 
-		case manipulate.AndOperator:
+		case elemental.AndOperator:
 
 			k := strings.ToLower(f.Keys()[i])
 
 			switch f.Comparators()[i] {
 
-			case manipulate.EqualComparator:
+			case elemental.EqualComparator:
 
 				if err := m.retrieveIntersection(identity, k, f.Values()[i][0], items, fullQuery); err != nil {
 					return err
 				}
 
-			case manipulate.MatchComparator:
+			case elemental.MatchComparator:
 
 				values := f.Values()[i]
 
@@ -336,7 +336,7 @@ func (m *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 					mergeIn(items, &valueItems)
 				}
 
-			case manipulate.ContainComparator:
+			case elemental.ContainComparator:
 
 				values := f.Values()[i]
 
@@ -356,7 +356,7 @@ func (m *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 				return manipulate.NewErrCannotExecuteQuery(fmt.Sprintf("invalid comparator for memdb: %d", f.Comparators()[i]))
 			}
 
-		case manipulate.AndFilterOperator:
+		case elemental.AndFilterOperator:
 
 			for _, sub := range f.AndFilters()[i] {
 				if err := m.retrieveFromFilter(identity, sub, items, fullQuery); err != nil {
@@ -365,7 +365,7 @@ func (m *memdbManipulator) retrieveFromFilter(identity string, f *manipulate.Fil
 				fullQuery = false
 			}
 
-		case manipulate.OrFilterOperator:
+		case elemental.OrFilterOperator:
 
 			orItems := map[string]elemental.Identifiable{}
 

@@ -17,14 +17,14 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	. "github.com/smartystreets/goconvey/convey"
-	"go.aporeto.io/manipulate"
+	"go.aporeto.io/elemental"
 )
 
 func TestUtils_compiler(t *testing.T) {
 
 	Convey("Given I have a simple manipulate.Filter", t, func() {
 
-		f := manipulate.NewFilterComposer().WithKey("id").Equals(1).Done()
+		f := elemental.NewFilterComposer().WithKey("id").Equals(1).Done()
 
 		Convey("When I compile the filter", func() {
 
@@ -38,7 +38,7 @@ func TestUtils_compiler(t *testing.T) {
 
 	Convey("Given I have a simple manipulate.Filter with boolean set to true", t, func() {
 
-		f := manipulate.NewFilterComposer().WithKey("bool").Equals(true).Done()
+		f := elemental.NewFilterComposer().WithKey("bool").Equals(true).Done()
 
 		Convey("When I compile the filter", func() {
 
@@ -52,7 +52,7 @@ func TestUtils_compiler(t *testing.T) {
 
 	Convey("Given I have a simple manipulate.Filter with boolean set to false", t, func() {
 
-		f := manipulate.NewFilterComposer().WithKey("bool").Equals(false).Done()
+		f := elemental.NewFilterComposer().WithKey("bool").Equals(false).Done()
 
 		Convey("When I compile the filter", func() {
 
@@ -66,7 +66,7 @@ func TestUtils_compiler(t *testing.T) {
 
 	Convey("Given I have a simple manipulate.Filter with dots", t, func() {
 
-		f := manipulate.NewFilterComposer().WithKey("X.TOTO.Titu").Equals(1).Done()
+		f := elemental.NewFilterComposer().WithKey("X.TOTO.Titu").Equals(1).Done()
 
 		Convey("When I compile the filter", func() {
 
@@ -80,7 +80,7 @@ func TestUtils_compiler(t *testing.T) {
 
 	Convey("Given I have a simple and manipulate.Filter", t, func() {
 
-		f := manipulate.NewFilterComposer().WithKey("x").Equals(1).WithKey("y").Equals(2).Done()
+		f := elemental.NewFilterComposer().WithKey("x").Equals(1).WithKey("y").Equals(2).Done()
 
 		Convey("When I compile the filter", func() {
 
@@ -94,7 +94,7 @@ func TestUtils_compiler(t *testing.T) {
 
 	Convey("Given I have a simple multiple key and manipulate.Filter", t, func() {
 
-		f := manipulate.NewFilterComposer().WithKey("x").NotEquals(1).WithKey("x").NotEquals(2).Done()
+		f := elemental.NewFilterComposer().WithKey("x").NotEquals(1).WithKey("x").NotEquals(2).Done()
 
 		Convey("When I compile the filter", func() {
 
@@ -108,7 +108,7 @@ func TestUtils_compiler(t *testing.T) {
 
 	Convey("Given I have a simple a complex and manipulate.Filter", t, func() {
 
-		f := manipulate.NewFilterComposer().
+		f := elemental.NewFilterComposer().
 			WithKey("x").Equals(1).
 			WithKey("z").Contains("a", "b").
 			WithKey("a").GreaterOrEqualThan(1).
@@ -129,7 +129,7 @@ func TestUtils_compiler(t *testing.T) {
 
 	Convey("Given I have filter that contains Match", t, func() {
 
-		f := manipulate.NewFilterComposer().
+		f := elemental.NewFilterComposer().
 			WithKey("x").Matches("$abc^", ".*").
 			Done()
 
@@ -144,7 +144,7 @@ func TestUtils_compiler(t *testing.T) {
 
 	Convey("Given I have filter that contains Exists", t, func() {
 
-		f := manipulate.NewFilterComposer().
+		f := elemental.NewFilterComposer().
 			WithKey("x").Exists().
 			Done()
 
@@ -159,7 +159,7 @@ func TestUtils_compiler(t *testing.T) {
 
 	Convey("Given I have filter that contains NotExists", t, func() {
 
-		f := manipulate.NewFilterComposer().
+		f := elemental.NewFilterComposer().
 			WithKey("x").NotExists().
 			Done()
 
@@ -174,23 +174,23 @@ func TestUtils_compiler(t *testing.T) {
 
 	Convey("Given I have a composed filters", t, func() {
 
-		f := manipulate.NewFilterComposer().
+		f := elemental.NewFilterComposer().
 			WithKey("namespace").Equals("coucou").
 			And(
-				manipulate.NewFilterComposer().
+				elemental.NewFilterComposer().
 					WithKey("name").Equals("toto").
 					WithKey("surname").Equals("titi").
 					Done(),
-				manipulate.NewFilterComposer().
+				elemental.NewFilterComposer().
 					WithKey("color").Equals("blue").
 					Or(
-						manipulate.NewFilterComposer().
+						elemental.NewFilterComposer().
 							WithKey("size").Equals("big").
 							Done(),
-						manipulate.NewFilterComposer().
+						elemental.NewFilterComposer().
 							WithKey("size").Equals("medium").
 							Done(),
-						manipulate.NewFilterComposer().
+						elemental.NewFilterComposer().
 							WithKey("list").NotIn("a", "b", "c").
 							Done(),
 					).

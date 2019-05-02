@@ -15,14 +15,14 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
-	"go.aporeto.io/manipulate"
+	"go.aporeto.io/elemental"
 )
 
 func TestFilter_CompileFilter(t *testing.T) {
 
 	Convey("Given I create a new Filter", t, func() {
 
-		f := manipulate.NewFilterComposer().
+		f := elemental.NewFilterComposer().
 			WithKey("name").Equals("thename").
 			WithKey("ID").Equals("xxx").
 			WithKey("associatedTags").Contains("yy=zz").

@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"go.aporeto.io/elemental"
 	testmodel "go.aporeto.io/elemental/test/model"
 )
 
@@ -72,7 +73,7 @@ func TestMethodNewContextWithFilter(t *testing.T) {
 
 	Convey("Given I create a new context with filter", t, func() {
 
-		filter := NewFilter()
+		filter := elemental.NewFilter()
 		mctx := NewContext(
 			context.Background(),
 			ContextOptionFilter(filter),
@@ -125,7 +126,7 @@ func TestContext_Derive(t *testing.T) {
 			pageSize:             2,
 			parent:               testmodel.NewList(),
 			countTotal:           3,
-			filter:               NewFilterComposer().WithKey("k").Equals("v").Done(),
+			filter:               elemental.NewFilterComposer().WithKey("k").Equals("v").Done(),
 			parameters:           url.Values{"a": []string{"b"}},
 			transactionID:        NewTransactionID(),
 			namespace:            "/",
@@ -171,7 +172,7 @@ func TestContext_Derive(t *testing.T) {
 
 			copy := mctx.Derive(
 				ContextOptionPage(11, 12),
-				ContextOptionFilter(NewFilterComposer().WithKey("k").Equals("v2").Done()),
+				ContextOptionFilter(elemental.NewFilterComposer().WithKey("k").Equals("v2").Done()),
 			).(*mcontext)
 
 			Convey("Then the copy should resemble to the original but for the changes", func() {
