@@ -127,9 +127,18 @@ func ContextOptionReadConsistency(consistency ReadConsistency) ContextOption {
 	}
 }
 
-// ContextOptionDelegationToken sets the desired read consistency of the request.
-func ContextOptionDelegationToken(token string) ContextOption {
+// ContextOptionCredentials sets user name and password for this context.
+func ContextOptionCredentials(username, password string) ContextOption {
 	return func(c *mcontext) {
-		c.delegationToken = token
+		c.username = username
+		c.password = password
+	}
+}
+
+// ContextOptionToken sets the token for this request.
+func ContextOptionToken(username, password string) ContextOption {
+	return func(c *mcontext) {
+		c.username = "Bearer"
+		c.password = password
 	}
 }
