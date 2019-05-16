@@ -104,4 +104,19 @@ func TestManipulate_ContextOption(t *testing.T) {
 		ContextOptionReadConsistency(ReadConsistencyStrong)(mctx.(*mcontext))
 		So(mctx.ReadConsistency(), ShouldEqual, ReadConsistencyStrong)
 	})
+
+	Convey("Calling ContextOptionCredentials should work", t, func() {
+		ContextOptionCredentials("username", "password")(mctx.(*mcontext))
+		u, p := mctx.Credentials()
+		So(u, ShouldResemble, "username")
+		So(p, ShouldResemble, "password")
+	})
+
+	Convey("Calling ContextOptionToken should work", t, func() {
+		ContextOptionToken("token")(mctx.(*mcontext))
+		u, p := mctx.Credentials()
+		So(u, ShouldResemble, "Bearer")
+		So(p, ShouldResemble, "token")
+	})
+
 }

@@ -117,6 +117,7 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 					manipulate.ContextOptionReadConsistency(manipulate.ReadConsistencyStrong),
 					manipulate.ContextOptionWriteConsistency(manipulate.WriteConsistencyStrong),
 					manipulate.ContextOptionFields([]string{"a", "b"}),
+					manipulate.ContextOptionCredentials("username", "password"),
 				)
 
 				ctx.(idempotency.Keyer).SetIdempotencyKey("coucou")
@@ -145,6 +146,10 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 
 				Convey("Then I should have a value for X-Fields", func() {
 					So(req.Header["X-Fields"], ShouldResemble, []string{"a", "b"})
+				})
+
+				Convey("Then I should have a value for the Authorization", func() {
+					So(req.Header.Get("Authorization"), ShouldResemble, "username password")
 				})
 			})
 		})
