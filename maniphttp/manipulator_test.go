@@ -67,7 +67,7 @@ func TestHTTP_makeAuthorizationHeaders(t *testing.T) {
 		Convey("When I prepare the Authorization", func() {
 
 			m := NewHTTPManipulator("http://url.com", "username", "password", "").(*httpManipulator)
-			h := m.makeAuthorizationHeaders()
+			h := m.makeAuthorizationHeaders("password")
 
 			Convey("Then the header should be correct", func() {
 				So(h, ShouldEqual, "username password")

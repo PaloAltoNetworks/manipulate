@@ -399,9 +399,9 @@ func (s *httpManipulator) Count(mctx manipulate.Context, identity elemental.Iden
 	return mctx.Count(), nil
 }
 
-func (s *httpManipulator) makeAuthorizationHeaders() string {
+func (s *httpManipulator) makeAuthorizationHeaders(password string) string {
 
-	return s.username + " " + s.currentPassword()
+	return s.username + " " + password
 }
 
 func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.Context) {
@@ -423,8 +423,13 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.
 		request.Header.Set("X-Namespace", ns)
 	}
 
-	if s.username != "" && s.currentPassword() != "" {
-		request.Header.Set("Authorization", s.makeAuthorizationHeaders())
+	password := mctx.DelegationToken()
+	if password == "" {
+		password = s.currentPassword()
+	}
+
+	if s.username != "" && password != "" {
+		request.Header.Set("Authorization", s.makeAuthorizationHeaders(password))
 	}
 
 	if v := mctx.ExternalTrackingID(); v != "" {

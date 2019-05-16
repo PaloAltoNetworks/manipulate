@@ -126,3 +126,10 @@ func ContextOptionReadConsistency(consistency ReadConsistency) ContextOption {
 		c.readConsistency = consistency
 	}
 }
+
+// ContextOptionDelegationToken sets the desired read consistency of the request.
+func ContextOptionDelegationToken(token string) ContextOption {
+	return func(c *mcontext) {
+		c.delegationToken = token
+	}
+}
