@@ -428,7 +428,7 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.
 		password = s.currentPassword()
 	}
 
-	if s.username == "" {
+	if username == "" {
 		username = s.username
 	}
 
