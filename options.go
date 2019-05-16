@@ -136,9 +136,9 @@ func ContextOptionCredentials(username, password string) ContextOption {
 }
 
 // ContextOptionToken sets the token for this request.
-func ContextOptionToken(username, password string) ContextOption {
+func ContextOptionToken(token string) ContextOption {
 	return func(c *mcontext) {
 		c.username = "Bearer"
-		c.password = password
+		c.password = token
 	}
 }
