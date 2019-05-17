@@ -142,3 +142,10 @@ func ContextOptionToken(token string) ContextOption {
 		c.password = token
 	}
 }
+
+// ContextOptionHeaders sets the optional headers for the request.
+func ContextOptionHeaders(headers map[string]string) ContextOption {
+	return func(c *mcontext) {
+		c.headers = headers
+	}
+}

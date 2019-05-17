@@ -123,6 +123,7 @@ type mcontext struct {
 	idempotencyKey       string
 	username             string
 	password             string
+	headers              map[string]string
 }
 
 // Count returns the count
@@ -207,6 +208,12 @@ func (c *mcontext) SetCredentials(username, password string) {
 	c.username = username
 	c.password = password
 }
+
+// SetHeaders sets optional headers for the context.
+func (c *mcontext) SetHeaders(headers map[string]string) { c.headers = headers }
+
+// Headers returns the optional headers.
+func (c *mcontext) Headers() map[string]string { return c.headers }
 
 // String returns the string representation of the Context.
 func (c *mcontext) String() string {
