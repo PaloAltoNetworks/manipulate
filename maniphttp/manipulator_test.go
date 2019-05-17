@@ -118,6 +118,7 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 					manipulate.ContextOptionWriteConsistency(manipulate.WriteConsistencyStrong),
 					manipulate.ContextOptionFields([]string{"a", "b"}),
 					manipulate.ContextOptionCredentials("username", "password"),
+					manipulate.ContextOptionClientIP("10.1.1.1"),
 				)
 
 				ctx.(idempotency.Keyer).SetIdempotencyKey("coucou")
@@ -150,6 +151,10 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 
 				Convey("Then I should have a value for the Authorization", func() {
 					So(req.Header.Get("Authorization"), ShouldResemble, "username password")
+				})
+
+				Convey("Then I should have a value for the client IP in X-Forwarded-For", func() {
+					So(req.Header["X-Forwarded-For"], ShouldResemble, []string{"10.1.1.1"})
 				})
 			})
 		})

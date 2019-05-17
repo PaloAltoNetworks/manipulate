@@ -142,3 +142,10 @@ func ContextOptionToken(token string) ContextOption {
 		c.password = token
 	}
 }
+
+// ContextOptionClientIP sets the optional headers for the request.
+func ContextOptionClientIP(clientIP string) ContextOption {
+	return func(c *mcontext) {
+		c.clientIP = clientIP
+	}
+}
