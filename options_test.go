@@ -119,4 +119,8 @@ func TestManipulate_ContextOption(t *testing.T) {
 		So(p, ShouldResemble, "token")
 	})
 
+	Convey("Calling ContextOptionClientIP should work", t, func() {
+		ContextOptionClientIP("10.1.1.1")(mctx.(*mcontext))
+		So(mctx.ClientIP(), ShouldEqual, "10.1.1.1")
+	})
 }

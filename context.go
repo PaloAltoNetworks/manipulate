@@ -75,6 +75,7 @@ type Context interface {
 	WriteConsistency() WriteConsistency
 	Messages() []string
 	SetMessages([]string)
+	ClientIP() string
 
 	fmt.Stringer
 }
@@ -123,7 +124,7 @@ type mcontext struct {
 	idempotencyKey       string
 	username             string
 	password             string
-	headers              map[string]string
+	clientIP             string
 }
 
 // Count returns the count
@@ -203,17 +204,14 @@ func (c *mcontext) SetIdempotencyKey(k string) { c.idempotencyKey = k }
 // DelegationToken returns any delegation token provided by options.
 func (c *mcontext) Credentials() (string, string) { return c.username, c.password }
 
+// Headers returns the optional headers.
+func (c *mcontext) ClientIP() string { return c.clientIP }
+
 // SetDelegationToken sets the delegation token for this context.
 func (c *mcontext) SetCredentials(username, password string) {
 	c.username = username
 	c.password = password
 }
-
-// SetHeaders sets optional headers for the context.
-func (c *mcontext) SetHeaders(headers map[string]string) { c.headers = headers }
-
-// Headers returns the optional headers.
-func (c *mcontext) Headers() map[string]string { return c.headers }
 
 // String returns the string representation of the Context.
 func (c *mcontext) String() string {

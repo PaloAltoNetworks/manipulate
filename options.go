@@ -143,9 +143,9 @@ func ContextOptionToken(token string) ContextOption {
 	}
 }
 
-// ContextOptionHeaders sets the optional headers for the request.
-func ContextOptionHeaders(headers map[string]string) ContextOption {
+// ContextOptionClientIP sets the optional headers for the request.
+func ContextOptionClientIP(clientIP string) ContextOption {
 	return func(c *mcontext) {
-		c.headers = headers
+		c.clientIP = clientIP
 	}
 }
