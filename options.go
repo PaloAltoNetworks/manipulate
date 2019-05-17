@@ -126,3 +126,26 @@ func ContextOptionReadConsistency(consistency ReadConsistency) ContextOption {
 		c.readConsistency = consistency
 	}
 }
+
+// ContextOptionCredentials sets user name and password for this context.
+func ContextOptionCredentials(username, password string) ContextOption {
+	return func(c *mcontext) {
+		c.username = username
+		c.password = password
+	}
+}
+
+// ContextOptionToken sets the token for this request.
+func ContextOptionToken(token string) ContextOption {
+	return func(c *mcontext) {
+		c.username = "Bearer"
+		c.password = token
+	}
+}
+
+// ContextOptionClientIP sets the optional headers for the request.
+func ContextOptionClientIP(clientIP string) ContextOption {
+	return func(c *mcontext) {
+		c.clientIP = clientIP
+	}
+}

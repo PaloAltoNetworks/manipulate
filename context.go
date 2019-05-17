@@ -62,6 +62,7 @@ type Context interface {
 	Override() bool
 	Recursive() bool
 	Namespace() string
+	Credentials() (string, string)
 	Parameters() url.Values
 	Parent() elemental.Identifiable
 	ExternalTrackingID() string
@@ -74,6 +75,7 @@ type Context interface {
 	WriteConsistency() WriteConsistency
 	Messages() []string
 	SetMessages([]string)
+	ClientIP() string
 
 	fmt.Stringer
 }
@@ -120,6 +122,9 @@ type mcontext struct {
 	readConsistency      ReadConsistency
 	messages             []string
 	idempotencyKey       string
+	username             string
+	password             string
+	clientIP             string
 }
 
 // Count returns the count
@@ -196,6 +201,18 @@ func (c *mcontext) IdempotencyKey() string { return c.idempotencyKey }
 // by manipulator implementation supporting it.
 func (c *mcontext) SetIdempotencyKey(k string) { c.idempotencyKey = k }
 
+// DelegationToken returns any delegation token provided by options.
+func (c *mcontext) Credentials() (string, string) { return c.username, c.password }
+
+// Headers returns the optional headers.
+func (c *mcontext) ClientIP() string { return c.clientIP }
+
+// SetDelegationToken sets the delegation token for this context.
+func (c *mcontext) SetCredentials(username, password string) {
+	c.username = username
+	c.password = password
+}
+
 // String returns the string representation of the Context.
 func (c *mcontext) String() string {
 
@@ -223,6 +240,8 @@ func (c *mcontext) Derive(options ...ContextOption) Context {
 		order:                c.order,
 		fields:               c.fields,
 		ctx:                  c.ctx,
+		username:             c.username,
+		password:             c.password,
 	}
 
 	for _, opt := range options {
