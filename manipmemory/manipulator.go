@@ -31,8 +31,8 @@ type memdbManipulator struct {
 	db              *memdb.MemDB
 	schema          *memdb.DBSchema
 	txnRegistry     txnRegistry
-	txnRegistryLock *sync.Mutex
-	flushLock       *sync.Mutex
+	txnRegistryLock sync.Mutex
+	dbLock          sync.RWMutex
 }
 
 // New creates a new datastore backed by a memdb.
@@ -56,26 +56,21 @@ func New(c map[string]*IdentitySchema) (manipulate.TransactionalManipulator, err
 	}
 
 	return &memdbManipulator{
-		schema:          schema,
-		db:              db,
-		txnRegistry:     txnRegistry{},
-		txnRegistryLock: &sync.Mutex{},
-		flushLock:       &sync.Mutex{},
+		schema:      schema,
+		db:          db,
+		txnRegistry: txnRegistry{},
 	}, nil
 }
 
 // Flush will flush the datastore essentially creating a new one.
 func (m *memdbManipulator) Flush(ctx context.Context) error {
 
-	m.flushLock.Lock()
-	defer m.flushLock.Unlock()
-
 	db, err := memdb.NewMemDB(m.schema)
 	if err != nil {
 		return err
 	}
 
-	m.db = db
+	m.setDB(db)
 
 	return nil
 }
@@ -105,7 +100,7 @@ func (m *memdbManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 // Retrieve is part of the implementation of the Manipulator interface.
 func (m *memdbManipulator) Retrieve(mctx manipulate.Context, object elemental.Identifiable) error {
 
-	txn := m.db.Txn(false)
+	txn := m.getDB().Txn(false)
 
 	raw, err := txn.First(object.Identity().Category, "id", object.Identifier())
 	if err != nil {
@@ -248,13 +243,13 @@ func (m *memdbManipulator) Abort(id manipulate.TransactionID) bool {
 func (m *memdbManipulator) txnForID(id manipulate.TransactionID) *memdb.Txn {
 
 	if id == "" {
-		return m.db.Txn(true)
+		return m.getDB().Txn(true)
 	}
 
 	txn := m.registeredTxnWithID(id)
 
 	if txn == nil {
-		txn = m.db.Txn(true)
+		txn = m.getDB().Txn(true)
 		m.registerTxn(id, txn)
 	}
 
@@ -398,7 +393,7 @@ func (m *memdbManipulator) retrieveIntersection(identity string, k string, value
 
 	existingItems := *items
 
-	txn := m.db.Txn(false)
+	txn := m.getDB().Txn(false)
 
 	if value == nil {
 		iterator, err = txn.Get(identity, k)
@@ -424,4 +419,19 @@ func (m *memdbManipulator) retrieveIntersection(identity string, k string, value
 	*items = combinedItems
 
 	return nil
+}
+
+func (m *memdbManipulator) getDB() *memdb.MemDB {
+
+	m.dbLock.RLock()
+	defer m.dbLock.RUnlock()
+
+	return m.db
+}
+
+func (m *memdbManipulator) setDB(db *memdb.MemDB) {
+
+	m.dbLock.Lock()
+	m.db = db
+	m.dbLock.Unlock()
 }
