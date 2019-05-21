@@ -12,11 +12,15 @@
 package maniphttp
 
 import (
+	"context"
 	"crypto/tls"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/internal/tracing"
 )
 
 // ExtractCredentials extracts the username and password from the given manipulator.
@@ -95,4 +99,30 @@ func SetGlobalHeaders(manipulator manipulate.Manipulator, headers http.Header) {
 	}
 
 	m.globalHeaders = headers
+}
+
+// Direct sends allows to send direct bytes to using the given manipulator.
+// This is only useful in some extremenly particular scenario, like fuzzing.
+func DirectSend(manipulator manipulate.Manipulator, mctx manipulate.Context, endpoint string, method string, body []byte) (*http.Response, error) {
+
+	m, ok := manipulator.(*httpManipulator)
+	if !ok {
+		panic("You can only pass a HTTP Manipulator to DirectSend")
+	}
+
+	if mctx == nil {
+		mctx = manipulate.NewContext(context.Background())
+	}
+
+	if !strings.HasPrefix(endpoint, "/") {
+		endpoint = "/" + endpoint
+	}
+
+	v := m.computeVersion(0, mctx.Version())
+	url := m.url + "/" + v + endpoint
+
+	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.directsend"))
+	defer sp.Finish()
+
+	return m.send(mctx, method, url, body, sp, 0)
 }
