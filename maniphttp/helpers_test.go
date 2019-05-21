@@ -241,7 +241,7 @@ func TestManiphttp_DirectSend(t *testing.T) {
 		Convey("When I call DirectSend", func() {
 
 			Convey("Then it should panic", func() {
-				So(func() { DirectSend(m, nil, "", http.MethodPost, nil) }, ShouldPanicWith, "You can only pass a HTTP Manipulator to DirectSend")
+				So(func() { _, _ = DirectSend(m, nil, "", http.MethodPost, nil) }, ShouldPanicWith, "You can only pass a HTTP Manipulator to DirectSend")
 			})
 		})
 	})
