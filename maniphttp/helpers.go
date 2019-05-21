@@ -101,8 +101,8 @@ func SetGlobalHeaders(manipulator manipulate.Manipulator, headers http.Header) {
 	m.globalHeaders = headers
 }
 
-// Direct sends allows to send direct bytes to using the given manipulator.
-// This is only useful in some extremenly particular scenario, like fuzzing.
+// DirectSend allows to send direct bytes using the given manipulator.
+// This is only useful in extremely particular scenario, like fuzzing.
 func DirectSend(manipulator manipulate.Manipulator, mctx manipulate.Context, endpoint string, method string, body []byte) (*http.Response, error) {
 
 	m, ok := manipulator.(*httpManipulator)
