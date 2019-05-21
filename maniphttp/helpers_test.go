@@ -12,14 +12,18 @@
 package maniphttp
 
 import (
+	"context"
 	"crypto/tls"
+	"fmt"
+	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 
-	"go.aporeto.io/manipulate/maniptest"
-
 	. "github.com/smartystreets/goconvey/convey"
+	"go.aporeto.io/manipulate/maniptest"
 )
 
 func TestManiphttp_ExtractCredentials(t *testing.T) {
@@ -183,6 +187,61 @@ func TestManiphttp_SetGlobalHeaders(t *testing.T) {
 
 			Convey("Then it should panic", func() {
 				So(func() { SetGlobalHeaders(m, nil) }, ShouldPanicWith, "You can only pass a HTTP Manipulator to SetGlobalHeaders")
+			})
+		})
+	})
+}
+
+func TestManiphttp_DirectSend(t *testing.T) {
+
+	Convey("Given I have a manipulator and a test server", t, func() {
+
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+			body, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				panic(err)
+			}
+
+			if string(body) != "hello" {
+				panic("wrong body recieved.")
+			}
+
+			if !strings.HasSuffix(r.RequestURI, "/toto") {
+				panic(fmt.Sprintf("wrong url: %s", r.RequestURI))
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			fmt.Fprint(w, `"bonjour"`)
+		}))
+		defer ts.Close()
+
+		m, _ := New(context.Background(), ts.URL)
+
+		Convey("When I call DirectSend", func() {
+
+			resp, err := DirectSend(m, nil, "toto", http.MethodPost, []byte("hello"))
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then the response should be correct", func() {
+				So(resp, ShouldNotBeNil)
+				So(resp.StatusCode, ShouldEqual, http.StatusCreated)
+			})
+		})
+	})
+
+	Convey("Given I have a non http manipulator", t, func() {
+
+		m := maniptest.NewTestManipulator()
+
+		Convey("When I call DirectSend", func() {
+
+			Convey("Then it should panic", func() {
+				So(func() { _, _ = DirectSend(m, nil, "", http.MethodPost, nil) }, ShouldPanicWith, "You can only pass a HTTP Manipulator to DirectSend")
 			})
 		})
 	})
