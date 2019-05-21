@@ -459,6 +459,10 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.
 	for _, field := range mctx.Fields() {
 		request.Header.Add("X-Fields", field)
 	}
+
+	if v := mctx.ClientIP(); v != "" {
+		request.Header.Set("X-Forwarded-For", v)
+	}
 }
 
 func (s *httpManipulator) readHeaders(response *http.Response, mctx manipulate.Context) {
