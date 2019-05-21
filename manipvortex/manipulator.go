@@ -142,8 +142,8 @@ func New(
 // db.
 func (m *vortexManipulator) Flush(ctx context.Context) error {
 
-	m.Lock()
-	defer m.Unlock()
+	m.RLock()
+	defer m.RUnlock()
 
 	if m.prefetcher != nil {
 		m.prefetcher.Flush()
