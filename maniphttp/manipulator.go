@@ -17,6 +17,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -31,6 +32,11 @@ import (
 	"go.aporeto.io/manipulate/internal/idempotency"
 	"go.aporeto.io/manipulate/internal/snip"
 	"go.aporeto.io/manipulate/internal/tracing"
+)
+
+const (
+	defaultGlobalContextTimeout  = 60 * time.Second
+	defaultRequestContextTimeout = 20 * time.Second
 )
 
 type httpManipulator struct {
@@ -127,7 +133,9 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.Identifiables) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
+		defer cancel()
+		mctx = manipulate.NewContext(ctx)
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.retrieve_many.%s", dest.Identity().Category))
@@ -140,7 +148,7 @@ func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.I
 		return manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	response, err := s.send(mctx, http.MethodGet, url, nil, sp, 0)
+	response, err := s.send(mctx, http.MethodGet, url, nil, sp, 0, nil)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -186,7 +194,7 @@ func (s *httpManipulator) Retrieve(mctx manipulate.Context, object elemental.Ide
 		return manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	response, err := s.send(mctx, http.MethodGet, url, nil, sp, 0)
+	response, err := s.send(mctx, http.MethodGet, url, nil, sp, 0, nil)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -213,7 +221,9 @@ func (s *httpManipulator) Retrieve(mctx manipulate.Context, object elemental.Ide
 func (s *httpManipulator) Create(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
+		defer cancel()
+		mctx = manipulate.NewContext(ctx)
 	}
 
 	kmctx, _ := mctx.(idempotency.Keyer)
@@ -239,7 +249,7 @@ func (s *httpManipulator) Create(mctx manipulate.Context, object elemental.Ident
 		return manipulate.NewErrCannotMarshal(err.Error())
 	}
 
-	response, err := s.send(mctx, http.MethodPost, url, data, sp, 0)
+	response, err := s.send(mctx, http.MethodPost, url, data, sp, 0, nil)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -270,7 +280,9 @@ func (s *httpManipulator) Create(mctx manipulate.Context, object elemental.Ident
 func (s *httpManipulator) Update(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
+		defer cancel()
+		mctx = manipulate.NewContext(ctx)
 	}
 
 	kmctx, _ := mctx.(idempotency.Keyer)
@@ -301,7 +313,7 @@ func (s *httpManipulator) Update(mctx manipulate.Context, object elemental.Ident
 		return manipulate.NewErrCannotMarshal(err.Error())
 	}
 
-	response, err := s.send(mctx, method, url, data, sp, 0)
+	response, err := s.send(mctx, method, url, data, sp, 0, nil)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -332,7 +344,9 @@ func (s *httpManipulator) Update(mctx manipulate.Context, object elemental.Ident
 func (s *httpManipulator) Delete(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
+		defer cancel()
+		mctx = manipulate.NewContext(ctx)
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.delete.object.%s", object.Identity().Name))
@@ -346,7 +360,7 @@ func (s *httpManipulator) Delete(mctx manipulate.Context, object elemental.Ident
 		return manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	response, err := s.send(mctx, http.MethodDelete, url, nil, sp, 0)
+	response, err := s.send(mctx, http.MethodDelete, url, nil, sp, 0, nil)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -377,7 +391,9 @@ func (s *httpManipulator) DeleteMany(mctx manipulate.Context, identity elemental
 func (s *httpManipulator) Count(mctx manipulate.Context, identity elemental.Identity) (int, error) {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
+		defer cancel()
+		mctx = manipulate.NewContext(ctx)
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.count.%s", identity.Category))
@@ -390,7 +406,7 @@ func (s *httpManipulator) Count(mctx manipulate.Context, identity elemental.Iden
 		return 0, manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	if _, err = s.send(mctx, http.MethodHead, url, nil, sp, 0); err != nil {
+	if _, err = s.send(mctx, http.MethodHead, url, nil, sp, 0, nil); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return 0, err
@@ -526,7 +542,7 @@ func (s *httpManipulator) getURLForChildrenIdentity(
 	return url + "/" + childrenIdentity.Category, nil
 }
 
-func (s *httpManipulator) send(mctx manipulate.Context, method string, requrl string, body []byte, sp opentracing.Span, try int) (*http.Response, error) {
+func (s *httpManipulator) send(mctx manipulate.Context, method string, requrl string, body []byte, sp opentracing.Span, try int, lastError error) (*http.Response, error) {
 
 	request, err := http.NewRequest(method, requrl, bytes.NewBuffer(body))
 	if err != nil {
@@ -534,6 +550,7 @@ func (s *httpManipulator) send(mctx manipulate.Context, method string, requrl st
 		sp.LogFields(log.Error(err))
 		return nil, manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
+
 	if err = addQueryParameters(request, mctx); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -546,30 +563,55 @@ func (s *httpManipulator) send(mctx manipulate.Context, method string, requrl st
 		return nil, err
 	}
 
+	rctx := mctx.Context()
+	if rt := mctx.RequestTimeout(); rt != 0 {
+		var cancel context.CancelFunc
+		rctx, cancel = context.WithTimeout(mctx.Context(), rt)
+		defer cancel()
+	}
+
 	retryErrCom := func(resp *http.Response, err error) (*http.Response, error) {
 
 		if s.disableAutoRetry {
 			return resp, err
 		}
 
-		if try >= 3 {
-			return resp, err
+		lerr := err
+		if lastError != nil {
+			lerr = lastError
 		}
-		<-time.After(time.Duration(try) * time.Second)
+
+		if rf := mctx.RetryFunc(); rf != nil {
+			if rerr := rf(try, lerr); rerr != nil {
+				return resp, rerr
+			}
+		}
+
+		deadline, ok := mctx.Context().Deadline()
+		if ok && deadline.Before(time.Now()) {
+			return resp, lerr
+		}
+
+		<-time.After(nextBackoff(try))
 		try++
-		return s.send(mctx, method, requrl, body, sp, try)
+
+		return s.send(mctx, method, requrl, body, sp, try, err)
 	}
 
 	s.prepareHeaders(request, mctx)
 
-	request = request.WithContext(mctx.Context())
-
-	response, err := s.client.Do(request)
+	response, err := s.client.Do(request.WithContext(rctx))
 	if err != nil {
 		if uerr, ok := err.(*url.Error); ok {
 			switch uerr.Err.(type) {
 			case x509.UnknownAuthorityError, x509.CertificateInvalidError, x509.HostnameError:
 				return response, manipulate.NewErrTLS(err.Error())
+			}
+		}
+
+		if nerr, ok := err.(net.Error); ok {
+			if !nerr.Temporary() && !nerr.Timeout() {
+				return response, manipulate.NewErrCannotExecuteQuery(nerr.Error())
 			}
 		}
 
@@ -601,7 +643,7 @@ func (s *httpManipulator) send(mctx manipulate.Context, method string, requrl st
 		token, err := s.tokenManager.Issue(mctx.Context())
 		if err == nil {
 			s.setPassword(token)
-			return s.send(mctx, method, requrl, body, sp, try)
+			return s.send(mctx, method, requrl, body, sp, try, err)
 		}
 	}
 

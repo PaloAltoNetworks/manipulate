@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"net"
 	"net/http"
 	"strconv"
@@ -144,9 +145,8 @@ func getDefaultTLSConfig() *tls.Config {
 func getDefaultTransport(url string) (*http.Transport, string) {
 
 	dialer := (&net.Dialer{
-		Timeout:   30 * time.Second,
+		Timeout:   5 * time.Second,
 		KeepAlive: 30 * time.Second,
-		DualStack: true,
 	}).DialContext
 
 	outURL := url
@@ -171,7 +171,7 @@ func getDefaultTransport(url string) (*http.Transport, string) {
 		DialContext:           dialer,
 		MaxIdleConns:          100,
 		MaxIdleConnsPerHost:   50,
-		IdleConnTimeout:       90 * time.Second,
+		IdleConnTimeout:       120 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}, outURL
@@ -179,6 +179,13 @@ func getDefaultTransport(url string) (*http.Transport, string) {
 
 func getDefaultClient() *http.Client {
 	return &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: 360 * time.Second,
 	}
+}
+
+const maxBackoff = 8000
+
+func nextBackoff(try int) time.Duration {
+
+	return time.Duration(math.Min(math.Pow(2.0, float64(try))-1, maxBackoff)) * time.Millisecond
 }

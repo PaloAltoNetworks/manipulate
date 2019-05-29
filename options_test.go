@@ -15,6 +15,7 @@ import (
 	"context"
 	"net/url"
 	"testing"
+	"time"
 
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
@@ -122,5 +123,16 @@ func TestManipulate_ContextOption(t *testing.T) {
 	Convey("Calling ContextOptionClientIP should work", t, func() {
 		ContextOptionClientIP("10.1.1.1")(mctx.(*mcontext))
 		So(mctx.ClientIP(), ShouldEqual, "10.1.1.1")
+	})
+
+	Convey("Calling ContextOptionRequestTimeout should work", t, func() {
+		ContextOptionRequestTimeout(10 * time.Hour)(mctx.(*mcontext))
+		So(mctx.RequestTimeout(), ShouldEqual, 10*time.Hour)
+	})
+
+	Convey("Calling ContextOptionRetryFunc should work", t, func() {
+		f := func(int, error) error { return nil }
+		ContextOptionRetryFunc(f)(mctx.(*mcontext))
+		So(mctx.RetryFunc(), ShouldEqual, f)
 	})
 }

@@ -124,5 +124,5 @@ func DirectSend(manipulator manipulate.Manipulator, mctx manipulate.Context, end
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.directsend"))
 	defer sp.Finish()
 
-	return m.send(mctx, method, url, body, sp, 0)
+	return m.send(mctx, method, url, body, sp, 0, nil)
 }

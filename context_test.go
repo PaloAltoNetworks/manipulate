@@ -15,6 +15,7 @@ import (
 	"context"
 	"net/url"
 	"testing"
+	"time"
 
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
@@ -121,6 +122,8 @@ func TestContext_Derive(t *testing.T) {
 
 	Convey("Given I have a context", t, func() {
 
+		rfunc := func(int, error) error { return nil }
+
 		mctx := &mcontext{
 			page:                 1,
 			pageSize:             2,
@@ -139,7 +142,9 @@ func TestContext_Derive(t *testing.T) {
 			order:                []string{"a", "b"},
 			fields:               []string{"a", "b"},
 			ctx:                  context.Background(),
+			requestTimeout:       42 * time.Second,
 			idempotencyKey:       "ikey",
+			retryFunc:            rfunc,
 		}
 
 		Convey("When I Derive without option", func() {
@@ -165,10 +170,12 @@ func TestContext_Derive(t *testing.T) {
 				So(copy.Fields(), ShouldResemble, mctx.fields)
 				So(copy.ctx, ShouldEqual, mctx.ctx)
 				So(copy.IdempotencyKey(), ShouldEqual, "")
+				So(copy.RequestTimeout(), ShouldEqual, 42*time.Second)
+				So(copy.RetryFunc(), ShouldEqual, rfunc)
 			})
 		})
 
-		Convey("When I Derive without with options", func() {
+		Convey("When I Derive with options", func() {
 
 			copy := mctx.Derive(
 				ContextOptionPage(11, 12),
@@ -194,6 +201,8 @@ func TestContext_Derive(t *testing.T) {
 				So(copy.Fields(), ShouldResemble, mctx.fields)
 				So(copy.ctx, ShouldEqual, mctx.ctx)
 				So(copy.IdempotencyKey(), ShouldEqual, "")
+				So(copy.RequestTimeout(), ShouldEqual, mctx.requestTimeout)
+				So(copy.RetryFunc(), ShouldEqual, rfunc)
 			})
 		})
 	})

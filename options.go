@@ -13,6 +13,7 @@ package manipulate
 
 import (
 	"net/url"
+	"time"
 
 	"go.aporeto.io/elemental"
 )
@@ -147,5 +148,22 @@ func ContextOptionToken(token string) ContextOption {
 func ContextOptionClientIP(clientIP string) ContextOption {
 	return func(c *mcontext) {
 		c.clientIP = clientIP
+	}
+}
+
+// ContextOptionRequestTimeout sets the individual request timeout.
+func ContextOptionRequestTimeout(requestTimeout time.Duration) ContextOption {
+	return func(c *mcontext) {
+		c.requestTimeout = requestTimeout
+	}
+}
+
+// ContextOptionRetryFunc sets the retry function.
+// This function will be called on every communication error, and will be passed
+// the try number and the error. If it itself return an error, retrying will stop and
+// that error will be returned from the manipulator operation.
+func ContextOptionRetryFunc(f func(int, error) error) ContextOption {
+	return func(c *mcontext) {
+		c.retryFunc = f
 	}
 }

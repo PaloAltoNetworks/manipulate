@@ -15,6 +15,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"time"
 
 	"go.aporeto.io/elemental"
 )
@@ -76,6 +77,8 @@ type Context interface {
 	Messages() []string
 	SetMessages([]string)
 	ClientIP() string
+	RequestTimeout() time.Duration
+	RetryFunc() func(int, error) error
 
 	fmt.Stringer
 }
@@ -117,6 +120,7 @@ type mcontext struct {
 	externalTrackingType string
 	order                []string
 	ctx                  context.Context
+	requestTimeout       time.Duration
 	fields               []string
 	writeConsistency     WriteConsistency
 	readConsistency      ReadConsistency
@@ -125,6 +129,7 @@ type mcontext struct {
 	username             string
 	password             string
 	clientIP             string
+	retryFunc            func(int, error) error
 }
 
 // Count returns the count
@@ -207,6 +212,14 @@ func (c *mcontext) Credentials() (string, string) { return c.username, c.passwor
 // Headers returns the optional headers.
 func (c *mcontext) ClientIP() string { return c.clientIP }
 
+// RequestTimeout returns the timeout of individual requests during retries.
+func (c *mcontext) RequestTimeout() time.Duration { return c.requestTimeout }
+
+// RetryFunc returns the retry function that is called when a retry occurs.
+// If this function returns an error, retrying stops and the returned error
+// returned by the manipulate operation.
+func (c *mcontext) RetryFunc() func(int, error) error { return c.retryFunc }
+
 // SetDelegationToken sets the delegation token for this context.
 func (c *mcontext) SetCredentials(username, password string) {
 	c.username = username
@@ -242,6 +255,8 @@ func (c *mcontext) Derive(options ...ContextOption) Context {
 		ctx:                  c.ctx,
 		username:             c.username,
 		password:             c.password,
+		requestTimeout:       c.requestTimeout,
+		retryFunc:            c.retryFunc,
 	}
 
 	for _, opt := range options {
