@@ -26,7 +26,6 @@ import (
 	"go.aporeto.io/manipulate/internal/idempotency"
 	"go.aporeto.io/manipulate/internal/tracing"
 	"go.aporeto.io/manipulate/maniptest"
-	// "go.aporeto.io/manipulate/maniptest"
 )
 
 func TestHTTP_NewSHTTPm(t *testing.T) {

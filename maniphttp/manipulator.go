@@ -592,7 +592,15 @@ func (s *httpManipulator) send(mctx manipulate.Context, method string, requrl st
 			return resp, lerr
 		}
 
-		<-time.After(nextBackoff(try))
+		wait := nextBackoff(try)
+		now := time.Now()
+		remaining := deadline.Sub(now)
+
+		if wait > remaining {
+			wait = remaining
+		}
+
+		<-time.After(wait)
 		try++
 
 		return s.send(mctx, method, requrl, body, sp, try, err)
@@ -602,20 +610,23 @@ func (s *httpManipulator) send(mctx manipulate.Context, method string, requrl st
 
 	response, err := s.client.Do(request.WithContext(rctx))
 	if err != nil {
-		if uerr, ok := err.(*url.Error); ok {
-			switch uerr.Err.(type) {
-			case x509.UnknownAuthorityError, x509.CertificateInvalidError, x509.HostnameError:
-				return response, manipulate.NewErrTLS(err.Error())
-			}
-		}
 
-		if nerr, ok := err.(net.Error); ok {
-			if !nerr.Temporary() && !nerr.Timeout() {
-				return response, manipulate.NewErrCannotExecuteQuery(nerr.Error())
-			}
-		}
+		// Per doc, client.Do always returns an *url.Error.
+		uerr := err.(*url.Error)
 
-		return retryErrCom(response, manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error()))
+		switch uerr.Err.(type) {
+
+		case x509.UnknownAuthorityError,
+			x509.CertificateInvalidError,
+			x509.HostnameError:
+			return response, manipulate.NewErrTLS(err.Error())
+
+		case net.Error:
+			return retryErrCom(response, manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error()))
+
+		default:
+			return response, manipulate.NewErrCannotExecuteQuery(err.Error())
+		}
 	}
 
 	if response.StatusCode == http.StatusBadGateway {
