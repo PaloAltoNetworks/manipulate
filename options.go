@@ -13,7 +13,6 @@ package manipulate
 
 import (
 	"net/url"
-	"time"
 
 	"go.aporeto.io/elemental"
 )
@@ -148,13 +147,6 @@ func ContextOptionToken(token string) ContextOption {
 func ContextOptionClientIP(clientIP string) ContextOption {
 	return func(c *mcontext) {
 		c.clientIP = clientIP
-	}
-}
-
-// ContextOptionRequestTimeout sets the individual request timeout.
-func ContextOptionRequestTimeout(requestTimeout time.Duration) ContextOption {
-	return func(c *mcontext) {
-		c.requestTimeout = requestTimeout
 	}
 }
 

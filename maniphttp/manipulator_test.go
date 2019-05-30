@@ -980,7 +980,7 @@ func TestHTTP_send(t *testing.T) {
 
 		Convey("When I call send", func() {
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(context.Background()), http.MethodPost, "nop", nil, sp, 0, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(context.Background()), http.MethodPost, "nop", nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -999,7 +999,7 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 0)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, "https://google.com", nil, sp, 0, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, "https://google.com", nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -1025,12 +1025,12 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
-				So(err.Error(), ShouldEqual, "Cannot communicate: error 408 (): nope: boom")
+				So(err.Error(), ShouldEqual, "Cannot communicate: Request Timeout")
 			})
 		})
 	})
@@ -1065,16 +1065,15 @@ func TestHTTP_send(t *testing.T) {
 				http.MethodPost,
 				ts.URL,
 				nil,
-				sp,
-				0,
 				nil,
+				sp,
 			)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
-				So(err.Error(), ShouldEqual, "Cannot communicate: error 408 (): nope: boom")
-				So(t, ShouldEqual, 10)
+				So(err.Error(), ShouldEqual, "Cannot communicate: Request Timeout")
+				So(t, ShouldBeGreaterThan, 1)
 				So(rerr.Error(), ShouldEqual, err.Error())
 			})
 		})
@@ -1111,9 +1110,8 @@ func TestHTTP_send(t *testing.T) {
 				http.MethodPost,
 				ts.URL,
 				nil,
-				sp,
-				0,
 				nil,
+				sp,
 			)
 
 			Convey("Then err should not be nil", func() {
@@ -1139,31 +1137,7 @@ func TestHTTP_send(t *testing.T) {
 			defer cancel()
 
 			_, err := m.(*httpManipulator).send(
-				manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0, nil)
-
-			Convey("Then err should not be nil", func() {
-				So(err, ShouldNotBeNil)
-				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
-				So(err.Error(), ShouldEqual, fmt.Sprintf("Cannot communicate: Post %s: context deadline exceeded", ts.URL))
-			})
-		})
-	})
-
-	Convey("Given I have a server never returning an reply and using a requesttimeout", t, func() {
-
-		m, _ := New(context.Background(), "toto.com")
-
-		Convey("When I call send", func() {
-
-			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				time.Sleep(2 * time.Second)
-			}))
-			defer ts.Close()
-
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-			defer cancel()
-
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx, manipulate.ContextOptionRequestTimeout(500*time.Millisecond)), http.MethodPost, ts.URL, nil, sp, 0, nil)
+				manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -1189,7 +1163,7 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -1215,7 +1189,7 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -1241,7 +1215,7 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -1267,12 +1241,12 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrTooManyRequests{})
-				So(err.Error(), ShouldEqual, "Too many requests: error 429 (): nope: boom")
+				So(err.Error(), ShouldEqual, "Too many requests: Too Many Requests")
 			})
 		})
 	})
@@ -1293,7 +1267,7 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -1326,7 +1300,7 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
@@ -1350,7 +1324,7 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -1376,7 +1350,7 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -1403,7 +1377,7 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, sp, 0, nil)
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)

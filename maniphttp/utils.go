@@ -177,6 +177,6 @@ func getDefaultTransport(url string) (*http.Transport, string) {
 
 func getDefaultClient() *http.Client {
 	return &http.Client{
-		Timeout: 360 * time.Second,
+		Timeout: 3600 * time.Second,
 	}
 }

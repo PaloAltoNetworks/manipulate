@@ -15,7 +15,6 @@ import (
 	"context"
 	"net/url"
 	"testing"
-	"time"
 
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
@@ -142,7 +141,6 @@ func TestContext_Derive(t *testing.T) {
 			order:                []string{"a", "b"},
 			fields:               []string{"a", "b"},
 			ctx:                  context.Background(),
-			requestTimeout:       42 * time.Second,
 			idempotencyKey:       "ikey",
 			retryFunc:            rfunc,
 		}
@@ -170,7 +168,6 @@ func TestContext_Derive(t *testing.T) {
 				So(copy.Fields(), ShouldResemble, mctx.fields)
 				So(copy.ctx, ShouldEqual, mctx.ctx)
 				So(copy.IdempotencyKey(), ShouldEqual, "")
-				So(copy.RequestTimeout(), ShouldEqual, 42*time.Second)
 				So(copy.RetryFunc(), ShouldEqual, rfunc)
 			})
 		})
@@ -201,7 +198,6 @@ func TestContext_Derive(t *testing.T) {
 				So(copy.Fields(), ShouldResemble, mctx.fields)
 				So(copy.ctx, ShouldEqual, mctx.ctx)
 				So(copy.IdempotencyKey(), ShouldEqual, "")
-				So(copy.RequestTimeout(), ShouldEqual, mctx.requestTimeout)
 				So(copy.RetryFunc(), ShouldEqual, rfunc)
 			})
 		})

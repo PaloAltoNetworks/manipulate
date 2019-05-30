@@ -17,6 +17,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -36,7 +38,7 @@ import (
 )
 
 const (
-	defaultGlobalContextTimeout = 120 * time.Second
+	defaultGlobalContextTimeout = 60 * time.Second
 )
 
 type httpManipulator struct {
@@ -149,7 +151,7 @@ func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.I
 		return manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	response, err := s.send(mctx, http.MethodGet, url, nil, sp, 0, nil)
+	response, err := s.send(mctx, http.MethodGet, url, nil, dest, sp)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -158,15 +160,6 @@ func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.I
 
 	if response.StatusCode == http.StatusNoContent || response.ContentLength == 0 {
 		return nil
-	}
-
-	if response.StatusCode != http.StatusNoContent {
-		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response, dest); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return err
-		}
 	}
 
 	// backport all default values that are empty.
@@ -195,20 +188,15 @@ func (s *httpManipulator) Retrieve(mctx manipulate.Context, object elemental.Ide
 		return manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	response, err := s.send(mctx, http.MethodGet, url, nil, sp, 0, nil)
+	response, err := s.send(mctx, http.MethodGet, url, nil, object, sp)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
 	}
 
-	if response.StatusCode != http.StatusNoContent {
-		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response, object); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return err
-		}
+	if response.StatusCode == http.StatusNoContent {
+		return nil
 	}
 
 	// backport all default values that are empty.
@@ -250,20 +238,15 @@ func (s *httpManipulator) Create(mctx manipulate.Context, object elemental.Ident
 		return manipulate.NewErrCannotMarshal(err.Error())
 	}
 
-	response, err := s.send(mctx, http.MethodPost, url, data, sp, 0, nil)
+	response, err := s.send(mctx, http.MethodPost, url, data, object, sp)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
 	}
 
-	if response.StatusCode != http.StatusNoContent {
-		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response, object); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return err
-		}
+	if response.StatusCode == http.StatusNoContent {
+		return nil
 	}
 
 	// backport all default values that are empty.
@@ -314,20 +297,15 @@ func (s *httpManipulator) Update(mctx manipulate.Context, object elemental.Ident
 		return manipulate.NewErrCannotMarshal(err.Error())
 	}
 
-	response, err := s.send(mctx, method, url, data, sp, 0, nil)
+	response, err := s.send(mctx, method, url, data, object, sp)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
 	}
 
-	if response.StatusCode != http.StatusNoContent {
-		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response, object); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return err
-		}
+	if response.StatusCode == http.StatusNoContent {
+		return nil
 	}
 
 	// backport all default values that are empty.
@@ -361,20 +339,15 @@ func (s *httpManipulator) Delete(mctx manipulate.Context, object elemental.Ident
 		return manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	response, err := s.send(mctx, http.MethodDelete, url, nil, sp, 0, nil)
+	response, err := s.send(mctx, http.MethodDelete, url, nil, object, sp)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
 	}
 
-	if response.StatusCode != http.StatusNoContent {
-		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response, object); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return err
-		}
+	if response.StatusCode == http.StatusNoContent {
+		return nil
 	}
 
 	// backport all default values that are empty.
@@ -407,7 +380,7 @@ func (s *httpManipulator) Count(mctx manipulate.Context, identity elemental.Iden
 		return 0, manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	if _, err = s.send(mctx, http.MethodHead, url, nil, sp, 0, nil); err != nil {
+	if _, err = s.send(mctx, http.MethodHead, url, nil, nil, sp); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return 0, err
@@ -543,147 +516,176 @@ func (s *httpManipulator) getURLForChildrenIdentity(
 	return url + "/" + childrenIdentity.Category, nil
 }
 
-func (s *httpManipulator) send(mctx manipulate.Context, method string, requrl string, body []byte, sp opentracing.Span, try int, lastError error) (*http.Response, error) {
+func (s *httpManipulator) send(
+	mctx manipulate.Context,
+	method string,
+	requrl string,
+	body []byte,
+	dest interface{},
+	sp opentracing.Span,
+) (*http.Response, error) {
 
-	request, err := http.NewRequest(method, requrl, bytes.NewBuffer(body))
-	if err != nil {
-		sp.SetTag("error", true)
-		sp.LogFields(log.Error(err))
-		return nil, manipulate.NewErrCannotExecuteQuery(err.Error())
-	}
+	newRequest := func() (*http.Request, error) {
 
-	if err = addQueryParameters(request, mctx); err != nil {
-		sp.SetTag("error", true)
-		sp.LogFields(log.Error(err))
-		return nil, err
-	}
-
-	if err = sp.Tracer().Inject(sp.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(request.Header)); err != nil {
-		sp.SetTag("error", true)
-		sp.LogFields(log.Error(err))
-		return nil, err
-	}
-
-	rctx := mctx.Context()
-	if rt := mctx.RequestTimeout(); rt != 0 {
-		var cancel context.CancelFunc
-		rctx, cancel = context.WithTimeout(mctx.Context(), rt)
-		defer cancel()
-	}
-
-	retryErrCom := func(resp *http.Response, err error) (*http.Response, error) {
-
-		if s.disableAutoRetry {
-			return resp, err
+		req, err := http.NewRequest(method, requrl, bytes.NewBuffer(body))
+		if err != nil {
+			return nil, manipulate.NewErrCannotBuildQuery(err.Error())
 		}
 
-		lerr := err
-		if lastError != nil {
-			lerr = lastError
-		}
-
-		if rf := mctx.RetryFunc(); rf != nil {
-			if rerr := rf(try, lerr); rerr != nil {
-				return resp, rerr
-			}
-		} else if s.defaultRetryFunc != nil {
-			if rerr := s.defaultRetryFunc(try, lerr); rerr != nil {
-				return resp, rerr
-			}
-		}
-
-		deadline, ok := mctx.Context().Deadline()
-		if ok && deadline.Before(time.Now()) {
-			return resp, lerr
-		}
-
-		<-time.After(backoff.Next(try, deadline))
-		try++
-
-		return s.send(mctx, method, requrl, body, sp, try, err)
-	}
-
-	s.prepareHeaders(request, mctx)
-
-	response, err := s.client.Do(request.WithContext(rctx))
-	if err != nil {
-
-		// Per doc, client.Do always returns an *url.Error.
-		uerr := err.(*url.Error)
-
-		switch uerr.Err.(type) {
-
-		case x509.UnknownAuthorityError,
-			x509.CertificateInvalidError,
-			x509.HostnameError:
-			return response, manipulate.NewErrTLS(err.Error())
-
-		case net.Error:
-			return retryErrCom(response, manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error()))
-
-		default:
-			return response, manipulate.NewErrCannotExecuteQuery(err.Error())
-		}
-	}
-
-	if response.StatusCode == http.StatusBadGateway {
-		return retryErrCom(response, manipulate.NewErrCannotCommunicate("Bad gateway"))
-	}
-
-	if response.StatusCode == http.StatusServiceUnavailable {
-		return retryErrCom(response, manipulate.NewErrCannotCommunicate("Service unavailable"))
-	}
-
-	if response.StatusCode == http.StatusGatewayTimeout {
-		return retryErrCom(response, manipulate.NewErrCannotCommunicate("Gateway timeout"))
-	}
-
-	if response.StatusCode == http.StatusLocked {
-		return retryErrCom(response, manipulate.NewErrLocked("The api has been locked down by the server."))
-	}
-
-	// If we get a forbidden or auth error, we try to renew the token and retry the request 3 times
-	if (response.StatusCode == http.StatusForbidden || response.StatusCode == http.StatusUnauthorized) && s.tokenManager != nil && try < 3 {
-
-		<-time.After(time.Duration(try) * time.Second)
-		try++
-
-		token, err := s.tokenManager.Issue(mctx.Context())
-		if err == nil {
-			s.setPassword(token)
-			return s.send(mctx, method, requrl, body, sp, try, err)
-		}
-	}
-
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-
-		es := elemental.Errors{}
-
-		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response, &es); err != nil {
+		if err = addQueryParameters(req, mctx); err != nil {
 			return nil, err
 		}
 
-		errs := elemental.NewErrors()
-
-		for _, e := range es {
-			errs = append(errs, e)
+		if err = sp.Tracer().Inject(sp.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(req.Header)); err != nil {
+			return nil, err
 		}
 
-		if response.StatusCode == http.StatusRequestTimeout {
-			return retryErrCom(response, manipulate.NewErrCannotCommunicate(errs.Error()))
-		}
-
-		if response.StatusCode == http.StatusTooManyRequests {
-			return retryErrCom(response, manipulate.NewErrTooManyRequests(errs.Error()))
-		}
-
-		return response, errs
+		return req.WithContext(mctx.Context()), nil
 	}
 
-	s.readHeaders(response, mctx)
+	var try int
+	var reauthTry int
+	var lastError error
 
-	return response, nil
+	for {
+
+		if lastError != nil {
+
+			if s.disableAutoRetry {
+				return nil, lastError
+			}
+
+			if rf := mctx.RetryFunc(); rf != nil {
+				if rerr := rf(try, lastError); rerr != nil {
+					return nil, rerr
+				}
+			} else if s.defaultRetryFunc != nil {
+				if rerr := s.defaultRetryFunc(try, lastError); rerr != nil {
+					return nil, rerr
+				}
+			}
+
+			deadline, ok := mctx.Context().Deadline()
+			if ok && deadline.Before(time.Now()) {
+				return nil, lastError
+			}
+
+			time.Sleep(backoff.Next(try, deadline))
+			try++
+		}
+
+		request, err := newRequest()
+		if err != nil {
+			return nil, err
+		}
+
+		s.prepareHeaders(request, mctx)
+
+		response, err := s.client.Do(request)
+		if err != nil {
+
+			// Per doc, client.Do always returns an *url.Error.
+			uerr := err.(*url.Error)
+
+			// We check for constant errors.
+			switch uerr.Err {
+
+			case context.DeadlineExceeded:
+				if lastError != nil {
+					return nil, lastError
+				}
+				return nil, manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
+
+			case io.ErrUnexpectedEOF, io.EOF:
+				lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
+				continue
+			}
+
+			// Then we check for error types.
+			switch uerr.Err.(type) {
+
+			case net.Error:
+				lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
+				continue
+
+			case x509.UnknownAuthorityError, x509.CertificateInvalidError, x509.HostnameError:
+				return nil, manipulate.NewErrTLS(err.Error())
+
+			default:
+				return nil, manipulate.NewErrCannotExecuteQuery(err.Error())
+			}
+		}
+
+		// We check for status codes that triggers a retry
+		switch response.StatusCode {
+
+		case http.StatusBadGateway:
+			lastError = manipulate.NewErrCannotCommunicate("Bad gateway")
+			continue
+
+		case http.StatusServiceUnavailable:
+			lastError = manipulate.NewErrCannotCommunicate("Service unavailable")
+			continue
+
+		case http.StatusGatewayTimeout:
+			lastError = manipulate.NewErrCannotCommunicate("Gateway timeout")
+			continue
+
+		case http.StatusLocked:
+			lastError = manipulate.NewErrLocked("The api has been locked down by the server.")
+			continue
+
+		case http.StatusRequestTimeout:
+			lastError = manipulate.NewErrCannotCommunicate("Request Timeout")
+			continue
+
+		case http.StatusTooManyRequests:
+			lastError = manipulate.NewErrTooManyRequests("Too Many Requests")
+			continue
+
+		case http.StatusForbidden, http.StatusUnauthorized:
+			if s.tokenManager != nil && reauthTry < 3 {
+
+				time.Sleep(time.Duration(reauthTry) * time.Second)
+				reauthTry++
+
+				token, err := s.tokenManager.Issue(mctx.Context())
+				if err == nil {
+					s.setPassword(token)
+					continue
+				}
+			}
+		}
+
+		s.readHeaders(response, mctx)
+
+		if response.StatusCode < 200 || response.StatusCode >= 300 {
+			errs := elemental.NewErrors()
+			if err := decodeData(response, &errs); err != nil {
+				return nil, err
+			}
+
+			return nil, errs
+		}
+
+		defer response.Body.Close() // nolint
+
+		// We check if we have no content
+		if response.StatusCode == http.StatusNoContent || response.ContentLength == 0 || dest == nil {
+			if _, err := io.Copy(ioutil.Discard, response.Body); err != nil {
+				panic(err)
+			}
+			return response, nil
+		}
+
+		if dest != nil {
+			if err := decodeData(response, dest); err != nil {
+				return nil, err
+			}
+		}
+
+		return response, nil
+	}
 }
 
 func (s *httpManipulator) registerRenewNotifier(id string, f func(string)) {
