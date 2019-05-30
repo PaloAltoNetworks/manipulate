@@ -12,13 +12,16 @@
 package manipmongo
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/manipulate"
 )
 
@@ -422,4 +425,159 @@ func Test_convertWriteConsistency(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRunQueryFunc(t *testing.T) {
+
+	Convey("Given I have query function that works", t, func() {
+
+		var try int
+		f := func() (interface{}, error) { return "hello", nil }
+		rf := func(i int, err error) error { try = i; return nil }
+
+		Convey("When I call runQueryFunc", func() {
+
+			out, err := runQueryFunc(
+				manipulate.NewContext(
+					context.Background(),
+					manipulate.ContextOptionRetryFunc(rf),
+				),
+				f,
+			)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then out should be correct", func() {
+				So(out, ShouldResemble, "hello")
+			})
+
+			Convey("Then t should be correct", func() {
+				So(try, ShouldEqual, 0)
+			})
+		})
+	})
+
+	Convey("Given I have query function that return an non comm error", t, func() {
+
+		f := func() (interface{}, error) { return nil, fmt.Errorf("boom") }
+
+		Convey("When I call runQueryFunc", func() {
+
+			out, err := runQueryFunc(
+				manipulate.NewContext(
+					context.Background(),
+				),
+				f,
+			)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "Unable to execute query: boom")
+			})
+
+			Convey("Then out should be correct", func() {
+				So(out, ShouldBeNil)
+			})
+
+		})
+	})
+
+	Convey("Given I have query function that returns a net.Error and works at second try", t, func() {
+
+		var try int
+		f := func() (interface{}, error) {
+			if try == 2 {
+				return "hello", nil
+			}
+			return nil, &net.OpError{Err: fmt.Errorf("hello")}
+		}
+
+		rf := func(i int, err error) error { try = i; return nil }
+
+		Convey("When I call runQueryFunc", func() {
+
+			out, err := runQueryFunc(
+				manipulate.NewContext(
+					context.Background(),
+					manipulate.ContextOptionRetryFunc(rf),
+				),
+				f,
+			)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then out should be correct", func() {
+				So(out, ShouldResemble, "hello")
+			})
+
+			Convey("Then t should be correct", func() {
+				So(try, ShouldEqual, 2)
+			})
+		})
+	})
+
+	Convey("Given I have query function that returns a net.Error and and a retry func that returns an error", t, func() {
+
+		f := func() (interface{}, error) {
+			return nil, &net.OpError{Err: fmt.Errorf("hello")}
+		}
+
+		rf := func(i int, err error) error { return fmt.Errorf("non: %s", err.Error()) }
+
+		Convey("When I call runQueryFunc", func() {
+
+			out, err := runQueryFunc(
+				manipulate.NewContext(
+					context.Background(),
+					manipulate.ContextOptionRetryFunc(rf),
+				),
+				f,
+			)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "non: Cannot communicate: : hello")
+			})
+
+			Convey("Then out should be correct", func() {
+				So(out, ShouldBeNil)
+			})
+		})
+	})
+
+	Convey("Given I have query function that returns a net.Error and never works", t, func() {
+
+		f := func() (interface{}, error) {
+			return nil, &net.OpError{Err: fmt.Errorf("hello")}
+		}
+
+		rf := func(i int, err error) error { return nil }
+
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+
+		Convey("When I call runQueryFunc", func() {
+
+			out, err := runQueryFunc(
+				manipulate.NewContext(
+					ctx,
+					manipulate.ContextOptionRetryFunc(rf),
+				),
+				f,
+			)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "Unable to execute query: context deadline exceeded")
+			})
+
+			Convey("Then out should be correct", func() {
+				So(out, ShouldBeNil)
+			})
+		})
+	})
 }

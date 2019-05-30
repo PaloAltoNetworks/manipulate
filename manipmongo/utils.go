@@ -81,7 +81,7 @@ func runQueryFunc(mctx manipulate.Context, f func() (interface{}, error)) (inter
 
 		deadline, ok := mctx.Context().Deadline()
 		if ok && deadline.Before(time.Now()) {
-			return nil, context.DeadlineExceeded
+			return nil, manipulate.NewErrCannotExecuteQuery(context.DeadlineExceeded.Error())
 		}
 
 		<-time.After(backoff.Next(try, deadline))
