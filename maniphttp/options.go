@@ -115,3 +115,12 @@ func OptionDefaultRetryFunc(f func(int, error) error) Option {
 		m.defaultRetryFunc = f
 	}
 }
+
+// OptionDisableCompression disables the gzip compression
+// in http transport. This only has effect if you don't set
+// a custom transport.
+func OptionDisableCompression(disabled bool) Option {
+	return func(m *httpManipulator) {
+		m.disableCompression = disabled
+	}
+}

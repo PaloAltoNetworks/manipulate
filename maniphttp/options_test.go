@@ -101,4 +101,10 @@ func TestManipHttp_Optionions(t *testing.T) {
 		OptionDefaultRetryFunc(f)(m)
 		So(m.defaultRetryFunc, ShouldEqual, f)
 	})
+
+	Convey("Calling OptionDisableCompression should work", t, func() {
+		m := &httpManipulator{}
+		OptionDisableCompression(true)(m)
+		So(m.disableCompression, ShouldEqual, true)
+	})
 }

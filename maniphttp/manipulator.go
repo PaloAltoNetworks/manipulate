@@ -18,7 +18,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -50,6 +49,7 @@ type httpManipulator struct {
 	renewNotifiers     map[string]func(string)
 	renewNotifiersLock *sync.RWMutex
 	disableAutoRetry   bool
+	disableCompression bool
 	defaultRetryFunc   func(int, error) error
 
 	// optionnable
@@ -91,6 +91,7 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 		if m.transport == nil {
 
 			m.transport, m.url = getDefaultTransport(url)
+			m.transport.DisableCompression = m.disableCompression
 
 			if m.tlsConfig == nil {
 				m.tlsConfig = getDefaultTLSConfig()
@@ -407,7 +408,6 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.
 
 	request.Header.Set("Content-Type", string(s.encoding))
 	request.Header.Set("Accept", string(s.encoding))
-	request.Header.Set("Accept-Encoding", "gzip")
 
 	if ns != "" {
 		request.Header.Set("X-Namespace", ns)
@@ -538,9 +538,10 @@ func (s *httpManipulator) send(
 	defer cancelCurrentRequest()
 
 	// Helpers to deal with closing the body of the current request
-	var bodyCloser io.Closer
+	var bodyCloser io.ReadCloser
 	closeCurrentBody := func() {
 		if bodyCloser != nil {
+			// io.Copy(ioutil.Discard, bodyCloser) // nolint
 			bodyCloser.Close()
 		}
 	}
@@ -690,11 +691,9 @@ func (s *httpManipulator) send(
 		// From now on, this is a success.
 		//
 
-		// If we have content, we drain the body
+		// If we have content, we return the response.
+		// The body will be drained by the defered call to closeCurrentBody().
 		if response.StatusCode == http.StatusNoContent || response.ContentLength == 0 || dest == nil {
-			if _, err := io.Copy(ioutil.Discard, response.Body); err != nil {
-				panic(err)
-			}
 			return response, nil
 		}
 
