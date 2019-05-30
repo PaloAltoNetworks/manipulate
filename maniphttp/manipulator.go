@@ -566,11 +566,13 @@ func (s *httpManipulator) send(
 		// We injects the header from mctx.
 		s.prepareHeaders(req, mctx)
 
-		// TODO: something smart here
-		ctx, cancel := context.WithTimeout(mctx.Context(), 30*time.Second)
-		cancelReq = cancel
+		return req.WithContext(mctx.Context()), nil
 
-		return req.WithContext(ctx), nil
+		// // TODO: something smart here
+		// ctx, cancel := context.WithTimeout(mctx.Context(), 30*time.Second)
+		// cancelReq = cancel
+
+		// return req.WithContext(ctx), nil
 	}
 
 	// Main retry loop
