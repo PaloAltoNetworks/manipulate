@@ -541,8 +541,7 @@ func (s *httpManipulator) send(
 	var bodyCloser io.ReadCloser
 	closeCurrentBody := func() {
 		if bodyCloser != nil {
-			// io.Copy(ioutil.Discard, bodyCloser) // nolint
-			bodyCloser.Close()
+			bodyCloser.Close() // nolint
 		}
 	}
 	defer closeCurrentBody()
