@@ -802,7 +802,7 @@ func TestHTTP_Create(t *testing.T) {
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusCreated)
+				w.WriteHeader(http.StatusOK)
 				fmt.Fprint(w, `{"ID": "zzz"}`)
 			}))
 			defer ts.Close()
@@ -866,7 +866,7 @@ func TestHTTP_Create(t *testing.T) {
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusCreated)
+				w.WriteHeader(http.StatusOK)
 				fmt.Fprint(w, `[{"bad"}]`)
 			}))
 			defer ts.Close()
