@@ -74,13 +74,7 @@ func IterFunc(
 
 		objects := identifiablesTemplate.Copy()
 
-		if err := Retry(
-			ctx,
-			func() error {
-				return manipulator.RetrieveMany(mctx.Derive(ContextOptionPage(page, blockSize)), objects)
-			},
-			nil,
-		); err != nil {
+		if err := manipulator.RetrieveMany(mctx.Derive(ContextOptionPage(page, blockSize)), objects); err != nil {
 			return fmt.Errorf("unable to retrieve objects for page %d: %s", page, err.Error())
 		}
 
