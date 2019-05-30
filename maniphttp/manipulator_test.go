@@ -1103,7 +1103,7 @@ func TestHTTP_send(t *testing.T) {
 					manipulate.ContextOptionRetryFunc(func(i int, e error) error {
 						t = i
 						if i == 3 {
-							return fmt.Errorf("bam!")
+							return fmt.Errorf("bam")
 						}
 						return nil
 					}),
@@ -1118,7 +1118,7 @@ func TestHTTP_send(t *testing.T) {
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "bam!")
+				So(err.Error(), ShouldEqual, "bam")
 				So(t, ShouldEqual, 3)
 			})
 		})
