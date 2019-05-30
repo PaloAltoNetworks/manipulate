@@ -29,14 +29,14 @@ import (
 	"github.com/opentracing/opentracing-go/log"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/internal/backoff"
 	"go.aporeto.io/manipulate/internal/idempotency"
 	"go.aporeto.io/manipulate/internal/snip"
 	"go.aporeto.io/manipulate/internal/tracing"
 )
 
 const (
-	defaultGlobalContextTimeout  = 60 * time.Second
-	defaultRequestContextTimeout = 20 * time.Second
+	defaultGlobalContextTimeout = 60 * time.Second
 )
 
 type httpManipulator struct {
@@ -592,15 +592,7 @@ func (s *httpManipulator) send(mctx manipulate.Context, method string, requrl st
 			return resp, lerr
 		}
 
-		wait := nextBackoff(try)
-		now := time.Now()
-		remaining := deadline.Sub(now)
-
-		if wait > remaining {
-			wait = remaining
-		}
-
-		<-time.After(wait)
+		<-time.After(backoff.Next(try, deadline))
 		try++
 
 		return s.send(mctx, method, requrl, body, sp, try, err)

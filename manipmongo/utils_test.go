@@ -12,6 +12,8 @@
 package manipmongo
 
 import (
+	"fmt"
+	"net"
 	"reflect"
 	"testing"
 
@@ -29,6 +31,16 @@ func Test_handleQueryError(t *testing.T) {
 		args      args
 		errString string
 	}{
+		{
+			"net error",
+			args{
+				&net.OpError{
+					Op:  "coucou",
+					Err: fmt.Errorf("network sucks"),
+				},
+			},
+			"Cannot communicate: coucou: network sucks",
+		},
 		{
 			"err not found",
 			args{

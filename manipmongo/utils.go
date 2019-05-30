@@ -12,11 +12,15 @@
 package manipmongo
 
 import (
+	"context"
+	"net"
 	"strings"
+	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/internal/backoff"
 )
 
 // invertSortKey eventually inverts the given sorting key.
@@ -53,7 +57,43 @@ func applyOrdering(order []string, inverted bool) []string {
 	return o
 }
 
+func runQueryFunc(mctx manipulate.Context, f func() (interface{}, error)) (interface{}, error) {
+
+	var try int
+
+	for {
+
+		out, err := f()
+		if err == nil {
+			return out, nil
+		}
+
+		err = handleQueryError(err)
+		if !manipulate.IsCannotCommunicateError(err) {
+			return out, err
+		}
+
+		if rf := mctx.RetryFunc(); rf != nil {
+			if rerr := rf(try, err); rerr != nil {
+				return nil, rerr
+			}
+		}
+
+		deadline, ok := mctx.Context().Deadline()
+		if ok && deadline.Before(time.Now()) {
+			return nil, context.DeadlineExceeded
+		}
+
+		<-time.After(backoff.Next(try, deadline))
+		try++
+	}
+}
+
 func handleQueryError(err error) error {
+
+	if _, ok := err.(net.Error); ok {
+		return manipulate.NewErrCannotCommunicate(err.Error())
+	}
 
 	if err == mgo.ErrNotFound {
 		return manipulate.NewErrObjectNotFound("cannot find the object for the given ID")

@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math"
 	"net"
 	"net/http"
 	"strconv"
@@ -181,11 +180,4 @@ func getDefaultClient() *http.Client {
 	return &http.Client{
 		Timeout: 360 * time.Second,
 	}
-}
-
-const maxBackoff = 8000
-
-func nextBackoff(try int) time.Duration {
-
-	return time.Duration(math.Min(math.Pow(2.0, float64(try))-1, maxBackoff)) * time.Millisecond
 }
