@@ -169,7 +169,7 @@ func getDefaultTransport(url string) (*http.Transport, string) {
 		DialContext:           dialer,
 		MaxIdleConns:          100,
 		MaxIdleConnsPerHost:   50,
-		IdleConnTimeout:       120 * time.Second,
+		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}, outURL

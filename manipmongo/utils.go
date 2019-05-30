@@ -13,6 +13,7 @@ package manipmongo
 
 import (
 	"context"
+	"io"
 	"net"
 	"strings"
 	"time"
@@ -102,6 +103,11 @@ func handleQueryError(err error) error {
 	if mgo.IsDup(err) {
 		return manipulate.NewErrConstraintViolation("duplicate key.")
 	}
+
+	if isConnectionError(err) {
+		return manipulate.NewErrCannotCommunicate(err.Error())
+	}
+
 	// see https://github.com/mongodb/mongo/blob/master/src/mongo/base/error_codes.err
 	switch getErrorCode(err) {
 	case 6, 7, 71, 74, 91, 109, 189, 202, 216, 262, 10107, 13436, 13435, 11600, 11602:
@@ -144,6 +150,41 @@ func getErrorCode(err error) int {
 	}
 
 	return 0
+}
+
+// Stolen from mongodb code. this is ugly.
+const (
+	ErrLostConnection               = "lost connection to server"
+	ErrNoReachableServers           = "no reachable servers"
+	ErrNsNotFound                   = "ns not found"
+	ErrReplTimeoutPrefix            = "waiting for replication timed out"
+	ErrCouldNotContactPrimaryPrefix = "could not contact primary for replica set"
+	ErrWriteResultsUnavailable      = "write results unavailable from"
+	ErrCouldNotFindPrimaryPrefix    = `could not find host matching read preference { mode: "primary"`
+	ErrUnableToTargetPrefix         = "unable to target"
+	ErrNotMaster                    = "not master"
+	ErrConnectionRefusedSuffix      = "Connection refused"
+)
+
+func isConnectionError(err error) bool {
+
+	if err == nil {
+		return false
+	}
+
+	lowerCaseError := strings.ToLower(err.Error())
+	if lowerCaseError == ErrNoReachableServers ||
+		err == io.EOF ||
+		strings.Contains(lowerCaseError, ErrReplTimeoutPrefix) ||
+		strings.Contains(lowerCaseError, ErrCouldNotContactPrimaryPrefix) ||
+		strings.Contains(lowerCaseError, ErrWriteResultsUnavailable) ||
+		strings.Contains(lowerCaseError, ErrCouldNotFindPrimaryPrefix) ||
+		strings.Contains(lowerCaseError, ErrUnableToTargetPrefix) ||
+		lowerCaseError == ErrNotMaster ||
+		strings.HasSuffix(lowerCaseError, ErrConnectionRefusedSuffix) {
+		return true
+	}
+	return false
 }
 
 func makeFieldsSelector(fields []string) bson.M {

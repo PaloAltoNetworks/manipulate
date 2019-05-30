@@ -997,7 +997,7 @@ func TestHTTP_send(t *testing.T) {
 		Convey("When I call send", func() {
 
 			ctx, cancel := context.WithTimeout(context.Background(), 0)
-			defer cancel()
+			cancel()
 
 			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, "https://google.com", nil, nil, sp)
 

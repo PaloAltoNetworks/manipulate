@@ -525,6 +525,29 @@ func (s *httpManipulator) send(
 	sp opentracing.Span,
 ) (*http.Response, error) {
 
+	var try int         // try number. Starts at 0
+	var lastError error // last error before retry.
+
+	// Helpers to deal with current request canceling
+	var cancelReq context.CancelFunc
+	cancelCurrentRequest := func() {
+		if cancelReq != nil {
+			cancelReq()
+		}
+	}
+	defer cancelCurrentRequest()
+
+	// Helpers to deal with closing the body of the current request
+	var bodyCloser io.Closer
+	closeCurrentBody := func() {
+		if bodyCloser != nil {
+			bodyCloser.Close()
+		}
+	}
+	defer closeCurrentBody()
+
+	// Function that creates a new request to avoid reusing some buffers.
+	// It also sets the current request cancel function.
 	newRequest := func() (*http.Request, error) {
 
 		req, err := http.NewRequest(method, requrl, bytes.NewBuffer(body))
@@ -540,48 +563,28 @@ func (s *httpManipulator) send(
 			return nil, err
 		}
 
-		return req.WithContext(mctx.Context()), nil
+		// We injects the header from mctx.
+		s.prepareHeaders(req, mctx)
+
+		// TODO: something smart here
+		ctx, cancel := context.WithTimeout(mctx.Context(), 30*time.Second)
+		cancelReq = cancel
+
+		return req.WithContext(ctx), nil
 	}
 
-	var try int
-	var reauthTry int
-	var lastError error
-
+	// Main retry loop
 	for {
 
-		if lastError != nil {
-
-			if s.disableAutoRetry {
-				return nil, lastError
-			}
-
-			if rf := mctx.RetryFunc(); rf != nil {
-				if rerr := rf(try, lastError); rerr != nil {
-					return nil, rerr
-				}
-			} else if s.defaultRetryFunc != nil {
-				if rerr := s.defaultRetryFunc(try, lastError); rerr != nil {
-					return nil, rerr
-				}
-			}
-
-			deadline, ok := mctx.Context().Deadline()
-			if ok && deadline.Before(time.Now()) {
-				return nil, lastError
-			}
-
-			time.Sleep(backoff.Next(try, deadline))
-			try++
-		}
-
+		// We spawn a new request
 		request, err := newRequest()
 		if err != nil {
 			return nil, err
 		}
 
-		s.prepareHeaders(request, mctx)
-
+		// We launch the request
 		response, err := s.client.Do(request)
+
 		if err != nil {
 
 			// Per doc, client.Do always returns an *url.Error.
@@ -591,22 +594,22 @@ func (s *httpManipulator) send(
 			switch uerr.Err {
 
 			case context.DeadlineExceeded:
-				if lastError != nil {
-					return nil, lastError
+				if lastError == nil {
+					lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
 				}
-				return nil, manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
+				goto RETRY
 
 			case io.ErrUnexpectedEOF, io.EOF:
 				lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
-				continue
+				goto RETRY
 			}
 
-			// Then we check for error types.
+			// We check for error types.
 			switch uerr.Err.(type) {
 
 			case net.Error:
 				lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
-				continue
+				goto RETRY
 
 			case x509.UnknownAuthorityError, x509.CertificateInvalidError, x509.HostnameError:
 				return nil, manipulate.NewErrTLS(err.Error())
@@ -616,49 +619,62 @@ func (s *httpManipulator) send(
 			}
 		}
 
-		// We check for status codes that triggers a retry
+		// We passed the basic error, we have a body.
+		// We register it so next loop will be clean.
+		bodyCloser = request.Body
+
+		// We check for http status codes that triggers a retry
 		switch response.StatusCode {
 
 		case http.StatusBadGateway:
 			lastError = manipulate.NewErrCannotCommunicate("Bad gateway")
-			continue
+			goto RETRY
 
 		case http.StatusServiceUnavailable:
 			lastError = manipulate.NewErrCannotCommunicate("Service unavailable")
-			continue
+			goto RETRY
 
 		case http.StatusGatewayTimeout:
 			lastError = manipulate.NewErrCannotCommunicate("Gateway timeout")
-			continue
+			goto RETRY
 
 		case http.StatusLocked:
 			lastError = manipulate.NewErrLocked("The api has been locked down by the server.")
-			continue
+			goto RETRY
 
 		case http.StatusRequestTimeout:
 			lastError = manipulate.NewErrCannotCommunicate("Request Timeout")
-			continue
+			goto RETRY
 
 		case http.StatusTooManyRequests:
 			lastError = manipulate.NewErrTooManyRequests("Too Many Requests")
-			continue
+			goto RETRY
 
 		case http.StatusForbidden, http.StatusUnauthorized:
-			if s.tokenManager != nil && reauthTry < 3 {
 
-				time.Sleep(time.Duration(reauthTry) * time.Second)
-				reauthTry++
+			// This is a special case where we try to renew our token
+			// in case of 401 or 403 error.
+			// This is retried twice.
+			if s.tokenManager != nil {
 
-				token, err := s.tokenManager.Issue(mctx.Context())
-				if err == nil {
-					s.setPassword(token)
-					continue
+				for i := 1; i < 3; i++ {
+					time.Sleep(time.Duration(i) * time.Second)
+
+					token, err := s.tokenManager.Issue(mctx.Context())
+					if err == nil {
+						s.setPassword(token)
+						goto RETRY
+					}
 				}
 			}
+
+			// If we could not renew the token, we continue.
 		}
 
+		// We backport header info into mctx
 		s.readHeaders(response, mctx)
 
+		// If we have some other errors, we decode them.
 		if response.StatusCode < 200 || response.StatusCode >= 300 {
 			errs := elemental.NewErrors()
 			if err := decodeData(response, &errs); err != nil {
@@ -668,9 +684,11 @@ func (s *httpManipulator) send(
 			return nil, errs
 		}
 
-		defer response.Body.Close() // nolint
+		//
+		// From now on, this is a success.
+		//
 
-		// We check if we have no content
+		// If we have content, we drain the body
 		if response.StatusCode == http.StatusNoContent || response.ContentLength == 0 || dest == nil {
 			if _, err := io.Copy(ioutil.Discard, response.Body); err != nil {
 				panic(err)
@@ -678,13 +696,51 @@ func (s *httpManipulator) send(
 			return response, nil
 		}
 
+		// If we have a given dest to decode, we decode it now.
 		if dest != nil {
 			if err := decodeData(response, dest); err != nil {
 				return nil, err
 			}
 		}
 
+		// And we return the response
 		return response, nil
+
+	RETRY:
+		//
+		// From now on, this is a failure.
+		//
+
+		// We cancel any pending request context and the pending body.
+		cancelCurrentRequest()
+		closeCurrentBody()
+
+		// If the manipulator has auto retry disabled we return the last error
+		if s.disableAutoRetry {
+			return nil, lastError
+		}
+
+		// We run the eventual retry funcs.
+		if rf := mctx.RetryFunc(); rf != nil {
+			if rerr := rf(try, lastError); rerr != nil {
+				return nil, rerr
+			}
+		} else if s.defaultRetryFunc != nil {
+			if rerr := s.defaultRetryFunc(try, lastError); rerr != nil {
+				return nil, rerr
+			}
+		}
+
+		// We check is the main context expired.
+		// and if so, we return the last error
+		deadline, ok := mctx.Context().Deadline()
+		if ok && time.Until(deadline) <= 0 {
+			return nil, lastError
+		}
+
+		// Then we sleep backoff and we restart the retry loop.
+		time.Sleep(backoff.Next(try, deadline))
+		try++
 	}
 }
 
