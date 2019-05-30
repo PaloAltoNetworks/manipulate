@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	defaultGlobalContextTimeout = 60 * time.Second
+	defaultGlobalContextTimeout = 120 * time.Second
 )
 
 type httpManipulator struct {
@@ -48,6 +48,7 @@ type httpManipulator struct {
 	renewNotifiers     map[string]func(string)
 	renewNotifiersLock *sync.RWMutex
 	disableAutoRetry   bool
+	defaultRetryFunc   func(int, error) error
 
 	// optionnable
 	ctx           context.Context
@@ -583,6 +584,10 @@ func (s *httpManipulator) send(mctx manipulate.Context, method string, requrl st
 
 		if rf := mctx.RetryFunc(); rf != nil {
 			if rerr := rf(try, lerr); rerr != nil {
+				return resp, rerr
+			}
+		} else if s.defaultRetryFunc != nil {
+			if rerr := s.defaultRetryFunc(try, lerr); rerr != nil {
 				return resp, rerr
 			}
 		}

@@ -94,4 +94,11 @@ func TestManipHttp_Optionions(t *testing.T) {
 		OptionEncoding(elemental.EncodingTypeMSGPACK)(m)
 		So(m.encoding, ShouldEqual, elemental.EncodingTypeMSGPACK)
 	})
+
+	Convey("Calling OptionDefaultRetryFunc should work", t, func() {
+		f := func(int, error) error { return nil }
+		m := &httpManipulator{}
+		OptionDefaultRetryFunc(f)(m)
+		So(m.defaultRetryFunc, ShouldEqual, f)
+	})
 }

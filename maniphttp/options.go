@@ -107,3 +107,11 @@ func OptionEncoding(enc elemental.EncodingType) Option {
 		m.encoding = enc
 	}
 }
+
+// OptionDefaultRetryFunc sets the default retry func to use
+// if manipulate.Context does not have one.
+func OptionDefaultRetryFunc(f func(int, error) error) Option {
+	return func(m *httpManipulator) {
+		m.defaultRetryFunc = f
+	}
+}

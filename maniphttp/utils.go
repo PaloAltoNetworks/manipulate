@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"go.aporeto.io/elemental"
-
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/maniphttp/internal/compiler"
 )
@@ -144,7 +143,7 @@ func getDefaultTLSConfig() *tls.Config {
 func getDefaultTransport(url string) (*http.Transport, string) {
 
 	dialer := (&net.Dialer{
-		Timeout:   5 * time.Second,
+		Timeout:   10 * time.Second,
 		KeepAlive: 30 * time.Second,
 	}).DialContext
 
