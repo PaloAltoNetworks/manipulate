@@ -13,7 +13,6 @@ package maniphttp
 
 import (
 	"bytes"
-	"compress/gzip"
 	"context"
 	"errors"
 	"io/ioutil"
@@ -21,9 +20,8 @@ import (
 	"net/url"
 	"testing"
 
-	"go.aporeto.io/elemental"
-
 	. "github.com/smartystreets/goconvey/convey"
+	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 )
 
@@ -194,115 +192,6 @@ func Test_decodeData(t *testing.T) {
 				So(len(dest), ShouldEqual, 2)
 				So(dest["name"].(string), ShouldEqual, "thename")
 				So(dest["age"].(uint64), ShouldEqual, 2)
-			})
-		})
-	})
-
-	Convey("Given I have valid json gzipped data in a reader with no content-type", t, func() {
-
-		buf := bytes.NewBuffer(nil)
-		zw := gzip.NewWriter(buf)
-		_, err := zw.Write([]byte(`{"name":"thename","age": 2}`))
-		if err != nil {
-			panic(err)
-		}
-		zw.Close() // nolint
-
-		r := &http.Response{
-			Body: ioutil.NopCloser(buf),
-			Header: http.Header{
-				"Content-Encoding": []string{"gzip"},
-			},
-		}
-
-		Convey("When I call decodeData", func() {
-
-			dest := map[string]interface{}{}
-			err := decodeData(r, &dest)
-
-			Convey("Then err should be nil", func() {
-				So(err, ShouldBeNil)
-			})
-
-			Convey("Then the dest should be correct", func() {
-				So(len(dest), ShouldEqual, 2)
-				So(dest["name"].(string), ShouldEqual, "thename")
-				So(dest["age"].(uint64), ShouldEqual, 2)
-			})
-		})
-	})
-
-	Convey("Given I have valid json gzipped data in a reader with json content-type", t, func() {
-
-		buf := bytes.NewBuffer(nil)
-		zw := gzip.NewWriter(buf)
-		_, err := zw.Write([]byte(`{"name":"thename","age": 2}`))
-		if err != nil {
-			panic(err)
-		}
-		zw.Close() // nolint
-
-		r := &http.Response{
-			Body: ioutil.NopCloser(buf),
-			Header: http.Header{
-				"Content-Encoding": []string{"gzip"},
-				"Content-Type":     []string{"application/json"},
-			},
-		}
-
-		Convey("When I call decodeData", func() {
-
-			dest := map[string]interface{}{}
-			err := decodeData(r, &dest)
-
-			Convey("Then err should be nil", func() {
-				So(err, ShouldBeNil)
-			})
-
-			Convey("Then the dest should be correct", func() {
-				So(len(dest), ShouldEqual, 2)
-				So(dest["name"].(string), ShouldEqual, "thename")
-				So(dest["age"].(uint64), ShouldEqual, 2)
-			})
-		})
-	})
-
-	Convey("Given I have valid msgpack gzipped data in a reader with msgpack content-type", t, func() {
-
-		buf := bytes.NewBuffer(nil)
-		zw := gzip.NewWriter(buf)
-
-		data, err := elemental.Encode(elemental.EncodingTypeMSGPACK, map[string]interface{}{"name": "thename", "age": 2})
-		if err != nil {
-			panic(err)
-		}
-		_, err = zw.Write(data)
-		if err != nil {
-			panic(err)
-		}
-		zw.Close() // nolint
-
-		r := &http.Response{
-			Body: ioutil.NopCloser(buf),
-			Header: http.Header{
-				"Content-Encoding": []string{"gzip"},
-				"Content-Type":     []string{"application/msgpack"},
-			},
-		}
-
-		Convey("When I call decodeData", func() {
-
-			dest := map[string]interface{}{}
-			err := decodeData(r, &dest)
-
-			Convey("Then err should be nil", func() {
-				So(err, ShouldBeNil)
-			})
-
-			Convey("Then the dest should be correct", func() {
-				So(len(dest), ShouldEqual, 2)
-				So(dest["name"].(string), ShouldEqual, "thename")
-				So(dest["age"].(int64), ShouldEqual, 2)
 			})
 		})
 	})
