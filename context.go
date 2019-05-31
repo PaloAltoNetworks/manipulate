@@ -100,26 +100,6 @@ type Context interface {
 	fmt.Stringer
 }
 
-// NewContext creates a context with the given ContextOption.
-func NewContext(ctx context.Context, options ...ContextOption) Context {
-
-	if ctx == nil {
-		panic("nil context")
-	}
-
-	mctx := &mcontext{
-		ctx:              ctx,
-		writeConsistency: WriteConsistencyDefault,
-		readConsistency:  ReadConsistencyDefault,
-	}
-
-	for _, opt := range options {
-		opt(mctx)
-	}
-
-	return mctx
-}
-
 type mcontext struct {
 	page                 int
 	pageSize             int
@@ -146,6 +126,63 @@ type mcontext struct {
 	password             string
 	clientIP             string
 	retryFunc            RetryFunc
+}
+
+// NewContext creates a context with the given ContextOption.
+func NewContext(ctx context.Context, options ...ContextOption) Context {
+
+	if ctx == nil {
+		panic("nil context")
+	}
+
+	mctx := &mcontext{
+		ctx:              ctx,
+		writeConsistency: WriteConsistencyDefault,
+		readConsistency:  ReadConsistencyDefault,
+	}
+
+	for _, opt := range options {
+		opt(mctx)
+	}
+
+	return mctx
+}
+
+// Derive creates a copy of the context but updates the values of the given options.
+func (c *mcontext) Derive(options ...ContextOption) Context {
+
+	copy := &mcontext{
+		page:                 c.page,
+		pageSize:             c.pageSize,
+		parent:               c.parent,
+		countTotal:           c.countTotal,
+		filter:               c.filter,
+		parameters:           c.parameters,
+		transactionID:        c.transactionID,
+		namespace:            c.namespace,
+		recursive:            c.recursive,
+		overrideProtection:   c.overrideProtection,
+		createFinalizer:      c.createFinalizer,
+		version:              c.version,
+		externalTrackingID:   c.externalTrackingID,
+		externalTrackingType: c.externalTrackingType,
+		order:                c.order,
+		fields:               c.fields,
+		ctx:                  c.ctx,
+		username:             c.username,
+		password:             c.password,
+		retryFunc:            c.retryFunc,
+		messages:             c.messages,
+		readConsistency:      c.readConsistency,
+		writeConsistency:     c.writeConsistency,
+		clientIP:             c.clientIP,
+	}
+
+	for _, opt := range options {
+		opt(copy)
+	}
+
+	return copy
 }
 
 // Count returns the count
@@ -243,37 +280,4 @@ func (c *mcontext) SetCredentials(username, password string) {
 func (c *mcontext) String() string {
 
 	return fmt.Sprintf("<Context page:%d pagesize:%d filter:%v version:%d>", c.page, c.pageSize, c.filter, c.version)
-}
-
-// Derive creates a copy of the context but updates the values of the given options.
-func (c *mcontext) Derive(options ...ContextOption) Context {
-
-	copy := &mcontext{
-		page:                 c.page,
-		pageSize:             c.pageSize,
-		parent:               c.parent,
-		countTotal:           c.countTotal,
-		filter:               c.filter,
-		parameters:           c.parameters,
-		transactionID:        c.transactionID,
-		namespace:            c.namespace,
-		recursive:            c.recursive,
-		overrideProtection:   c.overrideProtection,
-		createFinalizer:      c.createFinalizer,
-		version:              c.version,
-		externalTrackingID:   c.externalTrackingID,
-		externalTrackingType: c.externalTrackingType,
-		order:                c.order,
-		fields:               c.fields,
-		ctx:                  c.ctx,
-		username:             c.username,
-		password:             c.password,
-		retryFunc:            c.retryFunc,
-	}
-
-	for _, opt := range options {
-		opt(copy)
-	}
-
-	return copy
 }
