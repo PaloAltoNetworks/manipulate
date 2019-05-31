@@ -898,7 +898,7 @@ func Test_isConnectionError(t *testing.T) {
 		{
 			"nope",
 			args{
-				fmt.Errorf("hey!"),
+				fmt.Errorf("hey"),
 			},
 			false,
 		},
@@ -946,7 +946,7 @@ func Test_getErrorCode(t *testing.T) {
 		{
 			"",
 			args{
-				fmt.Errorf("yo!"),
+				fmt.Errorf("yo"),
 			},
 			0,
 		},
