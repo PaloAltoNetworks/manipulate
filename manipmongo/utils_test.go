@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"go.aporeto.io/elemental"
+
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	. "github.com/smartystreets/goconvey/convey"
@@ -433,7 +435,7 @@ func TestRunQueryFunc(t *testing.T) {
 
 		var try int
 		f := func() (interface{}, error) { return "hello", nil }
-		rf := func(i int, err error) error { try = i; return nil }
+		rf := func(i manipulate.RetryInfo) error { try = i.Try(); return nil }
 
 		Convey("When I call runQueryFunc", func() {
 
@@ -442,7 +444,10 @@ func TestRunQueryFunc(t *testing.T) {
 					context.Background(),
 					manipulate.ContextOptionRetryFunc(rf),
 				),
+				elemental.OperationCreate,
+				elemental.MakeIdentity("test", "tests"),
 				f,
+				nil,
 			)
 
 			Convey("Then err should be nil", func() {
@@ -469,7 +474,10 @@ func TestRunQueryFunc(t *testing.T) {
 				manipulate.NewContext(
 					context.Background(),
 				),
+				elemental.OperationCreate,
+				elemental.MakeIdentity("test", "tests"),
 				f,
+				nil,
 			)
 
 			Convey("Then err should not be nil", func() {
@@ -494,7 +502,7 @@ func TestRunQueryFunc(t *testing.T) {
 			return nil, &net.OpError{Err: fmt.Errorf("hello")}
 		}
 
-		rf := func(i int, err error) error { try = i; return nil }
+		rf := func(i manipulate.RetryInfo) error { try = i.Try(); return nil }
 
 		Convey("When I call runQueryFunc", func() {
 
@@ -503,7 +511,10 @@ func TestRunQueryFunc(t *testing.T) {
 					context.Background(),
 					manipulate.ContextOptionRetryFunc(rf),
 				),
+				elemental.OperationCreate,
+				elemental.MakeIdentity("test", "tests"),
 				f,
+				nil,
 			)
 
 			Convey("Then err should be nil", func() {
@@ -526,7 +537,7 @@ func TestRunQueryFunc(t *testing.T) {
 			return nil, &net.OpError{Err: fmt.Errorf("hello")}
 		}
 
-		rf := func(i int, err error) error { return fmt.Errorf("non: %s", err.Error()) }
+		rf := func(i manipulate.RetryInfo) error { return fmt.Errorf("non: %s", i.Err().Error()) }
 
 		Convey("When I call runQueryFunc", func() {
 
@@ -535,12 +546,79 @@ func TestRunQueryFunc(t *testing.T) {
 					context.Background(),
 					manipulate.ContextOptionRetryFunc(rf),
 				),
+				elemental.OperationCreate,
+				elemental.MakeIdentity("test", "tests"),
 				f,
+				nil,
 			)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "non: Cannot communicate: : hello")
+			})
+
+			Convey("Then out should be correct", func() {
+				So(out, ShouldBeNil)
+			})
+		})
+	})
+
+	Convey("Given I have query function that returns a net.Error and a retry func and a default retry func", t, func() {
+
+		f := func() (interface{}, error) {
+			return nil, &net.OpError{Err: fmt.Errorf("hello")}
+		}
+
+		rf := func(i manipulate.RetryInfo) error { return fmt.Errorf("non: %s", i.Err().Error()) }
+		df := func(i manipulate.RetryInfo) error { return fmt.Errorf("oui: %s", i.Err().Error()) }
+
+		Convey("When I call runQueryFunc", func() {
+
+			out, err := runQueryFunc(
+				manipulate.NewContext(
+					context.Background(),
+					manipulate.ContextOptionRetryFunc(rf),
+				),
+				elemental.OperationCreate,
+				elemental.MakeIdentity("test", "tests"),
+				f,
+				df,
+			)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "non: Cannot communicate: : hello")
+			})
+
+			Convey("Then out should be correct", func() {
+				So(out, ShouldBeNil)
+			})
+		})
+	})
+
+	Convey("Given I have query function that returns a net.Error and a default retry func", t, func() {
+
+		f := func() (interface{}, error) {
+			return nil, &net.OpError{Err: fmt.Errorf("hello")}
+		}
+
+		df := func(i manipulate.RetryInfo) error { return fmt.Errorf("oui: %s", i.Err().Error()) }
+
+		Convey("When I call runQueryFunc", func() {
+
+			out, err := runQueryFunc(
+				manipulate.NewContext(
+					context.Background(),
+				),
+				elemental.OperationCreate,
+				elemental.MakeIdentity("test", "tests"),
+				f,
+				df,
+			)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "oui: Cannot communicate: : hello")
 			})
 
 			Convey("Then out should be correct", func() {
@@ -555,7 +633,7 @@ func TestRunQueryFunc(t *testing.T) {
 			return nil, &net.OpError{Err: fmt.Errorf("hello")}
 		}
 
-		rf := func(i int, err error) error { return nil }
+		rf := func(i manipulate.RetryInfo) error { return nil }
 
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
@@ -567,7 +645,10 @@ func TestRunQueryFunc(t *testing.T) {
 					ctx,
 					manipulate.ContextOptionRetryFunc(rf),
 				),
+				elemental.OperationCreate,
+				elemental.MakeIdentity("test", "tests"),
 				f,
+				nil,
 			)
 
 			Convey("Then err should be nil", func() {

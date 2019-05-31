@@ -19,6 +19,7 @@ import (
 
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
+	"go.aporeto.io/manipulate"
 )
 
 type testTokenManager struct{}
@@ -96,7 +97,7 @@ func TestManipHttp_Optionions(t *testing.T) {
 	})
 
 	Convey("Calling OptionDefaultRetryFunc should work", t, func() {
-		f := func(int, error) error { return nil }
+		f := func(manipulate.RetryInfo) error { return nil }
 		m := &httpManipulator{}
 		OptionDefaultRetryFunc(f)(m)
 		So(m.defaultRetryFunc, ShouldEqual, f)

@@ -20,6 +20,7 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/backoff"
 )
@@ -58,13 +59,19 @@ func applyOrdering(order []string, inverted bool) []string {
 	return o
 }
 
-func runQueryFunc(mctx manipulate.Context, f func() (interface{}, error)) (interface{}, error) {
+func runQueryFunc(
+	mctx manipulate.Context,
+	operation elemental.Operation,
+	identity elemental.Identity,
+	operationFunc func() (interface{}, error),
+	defaultRetryFunc manipulate.RetryFunc,
+) (interface{}, error) {
 
 	var try int
 
 	for {
 
-		out, err := f()
+		out, err := operationFunc()
 		if err == nil {
 			return out, nil
 		}
@@ -74,8 +81,21 @@ func runQueryFunc(mctx manipulate.Context, f func() (interface{}, error)) (inter
 			return out, err
 		}
 
+		info := RetryInfo{
+			try:  try,
+			err:  err,
+			mctx: mctx,
+
+			Operation: operation,
+			Identity:  identity,
+		}
+
 		if rf := mctx.RetryFunc(); rf != nil {
-			if rerr := rf(try, err); rerr != nil {
+			if rerr := rf(info); rerr != nil {
+				return nil, rerr
+			}
+		} else if defaultRetryFunc != nil {
+			if rerr := defaultRetryFunc(info); rerr != nil {
 				return nil, rerr
 			}
 		}

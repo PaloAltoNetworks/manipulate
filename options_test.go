@@ -125,7 +125,7 @@ func TestManipulate_ContextOption(t *testing.T) {
 	})
 
 	Convey("Calling ContextOptionRetryFunc should work", t, func() {
-		f := func(int, error) error { return nil }
+		f := func(RetryInfo) error { return nil }
 		ContextOptionRetryFunc(f)(mctx.(*mcontext))
 		So(mctx.RetryFunc(), ShouldEqual, f)
 	})

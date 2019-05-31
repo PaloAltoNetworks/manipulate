@@ -32,6 +32,7 @@ type config struct {
 	readConsistency  manipulate.ReadConsistency
 	writeConsistency manipulate.WriteConsistency
 	sharder          Sharder
+	defaultRetryFunc manipulate.RetryFunc
 }
 
 func newConfig() *config {
@@ -99,5 +100,13 @@ func OptionDefaultWriteConsistencyMode(consistency manipulate.WriteConsistency) 
 func OptionSharder(sharder Sharder) Option {
 	return func(c *config) {
 		c.sharder = sharder
+	}
+}
+
+// OptionDefaultRetryFunc sets the default retry func to use
+// if manipulate.Context does not have one.
+func OptionDefaultRetryFunc(f manipulate.RetryFunc) Option {
+	return func(c *config) {
+		c.defaultRetryFunc = f
 	}
 }

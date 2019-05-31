@@ -121,7 +121,7 @@ func TestContext_Derive(t *testing.T) {
 
 	Convey("Given I have a context", t, func() {
 
-		rfunc := func(int, error) error { return nil }
+		rfunc := func(RetryInfo) error { return nil }
 
 		mctx := &mcontext{
 			page:                 1,

@@ -154,7 +154,7 @@ func ContextOptionClientIP(clientIP string) ContextOption {
 // This function will be called on every communication error, and will be passed
 // the try number and the error. If it itself return an error, retrying will stop and
 // that error will be returned from the manipulator operation.
-func ContextOptionRetryFunc(f func(int, error) error) ContextOption {
+func ContextOptionRetryFunc(f RetryFunc) ContextOption {
 	return func(c *mcontext) {
 		c.retryFunc = f
 	}

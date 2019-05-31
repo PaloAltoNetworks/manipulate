@@ -18,10 +18,8 @@ func Next(try int, deadline time.Time) time.Duration {
 	}
 
 	now := time.Now().Round(time.Second)
-	remaining := deadline.Sub(now)
-
-	if wait > remaining {
-		return remaining
+	if now.Add(wait).After(deadline) {
+		return deadline.Sub(now)
 	}
 
 	return wait

@@ -31,9 +31,10 @@ const defaultGlobalContextTimeout = 60 * time.Second
 
 // MongoStore represents a MongoDB session.
 type mongoManipulator struct {
-	rootSession *mgo.Session
-	dbName      string
-	sharder     Sharder
+	rootSession      *mgo.Session
+	dbName           string
+	sharder          Sharder
+	defaultRetryFunc manipulate.RetryFunc
 }
 
 // New returns a new manipulator backed by MongoDB.
@@ -76,9 +77,10 @@ func New(url string, db string, options ...Option) (manipulate.TransactionalMani
 	session.SetSafe(convertWriteConsistency(cfg.writeConsistency))
 
 	return &mongoManipulator{
-		dbName:      db,
-		rootSession: session,
-		sharder:     cfg.sharder,
+		dbName:           db,
+		rootSession:      session,
+		sharder:          cfg.sharder,
+		defaultRetryFunc: cfg.defaultRetryFunc,
 	}, nil
 }
 
@@ -140,7 +142,13 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 		query = query.Select(sels)
 	}
 
-	if _, err := runQueryFunc(mctx, func() (interface{}, error) { return nil, query.All(dest) }); err != nil {
+	if _, err := runQueryFunc(
+		mctx,
+		elemental.OperationRetrieveMany,
+		dest.Identity(),
+		func() (interface{}, error) { return nil, query.All(dest) },
+		s.defaultRetryFunc,
+	); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
@@ -191,7 +199,13 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 		query = query.Select(sels)
 	}
 
-	if _, err := runQueryFunc(mctx, func() (interface{}, error) { return nil, query.One(object) }); err != nil {
+	if _, err := runQueryFunc(
+		mctx,
+		elemental.OperationRetrieve,
+		object.Identity(),
+		func() (interface{}, error) { return nil, query.One(object) },
+		s.defaultRetryFunc,
+	); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
@@ -234,7 +248,13 @@ func (s *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		s.sharder.Shard(object)
 	}
 
-	if _, err := runQueryFunc(mctx, func() (interface{}, error) { return nil, c.Insert(object) }); err != nil {
+	if _, err := runQueryFunc(
+		mctx,
+		elemental.OperationCreate,
+		object.Identity(),
+		func() (interface{}, error) { return nil, c.Insert(object) },
+		s.defaultRetryFunc,
+	); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
@@ -268,7 +288,13 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 		}
 	}
 
-	if _, err := runQueryFunc(mctx, func() (interface{}, error) { return nil, c.Update(filter, bson.M{"$set": object}) }); err != nil {
+	if _, err := runQueryFunc(
+		mctx,
+		elemental.OperationUpdate,
+		object.Identity(),
+		func() (interface{}, error) { return nil, c.Update(filter, bson.M{"$set": object}) },
+		s.defaultRetryFunc,
+	); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
@@ -302,7 +328,13 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 		}
 	}
 
-	if _, err := runQueryFunc(mctx, func() (interface{}, error) { return nil, c.Remove(filter) }); err != nil {
+	if _, err := runQueryFunc(
+		mctx,
+		elemental.OperationDelete,
+		object.Identity(),
+		func() (interface{}, error) { return nil, c.Remove(filter) },
+		s.defaultRetryFunc,
+	); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
@@ -338,7 +370,13 @@ func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 		}
 	}
 
-	if _, err := runQueryFunc(mctx, func() (interface{}, error) { return c.RemoveAll(filter) }); err != nil {
+	if _, err := runQueryFunc(
+		mctx,
+		elemental.OperationDelete, // we miss DeleteMany
+		identity,
+		func() (interface{}, error) { return c.RemoveAll(filter) },
+		s.defaultRetryFunc,
+	); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
@@ -374,7 +412,13 @@ func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.count.%s", identity.Category))
 	defer sp.Finish()
 
-	out, err := runQueryFunc(mctx, func() (interface{}, error) { return c.Find(filter).Count() })
+	out, err := runQueryFunc(
+		mctx,
+		elemental.OperationInfo,
+		identity,
+		func() (interface{}, error) { return c.Find(filter).Count() },
+		s.defaultRetryFunc,
+	)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))

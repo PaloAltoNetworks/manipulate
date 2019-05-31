@@ -1056,9 +1056,9 @@ func TestHTTP_send(t *testing.T) {
 			_, err := m.(*httpManipulator).send(
 				manipulate.NewContext(
 					ctx,
-					manipulate.ContextOptionRetryFunc(func(i int, e error) error {
-						t = i
-						rerr = e
+					manipulate.ContextOptionRetryFunc(func(i manipulate.RetryInfo) error {
+						t = i.Try()
+						rerr = i.Err()
 						return nil
 					}),
 				),
@@ -1099,9 +1099,9 @@ func TestHTTP_send(t *testing.T) {
 			_, err := m.(*httpManipulator).send(
 				manipulate.NewContext(
 					ctx,
-					manipulate.ContextOptionRetryFunc(func(i int, e error) error {
-						t = i
-						if i == 3 {
+					manipulate.ContextOptionRetryFunc(func(i manipulate.RetryInfo) error {
+						t = i.Try()
+						if t == 3 {
 							return fmt.Errorf("bam")
 						}
 						return nil

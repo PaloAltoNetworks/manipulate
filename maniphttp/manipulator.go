@@ -50,7 +50,7 @@ type httpManipulator struct {
 	renewNotifiersLock *sync.RWMutex
 	disableAutoRetry   bool
 	disableCompression bool
-	defaultRetryFunc   func(int, error) error
+	defaultRetryFunc   manipulate.RetryFunc
 
 	// optionnable
 	ctx           context.Context
@@ -720,18 +720,25 @@ func (s *httpManipulator) send(
 			return nil, lastError
 		}
 
+		info := RetryInfo{
+			URL:    requrl,
+			Method: method,
+			try:    try,
+			mctx:   mctx,
+			err:    lastError,
+		}
+
 		// We run the eventual retry funcs.
 		if rf := mctx.RetryFunc(); rf != nil {
-			if rerr := rf(try, lastError); rerr != nil {
+			if rerr := rf(info); rerr != nil {
 				return nil, rerr
 			}
 		} else if s.defaultRetryFunc != nil {
-			if rerr := s.defaultRetryFunc(try, lastError); rerr != nil {
+			if rerr := s.defaultRetryFunc(info); rerr != nil {
 				return nil, rerr
 			}
 		}
 
-		fmt.Println("retrying", try, requrl)
 		// We check is the main context expired.
 		// and if so, we return the last error
 		deadline, ok := mctx.Context().Deadline()
