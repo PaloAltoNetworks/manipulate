@@ -534,8 +534,8 @@ func (s *httpManipulator) send(
 		deadline = time.Now().Add(time.Hour) // long, but not completely unlimited.
 	}
 
-	// We bucketize the deadline into multiple retries
-	// a make it a minimum of 10sec
+	// We divide the time until deadline into multiple retries
+	// and make it a minimum of 10sec
 	subContextTimeout := time.Until(deadline) / 10
 	if subContextTimeout < 10*time.Second {
 		subContextTimeout = 10 * time.Second
