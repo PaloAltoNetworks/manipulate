@@ -59,7 +59,7 @@ type FinalizerFunc func(o elemental.Identifiable) error
 // of the operation.
 type RetryFunc func(RetryInfo) error
 
-// Retry info is the interface that can be passed to RetryFunc
+// A RetryInfo is the interface that can be passed to RetryFunc
 // that will contain retry information. Content will depend on
 // the manipulator implementation.
 type RetryInfo interface {

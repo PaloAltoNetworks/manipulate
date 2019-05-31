@@ -15,6 +15,7 @@ import (
 	"go.aporeto.io/manipulate"
 )
 
+// A RetryInfo contains information about a retry,
 type RetryInfo struct {
 	URL    string
 	Method string
@@ -24,14 +25,17 @@ type RetryInfo struct {
 	mctx manipulate.Context
 }
 
+// Try returns the try number.
 func (i RetryInfo) Try() int {
 	return i.try
 }
 
+// Err returns the error that caused the retry.
 func (i RetryInfo) Err() error {
 	return i.err
 }
 
+// Context returns the manipulate.Context used.
 func (i RetryInfo) Context() manipulate.Context {
 	return i.mctx
 }
