@@ -12,13 +12,16 @@
 package manipmongo
 
 import (
+	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/internal/backoff"
 	"go.aporeto.io/manipulate/manipmongo/internal/compiler"
 )
 
@@ -153,4 +156,47 @@ func SetConsistencyMode(manipulator manipulate.Manipulator, mode mgo.Mode, refre
 	}
 
 	m.rootSession.SetMode(mode, refresh)
+}
+
+// RunQuery runs a function that must run a mongodb operation.
+// It will retry in case of failure. This is an advanced helper can
+// be used when you get a session from using GetDatabase().
+func RunQuery(mctx manipulate.Context, operationFunc func() (interface{}, error), baseRetryInfo RetryInfo) (interface{}, error) {
+
+	var try int
+
+	for {
+
+		out, err := operationFunc()
+		if err == nil {
+			return out, nil
+		}
+
+		err = handleQueryError(err)
+		if !manipulate.IsCannotCommunicateError(err) {
+			return out, err
+		}
+
+		baseRetryInfo.try = try
+		baseRetryInfo.err = err
+		baseRetryInfo.mctx = mctx
+
+		if rf := mctx.RetryFunc(); rf != nil {
+			if rerr := rf(baseRetryInfo); rerr != nil {
+				return nil, rerr
+			}
+		} else if baseRetryInfo.defaultRetryFunc != nil {
+			if rerr := baseRetryInfo.defaultRetryFunc(baseRetryInfo); rerr != nil {
+				return nil, rerr
+			}
+		}
+
+		deadline, ok := mctx.Context().Deadline()
+		if ok && deadline.Before(time.Now()) {
+			return nil, manipulate.NewErrCannotExecuteQuery(context.DeadlineExceeded.Error())
+		}
+
+		<-time.After(backoff.Next(try, deadline))
+		try++
+	}
 }

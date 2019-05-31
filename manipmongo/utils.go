@@ -12,17 +12,13 @@
 package manipmongo
 
 import (
-	"context"
 	"io"
 	"net"
 	"strings"
-	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
-	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
-	"go.aporeto.io/manipulate/internal/backoff"
 )
 
 // invertSortKey eventually inverts the given sorting key.
@@ -57,57 +53,6 @@ func applyOrdering(order []string, inverted bool) []string {
 	}
 
 	return o
-}
-
-func runQueryFunc(
-	mctx manipulate.Context,
-	operation elemental.Operation,
-	identity elemental.Identity,
-	operationFunc func() (interface{}, error),
-	defaultRetryFunc manipulate.RetryFunc,
-) (interface{}, error) {
-
-	var try int
-
-	info := RetryInfo{
-		Operation: operation,
-		Identity:  identity,
-	}
-
-	for {
-
-		out, err := operationFunc()
-		if err == nil {
-			return out, nil
-		}
-
-		err = handleQueryError(err)
-		if !manipulate.IsCannotCommunicateError(err) {
-			return out, err
-		}
-
-		info.try = try
-		info.err = err
-		info.mctx = mctx
-
-		if rf := mctx.RetryFunc(); rf != nil {
-			if rerr := rf(info); rerr != nil {
-				return nil, rerr
-			}
-		} else if defaultRetryFunc != nil {
-			if rerr := defaultRetryFunc(info); rerr != nil {
-				return nil, rerr
-			}
-		}
-
-		deadline, ok := mctx.Context().Deadline()
-		if ok && deadline.Before(time.Now()) {
-			return nil, manipulate.NewErrCannotExecuteQuery(context.DeadlineExceeded.Error())
-		}
-
-		<-time.After(backoff.Next(try, deadline))
-		try++
-	}
 }
 
 func handleQueryError(err error) error {
@@ -172,24 +117,24 @@ func getErrorCode(err error) int {
 	return 0
 }
 
-// Stolen from mongodb code. this is ugly.
-const (
-	errLostConnection               = "lost connection to server"
-	errNoReachableServers           = "no reachable servers"
-	errReplTimeoutPrefix            = "waiting for replication timed out"
-	errCouldNotContactPrimaryPrefix = "could not contact primary for replica set"
-	errWriteResultsUnavailable      = "write results unavailable from"
-	errCouldNotFindPrimaryPrefix    = `could not find host matching read preference { mode: "primary"`
-	errUnableToTargetPrefix         = "unable to target"
-	errNotMaster                    = "not master"
-	errConnectionRefusedSuffix      = "connection refused"
-)
-
 func isConnectionError(err error) bool {
 
 	if err == nil {
 		return false
 	}
+
+	// Stolen from mongodb code. this is ugly.
+	const (
+		errLostConnection               = "lost connection to server"
+		errNoReachableServers           = "no reachable servers"
+		errReplTimeoutPrefix            = "waiting for replication timed out"
+		errCouldNotContactPrimaryPrefix = "could not contact primary for replica set"
+		errWriteResultsUnavailable      = "write results unavailable from"
+		errCouldNotFindPrimaryPrefix    = `could not find host matching read preference { mode: "primary"`
+		errUnableToTargetPrefix         = "unable to target"
+		errNotMaster                    = "not master"
+		errConnectionRefusedSuffix      = "connection refused"
+	)
 
 	lowerCaseError := strings.ToLower(err.Error())
 	if lowerCaseError == errNoReachableServers ||

@@ -24,6 +24,8 @@ type RetryInfo struct {
 	err  error
 	try  int
 	mctx manipulate.Context
+
+	defaultRetryFunc manipulate.RetryFunc
 }
 
 // Try returns the try number.
