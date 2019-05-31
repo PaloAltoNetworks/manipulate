@@ -136,6 +136,10 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 
 func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.Identifiables) error {
 
+	if dest == nil {
+		return manipulate.NewErrCannotBuildQuery("nil dest")
+	}
+
 	if mctx == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
 		defer cancel()
@@ -159,7 +163,7 @@ func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.I
 		return err
 	}
 
-	if response.StatusCode == http.StatusNoContent || response.ContentLength == 0 {
+	if response.StatusCode == http.StatusNoContent {
 		return nil
 	}
 
@@ -175,8 +179,14 @@ func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.I
 
 func (s *httpManipulator) Retrieve(mctx manipulate.Context, object elemental.Identifiable) error {
 
+	if object == nil {
+		return manipulate.NewErrCannotBuildQuery("nil object")
+	}
+
 	if mctx == nil {
-		mctx = manipulate.NewContext(s.ctx)
+		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
+		defer cancel()
+		mctx = manipulate.NewContext(ctx)
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.retrieve.object.%s", object.Identity().Name))
@@ -209,6 +219,10 @@ func (s *httpManipulator) Retrieve(mctx manipulate.Context, object elemental.Ide
 }
 
 func (s *httpManipulator) Create(mctx manipulate.Context, object elemental.Identifiable) error {
+
+	if object == nil {
+		return manipulate.NewErrCannotBuildQuery("nil object")
+	}
 
 	if mctx == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
@@ -263,6 +277,10 @@ func (s *httpManipulator) Create(mctx manipulate.Context, object elemental.Ident
 }
 
 func (s *httpManipulator) Update(mctx manipulate.Context, object elemental.Identifiable) error {
+
+	if object == nil {
+		return manipulate.NewErrCannotBuildQuery("nil object")
+	}
 
 	if mctx == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
@@ -322,6 +340,10 @@ func (s *httpManipulator) Update(mctx manipulate.Context, object elemental.Ident
 }
 
 func (s *httpManipulator) Delete(mctx manipulate.Context, object elemental.Identifiable) error {
+
+	if object == nil {
+		return manipulate.NewErrCannotBuildQuery("nil object")
+	}
 
 	if mctx == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
