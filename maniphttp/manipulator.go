@@ -541,8 +541,6 @@ func (s *httpManipulator) send(
 		subContextTimeout = 10 * time.Second
 	}
 
-	fmt.Println(subContextTimeout, requrl)
-
 	// Helpers to deal with current request canceling
 	var cancelReq context.CancelFunc
 	cancelCurrentRequest := func() {
