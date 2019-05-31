@@ -104,7 +104,7 @@ func TestManipHttp_Optionions(t *testing.T) {
 
 	Convey("Calling OptionDisableCompression should work", t, func() {
 		m := &httpManipulator{}
-		OptionDisableCompression(true)(m)
+		OptionDisableCompression()(m)
 		So(m.disableCompression, ShouldEqual, true)
 	})
 }
