@@ -964,7 +964,9 @@ func TestHTTP_send(t *testing.T) {
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
-				So(err.Error(), ShouldEqual, "Cannot communicate: Post https://NANANAN: dial tcp: lookup NANANAN: no such host")
+
+				// On linux, the message is slightly different than on macOS
+				So(err.Error(), ShouldStartWith, "Cannot communicate: Post https://NANANAN: dial tcp: lookup NANANAN")
 			})
 		})
 	})
