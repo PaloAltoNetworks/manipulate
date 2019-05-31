@@ -101,4 +101,11 @@ func TestManipMongo_Options(t *testing.T) {
 		OptionSharder(s)(c)
 		So(c.sharder, ShouldEqual, s)
 	})
+
+	Convey("Calling OptionDefaultRetryFunc should work", t, func() {
+		f := func(manipulate.RetryInfo) error { return nil }
+		c := newConfig()
+		OptionDefaultRetryFunc(f)(c)
+		So(c.defaultRetryFunc, ShouldEqual, f)
+	})
 }

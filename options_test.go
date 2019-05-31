@@ -123,4 +123,15 @@ func TestManipulate_ContextOption(t *testing.T) {
 		ContextOptionClientIP("10.1.1.1")(mctx.(*mcontext))
 		So(mctx.ClientIP(), ShouldEqual, "10.1.1.1")
 	})
+
+	Convey("Calling ContextOptionRetryFunc should work", t, func() {
+		f := func(RetryInfo) error { return nil }
+		ContextOptionRetryFunc(f)(mctx.(*mcontext))
+		So(mctx.RetryFunc(), ShouldEqual, f)
+	})
+
+	Convey("Calling ContextOptionRetryRatio should work", t, func() {
+		ContextOptionRetryRatio(42)(mctx.(*mcontext))
+		So(mctx.RetryRatio(), ShouldEqual, 42)
+	})
 }

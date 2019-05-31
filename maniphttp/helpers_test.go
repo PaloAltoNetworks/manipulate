@@ -212,7 +212,7 @@ func TestManiphttp_DirectSend(t *testing.T) {
 			}
 
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusCreated)
+			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, `"bonjour"`)
 		}))
 		defer ts.Close()
@@ -229,7 +229,7 @@ func TestManiphttp_DirectSend(t *testing.T) {
 
 			Convey("Then the response should be correct", func() {
 				So(resp, ShouldNotBeNil)
-				So(resp.StatusCode, ShouldEqual, http.StatusCreated)
+				So(resp.StatusCode, ShouldEqual, http.StatusOK)
 			})
 		})
 	})

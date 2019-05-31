@@ -9,15 +9,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package manipulate
+package manipmongo
 
 import (
-	"context"
-	"fmt"
+	"go.aporeto.io/elemental"
+	"go.aporeto.io/manipulate"
 )
 
-// Retry is deprecated and only calls manipulateFunc for backward compatibility.
-func Retry(ctx context.Context, manipulateFunc func() error, onRetryFunc func(int, error) error) error {
-	fmt.Println("DEPRECATED: manipulate.Retry is deprecated. Retry mechanism is now part of Manipulator implementations. You can safely remove this wrapper.")
-	return manipulateFunc()
+// A RetryInfo contains information about a retry,
+type RetryInfo struct {
+	Operation elemental.Operation
+	Identity  elemental.Identity
+
+	err  error
+	try  int
+	mctx manipulate.Context
+
+	defaultRetryFunc manipulate.RetryFunc
+}
+
+// Try returns the try number.
+func (i RetryInfo) Try() int {
+	return i.try
+}
+
+// Err returns the error that caused the retry.
+func (i RetryInfo) Err() error {
+	return i.err
+}
+
+// Context returns the manipulate.Context used.
+func (i RetryInfo) Context() manipulate.Context {
+	return i.mctx
 }

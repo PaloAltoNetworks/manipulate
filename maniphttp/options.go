@@ -107,3 +107,20 @@ func OptionEncoding(enc elemental.EncodingType) Option {
 		m.encoding = enc
 	}
 }
+
+// OptionDefaultRetryFunc sets the default retry func to use
+// if manipulate.Context does not have one.
+func OptionDefaultRetryFunc(f manipulate.RetryFunc) Option {
+	return func(m *httpManipulator) {
+		m.defaultRetryFunc = f
+	}
+}
+
+// OptionDisableCompression disables the gzip compression
+// in http transport. This only has effect if you don't set
+// a custom transport.
+func OptionDisableCompression() Option {
+	return func(m *httpManipulator) {
+		m.disableCompression = true
+	}
+}

@@ -14,7 +14,6 @@ package manipmongo
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"net"
 	"time"
@@ -26,14 +25,16 @@ import (
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/tracing"
 	"go.aporeto.io/manipulate/manipmongo/internal/compiler"
-	"go.uber.org/zap"
 )
+
+const defaultGlobalContextTimeout = 60 * time.Second
 
 // MongoStore represents a MongoDB session.
 type mongoManipulator struct {
-	rootSession *mgo.Session
-	dbName      string
-	sharder     Sharder
+	rootSession      *mgo.Session
+	dbName           string
+	sharder          Sharder
+	defaultRetryFunc manipulate.RetryFunc
 }
 
 // New returns a new manipulator backed by MongoDB.
@@ -76,44 +77,19 @@ func New(url string, db string, options ...Option) (manipulate.TransactionalMani
 	session.SetSafe(convertWriteConsistency(cfg.writeConsistency))
 
 	return &mongoManipulator{
-		dbName:      db,
-		rootSession: session,
-		sharder:     cfg.sharder,
+		dbName:           db,
+		rootSession:      session,
+		sharder:          cfg.sharder,
+		defaultRetryFunc: cfg.defaultRetryFunc,
 	}, nil
-}
-
-// NewMongoManipulator returns a new TransactionalManipulator backed by MongoDB
-func NewMongoManipulator(connectionString string, dbName string, user string, password string, authsource string, poolLimit int, CAPool *x509.CertPool, clientCerts []tls.Certificate) manipulate.TransactionalManipulator {
-
-	fmt.Println("DEPRECATED: manipmongo.NewMongoManipulator is deprecated in favor of manipmongo.New")
-
-	m, err := New(
-		connectionString,
-		dbName,
-		OptionCredentials(user, password, authsource),
-		OptionConnectionPoolLimit(poolLimit),
-		OptionTLS(&tls.Config{
-			RootCAs:      CAPool,
-			Certificates: clientCerts,
-		}),
-	)
-
-	if err != nil {
-		zap.L().Fatal("Unable to connect to mongo",
-			zap.String("uri", connectionString),
-			zap.String("db", dbName),
-			zap.String("username", user),
-			zap.Error(err),
-		)
-	}
-
-	return m
 }
 
 func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.Identifiables) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
+		defer cancel()
+		mctx = manipulate.NewContext(ctx)
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve_many.%s", dest.Identity().Category))
@@ -166,10 +142,18 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 		query = query.Select(sels)
 	}
 
-	if err := query.All(dest); err != nil {
+	if _, err := RunQuery(
+		mctx,
+		func() (interface{}, error) { return nil, query.All(dest) },
+		RetryInfo{
+			Operation:        elemental.OperationRetrieveMany,
+			Identity:         dest.Identity(),
+			defaultRetryFunc: s.defaultRetryFunc,
+		},
+	); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
-		return handleQueryError(err)
+		return err
 	}
 
 	// backport all default values that are empty.
@@ -185,7 +169,9 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 func (s *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
+		defer cancel()
+		mctx = manipulate.NewContext(ctx)
 	}
 
 	c, close := s.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
@@ -215,10 +201,18 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 		query = query.Select(sels)
 	}
 
-	if err := query.One(object); err != nil {
+	if _, err := RunQuery(
+		mctx,
+		func() (interface{}, error) { return nil, query.One(object) },
+		RetryInfo{
+			Operation:        elemental.OperationRetrieve,
+			Identity:         object.Identity(),
+			defaultRetryFunc: s.defaultRetryFunc,
+		},
+	); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
-		return handleQueryError(err)
+		return err
 	}
 
 	// backport all default values that are empty.
@@ -232,7 +226,9 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 func (s *mongoManipulator) Create(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
+		defer cancel()
+		mctx = manipulate.NewContext(ctx)
 	}
 
 	c, close := s.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
@@ -256,10 +252,18 @@ func (s *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		s.sharder.Shard(object)
 	}
 
-	if err := c.Insert(object); err != nil {
+	if _, err := RunQuery(
+		mctx,
+		func() (interface{}, error) { return nil, c.Insert(object) },
+		RetryInfo{
+			Operation:        elemental.OperationCreate,
+			Identity:         object.Identity(),
+			defaultRetryFunc: s.defaultRetryFunc,
+		},
+	); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
-		return handleQueryError(err)
+		return err
 	}
 
 	return nil
@@ -268,7 +272,9 @@ func (s *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 func (s *mongoManipulator) Update(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
+		defer cancel()
+		mctx = manipulate.NewContext(ctx)
 	}
 
 	c, close := s.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
@@ -288,10 +294,18 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 		}
 	}
 
-	if err := c.Update(filter, bson.M{"$set": object}); err != nil {
+	if _, err := RunQuery(
+		mctx,
+		func() (interface{}, error) { return nil, c.Update(filter, bson.M{"$set": object}) },
+		RetryInfo{
+			Operation:        elemental.OperationUpdate,
+			Identity:         object.Identity(),
+			defaultRetryFunc: s.defaultRetryFunc,
+		},
+	); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
-		return handleQueryError(err)
+		return err
 	}
 
 	return nil
@@ -300,7 +314,9 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
+		defer cancel()
+		mctx = manipulate.NewContext(ctx)
 	}
 
 	c, close := s.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
@@ -320,10 +336,18 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 		}
 	}
 
-	if err := c.Remove(filter); err != nil {
+	if _, err := RunQuery(
+		mctx,
+		func() (interface{}, error) { return nil, c.Remove(filter) },
+		RetryInfo{
+			Operation:        elemental.OperationDelete,
+			Identity:         object.Identity(),
+			defaultRetryFunc: s.defaultRetryFunc,
+		},
+	); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
-		return handleQueryError(err)
+		return err
 	}
 
 	// backport all default values that are empty.
@@ -337,7 +361,9 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elemental.Identity) error {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
+		defer cancel()
+		mctx = manipulate.NewContext(ctx)
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.delete_many.%s", identity.Name))
@@ -354,10 +380,18 @@ func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 		}
 	}
 
-	if _, err := c.RemoveAll(filter); err != nil {
+	if _, err := RunQuery(
+		mctx,
+		func() (interface{}, error) { return c.RemoveAll(filter) },
+		RetryInfo{
+			Operation:        elemental.OperationDelete, // we miss DeleteMany
+			Identity:         identity,
+			defaultRetryFunc: s.defaultRetryFunc,
+		},
+	); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
-		return handleQueryError(err)
+		return err
 	}
 
 	return nil
@@ -366,7 +400,9 @@ func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Identity) (int, error) {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
+		defer cancel()
+		mctx = manipulate.NewContext(ctx)
 	}
 
 	c, close := s.makeSession(identity, mctx.ReadConsistency(), mctx.WriteConsistency())
@@ -388,14 +424,22 @@ func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.count.%s", identity.Category))
 	defer sp.Finish()
 
-	n, err := c.Find(filter).Count()
+	out, err := RunQuery(
+		mctx,
+		func() (interface{}, error) { return c.Find(filter).Count() },
+		RetryInfo{
+			Operation:        elemental.OperationInfo, // we miss DeleteMany
+			Identity:         identity,
+			defaultRetryFunc: s.defaultRetryFunc,
+		},
+	)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
-		return 0, handleQueryError(err)
+		return 0, err
 	}
 
-	return n, nil
+	return out.(int), nil
 }
 
 func (s *mongoManipulator) Commit(id manipulate.TransactionID) error { return nil }

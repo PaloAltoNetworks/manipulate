@@ -19,6 +19,7 @@ import (
 
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
+	"go.aporeto.io/manipulate"
 )
 
 type testTokenManager struct{}
@@ -93,5 +94,18 @@ func TestManipHttp_Optionions(t *testing.T) {
 		m := &httpManipulator{}
 		OptionEncoding(elemental.EncodingTypeMSGPACK)(m)
 		So(m.encoding, ShouldEqual, elemental.EncodingTypeMSGPACK)
+	})
+
+	Convey("Calling OptionDefaultRetryFunc should work", t, func() {
+		f := func(manipulate.RetryInfo) error { return nil }
+		m := &httpManipulator{}
+		OptionDefaultRetryFunc(f)(m)
+		So(m.defaultRetryFunc, ShouldEqual, f)
+	})
+
+	Convey("Calling OptionDisableCompression should work", t, func() {
+		m := &httpManipulator{}
+		OptionDisableCompression()(m)
+		So(m.disableCompression, ShouldEqual, true)
 	})
 }

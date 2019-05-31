@@ -17,6 +17,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -28,9 +30,15 @@ import (
 	"github.com/opentracing/opentracing-go/log"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/internal/backoff"
 	"go.aporeto.io/manipulate/internal/idempotency"
 	"go.aporeto.io/manipulate/internal/snip"
 	"go.aporeto.io/manipulate/internal/tracing"
+)
+
+const (
+	defaultGlobalContextTimeout = 2 * time.Minute
+	minContextTimeout           = 20 * time.Second
 )
 
 type httpManipulator struct {
@@ -42,6 +50,8 @@ type httpManipulator struct {
 	renewNotifiers     map[string]func(string)
 	renewNotifiersLock *sync.RWMutex
 	disableAutoRetry   bool
+	disableCompression bool
+	defaultRetryFunc   manipulate.RetryFunc
 
 	// optionnable
 	ctx           context.Context
@@ -82,6 +92,7 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 		if m.transport == nil {
 
 			m.transport, m.url = getDefaultTransport(url)
+			m.transport.DisableCompression = m.disableCompression
 
 			if m.tlsConfig == nil {
 				m.tlsConfig = getDefaultTLSConfig()
@@ -126,8 +137,14 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 
 func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.Identifiables) error {
 
+	if dest == nil {
+		return manipulate.NewErrCannotBuildQuery("nil dest")
+	}
+
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
+		defer cancel()
+		mctx = manipulate.NewContext(ctx)
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.retrieve_many.%s", dest.Identity().Category))
@@ -140,24 +157,15 @@ func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.I
 		return manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	response, err := s.send(mctx, http.MethodGet, url, nil, sp, 0)
+	response, err := s.send(mctx, http.MethodGet, url, nil, dest, sp)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
 	}
 
-	if response.StatusCode == http.StatusNoContent || response.ContentLength == 0 {
+	if response.StatusCode == http.StatusNoContent {
 		return nil
-	}
-
-	if response.StatusCode != http.StatusNoContent {
-		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response, dest); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return err
-		}
 	}
 
 	// backport all default values that are empty.
@@ -172,8 +180,14 @@ func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.I
 
 func (s *httpManipulator) Retrieve(mctx manipulate.Context, object elemental.Identifiable) error {
 
+	if object == nil {
+		return manipulate.NewErrCannotBuildQuery("nil object")
+	}
+
 	if mctx == nil {
-		mctx = manipulate.NewContext(s.ctx)
+		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
+		defer cancel()
+		mctx = manipulate.NewContext(ctx)
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.retrieve.object.%s", object.Identity().Name))
@@ -186,20 +200,15 @@ func (s *httpManipulator) Retrieve(mctx manipulate.Context, object elemental.Ide
 		return manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	response, err := s.send(mctx, http.MethodGet, url, nil, sp, 0)
+	response, err := s.send(mctx, http.MethodGet, url, nil, object, sp)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
 	}
 
-	if response.StatusCode != http.StatusNoContent {
-		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response, object); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return err
-		}
+	if response.StatusCode == http.StatusNoContent {
+		return nil
 	}
 
 	// backport all default values that are empty.
@@ -212,8 +221,14 @@ func (s *httpManipulator) Retrieve(mctx manipulate.Context, object elemental.Ide
 
 func (s *httpManipulator) Create(mctx manipulate.Context, object elemental.Identifiable) error {
 
+	if object == nil {
+		return manipulate.NewErrCannotBuildQuery("nil object")
+	}
+
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
+		defer cancel()
+		mctx = manipulate.NewContext(ctx)
 	}
 
 	kmctx, _ := mctx.(idempotency.Keyer)
@@ -239,20 +254,15 @@ func (s *httpManipulator) Create(mctx manipulate.Context, object elemental.Ident
 		return manipulate.NewErrCannotMarshal(err.Error())
 	}
 
-	response, err := s.send(mctx, http.MethodPost, url, data, sp, 0)
+	response, err := s.send(mctx, http.MethodPost, url, data, object, sp)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
 	}
 
-	if response.StatusCode != http.StatusNoContent {
-		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response, object); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return err
-		}
+	if response.StatusCode == http.StatusNoContent {
+		return nil
 	}
 
 	// backport all default values that are empty.
@@ -269,8 +279,14 @@ func (s *httpManipulator) Create(mctx manipulate.Context, object elemental.Ident
 
 func (s *httpManipulator) Update(mctx manipulate.Context, object elemental.Identifiable) error {
 
+	if object == nil {
+		return manipulate.NewErrCannotBuildQuery("nil object")
+	}
+
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
+		defer cancel()
+		mctx = manipulate.NewContext(ctx)
 	}
 
 	kmctx, _ := mctx.(idempotency.Keyer)
@@ -301,20 +317,15 @@ func (s *httpManipulator) Update(mctx manipulate.Context, object elemental.Ident
 		return manipulate.NewErrCannotMarshal(err.Error())
 	}
 
-	response, err := s.send(mctx, method, url, data, sp, 0)
+	response, err := s.send(mctx, method, url, data, object, sp)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
 	}
 
-	if response.StatusCode != http.StatusNoContent {
-		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response, object); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return err
-		}
+	if response.StatusCode == http.StatusNoContent {
+		return nil
 	}
 
 	// backport all default values that are empty.
@@ -331,8 +342,14 @@ func (s *httpManipulator) Update(mctx manipulate.Context, object elemental.Ident
 
 func (s *httpManipulator) Delete(mctx manipulate.Context, object elemental.Identifiable) error {
 
+	if object == nil {
+		return manipulate.NewErrCannotBuildQuery("nil object")
+	}
+
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
+		defer cancel()
+		mctx = manipulate.NewContext(ctx)
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.delete.object.%s", object.Identity().Name))
@@ -346,20 +363,15 @@ func (s *httpManipulator) Delete(mctx manipulate.Context, object elemental.Ident
 		return manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	response, err := s.send(mctx, http.MethodDelete, url, nil, sp, 0)
+	response, err := s.send(mctx, http.MethodDelete, url, nil, object, sp)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
 	}
 
-	if response.StatusCode != http.StatusNoContent {
-		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response, object); err != nil {
-			sp.SetTag("error", true)
-			sp.LogFields(log.Error(err))
-			return err
-		}
+	if response.StatusCode == http.StatusNoContent {
+		return nil
 	}
 
 	// backport all default values that are empty.
@@ -377,7 +389,9 @@ func (s *httpManipulator) DeleteMany(mctx manipulate.Context, identity elemental
 func (s *httpManipulator) Count(mctx manipulate.Context, identity elemental.Identity) (int, error) {
 
 	if mctx == nil {
-		mctx = manipulate.NewContext(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
+		defer cancel()
+		mctx = manipulate.NewContext(ctx)
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.count.%s", identity.Category))
@@ -390,7 +404,7 @@ func (s *httpManipulator) Count(mctx manipulate.Context, identity elemental.Iden
 		return 0, manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	if _, err = s.send(mctx, http.MethodHead, url, nil, sp, 0); err != nil {
+	if _, err = s.send(mctx, http.MethodHead, url, nil, nil, sp); err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return 0, err
@@ -417,7 +431,6 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.
 
 	request.Header.Set("Content-Type", string(s.encoding))
 	request.Header.Set("Accept", string(s.encoding))
-	request.Header.Set("Accept-Encoding", "gzip")
 
 	if ns != "" {
 		request.Header.Set("X-Namespace", ns)
@@ -526,114 +539,249 @@ func (s *httpManipulator) getURLForChildrenIdentity(
 	return url + "/" + childrenIdentity.Category, nil
 }
 
-func (s *httpManipulator) send(mctx manipulate.Context, method string, requrl string, body []byte, sp opentracing.Span, try int) (*http.Response, error) {
+func (s *httpManipulator) send(
+	mctx manipulate.Context,
+	method string,
+	requrl string,
+	body []byte,
+	dest interface{},
+	sp opentracing.Span,
+) (*http.Response, error) {
 
-	request, err := http.NewRequest(method, requrl, bytes.NewBuffer(body))
-	if err != nil {
-		sp.SetTag("error", true)
-		sp.LogFields(log.Error(err))
-		return nil, manipulate.NewErrCannotExecuteQuery(err.Error())
-	}
-	if err = addQueryParameters(request, mctx); err != nil {
-		sp.SetTag("error", true)
-		sp.LogFields(log.Error(err))
-		return nil, err
-	}
+	var try int         // try number. Starts at 0
+	var lastError error // last error before retry.
 
-	if err = sp.Tracer().Inject(sp.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(request.Header)); err != nil {
-		sp.SetTag("error", true)
-		sp.LogFields(log.Error(err))
-		return nil, err
+	// We get the context deadline.
+	deadline, ok := mctx.Context().Deadline()
+	if !ok {
+		deadline = time.Now().Add(time.Hour) // long, but not completely unlimited.
 	}
 
-	retryErrCom := func(resp *http.Response, err error) (*http.Response, error) {
-
-		if s.disableAutoRetry {
-			return resp, err
-		}
-
-		if try >= 3 {
-			return resp, err
-		}
-		<-time.After(time.Duration(try) * time.Second)
-		try++
-		return s.send(mctx, method, requrl, body, sp, try)
+	// We divide the time until deadline into multiple retries
+	// and make it a minimum of minContextTimeout.
+	subContextTimeout := time.Until(deadline) / time.Duration(mctx.RetryRatio())
+	if subContextTimeout < minContextTimeout {
+		subContextTimeout = minContextTimeout
 	}
 
-	s.prepareHeaders(request, mctx)
-
-	request = request.WithContext(mctx.Context())
-
-	response, err := s.client.Do(request)
-	if err != nil {
-		if uerr, ok := err.(*url.Error); ok {
-			switch uerr.Err.(type) {
-			case x509.UnknownAuthorityError, x509.CertificateInvalidError, x509.HostnameError:
-				return response, manipulate.NewErrTLS(err.Error())
-			}
-		}
-
-		return retryErrCom(response, manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error()))
-	}
-
-	if response.StatusCode == http.StatusBadGateway {
-		return retryErrCom(response, manipulate.NewErrCannotCommunicate("Bad gateway"))
-	}
-
-	if response.StatusCode == http.StatusServiceUnavailable {
-		return retryErrCom(response, manipulate.NewErrCannotCommunicate("Service unavailable"))
-	}
-
-	if response.StatusCode == http.StatusGatewayTimeout {
-		return retryErrCom(response, manipulate.NewErrCannotCommunicate("Gateway timeout"))
-	}
-
-	if response.StatusCode == http.StatusLocked {
-		return retryErrCom(response, manipulate.NewErrLocked("The api has been locked down by the server."))
-	}
-
-	// If we get a forbidden or auth error, we try to renew the token and retry the request 3 times
-	if (response.StatusCode == http.StatusForbidden || response.StatusCode == http.StatusUnauthorized) && s.tokenManager != nil && try < 3 {
-
-		<-time.After(time.Duration(try) * time.Second)
-		try++
-
-		token, err := s.tokenManager.Issue(mctx.Context())
-		if err == nil {
-			s.setPassword(token)
-			return s.send(mctx, method, requrl, body, sp, try)
+	// Helpers to deal with current request canceling
+	var cancelReq context.CancelFunc
+	cancelCurrentRequest := func() {
+		if cancelReq != nil {
+			cancelReq()
 		}
 	}
+	defer cancelCurrentRequest()
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
+	// Helpers to deal with closing the body of the current request
+	var bodyCloser io.ReadCloser
+	closeCurrentBody := func() {
+		if bodyCloser != nil {
+			bodyCloser.Close() // nolint
+		}
+	}
+	defer closeCurrentBody()
 
-		es := elemental.Errors{}
+	// Function that creates a new request to avoid reusing some buffers.
+	// It also sets the current request cancel function.
+	newRequest := func() (*http.Request, error) {
 
-		defer response.Body.Close() // nolint: errcheck
-		if err := decodeData(response, &es); err != nil {
+		req, err := http.NewRequest(method, requrl, bytes.NewBuffer(body))
+		if err != nil {
+			return nil, manipulate.NewErrCannotBuildQuery(err.Error())
+		}
+
+		if err = addQueryParameters(req, mctx); err != nil {
 			return nil, err
 		}
 
-		errs := elemental.NewErrors()
-
-		for _, e := range es {
-			errs = append(errs, e)
+		if err = sp.Tracer().Inject(sp.Context(), opentracing.TextMap, opentracing.HTTPHeadersCarrier(req.Header)); err != nil {
+			return nil, err
 		}
 
-		if response.StatusCode == http.StatusRequestTimeout {
-			return retryErrCom(response, manipulate.NewErrCannotCommunicate(errs.Error()))
-		}
+		// We injects the header from mctx.
+		s.prepareHeaders(req, mctx)
 
-		if response.StatusCode == http.StatusTooManyRequests {
-			return retryErrCom(response, manipulate.NewErrTooManyRequests(errs.Error()))
-		}
+		ctx, cancel := context.WithTimeout(mctx.Context(), subContextTimeout)
+		cancelReq = cancel
 
-		return response, errs
+		return req.WithContext(ctx), nil
 	}
 
-	s.readHeaders(response, mctx)
+	// Main retry loop
+	for {
 
-	return response, nil
+		// We spawn a new request
+		request, err := newRequest()
+		if err != nil {
+			return nil, err
+		}
+
+		// We launch the request
+		response, err := s.client.Do(request)
+
+		if err != nil {
+
+			// Per doc, client.Do always returns an *url.Error.
+			uerr := err.(*url.Error)
+
+			// We check for constant errors.
+			switch uerr.Err {
+
+			case context.DeadlineExceeded:
+				if lastError == nil {
+					lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
+				}
+				goto RETRY
+
+			case io.ErrUnexpectedEOF, io.EOF:
+				lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
+				goto RETRY
+			}
+
+			// We check for error types.
+			switch uerr.Err.(type) {
+
+			case net.Error:
+				lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
+				goto RETRY
+
+			case x509.UnknownAuthorityError, x509.CertificateInvalidError, x509.HostnameError:
+				return nil, manipulate.NewErrTLS(err.Error())
+
+			default:
+				return nil, manipulate.NewErrCannotExecuteQuery(err.Error())
+			}
+		}
+
+		// We passed the basic error, we have a body.
+		// We register it so next loop will be clean.
+		bodyCloser = request.Body
+
+		// We check for http status codes that triggers a retry
+		switch response.StatusCode {
+
+		case http.StatusBadGateway:
+			lastError = manipulate.NewErrCannotCommunicate("Bad gateway")
+			goto RETRY
+
+		case http.StatusServiceUnavailable:
+			lastError = manipulate.NewErrCannotCommunicate("Service unavailable")
+			goto RETRY
+
+		case http.StatusGatewayTimeout:
+			lastError = manipulate.NewErrCannotCommunicate("Gateway timeout")
+			goto RETRY
+
+		case http.StatusLocked:
+			lastError = manipulate.NewErrLocked("The api has been locked down by the server.")
+			goto RETRY
+
+		case http.StatusRequestTimeout:
+			lastError = manipulate.NewErrCannotCommunicate("Request Timeout")
+			goto RETRY
+
+		case http.StatusTooManyRequests:
+			lastError = manipulate.NewErrTooManyRequests("Too Many Requests")
+			goto RETRY
+
+		case http.StatusForbidden, http.StatusUnauthorized:
+
+			// This is a special case where we try to renew our token
+			// in case of 401 or 403 error.
+			// This is retried twice.
+			if s.tokenManager != nil {
+
+				for i := 1; i < 3; i++ {
+					time.Sleep(time.Duration(i) * time.Second)
+
+					token, err := s.tokenManager.Issue(mctx.Context())
+					if err == nil {
+						s.setPassword(token)
+						goto RETRY
+					}
+				}
+			}
+
+			// If we could not renew the token, we continue.
+		}
+
+		// We backport header info into mctx
+		s.readHeaders(response, mctx)
+
+		// If we have some other errors, we decode them.
+		if response.StatusCode < 200 || response.StatusCode >= 300 {
+			errs := elemental.NewErrors()
+			if err := decodeData(response, &errs); err != nil {
+				return nil, err
+			}
+
+			return nil, errs
+		}
+
+		//
+		// From now on, this is a success.
+		//
+
+		// If we have content, we return the response.
+		// The body will be drained by the defered call to closeCurrentBody().
+		if response.StatusCode == http.StatusNoContent || response.ContentLength == 0 || dest == nil {
+			return response, nil
+		}
+
+		// If we have a given dest to decode, we decode it now.
+		if dest != nil {
+			if err := decodeData(response, dest); err != nil {
+				return nil, err
+			}
+		}
+
+		// And we return the response
+		return response, nil
+
+	RETRY:
+		//
+		// From now on, this is a failure.
+		//
+
+		// We cancel any pending request context and the pending body.
+		cancelCurrentRequest()
+		closeCurrentBody()
+
+		// If the manipulator has auto retry disabled we return the last error
+		if s.disableAutoRetry {
+			return nil, lastError
+		}
+
+		info := RetryInfo{
+			URL:    requrl,
+			Method: method,
+			try:    try,
+			mctx:   mctx,
+			err:    lastError,
+		}
+
+		// We run the eventual retry funcs.
+		if rf := mctx.RetryFunc(); rf != nil {
+			if rerr := rf(info); rerr != nil {
+				return nil, rerr
+			}
+		} else if s.defaultRetryFunc != nil {
+			if rerr := s.defaultRetryFunc(info); rerr != nil {
+				return nil, rerr
+			}
+		}
+
+		// We check is the main context expired.
+		// and if so, we return the last error
+		if time.Until(deadline) <= 0 {
+			return nil, lastError
+		}
+
+		// Then we sleep backoff and we restart the retry loop.
+		time.Sleep(backoff.Next(try, deadline))
+		try++
+	}
 }
 
 func (s *httpManipulator) registerRenewNotifier(id string, f func(string)) {

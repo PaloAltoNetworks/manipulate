@@ -12,12 +12,10 @@
 package maniphttp
 
 import (
-	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -27,12 +25,9 @@ import (
 	"time"
 
 	"go.aporeto.io/elemental"
-
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/maniphttp/internal/compiler"
 )
-
-var gzipReaders = sync.Pool{New: func() interface{} { return &gzip.Reader{} }}
 
 // AddQueryParameters appends each key-value pair from ctx.Parameters
 // to a request as query parameters with proper escaping.
@@ -85,26 +80,8 @@ func decodeData(r *http.Response, dest interface{}) (err error) {
 		return manipulate.NewErrCannotUnmarshal("nil reader")
 	}
 
-	var dataReader io.ReadCloser
-	switch r.Header.Get("Content-Encoding") {
-	case "gzip":
-		gz := gzipReaders.Get().(*gzip.Reader)
-		defer gzipReaders.Put(gz)
-
-		if err := gz.Reset(r.Body); err != nil {
-			panic(err)
-		}
-		defer gz.Close() // nolint
-
-		dataReader = gz
-
-	default:
-		dataReader = r.Body
-	}
-
 	var data []byte
-
-	if data, err = ioutil.ReadAll(dataReader); err != nil {
+	if data, err = ioutil.ReadAll(r.Body); err != nil {
 		return manipulate.NewErrCannotUnmarshal(fmt.Sprintf("unable to read data: %s", err.Error()))
 	}
 
@@ -144,9 +121,8 @@ func getDefaultTLSConfig() *tls.Config {
 func getDefaultTransport(url string) (*http.Transport, string) {
 
 	dialer := (&net.Dialer{
-		Timeout:   30 * time.Second,
+		Timeout:   10 * time.Second,
 		KeepAlive: 30 * time.Second,
-		DualStack: true,
 	}).DialContext
 
 	outURL := url
@@ -179,6 +155,6 @@ func getDefaultTransport(url string) (*http.Transport, string) {
 
 func getDefaultClient() *http.Client {
 	return &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: 3600 * time.Second,
 	}
 }

@@ -30,6 +30,7 @@ func TestMethodNewContext(t *testing.T) {
 		Convey("Then my context should be initiliazed", func() {
 			So(mctx.Page(), ShouldEqual, 0)
 			So(mctx.PageSize(), ShouldEqual, 0)
+			So(mctx.RetryRatio(), ShouldEqual, 4)
 			So(mctx.WriteConsistency(), ShouldEqual, WriteConsistencyDefault)
 			So(mctx.ReadConsistency(), ShouldEqual, ReadConsistencyDefault)
 		})
@@ -121,11 +122,12 @@ func TestContext_Derive(t *testing.T) {
 
 	Convey("Given I have a context", t, func() {
 
+		rfunc := func(RetryInfo) error { return nil }
+
 		mctx := &mcontext{
 			page:                 1,
 			pageSize:             2,
 			parent:               testmodel.NewList(),
-			countTotal:           3,
 			filter:               elemental.NewFilterComposer().WithKey("k").Equals("v").Done(),
 			parameters:           url.Values{"a": []string{"b"}},
 			transactionID:        NewTransactionID(),
@@ -139,36 +141,60 @@ func TestContext_Derive(t *testing.T) {
 			order:                []string{"a", "b"},
 			fields:               []string{"a", "b"},
 			ctx:                  context.Background(),
-			idempotencyKey:       "ikey",
+			retryFunc:            rfunc,
+			writeConsistency:     WriteConsistencyStrong,
+			readConsistency:      ReadConsistencyMonotonic,
+			clientIP:             "1.1.1.1",
+			retryRatio:           12,
 		}
+
+		mctx.SetCount(3)
+		mctx.SetMessages([]string{"hello"})
+		mctx.SetIdempotencyKey("ikey")
+		mctx.SetCredentials("user", "password")
+
+		u, p := mctx.Credentials()
+		So(u, ShouldEqual, "user")
+		So(p, ShouldEqual, "password")
 
 		Convey("When I Derive without option", func() {
 
 			copy := mctx.Derive().(*mcontext)
 
 			Convey("Then the copy should resemble to the original", func() {
-				So(copy.Page(), ShouldEqual, 1)
-				So(copy.PageSize(), ShouldEqual, 2)
-				So(copy.Parent(), ShouldEqual, mctx.parent)
-				So(copy.Count(), ShouldEqual, mctx.countTotal)
-				So(copy.filter.String(), ShouldEqual, `k == "v"`)
-				So(copy.Parameters(), ShouldEqual, mctx.parameters)
-				So(copy.TransactionID(), ShouldEqual, mctx.transactionID)
-				So(copy.Namespace(), ShouldEqual, mctx.namespace)
-				So(copy.Recursive(), ShouldEqual, mctx.recursive)
-				So(copy.Override(), ShouldEqual, mctx.overrideProtection)
-				So(copy.Finalizer(), ShouldEqual, mctx.createFinalizer)
-				So(copy.Version(), ShouldEqual, mctx.version)
+
+				So(copy.Count(), ShouldEqual, 0)
+				So(copy.IdempotencyKey(), ShouldEqual, "")
+				So(copy.Messages(), ShouldBeNil)
+
+				So(copy.ClientIP(), ShouldEqual, mctx.clientIP)
 				So(copy.ExternalTrackingID(), ShouldEqual, mctx.externalTrackingID)
 				So(copy.ExternalTrackingType(), ShouldEqual, mctx.externalTrackingType)
-				So(copy.Order(), ShouldResemble, mctx.order)
 				So(copy.Fields(), ShouldResemble, mctx.fields)
-				So(copy.ctx, ShouldEqual, mctx.ctx)
-				So(copy.IdempotencyKey(), ShouldEqual, "")
+				So(copy.Filter().String(), ShouldEqual, `k == "v"`)
+				So(copy.Finalizer(), ShouldEqual, mctx.createFinalizer)
+				So(copy.Namespace(), ShouldEqual, mctx.namespace)
+				So(copy.Order(), ShouldResemble, mctx.order)
+				So(copy.Override(), ShouldEqual, mctx.overrideProtection)
+				So(copy.Page(), ShouldEqual, mctx.page)
+				So(copy.PageSize(), ShouldEqual, mctx.pageSize)
+				So(copy.Parameters(), ShouldEqual, mctx.parameters)
+				So(copy.Parent(), ShouldEqual, mctx.parent)
+				So(copy.password, ShouldEqual, mctx.password)
+				So(copy.ReadConsistency(), ShouldEqual, mctx.readConsistency)
+				So(copy.Recursive(), ShouldEqual, mctx.recursive)
+				So(copy.RetryFunc(), ShouldEqual, rfunc)
+				So(copy.String(), ShouldEqual, mctx.String())
+				So(copy.TransactionID(), ShouldEqual, mctx.transactionID)
+				So(copy.username, ShouldEqual, mctx.username)
+				So(copy.Version(), ShouldEqual, mctx.version)
+				So(copy.WriteConsistency(), ShouldEqual, mctx.writeConsistency)
+				So(copy.Context(), ShouldEqual, mctx.ctx)
+				So(copy.RetryRatio(), ShouldEqual, mctx.retryRatio)
 			})
 		})
 
-		Convey("When I Derive without with options", func() {
+		Convey("When I Derive with options", func() {
 
 			copy := mctx.Derive(
 				ContextOptionPage(11, 12),
@@ -178,22 +204,33 @@ func TestContext_Derive(t *testing.T) {
 			Convey("Then the copy should resemble to the original but for the changes", func() {
 				So(copy.Page(), ShouldEqual, 11)
 				So(copy.PageSize(), ShouldEqual, 12)
-				So(copy.Parent(), ShouldEqual, mctx.parent)
-				So(copy.Count(), ShouldEqual, mctx.countTotal)
-				So(copy.filter.String(), ShouldEqual, `k == "v2"`)
-				So(copy.Parameters(), ShouldEqual, mctx.parameters)
-				So(copy.TransactionID(), ShouldEqual, mctx.transactionID)
-				So(copy.Namespace(), ShouldEqual, mctx.namespace)
-				So(copy.Recursive(), ShouldEqual, mctx.recursive)
-				So(copy.Override(), ShouldEqual, mctx.overrideProtection)
-				So(copy.Finalizer(), ShouldEqual, mctx.createFinalizer)
-				So(copy.Version(), ShouldEqual, mctx.version)
+				So(copy.Filter().String(), ShouldEqual, `k == "v2"`)
+				So(copy.String(), ShouldNotEqual, mctx.String())
+
+				So(copy.Count(), ShouldEqual, 0)
+				So(copy.IdempotencyKey(), ShouldEqual, "")
+				So(copy.Messages(), ShouldBeNil)
+
+				So(copy.ClientIP(), ShouldEqual, mctx.clientIP)
 				So(copy.ExternalTrackingID(), ShouldEqual, mctx.externalTrackingID)
 				So(copy.ExternalTrackingType(), ShouldEqual, mctx.externalTrackingType)
-				So(copy.Order(), ShouldResemble, mctx.order)
 				So(copy.Fields(), ShouldResemble, mctx.fields)
-				So(copy.ctx, ShouldEqual, mctx.ctx)
-				So(copy.IdempotencyKey(), ShouldEqual, "")
+				So(copy.Finalizer(), ShouldEqual, mctx.createFinalizer)
+				So(copy.Namespace(), ShouldEqual, mctx.namespace)
+				So(copy.Order(), ShouldResemble, mctx.order)
+				So(copy.Override(), ShouldEqual, mctx.overrideProtection)
+				So(copy.Parameters(), ShouldEqual, mctx.parameters)
+				So(copy.Parent(), ShouldEqual, mctx.parent)
+				So(copy.password, ShouldEqual, mctx.password)
+				So(copy.ReadConsistency(), ShouldEqual, mctx.readConsistency)
+				So(copy.Recursive(), ShouldEqual, mctx.recursive)
+				So(copy.RetryFunc(), ShouldEqual, rfunc)
+				So(copy.TransactionID(), ShouldEqual, mctx.transactionID)
+				So(copy.username, ShouldEqual, mctx.username)
+				So(copy.Version(), ShouldEqual, mctx.version)
+				So(copy.WriteConsistency(), ShouldEqual, mctx.writeConsistency)
+				So(copy.Context(), ShouldEqual, mctx.ctx)
+				So(copy.RetryRatio(), ShouldEqual, mctx.retryRatio)
 			})
 		})
 	})

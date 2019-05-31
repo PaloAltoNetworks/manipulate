@@ -149,3 +149,29 @@ func ContextOptionClientIP(clientIP string) ContextOption {
 		c.clientIP = clientIP
 	}
 }
+
+// ContextOptionRetryFunc sets the retry function.
+// This function will be called on every communication error, and will be passed
+// the try number and the error. If it itself return an error, retrying will stop and
+// that error will be returned from the manipulator operation.
+func ContextOptionRetryFunc(f RetryFunc) ContextOption {
+	return func(c *mcontext) {
+		c.retryFunc = f
+	}
+}
+
+// ContextOptionRetryRatio sets the retry ratio.
+//
+// RetryRatio divides the remaining time unitl context
+// deadline to perfrom single retry query down to a minimum
+// defined by manipulator implementations (typically 20s).
+// The default value is 4.
+//
+// For example if the context has a timeout of 2m,
+// each retry will use a sub context with a timeout
+// of 30s.
+func ContextOptionRetryRatio(r int64) ContextOption {
+	return func(c *mcontext) {
+		c.retryRatio = r
+	}
+}

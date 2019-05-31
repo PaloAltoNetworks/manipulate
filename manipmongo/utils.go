@@ -12,6 +12,8 @@
 package manipmongo
 
 import (
+	"io"
+	"net"
 	"strings"
 
 	"github.com/globalsign/mgo"
@@ -55,6 +57,10 @@ func applyOrdering(order []string, inverted bool) []string {
 
 func handleQueryError(err error) error {
 
+	if _, ok := err.(net.Error); ok {
+		return manipulate.NewErrCannotCommunicate(err.Error())
+	}
+
 	if err == mgo.ErrNotFound {
 		return manipulate.NewErrObjectNotFound("cannot find the object for the given ID")
 	}
@@ -62,6 +68,11 @@ func handleQueryError(err error) error {
 	if mgo.IsDup(err) {
 		return manipulate.NewErrConstraintViolation("duplicate key.")
 	}
+
+	if isConnectionError(err) {
+		return manipulate.NewErrCannotCommunicate(err.Error())
+	}
+
 	// see https://github.com/mongodb/mongo/blob/master/src/mongo/base/error_codes.err
 	switch getErrorCode(err) {
 	case 6, 7, 71, 74, 91, 109, 189, 202, 216, 262, 10107, 13436, 13435, 11600, 11602:
@@ -104,6 +115,41 @@ func getErrorCode(err error) int {
 	}
 
 	return 0
+}
+
+func isConnectionError(err error) bool {
+
+	if err == nil {
+		return false
+	}
+
+	// Stolen from mongodb code. this is ugly.
+	const (
+		errLostConnection               = "lost connection to server"
+		errNoReachableServers           = "no reachable servers"
+		errReplTimeoutPrefix            = "waiting for replication timed out"
+		errCouldNotContactPrimaryPrefix = "could not contact primary for replica set"
+		errWriteResultsUnavailable      = "write results unavailable from"
+		errCouldNotFindPrimaryPrefix    = `could not find host matching read preference { mode: "primary"`
+		errUnableToTargetPrefix         = "unable to target"
+		errNotMaster                    = "not master"
+		errConnectionRefusedSuffix      = "connection refused"
+	)
+
+	lowerCaseError := strings.ToLower(err.Error())
+	if lowerCaseError == errNoReachableServers ||
+		err == io.EOF ||
+		strings.Contains(lowerCaseError, errLostConnection) ||
+		strings.Contains(lowerCaseError, errReplTimeoutPrefix) ||
+		strings.Contains(lowerCaseError, errCouldNotContactPrimaryPrefix) ||
+		strings.Contains(lowerCaseError, errWriteResultsUnavailable) ||
+		strings.Contains(lowerCaseError, errCouldNotFindPrimaryPrefix) ||
+		strings.Contains(lowerCaseError, errUnableToTargetPrefix) ||
+		lowerCaseError == errNotMaster ||
+		strings.HasSuffix(lowerCaseError, errConnectionRefusedSuffix) {
+		return true
+	}
+	return false
 }
 
 func makeFieldsSelector(fields []string) bson.M {

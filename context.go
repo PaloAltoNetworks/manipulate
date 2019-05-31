@@ -49,6 +49,25 @@ const (
 // to now the intended ID before actually creating the object.
 type FinalizerFunc func(o elemental.Identifiable) error
 
+// A RetryFunc is a function that can be called during an
+// auto retry.
+// The current manipulate.Context is given, a Stringer interface containing,
+// more info about the current request, the error that
+// caused the retry and the try number.
+// If this function returns an error, the retry procedure will
+// be interupted and this error will be returns to the caller
+// of the operation.
+type RetryFunc func(RetryInfo) error
+
+// A RetryInfo is the interface that can be passed to RetryFunc
+// that will contain retry information. Content will depend on
+// the manipulator implementation.
+type RetryInfo interface {
+	Err() error
+	Context() Context
+	Try() int
+}
+
 // A Context holds all information regarding a particular manipulate operation.
 type Context interface {
 	Count() int
@@ -76,8 +95,39 @@ type Context interface {
 	Messages() []string
 	SetMessages([]string)
 	ClientIP() string
+	RetryFunc() RetryFunc
+	RetryRatio() int64
 
 	fmt.Stringer
+}
+
+type mcontext struct {
+	clientIP             string
+	countTotal           int
+	createFinalizer      FinalizerFunc
+	ctx                  context.Context
+	externalTrackingID   string
+	externalTrackingType string
+	fields               []string
+	filter               *elemental.Filter
+	idempotencyKey       string
+	messages             []string
+	namespace            string
+	order                []string
+	overrideProtection   bool
+	page                 int
+	pageSize             int
+	parameters           url.Values
+	parent               elemental.Identifiable
+	password             string
+	readConsistency      ReadConsistency
+	recursive            bool
+	retryFunc            RetryFunc
+	retryRatio           int64
+	transactionID        TransactionID
+	username             string
+	version              int
+	writeConsistency     WriteConsistency
 }
 
 // NewContext creates a context with the given ContextOption.
@@ -91,6 +141,7 @@ func NewContext(ctx context.Context, options ...ContextOption) Context {
 		ctx:              ctx,
 		writeConsistency: WriteConsistencyDefault,
 		readConsistency:  ReadConsistencyDefault,
+		retryRatio:       4,
 	}
 
 	for _, opt := range options {
@@ -100,31 +151,42 @@ func NewContext(ctx context.Context, options ...ContextOption) Context {
 	return mctx
 }
 
-type mcontext struct {
-	page                 int
-	pageSize             int
-	parent               elemental.Identifiable
-	countTotal           int
-	filter               *elemental.Filter
-	parameters           url.Values
-	transactionID        TransactionID
-	namespace            string
-	recursive            bool
-	overrideProtection   bool
-	createFinalizer      FinalizerFunc
-	version              int
-	externalTrackingID   string
-	externalTrackingType string
-	order                []string
-	ctx                  context.Context
-	fields               []string
-	writeConsistency     WriteConsistency
-	readConsistency      ReadConsistency
-	messages             []string
-	idempotencyKey       string
-	username             string
-	password             string
-	clientIP             string
+// Derive creates a copy of the context but updates the values of the given options.
+// Values that are parts of a response like Count or Messages or IdempotencyKey
+// are reset for the derived context.
+func (c *mcontext) Derive(options ...ContextOption) Context {
+
+	copy := &mcontext{
+		clientIP:             c.clientIP,
+		createFinalizer:      c.createFinalizer,
+		ctx:                  c.ctx,
+		externalTrackingID:   c.externalTrackingID,
+		externalTrackingType: c.externalTrackingType,
+		fields:               c.fields,
+		filter:               c.filter,
+		namespace:            c.namespace,
+		order:                c.order,
+		overrideProtection:   c.overrideProtection,
+		page:                 c.page,
+		pageSize:             c.pageSize,
+		parameters:           c.parameters,
+		parent:               c.parent,
+		password:             c.password,
+		readConsistency:      c.readConsistency,
+		recursive:            c.recursive,
+		retryFunc:            c.retryFunc,
+		retryRatio:           c.retryRatio,
+		transactionID:        c.transactionID,
+		username:             c.username,
+		version:              c.version,
+		writeConsistency:     c.writeConsistency,
+	}
+
+	for _, opt := range options {
+		opt(copy)
+	}
+
+	return copy
 }
 
 // Count returns the count
@@ -207,6 +269,14 @@ func (c *mcontext) Credentials() (string, string) { return c.username, c.passwor
 // Headers returns the optional headers.
 func (c *mcontext) ClientIP() string { return c.clientIP }
 
+// RetryRatio returns the context retry ratio.
+func (c *mcontext) RetryRatio() int64 { return c.retryRatio }
+
+// RetryFunc returns the retry function that is called when a retry occurs.
+// If this function returns an error, retrying stops and the returned error
+// returned by the manipulate operation.
+func (c *mcontext) RetryFunc() RetryFunc { return c.retryFunc }
+
 // SetDelegationToken sets the delegation token for this context.
 func (c *mcontext) SetCredentials(username, password string) {
 	c.username = username
@@ -217,36 +287,4 @@ func (c *mcontext) SetCredentials(username, password string) {
 func (c *mcontext) String() string {
 
 	return fmt.Sprintf("<Context page:%d pagesize:%d filter:%v version:%d>", c.page, c.pageSize, c.filter, c.version)
-}
-
-// Derive creates a copy of the context but updates the values of the given options.
-func (c *mcontext) Derive(options ...ContextOption) Context {
-
-	copy := &mcontext{
-		page:                 c.page,
-		pageSize:             c.pageSize,
-		parent:               c.parent,
-		countTotal:           c.countTotal,
-		filter:               c.filter,
-		parameters:           c.parameters,
-		transactionID:        c.transactionID,
-		namespace:            c.namespace,
-		recursive:            c.recursive,
-		overrideProtection:   c.overrideProtection,
-		createFinalizer:      c.createFinalizer,
-		version:              c.version,
-		externalTrackingID:   c.externalTrackingID,
-		externalTrackingType: c.externalTrackingType,
-		order:                c.order,
-		fields:               c.fields,
-		ctx:                  c.ctx,
-		username:             c.username,
-		password:             c.password,
-	}
-
-	for _, opt := range options {
-		opt(copy)
-	}
-
-	return copy
 }

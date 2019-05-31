@@ -12,6 +12,9 @@
 package manipmongo
 
 import (
+	"fmt"
+	"io"
+	"net"
 	"reflect"
 	"testing"
 
@@ -19,6 +22,58 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/manipulate"
 )
+
+func Test_invertSortKey(t *testing.T) {
+	type args struct {
+		k      string
+		revert bool
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			"string",
+			args{
+				"hello",
+				false,
+			},
+			"hello",
+		},
+		{
+			"string revert",
+			args{
+				"hello",
+				true,
+			},
+			"-hello",
+		},
+		{
+			"already reverted string",
+			args{
+				"-hello",
+				false,
+			},
+			"-hello",
+		},
+		{
+			"already reverted string revert",
+			args{
+				"-hello",
+				true,
+			},
+			"hello",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := invertSortKey(tt.args.k, tt.args.revert); got != tt.want {
+				t.Errorf("invertSortKey() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 
 func Test_handleQueryError(t *testing.T) {
 	type args struct {
@@ -29,6 +84,16 @@ func Test_handleQueryError(t *testing.T) {
 		args      args
 		errString string
 	}{
+		{
+			"net error",
+			args{
+				&net.OpError{
+					Op:  "coucou",
+					Err: fmt.Errorf("network sucks"),
+				},
+			},
+			"Cannot communicate: coucou: network sucks",
+		},
 		{
 			"err not found",
 			args{
@@ -43,6 +108,21 @@ func Test_handleQueryError(t *testing.T) {
 			},
 			"Constraint violation: duplicate key.",
 		},
+		{
+			"isConnectionError says yes",
+			args{
+				fmt.Errorf("lost connection to server"),
+			},
+			"Cannot communicate: lost connection to server",
+		},
+		{
+			"isConnectionError says no",
+			args{
+				fmt.Errorf("no"),
+			},
+			"Unable to execute query: no",
+		},
+
 		{
 			"err 6",
 			args{
@@ -407,6 +487,150 @@ func Test_convertWriteConsistency(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := convertWriteConsistency(tt.args.c); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("convertWriteConsistency() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_isConnectionError(t *testing.T) {
+	type args struct {
+		err error
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			"nil",
+			args{
+				nil,
+			},
+			false,
+		},
+		{
+			"lost connection to server",
+			args{
+				fmt.Errorf("lost connection to server"),
+			},
+			true,
+		},
+		{
+			"no reachable servers",
+			args{
+				fmt.Errorf("no reachable servers"),
+			},
+			true,
+		},
+		{
+			"waiting for replication timed out",
+			args{
+				fmt.Errorf("waiting for replication timed out"),
+			},
+			true,
+		},
+		{
+			"could not contact primary for replica set",
+			args{
+				fmt.Errorf("could not contact primary for replica set"),
+			},
+			true,
+		},
+		{
+			"write results unavailable from",
+			args{
+				fmt.Errorf("write results unavailable from"),
+			},
+			true,
+		},
+		{
+			`could not find host matching read preference { mode: "primary"`,
+			args{
+				fmt.Errorf(`could not find host matching read preference { mode: "primary"`),
+			},
+			true,
+		},
+		{
+			"unable to target",
+			args{
+				fmt.Errorf("unable to target"),
+			},
+			true,
+		},
+		{
+			"Connection refused",
+			args{
+				fmt.Errorf("blah: connection refused"),
+			},
+			true,
+		},
+		{
+			"EOF",
+			args{
+				io.EOF,
+			},
+			true,
+		},
+		{
+			"nope",
+			args{
+				fmt.Errorf("hey"),
+			},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isConnectionError(tt.args.err); got != tt.want {
+				t.Errorf("isConnectionError() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_getErrorCode(t *testing.T) {
+	type args struct {
+		err error
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			"*mgo.QueryError",
+			args{
+				&mgo.QueryError{Code: 42},
+			},
+			42,
+		},
+		{
+			"*mgo.LastError",
+			args{
+				&mgo.LastError{Code: 42},
+			},
+			42,
+		},
+
+		{
+			"*mgo.BulkError",
+			args{
+				&mgo.BulkError{ /* private */ },
+			},
+			0, // Should be 42. but that is sadly untestable... or is it?
+		},
+		{
+			"",
+			args{
+				fmt.Errorf("yo"),
+			},
+			0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := getErrorCode(tt.args.err); got != tt.want {
+				t.Errorf("getErrorCode() = %v, want %v", got, tt.want)
 			}
 		})
 	}
