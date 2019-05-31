@@ -159,3 +159,19 @@ func ContextOptionRetryFunc(f RetryFunc) ContextOption {
 		c.retryFunc = f
 	}
 }
+
+// ContextOptionRetryRatio sets the retry ratio.
+//
+// RetryRatio divides the remaining time unitl context
+// deadline to perfrom single retry query down to a minimum
+// defined by manipulator implementations (typically 20s).
+// The default value is 4.
+//
+// For example if the context has a timeout of 2m,
+// each retry will use a sub context with a timeout
+// of 30s.
+func ContextOptionRetryRatio(r int64) ContextOption {
+	return func(c *mcontext) {
+		c.retryRatio = r
+	}
+}

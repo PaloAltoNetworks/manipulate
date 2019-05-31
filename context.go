@@ -96,36 +96,38 @@ type Context interface {
 	SetMessages([]string)
 	ClientIP() string
 	RetryFunc() RetryFunc
+	RetryRatio() int64
 
 	fmt.Stringer
 }
 
 type mcontext struct {
-	page                 int
-	pageSize             int
-	parent               elemental.Identifiable
+	clientIP             string
 	countTotal           int
-	filter               *elemental.Filter
-	parameters           url.Values
-	transactionID        TransactionID
-	namespace            string
-	recursive            bool
-	overrideProtection   bool
 	createFinalizer      FinalizerFunc
-	version              int
+	ctx                  context.Context
 	externalTrackingID   string
 	externalTrackingType string
-	order                []string
-	ctx                  context.Context
 	fields               []string
-	writeConsistency     WriteConsistency
-	readConsistency      ReadConsistency
-	messages             []string
+	filter               *elemental.Filter
 	idempotencyKey       string
-	username             string
+	messages             []string
+	namespace            string
+	order                []string
+	overrideProtection   bool
+	page                 int
+	pageSize             int
+	parameters           url.Values
+	parent               elemental.Identifiable
 	password             string
-	clientIP             string
+	readConsistency      ReadConsistency
+	recursive            bool
 	retryFunc            RetryFunc
+	retryRatio           int64
+	transactionID        TransactionID
+	username             string
+	version              int
+	writeConsistency     WriteConsistency
 }
 
 // NewContext creates a context with the given ContextOption.
@@ -139,6 +141,7 @@ func NewContext(ctx context.Context, options ...ContextOption) Context {
 		ctx:              ctx,
 		writeConsistency: WriteConsistencyDefault,
 		readConsistency:  ReadConsistencyDefault,
+		retryRatio:       4,
 	}
 
 	for _, opt := range options {
@@ -149,33 +152,34 @@ func NewContext(ctx context.Context, options ...ContextOption) Context {
 }
 
 // Derive creates a copy of the context but updates the values of the given options.
+// Values that are parts of a response like Count or Messages or IdempotencyKey
+// are reset for the derived context.
 func (c *mcontext) Derive(options ...ContextOption) Context {
 
 	copy := &mcontext{
-		page:                 c.page,
-		pageSize:             c.pageSize,
-		parent:               c.parent,
-		countTotal:           c.countTotal,
-		filter:               c.filter,
-		parameters:           c.parameters,
-		transactionID:        c.transactionID,
-		namespace:            c.namespace,
-		recursive:            c.recursive,
-		overrideProtection:   c.overrideProtection,
+		clientIP:             c.clientIP,
 		createFinalizer:      c.createFinalizer,
-		version:              c.version,
+		ctx:                  c.ctx,
 		externalTrackingID:   c.externalTrackingID,
 		externalTrackingType: c.externalTrackingType,
-		order:                c.order,
 		fields:               c.fields,
-		ctx:                  c.ctx,
-		username:             c.username,
+		filter:               c.filter,
+		namespace:            c.namespace,
+		order:                c.order,
+		overrideProtection:   c.overrideProtection,
+		page:                 c.page,
+		pageSize:             c.pageSize,
+		parameters:           c.parameters,
+		parent:               c.parent,
 		password:             c.password,
-		retryFunc:            c.retryFunc,
-		messages:             c.messages,
 		readConsistency:      c.readConsistency,
+		recursive:            c.recursive,
+		retryFunc:            c.retryFunc,
+		retryRatio:           c.retryRatio,
+		transactionID:        c.transactionID,
+		username:             c.username,
+		version:              c.version,
 		writeConsistency:     c.writeConsistency,
-		clientIP:             c.clientIP,
 	}
 
 	for _, opt := range options {
@@ -264,6 +268,9 @@ func (c *mcontext) Credentials() (string, string) { return c.username, c.passwor
 
 // Headers returns the optional headers.
 func (c *mcontext) ClientIP() string { return c.clientIP }
+
+// RetryRatio returns the context retry ratio.
+func (c *mcontext) RetryRatio() int64 { return c.retryRatio }
 
 // RetryFunc returns the retry function that is called when a retry occurs.
 // If this function returns an error, retrying stops and the returned error

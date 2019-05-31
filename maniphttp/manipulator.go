@@ -38,6 +38,7 @@ import (
 
 const (
 	defaultGlobalContextTimeout = 2 * time.Minute
+	minContextTimeout           = 20 * time.Second
 )
 
 type httpManipulator struct {
@@ -557,10 +558,10 @@ func (s *httpManipulator) send(
 	}
 
 	// We divide the time until deadline into multiple retries
-	// and make it a minimum of 10sec
-	subContextTimeout := time.Until(deadline) / 10
-	if subContextTimeout < 10*time.Second {
-		subContextTimeout = 10 * time.Second
+	// and make it a minimum of minContextTimeout.
+	subContextTimeout := time.Until(deadline) / time.Duration(mctx.RetryRatio())
+	if subContextTimeout < minContextTimeout {
+		subContextTimeout = minContextTimeout
 	}
 
 	// Helpers to deal with current request canceling
