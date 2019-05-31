@@ -69,6 +69,11 @@ func runQueryFunc(
 
 	var try int
 
+	info := RetryInfo{
+		Operation: operation,
+		Identity:  identity,
+	}
+
 	for {
 
 		out, err := operationFunc()
@@ -81,14 +86,9 @@ func runQueryFunc(
 			return out, err
 		}
 
-		info := RetryInfo{
-			try:  try,
-			err:  err,
-			mctx: mctx,
-
-			Operation: operation,
-			Identity:  identity,
-		}
+		info.try = try
+		info.err = err
+		info.mctx = mctx
 
 		if rf := mctx.RetryFunc(); rf != nil {
 			if rerr := rf(info); rerr != nil {
@@ -174,16 +174,15 @@ func getErrorCode(err error) int {
 
 // Stolen from mongodb code. this is ugly.
 const (
-	ErrLostConnection               = "lost connection to server"
-	ErrNoReachableServers           = "no reachable servers"
-	ErrNsNotFound                   = "ns not found"
-	ErrReplTimeoutPrefix            = "waiting for replication timed out"
-	ErrCouldNotContactPrimaryPrefix = "could not contact primary for replica set"
-	ErrWriteResultsUnavailable      = "write results unavailable from"
-	ErrCouldNotFindPrimaryPrefix    = `could not find host matching read preference { mode: "primary"`
-	ErrUnableToTargetPrefix         = "unable to target"
-	ErrNotMaster                    = "not master"
-	ErrConnectionRefusedSuffix      = "Connection refused"
+	errLostConnection               = "lost connection to server"
+	errNoReachableServers           = "no reachable servers"
+	errReplTimeoutPrefix            = "waiting for replication timed out"
+	errCouldNotContactPrimaryPrefix = "could not contact primary for replica set"
+	errWriteResultsUnavailable      = "write results unavailable from"
+	errCouldNotFindPrimaryPrefix    = `could not find host matching read preference { mode: "primary"`
+	errUnableToTargetPrefix         = "unable to target"
+	errNotMaster                    = "not master"
+	errConnectionRefusedSuffix      = "connection refused"
 )
 
 func isConnectionError(err error) bool {
@@ -193,15 +192,16 @@ func isConnectionError(err error) bool {
 	}
 
 	lowerCaseError := strings.ToLower(err.Error())
-	if lowerCaseError == ErrNoReachableServers ||
+	if lowerCaseError == errNoReachableServers ||
 		err == io.EOF ||
-		strings.Contains(lowerCaseError, ErrReplTimeoutPrefix) ||
-		strings.Contains(lowerCaseError, ErrCouldNotContactPrimaryPrefix) ||
-		strings.Contains(lowerCaseError, ErrWriteResultsUnavailable) ||
-		strings.Contains(lowerCaseError, ErrCouldNotFindPrimaryPrefix) ||
-		strings.Contains(lowerCaseError, ErrUnableToTargetPrefix) ||
-		lowerCaseError == ErrNotMaster ||
-		strings.HasSuffix(lowerCaseError, ErrConnectionRefusedSuffix) {
+		strings.Contains(lowerCaseError, errLostConnection) ||
+		strings.Contains(lowerCaseError, errReplTimeoutPrefix) ||
+		strings.Contains(lowerCaseError, errCouldNotContactPrimaryPrefix) ||
+		strings.Contains(lowerCaseError, errWriteResultsUnavailable) ||
+		strings.Contains(lowerCaseError, errCouldNotFindPrimaryPrefix) ||
+		strings.Contains(lowerCaseError, errUnableToTargetPrefix) ||
+		lowerCaseError == errNotMaster ||
+		strings.HasSuffix(lowerCaseError, errConnectionRefusedSuffix) {
 		return true
 	}
 	return false

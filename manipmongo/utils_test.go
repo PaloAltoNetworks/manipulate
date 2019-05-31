@@ -14,18 +14,70 @@ package manipmongo
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"reflect"
 	"testing"
 	"time"
 
-	"go.aporeto.io/elemental"
-
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	. "github.com/smartystreets/goconvey/convey"
+	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 )
+
+func Test_invertSortKey(t *testing.T) {
+	type args struct {
+		k      string
+		revert bool
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			"string",
+			args{
+				"hello",
+				false,
+			},
+			"hello",
+		},
+		{
+			"string revert",
+			args{
+				"hello",
+				true,
+			},
+			"-hello",
+		},
+		{
+			"already reverted string",
+			args{
+				"-hello",
+				false,
+			},
+			"-hello",
+		},
+		{
+			"already reverted string revert",
+			args{
+				"-hello",
+				true,
+			},
+			"hello",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := invertSortKey(tt.args.k, tt.args.revert); got != tt.want {
+				t.Errorf("invertSortKey() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 
 func Test_handleQueryError(t *testing.T) {
 	type args struct {
@@ -60,6 +112,21 @@ func Test_handleQueryError(t *testing.T) {
 			},
 			"Constraint violation: duplicate key.",
 		},
+		{
+			"isConnectionError says yes",
+			args{
+				fmt.Errorf("lost connection to server"),
+			},
+			"Cannot communicate: lost connection to server",
+		},
+		{
+			"isConnectionError says no",
+			args{
+				fmt.Errorf("no"),
+			},
+			"Unable to execute query: no",
+		},
+
 		{
 			"err 6",
 			args{
@@ -431,21 +498,36 @@ func Test_convertWriteConsistency(t *testing.T) {
 
 func TestRunQueryFunc(t *testing.T) {
 
+	testIdentity := elemental.MakeIdentity("test", "tests")
+
 	Convey("Given I have query function that works", t, func() {
 
 		var try int
+		var lastErr error
+		var imctx *manipulate.Context
+
 		f := func() (interface{}, error) { return "hello", nil }
-		rf := func(i manipulate.RetryInfo) error { try = i.Try(); return nil }
+		rf := func(i manipulate.RetryInfo) error {
+			try = i.Try()
+			lastErr = i.Err()
+			m := i.Context()
+			if m != nil {
+				imctx = &m
+			}
+			return nil
+		}
 
 		Convey("When I call runQueryFunc", func() {
 
+			mctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionRetryFunc(rf),
+			)
+
 			out, err := runQueryFunc(
-				manipulate.NewContext(
-					context.Background(),
-					manipulate.ContextOptionRetryFunc(rf),
-				),
+				mctx,
 				elemental.OperationCreate,
-				elemental.MakeIdentity("test", "tests"),
+				testIdentity,
 				f,
 				nil,
 			)
@@ -458,13 +540,35 @@ func TestRunQueryFunc(t *testing.T) {
 				So(out, ShouldResemble, "hello")
 			})
 
-			Convey("Then t should be correct", func() {
+			Convey("Then try should be correct", func() {
 				So(try, ShouldEqual, 0)
+			})
+
+			Convey("Then lastErr should be correct", func() {
+				So(lastErr, ShouldBeNil)
+			})
+
+			Convey("Then imctx should be correct", func() {
+				So(imctx, ShouldBeNil)
 			})
 		})
 	})
 
 	Convey("Given I have query function that return an non comm error", t, func() {
+
+		var try int
+		var lastErr error
+		var imctx *manipulate.Context
+
+		rf := func(i manipulate.RetryInfo) error {
+			try = i.Try()
+			lastErr = i.Err()
+			m := i.Context()
+			if m != nil {
+				imctx = &m
+			}
+			return nil
+		}
 
 		f := func() (interface{}, error) { return nil, fmt.Errorf("boom") }
 
@@ -473,9 +577,10 @@ func TestRunQueryFunc(t *testing.T) {
 			out, err := runQueryFunc(
 				manipulate.NewContext(
 					context.Background(),
+					manipulate.ContextOptionRetryFunc(rf),
 				),
 				elemental.OperationCreate,
-				elemental.MakeIdentity("test", "tests"),
+				testIdentity,
 				f,
 				nil,
 			)
@@ -489,12 +594,42 @@ func TestRunQueryFunc(t *testing.T) {
 				So(out, ShouldBeNil)
 			})
 
+			Convey("Then try should be correct", func() {
+				So(try, ShouldEqual, 0)
+			})
+
+			Convey("Then lastErr should be correct", func() {
+				So(lastErr, ShouldBeNil)
+			})
+
+			Convey("Then imctx should be correct", func() {
+				So(imctx, ShouldBeNil)
+			})
 		})
 	})
 
 	Convey("Given I have query function that returns a net.Error and works at second try", t, func() {
 
 		var try int
+		var lastErr error
+		var operation elemental.Operation
+		var identity elemental.Identity
+		var imctx *manipulate.Context
+
+		rf := func(i manipulate.RetryInfo) error {
+			try = i.Try()
+			lastErr = i.Err()
+			m := i.Context()
+			if m != nil {
+				imctx = &m
+			}
+
+			operation = i.(RetryInfo).Operation
+			identity = i.(RetryInfo).Identity
+
+			return nil
+		}
+
 		f := func() (interface{}, error) {
 			if try == 2 {
 				return "hello", nil
@@ -502,17 +637,17 @@ func TestRunQueryFunc(t *testing.T) {
 			return nil, &net.OpError{Err: fmt.Errorf("hello")}
 		}
 
-		rf := func(i manipulate.RetryInfo) error { try = i.Try(); return nil }
-
 		Convey("When I call runQueryFunc", func() {
 
+			mctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionRetryFunc(rf),
+			)
+
 			out, err := runQueryFunc(
-				manipulate.NewContext(
-					context.Background(),
-					manipulate.ContextOptionRetryFunc(rf),
-				),
+				mctx,
 				elemental.OperationCreate,
-				elemental.MakeIdentity("test", "tests"),
+				testIdentity,
 				f,
 				nil,
 			)
@@ -525,8 +660,26 @@ func TestRunQueryFunc(t *testing.T) {
 				So(out, ShouldResemble, "hello")
 			})
 
-			Convey("Then t should be correct", func() {
+			Convey("Then try should be correct", func() {
 				So(try, ShouldEqual, 2)
+			})
+
+			Convey("Then lastErr should be correct", func() {
+				So(lastErr, ShouldNotBeNil)
+				So(lastErr.Error(), ShouldEqual, "Cannot communicate: : hello")
+			})
+
+			Convey("Then imctx should be correct", func() {
+				So(imctx, ShouldNotBeNil)
+				So(*imctx, ShouldEqual, mctx)
+			})
+
+			Convey("Then operation should be correct", func() {
+				So(operation, ShouldEqual, elemental.OperationCreate)
+			})
+
+			Convey("Then identity should be correct", func() {
+				So(identity.IsEqual(testIdentity), ShouldBeTrue)
 			})
 		})
 	})
@@ -547,7 +700,7 @@ func TestRunQueryFunc(t *testing.T) {
 					manipulate.ContextOptionRetryFunc(rf),
 				),
 				elemental.OperationCreate,
-				elemental.MakeIdentity("test", "tests"),
+				testIdentity,
 				f,
 				nil,
 			)
@@ -580,7 +733,7 @@ func TestRunQueryFunc(t *testing.T) {
 					manipulate.ContextOptionRetryFunc(rf),
 				),
 				elemental.OperationCreate,
-				elemental.MakeIdentity("test", "tests"),
+				testIdentity,
 				f,
 				df,
 			)
@@ -611,7 +764,7 @@ func TestRunQueryFunc(t *testing.T) {
 					context.Background(),
 				),
 				elemental.OperationCreate,
-				elemental.MakeIdentity("test", "tests"),
+				testIdentity,
 				f,
 				df,
 			)
@@ -646,7 +799,7 @@ func TestRunQueryFunc(t *testing.T) {
 					manipulate.ContextOptionRetryFunc(rf),
 				),
 				elemental.OperationCreate,
-				elemental.MakeIdentity("test", "tests"),
+				testIdentity,
 				f,
 				nil,
 			)
@@ -661,4 +814,148 @@ func TestRunQueryFunc(t *testing.T) {
 			})
 		})
 	})
+}
+
+func Test_isConnectionError(t *testing.T) {
+	type args struct {
+		err error
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			"nil",
+			args{
+				nil,
+			},
+			false,
+		},
+		{
+			"lost connection to server",
+			args{
+				fmt.Errorf("lost connection to server"),
+			},
+			true,
+		},
+		{
+			"no reachable servers",
+			args{
+				fmt.Errorf("no reachable servers"),
+			},
+			true,
+		},
+		{
+			"waiting for replication timed out",
+			args{
+				fmt.Errorf("waiting for replication timed out"),
+			},
+			true,
+		},
+		{
+			"could not contact primary for replica set",
+			args{
+				fmt.Errorf("could not contact primary for replica set"),
+			},
+			true,
+		},
+		{
+			"write results unavailable from",
+			args{
+				fmt.Errorf("write results unavailable from"),
+			},
+			true,
+		},
+		{
+			`could not find host matching read preference { mode: "primary"`,
+			args{
+				fmt.Errorf(`could not find host matching read preference { mode: "primary"`),
+			},
+			true,
+		},
+		{
+			"unable to target",
+			args{
+				fmt.Errorf("unable to target"),
+			},
+			true,
+		},
+		{
+			"Connection refused",
+			args{
+				fmt.Errorf("blah: connection refused"),
+			},
+			true,
+		},
+		{
+			"EOF",
+			args{
+				io.EOF,
+			},
+			true,
+		},
+		{
+			"nope",
+			args{
+				fmt.Errorf("hey!"),
+			},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isConnectionError(tt.args.err); got != tt.want {
+				t.Errorf("isConnectionError() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_getErrorCode(t *testing.T) {
+	type args struct {
+		err error
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			"*mgo.QueryError",
+			args{
+				&mgo.QueryError{Code: 42},
+			},
+			42,
+		},
+		{
+			"*mgo.LastError",
+			args{
+				&mgo.LastError{Code: 42},
+			},
+			42,
+		},
+
+		{
+			"*mgo.BulkError",
+			args{
+				&mgo.BulkError{ /* private */ },
+			},
+			0, // Should be 42. but that is sadly untestable... or is it?
+		},
+		{
+			"",
+			args{
+				fmt.Errorf("yo!"),
+			},
+			0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := getErrorCode(tt.args.err); got != tt.want {
+				t.Errorf("getErrorCode() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
