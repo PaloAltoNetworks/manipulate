@@ -528,6 +528,21 @@ func (s *httpManipulator) send(
 	var try int         // try number. Starts at 0
 	var lastError error // last error before retry.
 
+	// We get the context deadline.
+	deadline, ok := mctx.Context().Deadline()
+	if !ok {
+		deadline = time.Now().Add(time.Hour) // long, but not completely unlimited.
+	}
+
+	// We bucketize the deadline into multiple retries
+	// a make it a minimum of 10sec
+	subContextTimeout := time.Until(deadline) / 10
+	if subContextTimeout < 10*time.Second {
+		subContextTimeout = 10 * time.Second
+	}
+
+	fmt.Println(subContextTimeout, requrl)
+
 	// Helpers to deal with current request canceling
 	var cancelReq context.CancelFunc
 	cancelCurrentRequest := func() {
@@ -566,13 +581,10 @@ func (s *httpManipulator) send(
 		// We injects the header from mctx.
 		s.prepareHeaders(req, mctx)
 
-		return req.WithContext(mctx.Context()), nil
+		ctx, cancel := context.WithTimeout(mctx.Context(), subContextTimeout)
+		cancelReq = cancel
 
-		// // TODO: something smart here
-		// ctx, cancel := context.WithTimeout(mctx.Context(), 30*time.Second)
-		// cancelReq = cancel
-
-		// return req.WithContext(ctx), nil
+		return req.WithContext(ctx), nil
 	}
 
 	// Main retry loop
@@ -741,8 +753,7 @@ func (s *httpManipulator) send(
 
 		// We check is the main context expired.
 		// and if so, we return the last error
-		deadline, ok := mctx.Context().Deadline()
-		if ok && time.Until(deadline) <= 0 {
+		if time.Until(deadline) <= 0 {
 			return nil, lastError
 		}
 
