@@ -37,7 +37,7 @@ import (
 )
 
 const (
-	defaultGlobalContextTimeout = 60 * time.Second
+	defaultGlobalContextTimeout = 2 * time.Minute
 )
 
 type httpManipulator struct {
@@ -731,6 +731,7 @@ func (s *httpManipulator) send(
 			}
 		}
 
+		fmt.Println("retrying", try, requrl)
 		// We check is the main context expired.
 		// and if so, we return the last error
 		deadline, ok := mctx.Context().Deadline()
