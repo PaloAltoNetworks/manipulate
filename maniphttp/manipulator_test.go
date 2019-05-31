@@ -98,7 +98,7 @@ func TestHTTP_New(t *testing.T) {
 				tokenCh <- "new-token"
 			})
 
-			time.Sleep(300 * time.Millisecond)
+			time.Sleep(1 * time.Second) // concourse is sometimes slow...
 
 			Convey("Then password should be correct", func() {
 				So(m.currentPassword(), ShouldEqual, "new-token")
