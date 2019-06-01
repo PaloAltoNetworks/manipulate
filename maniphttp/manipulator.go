@@ -18,6 +18,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -577,6 +578,7 @@ func (s *httpManipulator) send(
 	var bodyCloser io.ReadCloser
 	closeCurrentBody := func() {
 		if bodyCloser != nil {
+			_, _ = io.Copy(ioutil.Discard, bodyCloser)
 			bodyCloser.Close() // nolint
 		}
 	}
