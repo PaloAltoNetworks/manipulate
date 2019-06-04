@@ -686,26 +686,6 @@ func (s *httpManipulator) send(
 		case http.StatusTooManyRequests:
 			lastError = manipulate.NewErrTooManyRequests("Too Many Requests")
 			goto RETRY
-
-		case http.StatusForbidden, http.StatusUnauthorized:
-
-			// This is a special case where we try to renew our token
-			// in case of 401 or 403 error.
-			// This is retried twice.
-			if s.tokenManager != nil {
-
-				for i := 1; i < 3; i++ {
-					time.Sleep(time.Duration(i) * time.Second)
-
-					token, err := s.tokenManager.Issue(mctx.Context())
-					if err == nil {
-						s.setPassword(token)
-						goto RETRY
-					}
-				}
-			}
-
-			// If we could not renew the token, we continue.
 		}
 
 		// We backport header info into mctx
@@ -716,6 +696,26 @@ func (s *httpManipulator) send(
 			errs := elemental.NewErrors()
 			if err := decodeData(response, &errs); err != nil {
 				return nil, err
+			}
+
+			if s.tokenManager != nil && (response.StatusCode == http.StatusForbidden || response.StatusCode == http.StatusUnauthorized) {
+
+				// This is a special case where we try to renew our token
+				// in case of 401 or 403 error.
+				// This is retried twice.
+
+				for i := 1; i < 3; i++ {
+
+					time.Sleep(time.Duration(i) * time.Second)
+
+					token, err := s.tokenManager.Issue(mctx.Context())
+
+					if err == nil {
+						lastError = errs
+						s.setPassword(token)
+						goto RETRY
+					}
+				}
 			}
 
 			return nil, errs
