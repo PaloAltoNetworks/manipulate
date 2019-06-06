@@ -16,18 +16,26 @@ import (
 	"testing"
 	"time"
 
-	"go.aporeto.io/manipulate"
-
 	"github.com/globalsign/mgo/bson"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
+	"go.aporeto.io/manipulate"
 )
 
 type fakeSharder struct{}
 
-func (*fakeSharder) Shard(elemental.Identifiable)            {}
-func (*fakeSharder) FilterOne(elemental.Identifiable) bson.M { return nil }
-func (*fakeSharder) FilterMany(elemental.Identity) bson.M    { return nil }
+func (*fakeSharder) Shard(manipulate.TransactionalManipulator, manipulate.Context, elemental.Identifiable) error {
+	return nil
+}
+func (*fakeSharder) OnShardedWrite(manipulate.TransactionalManipulator, manipulate.Context, elemental.Operation, elemental.Identifiable) error {
+	return nil
+}
+func (*fakeSharder) FilterOne(manipulate.TransactionalManipulator, manipulate.Context, elemental.Identifiable) (bson.M, error) {
+	return nil, nil
+}
+func (*fakeSharder) FilterMany(manipulate.TransactionalManipulator, manipulate.Context, elemental.Identity) (bson.M, error) {
+	return nil, nil
+}
 
 func TestManipMongo_newConfig(t *testing.T) {
 
