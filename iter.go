@@ -18,7 +18,7 @@ import (
 	"go.aporeto.io/elemental"
 )
 
-const iterDefaultBlockSize = 10000
+const iterDefaultBlockSize = 1000
 
 // IterFunc calls RetrieveMany on the given Manipulator, and will retrieve the data by block
 // of the given blockSize.
@@ -29,7 +29,9 @@ const iterDefaultBlockSize = 10000
 // current data block. If the function returns an error, the error is returned to the caller
 // of IterFunc and the iteration stops.
 //
-// The given context will be used if the underlying manipulator honors it.
+// The given context will be used if the underlying manipulator honors it. Be careful to NOT pass
+// a filter matching objects then updating the objects to not match anynmore. This would shift
+// pagination and will produce unexpected results. To do so, prefer using manipulate.IterUntilFunc
 //
 // The given manipulate.Context will be used to retry any failed batch recovery.
 //
@@ -37,7 +39,7 @@ const iterDefaultBlockSize = 10000
 // hold the data block. It is reset at every iteration. Do not rely on it to be filled
 // once IterFunc is complete.
 //
-// Finally, if the given blockSize is <= 0, then it will use the default that is 10000.
+// Finally, if the given blockSize is <= 0, then it will use the default that is 1000.
 func IterFunc(
 	ctx context.Context,
 	manipulator Manipulator,
@@ -46,46 +48,23 @@ func IterFunc(
 	iteratorFunc func(block elemental.Identifiables) error,
 	blockSize int,
 ) error {
+	return doIterFunc(ctx, manipulator, identifiablesTemplate, mctx, iteratorFunc, blockSize, false)
+}
 
-	if manipulator == nil {
-		panic("manipulator must not be nil")
-	}
-
-	if iteratorFunc == nil {
-		panic("iteratorFunc must not be nil")
-	}
-
-	if identifiablesTemplate == nil {
-		panic("identifiablesTemplate must not be nil")
-	}
-
-	if mctx == nil {
-		mctx = NewContext(ctx)
-	}
-
-	if blockSize <= 0 {
-		blockSize = iterDefaultBlockSize
-	}
-
-	var page int
-
-	for {
-		page++
-
-		objects := identifiablesTemplate.Copy()
-
-		if err := manipulator.RetrieveMany(mctx.Derive(ContextOptionPage(page, blockSize)), objects); err != nil {
-			return fmt.Errorf("unable to retrieve objects for page %d: %s", page, err.Error())
-		}
-
-		if len(objects.List()) == 0 {
-			return nil
-		}
-
-		if err := iteratorFunc(objects); err != nil {
-			return fmt.Errorf("iter function returned an error on page %d: %s", page, err)
-		}
-	}
+// IterUntilFunc works as IterFunc but pagination will not increase.
+// It will always retrieve the first page with a size of given blockSize.
+//
+// The goal of this function is to be used with a filter, then update (or delete) the
+// objects that match until no more are matching.
+func IterUntilFunc(
+	ctx context.Context,
+	manipulator Manipulator,
+	identifiablesTemplate elemental.Identifiables,
+	mctx Context,
+	iteratorFunc func(block elemental.Identifiables) error,
+	blockSize int,
+) error {
+	return doIterFunc(ctx, manipulator, identifiablesTemplate, mctx, iteratorFunc, blockSize, true)
 }
 
 // Iter is a helper function for IterFunc.
@@ -124,4 +103,62 @@ func Iter(
 	}
 
 	return identifiablesTemplate, nil
+}
+
+func doIterFunc(
+	ctx context.Context,
+	manipulator Manipulator,
+	identifiablesTemplate elemental.Identifiables,
+	mctx Context,
+	iteratorFunc func(block elemental.Identifiables) error,
+	blockSize int,
+	disablePageIncrease bool,
+) error {
+
+	if manipulator == nil {
+		panic("manipulator must not be nil")
+	}
+
+	if iteratorFunc == nil {
+		panic("iteratorFunc must not be nil")
+	}
+
+	if identifiablesTemplate == nil {
+		panic("identifiablesTemplate must not be nil")
+	}
+
+	if mctx == nil {
+		mctx = NewContext(ctx)
+	}
+
+	if blockSize <= 0 {
+		blockSize = iterDefaultBlockSize
+	}
+
+	var page int
+
+	if disablePageIncrease {
+		page = 1
+	}
+
+	for {
+
+		if !disablePageIncrease {
+			page++
+		}
+
+		objects := identifiablesTemplate.Copy()
+
+		if err := manipulator.RetrieveMany(mctx.Derive(ContextOptionPage(page, blockSize)), objects); err != nil {
+			return fmt.Errorf("unable to retrieve objects for page %d: %s", page, err.Error())
+		}
+
+		if len(objects.List()) == 0 {
+			return nil
+		}
+
+		if err := iteratorFunc(objects); err != nil {
+			return fmt.Errorf("iter function returned an error on page %d: %s", page, err)
+		}
+	}
 }
