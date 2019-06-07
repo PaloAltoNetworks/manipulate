@@ -15,6 +15,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/globalsign/mgo"
@@ -84,6 +85,45 @@ func CreateIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 			index.Name = "index_" + identity.Name + "_" + strconv.Itoa(i)
 		}
 		if err := collection.EnsureIndex(index); err != nil {
+			return fmt.Errorf("unable to ensure index '%s': %s", index.Name, err)
+		}
+	}
+
+	return nil
+}
+
+// EnsureIndex works like create index, but it will delete existing index
+// if they changed before creating a new one.
+func EnsureIndex(manipulator manipulate.Manipulator, identity elemental.Identity, indexes ...mgo.Index) error {
+
+	m, ok := manipulator.(*mongoManipulator)
+	if !ok {
+		panic("you can only pass a mongo manipulator to CreateIndex")
+	}
+
+	session := m.rootSession.Copy()
+	defer session.Close()
+
+	collection := session.DB(m.dbName).C(identity.Name)
+
+	for i, index := range indexes {
+		if index.Name == "" {
+			index.Name = "index_" + identity.Name + "_" + strconv.Itoa(i)
+		}
+		if err := collection.EnsureIndex(index); err != nil {
+
+			if strings.HasSuffix(err.Error(), "already exists with different options") {
+				if err := collection.DropIndexName(index.Name); err != nil {
+					return fmt.Errorf("cannot delete previous index: %s", err)
+				}
+
+				if err := collection.EnsureIndex(index); err != nil {
+					return fmt.Errorf("unable to ensure index after dropping old one '%s': %s", index.Name, err)
+				}
+
+				continue
+			}
+
 			return fmt.Errorf("unable to ensure index '%s': %s", index.Name, err)
 		}
 	}
