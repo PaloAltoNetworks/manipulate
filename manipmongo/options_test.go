@@ -116,4 +116,11 @@ func TestManipMongo_Options(t *testing.T) {
 		OptionDefaultRetryFunc(f)(c)
 		So(c.defaultRetryFunc, ShouldEqual, f)
 	})
+
+	Convey("Calling OptionForceReadFilter should work", t, func() {
+		f := bson.M{}
+		c := newConfig()
+		OptionForceReadFilter(f)(c)
+		So(c.forcedReadFilter, ShouldEqual, f)
+	})
 }

@@ -35,6 +35,7 @@ type mongoManipulator struct {
 	dbName           string
 	sharder          Sharder
 	defaultRetryFunc manipulate.RetryFunc
+	forcedReadFilter bson.M
 }
 
 // New returns a new manipulator backed by MongoDB.
@@ -81,6 +82,7 @@ func New(url string, db string, options ...Option) (manipulate.TransactionalMani
 		rootSession:      session,
 		sharder:          cfg.sharder,
 		defaultRetryFunc: cfg.defaultRetryFunc,
+		forcedReadFilter: cfg.forcedReadFilter,
 	}, nil
 }
 
@@ -112,6 +114,10 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 		if sq != nil {
 			filter = bson.M{"$and": []bson.M{sq, filter}}
 		}
+	}
+
+	if s.forcedReadFilter != nil {
+		filter = bson.M{"$and": []bson.M{s.forcedReadFilter, filter}}
 	}
 
 	query := c.Find(filter)
@@ -196,6 +202,10 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 		if sq != nil {
 			filter = bson.M{"$and": []bson.M{sq, filter}}
 		}
+	}
+
+	if s.forcedReadFilter != nil {
+		filter = bson.M{"$and": []bson.M{s.forcedReadFilter, filter}}
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve.object.%s", object.Identity().Name))
@@ -311,6 +321,10 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 		}
 	}
 
+	if s.forcedReadFilter != nil {
+		filter = bson.M{"$and": []bson.M{s.forcedReadFilter, filter}}
+	}
+
 	if _, err := RunQuery(
 		mctx,
 		func() (interface{}, error) { return nil, c.Update(filter, bson.M{"$set": object}) },
@@ -354,6 +368,9 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 		if sq != nil {
 			filter = bson.M{"$and": []bson.M{sq, filter}}
 		}
+	}
+	if s.forcedReadFilter != nil {
+		filter = bson.M{"$and": []bson.M{s.forcedReadFilter, filter}}
 	}
 
 	if _, err := RunQuery(
@@ -409,6 +426,10 @@ func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 		}
 	}
 
+	if s.forcedReadFilter != nil {
+		filter = bson.M{"$and": []bson.M{s.forcedReadFilter, filter}}
+	}
+
 	if _, err := RunQuery(
 		mctx,
 		func() (interface{}, error) { return c.RemoveAll(filter) },
@@ -451,6 +472,10 @@ func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 		if sq != nil {
 			filter = bson.M{"$and": []bson.M{sq, filter}}
 		}
+	}
+
+	if s.forcedReadFilter != nil {
+		filter = bson.M{"$and": []bson.M{s.forcedReadFilter, filter}}
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.count.%s", identity.Category))

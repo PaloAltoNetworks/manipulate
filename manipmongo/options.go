@@ -15,6 +15,7 @@ import (
 	"crypto/tls"
 	"time"
 
+	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/manipulate"
 )
 
@@ -33,6 +34,7 @@ type config struct {
 	writeConsistency manipulate.WriteConsistency
 	sharder          Sharder
 	defaultRetryFunc manipulate.RetryFunc
+	forcedReadFilter bson.M
 }
 
 func newConfig() *config {
@@ -108,5 +110,13 @@ func OptionSharder(sharder Sharder) Option {
 func OptionDefaultRetryFunc(f manipulate.RetryFunc) Option {
 	return func(c *config) {
 		c.defaultRetryFunc = f
+	}
+}
+
+// OptionForceReadFilter allows to set a bson.M filter that
+// will always reducing the scope of the reads to that filter.
+func OptionForceReadFilter(f bson.M) Option {
+	return func(c *config) {
+		c.forcedReadFilter = f
 	}
 }
