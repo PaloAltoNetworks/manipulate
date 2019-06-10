@@ -80,7 +80,7 @@ func TestManipulate_ContextOption(t *testing.T) {
 
 	Convey("Calling ContextOptionFinalizer should work", t, func() {
 		tid := NewTransactionID()
-		ContextOptionTransationID(tid)(mctx.(*mcontext))
+		ContextOptionTransactionID(tid)(mctx.(*mcontext))
 		So(mctx.TransactionID(), ShouldEqual, tid)
 	})
 
