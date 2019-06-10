@@ -83,7 +83,7 @@ func newIdentityProcessor(readConsistency manipulate.ReadConsistency, writeConsi
 func Test_New(t *testing.T) {
 	t.Parallel()
 
-	Convey("When I create a new memdb vortex, I sould have correct structures", t, func() {
+	Convey("When I create a new memdb vortex, I should have correct structures", t, func() {
 		m := maniptest.NewTestManipulator()
 		d, err := newDatastore()
 		So(err, ShouldBeNil)

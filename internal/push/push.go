@@ -148,7 +148,6 @@ func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 
 			resp.Body.Close() // nolint
 
-			try = 0
 			return nil
 		}
 

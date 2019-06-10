@@ -204,7 +204,7 @@ func TestManiphttp_DirectSend(t *testing.T) {
 			}
 
 			if string(body) != "hello" {
-				panic("wrong body recieved.")
+				panic("wrong body received.")
 			}
 
 			if !strings.HasSuffix(r.RequestURI, "/toto") {
