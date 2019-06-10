@@ -18,13 +18,12 @@ import (
 	"testing"
 	"time"
 
-	"go.aporeto.io/manipulate/maniptest"
-
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/maniptest"
 )
 
 func TestCompileFilter(t *testing.T) {
