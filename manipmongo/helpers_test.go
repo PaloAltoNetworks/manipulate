@@ -18,10 +18,143 @@ import (
 	"testing"
 	"time"
 
+	"go.aporeto.io/manipulate/maniptest"
+
+	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 )
+
+func TestCompileFilter(t *testing.T) {
+
+	Convey("Given I have a filer", t, func() {
+
+		f := elemental.NewFilter().WithKey("a").Equals("b").Done()
+
+		Convey("When I call CompileFilter", func() {
+
+			cf := CompileFilter(f)
+
+			Convey("Then cf should be correct", func() {
+				So(cf, ShouldResemble, bson.M{"$and": []bson.M{bson.M{"a": bson.M{"$eq": "b"}}}})
+			})
+		})
+	})
+}
+
+func TestDoesDatabaseExists(t *testing.T) {
+
+	Convey("Given I a test manipulator", t, func() {
+
+		m := maniptest.NewTestManipulator()
+
+		Convey("When I call DoesDatabaseExist", func() {
+			Convey("Then it should panic", func() {
+				So(func() { _, _ = DoesDatabaseExist(m) }, ShouldPanicWith, "you can only pass a mongo manipulator to DoesDatabaseExist")
+			})
+		})
+	})
+}
+
+func TestDropDatabase(t *testing.T) {
+
+	Convey("Given I a test manipulator", t, func() {
+
+		m := maniptest.NewTestManipulator()
+
+		Convey("When I call DropDatabase", func() {
+			Convey("Then it should panic", func() {
+				So(func() { _ = DropDatabase(m) }, ShouldPanicWith, "you can only pass a mongo manipulator to DropDatabase")
+			})
+		})
+	})
+}
+
+func TestCreateIndex(t *testing.T) {
+
+	Convey("Given I a test manipulator", t, func() {
+
+		m := maniptest.NewTestManipulator()
+
+		Convey("When I call CreateIndex", func() {
+			Convey("Then it should panic", func() {
+				So(func() { _ = CreateIndex(m, elemental.MakeIdentity("a", "a")) }, ShouldPanicWith, "you can only pass a mongo manipulator to CreateIndex")
+			})
+		})
+	})
+}
+
+func TestEnsureIndex(t *testing.T) {
+
+	Convey("Given I a test manipulator", t, func() {
+
+		m := maniptest.NewTestManipulator()
+
+		Convey("When I call EnsureIndex", func() {
+			Convey("Then it should panic", func() {
+				So(func() { _ = EnsureIndex(m, elemental.MakeIdentity("a", "a")) }, ShouldPanicWith, "you can only pass a mongo manipulator to CreateIndex")
+			})
+		})
+	})
+}
+
+func TestDeleteIndex(t *testing.T) {
+
+	Convey("Given I a test manipulator", t, func() {
+
+		m := maniptest.NewTestManipulator()
+
+		Convey("When I call DeleteIndex", func() {
+			Convey("Then it should panic", func() {
+				So(func() { _ = DeleteIndex(m, elemental.MakeIdentity("a", "a")) }, ShouldPanicWith, "you can only pass a mongo manipulator to DeleteIndex")
+			})
+		})
+	})
+}
+
+func TestCreateCollection(t *testing.T) {
+
+	Convey("Given I a test manipulator", t, func() {
+
+		m := maniptest.NewTestManipulator()
+
+		Convey("When I call CreateCollection", func() {
+			Convey("Then it should panic", func() {
+				So(func() { _ = CreateCollection(m, elemental.MakeIdentity("a", "a"), nil) }, ShouldPanicWith, "you can only pass a mongo manipulator to CreateCollection")
+			})
+		})
+	})
+}
+
+func TestGetDatabase(t *testing.T) {
+
+	Convey("Given I a test manipulator", t, func() {
+
+		m := maniptest.NewTestManipulator()
+
+		Convey("When I call GetDatabase", func() {
+			Convey("Then it should panic", func() {
+				So(func() { _, _, _ = GetDatabase(m) }, ShouldPanicWith, "you can only pass a mongo manipulator to GetDatabase")
+			})
+		})
+	})
+}
+
+func TestSetConsistencyMode(t *testing.T) {
+
+	Convey("Given I a test manipulator", t, func() {
+
+		m := maniptest.NewTestManipulator()
+
+		Convey("When I call SetConsistencyMode", func() {
+			Convey("Then it should panic", func() {
+				So(func() { SetConsistencyMode(m, mgo.Strong, true) }, ShouldPanicWith, "you can only pass a mongo manipulator to SetConsistencyMode")
+			})
+		})
+	})
+}
 
 func TestRunQuery(t *testing.T) {
 

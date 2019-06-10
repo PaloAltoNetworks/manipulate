@@ -58,7 +58,7 @@ func DropDatabase(manipulator manipulate.Manipulator) error {
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
-		panic("you can only pass a mongo manipulator to CreateIndex")
+		panic("you can only pass a mongo manipulator to DropDatabase")
 	}
 
 	session := m.rootSession.Copy()
@@ -175,7 +175,7 @@ func GetDatabase(manipulator manipulate.Manipulator) (*mgo.Database, func(), err
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
-		panic("you can only pass a mongo manipulator to GetSession")
+		panic("you can only pass a mongo manipulator to GetDatabase")
 	}
 
 	session := m.rootSession.Copy()
@@ -188,7 +188,7 @@ func SetConsistencyMode(manipulator manipulate.Manipulator, mode mgo.Mode, refre
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
-		panic("you can only pass a Mongo Manipulator to SetConsistencyMode")
+		panic("you can only pass a mongo manipulator to SetConsistencyMode")
 	}
 
 	if m.rootSession == nil {
