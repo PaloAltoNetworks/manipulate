@@ -80,7 +80,7 @@ func TestTestSubscriber_MockRun(t *testing.T) {
 			ch := make(chan string)
 			tm.Run(context.Background(), ch)
 
-			Convey("Then teh value in the chan should be correct", func() {
+			Convey("Then the value in the chan should be correct", func() {
 				So(<-ch, ShouldEqual, "coucou")
 			})
 		})
