@@ -93,7 +93,7 @@ func TestMethodNewContextWithTransactionID(t *testing.T) {
 		tid := NewTransactionID()
 		mctx := NewContext(
 			context.Background(),
-			ContextOptionTransationID(tid),
+			ContextOptionTransactionID(tid),
 		)
 
 		Convey("Then my context should be initiliazed", func() {

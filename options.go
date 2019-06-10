@@ -92,8 +92,8 @@ func ContextOptionFinalizer(f FinalizerFunc) ContextOption {
 	}
 }
 
-// ContextOptionTransationID sets the parameters option of the context.
-func ContextOptionTransationID(tid TransactionID) ContextOption {
+// ContextOptionTransactionID sets the parameters option of the context.
+func ContextOptionTransactionID(tid TransactionID) ContextOption {
 	return func(c *mcontext) {
 		c.transactionID = tid
 	}
