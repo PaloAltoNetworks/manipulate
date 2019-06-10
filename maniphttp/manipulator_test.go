@@ -921,12 +921,14 @@ func TestHTTP_send(t *testing.T) {
 
 		Convey("When I call send", func() {
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(context.Background()), http.MethodPost, "nop", nil, nil, sp)
+			resp, err := m.(*httpManipulator).send(manipulate.NewContext(context.Background()), http.MethodPost, "nop", nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotExecuteQuery{})
 				So(err.Error(), ShouldEqual, `Unable to execute query: Post nop: unsupported protocol scheme ""`)
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})
@@ -940,12 +942,14 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 0)
 			cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, "https://google.com", nil, nil, sp)
+			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, "https://google.com", nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
 				So(err.Error(), ShouldEqual, "Cannot communicate: Post https://google.com: context deadline exceeded")
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})
@@ -959,7 +963,7 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, "https://NANANAN", nil, nil, sp)
+			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, "https://NANANAN", nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
@@ -967,6 +971,8 @@ func TestHTTP_send(t *testing.T) {
 
 				// On linux, the message is slightly different than on macOS
 				So(err.Error(), ShouldStartWith, "Cannot communicate: Post https://NANANAN: dial tcp: lookup NANANAN")
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})
@@ -985,12 +991,14 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
 				So(err.Error(), ShouldEqual, fmt.Sprintf("Cannot communicate: Post %s: EOF", ts.URL))
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})
@@ -1009,12 +1017,14 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrTLS{})
 				So(err.Error(), ShouldEqual, fmt.Sprintf("TLS error: Post %s: x509: certificate signed by unknown authority", ts.URL))
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})
@@ -1037,7 +1047,7 @@ func TestHTTP_send(t *testing.T) {
 
 			var t int
 			var rerr error
-			_, err := m.(*httpManipulator).send(
+			resp, err := m.(*httpManipulator).send(
 				manipulate.NewContext(
 					ctx,
 					manipulate.ContextOptionRetryFunc(func(i manipulate.RetryInfo) error {
@@ -1059,6 +1069,8 @@ func TestHTTP_send(t *testing.T) {
 				So(err.Error(), ShouldEqual, "Cannot communicate: Request Timeout")
 				So(t, ShouldBeGreaterThan, 1)
 				So(rerr.Error(), ShouldEqual, err.Error())
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})
@@ -1080,7 +1092,7 @@ func TestHTTP_send(t *testing.T) {
 			defer cancel()
 
 			var t int
-			_, err := m.(*httpManipulator).send(
+			resp, err := m.(*httpManipulator).send(
 				manipulate.NewContext(
 					ctx,
 					manipulate.ContextOptionRetryFunc(func(i manipulate.RetryInfo) error {
@@ -1102,6 +1114,8 @@ func TestHTTP_send(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "bam")
 				So(t, ShouldEqual, 3)
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})
@@ -1132,7 +1146,7 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(
+			resp, err := m.(*httpManipulator).send(
 				manipulate.NewContext(ctx),
 				http.MethodPost,
 				ts.URL,
@@ -1147,6 +1161,8 @@ func TestHTTP_send(t *testing.T) {
 				So(err.Error(), ShouldEqual, "Cannot communicate: Request Timeout")
 				So(t, ShouldBeGreaterThan, 1)
 				So(rerr.Error(), ShouldEqual, err.Error())
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})
@@ -1178,7 +1194,7 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(
+			resp, err := m.(*httpManipulator).send(
 				manipulate.NewContext(ctx),
 				http.MethodPost,
 				ts.URL,
@@ -1191,6 +1207,8 @@ func TestHTTP_send(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "bam")
 				So(t, ShouldEqual, 3)
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})
@@ -1209,13 +1227,15 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(
+			resp, err := m.(*httpManipulator).send(
 				manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
 				So(err.Error(), ShouldEqual, fmt.Sprintf("Cannot communicate: Post %s: context deadline exceeded", ts.URL))
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})
@@ -1236,12 +1256,14 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
 				So(err.Error(), ShouldEqual, "Cannot communicate: Request Timeout")
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})
@@ -1262,12 +1284,14 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
 				So(err.Error(), ShouldEqual, "Cannot communicate: Bad gateway")
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})
@@ -1288,12 +1312,14 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
 				So(err.Error(), ShouldEqual, "Cannot communicate: Service unavailable")
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})
@@ -1314,12 +1340,14 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
 				So(err.Error(), ShouldEqual, "Cannot communicate: Gateway timeout")
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})
@@ -1340,12 +1368,14 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrTooManyRequests{})
 				So(err.Error(), ShouldEqual, "Too many requests: Too Many Requests")
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})
@@ -1366,11 +1396,13 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "error 403 (): nope: boom")
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})
@@ -1399,10 +1431,48 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
+
+				So(resp, ShouldNotBeNil)
+			})
+		})
+	})
+
+	Convey("Given I have a server returning 403 with a token manager but a timeout during retry", t, func() {
+
+		var call int
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			call++
+			if call == 1 {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				fmt.Fprint(w, `[{"code": 403, "title": "nope", "description": "boom"}]`)
+			} else {
+				time.Sleep(5 * time.Second)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusNoContent)
+			}
+		}))
+		defer ts.Close()
+
+		m, _ := New(context.Background(), "toto.com")
+		m.(*httpManipulator).tokenManager = maniptest.NewTestTokenManager()
+
+		Convey("When I call send", func() {
+
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+
+			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "error 403 (): nope: boom")
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})
@@ -1423,12 +1493,14 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrLocked{})
 				So(err.Error(), ShouldEqual, "Cannot communicate: The api has been locked down by the server.")
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})
@@ -1449,12 +1521,14 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotUnmarshal{})
 				So(err.Error(), ShouldEqual, "Unable to unmarshal data: unable to decode application/json: EOF. original data:\n[{\"code\": 423, \"]")
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})
@@ -1475,12 +1549,14 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
-			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, elemental.Errors{})
 				So(err.Error(), ShouldEqual, "error 500 (): nope: boom")
+
+				So(resp, ShouldBeNil)
 			})
 		})
 	})

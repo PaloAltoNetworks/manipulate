@@ -35,14 +35,23 @@ func makeData(size int) testmodel.ListsList {
 
 // A testManipulator is an empty TransactionalManipulator that can be easily mocked.
 type testManipulator struct {
-	data testmodel.ListsList
-	err  error
+	data            testmodel.ListsList
+	err             error
+	stopAtIteration int
+	iteration       int
 }
 
 func (m *testManipulator) RetrieveMany(mctx Context, dest elemental.Identifiables) error {
 
 	if m.err != nil {
 		return m.err
+	}
+
+	if m.stopAtIteration != 0 {
+		m.iteration++
+		if m.iteration == m.stopAtIteration+1 {
+			return nil
+		}
 	}
 
 	start := (mctx.Page() - 1) * mctx.PageSize()
@@ -55,6 +64,7 @@ func (m *testManipulator) RetrieveMany(mctx Context, dest elemental.Identifiable
 	if end > len(m.data) {
 		end = len(m.data)
 	}
+
 	*dest.(*testmodel.ListsList) = append(*dest.(*testmodel.ListsList), m.data[start:end]...)
 
 	return nil
@@ -85,14 +95,14 @@ func (m *testManipulator) Count(mctx Context, identity elemental.Identity) (int,
 	return 0, nil
 }
 
-func TestIterFunc(t *testing.T) {
+func TestDoIterFunc(t *testing.T) {
 
-	Convey("Given I call IterFunc with no manipulator", t, func() {
+	Convey("Given I call doIterFunc with no manipulator", t, func() {
 
 		Convey("Then it should panic", func() {
 			So(
 				func() {
-					_ = IterFunc(nil, nil, nil, nil, nil, 0) // nolint
+					_ = doIterFunc(nil, nil, nil, nil, nil, 0, false) // nolint
 				},
 				ShouldPanicWith,
 				"manipulator must not be nil",
@@ -100,12 +110,12 @@ func TestIterFunc(t *testing.T) {
 		})
 	})
 
-	Convey("Given I call IterFunc with no iterator", t, func() {
+	Convey("Given I call doIterFunc with no iterator", t, func() {
 
 		Convey("Then it should panic", func() {
 			So(
 				func() {
-					_ = IterFunc(nil, &testManipulator{}, nil, nil, nil, 0) // nolint
+					_ = doIterFunc(nil, &testManipulator{}, nil, nil, nil, 0, false) // nolint
 				},
 				ShouldPanicWith,
 				"iteratorFunc must not be nil",
@@ -113,12 +123,12 @@ func TestIterFunc(t *testing.T) {
 		})
 	})
 
-	Convey("Given I call IterFunc with no identifiablesTemplate", t, func() {
+	Convey("Given I call doIterFunc with no identifiablesTemplate", t, func() {
 
 		Convey("Then it should panic", func() {
 			So(
 				func() {
-					_ = IterFunc(nil, &testManipulator{}, nil, nil, func(elemental.Identifiables) error { return nil }, 0) // nolint
+					_ = doIterFunc(nil, &testManipulator{}, nil, nil, func(elemental.Identifiables) error { return nil }, 0, false) // nolint
 				},
 				ShouldPanicWith,
 				"identifiablesTemplate must not be nil",
@@ -136,19 +146,20 @@ func TestIterFunc(t *testing.T) {
 			return nil
 		}
 
-		Convey("When I call IterFunc on a round page", func() {
+		Convey("When I call doIterFunc on a round page", func() {
 
 			m := &testManipulator{
 				data: makeData(40),
 			}
 
-			err := IterFunc(
+			err := doIterFunc(
 				context.Background(),
 				m,
 				testmodel.ListsList{},
 				nil,
 				iter,
 				10,
+				false,
 			)
 
 			Convey("Then err should be nil", func() {
@@ -164,19 +175,20 @@ func TestIterFunc(t *testing.T) {
 			})
 		})
 
-		Convey("When I call IterFunc on a non round page", func() {
+		Convey("When I call doIterFunc on a non round page", func() {
 
 			m := &testManipulator{
 				data: makeData(45),
 			}
 
-			err := IterFunc(
+			err := doIterFunc(
 				context.Background(),
 				m,
 				testmodel.ListsList{},
 				nil,
 				iter,
 				11,
+				false,
 			)
 
 			Convey("Then err should be nil", func() {
@@ -192,19 +204,20 @@ func TestIterFunc(t *testing.T) {
 			})
 		})
 
-		Convey("When I call IterFunc with the default block size", func() {
+		Convey("When I call doIterFunc with the default block size", func() {
 
 			m := &testManipulator{
 				data: makeData(45),
 			}
 
-			err := IterFunc(
+			err := doIterFunc(
 				context.Background(),
 				m,
 				testmodel.ListsList{},
 				nil,
 				iter,
 				0,
+				false,
 			)
 
 			Convey("Then err should be nil", func() {
@@ -220,19 +233,20 @@ func TestIterFunc(t *testing.T) {
 			})
 		})
 
-		Convey("When I call IterFunc but there are no objects", func() {
+		Convey("When I call doIterFunc but there are no objects", func() {
 
 			m := &testManipulator{
 				data: makeData(0),
 			}
 
-			err := IterFunc(
+			err := doIterFunc(
 				context.Background(),
 				m,
 				testmodel.ListsList{},
 				nil,
 				iter,
 				0,
+				false,
 			)
 
 			Convey("Then err should be nil", func() {
@@ -248,20 +262,21 @@ func TestIterFunc(t *testing.T) {
 			})
 		})
 
-		Convey("When I call IterFunc but manipulate returns an error", func() {
+		Convey("When I call doIterFunc but manipulate returns an error", func() {
 
 			m := &testManipulator{
 				data: makeData(45),
 				err:  fmt.Errorf("boom"),
 			}
 
-			err := IterFunc(
+			err := doIterFunc(
 				context.Background(),
 				m,
 				testmodel.ListsList{},
 				nil,
 				iter,
 				0,
+				false,
 			)
 
 			Convey("Then err should be nil", func() {
@@ -278,7 +293,7 @@ func TestIterFunc(t *testing.T) {
 			})
 		})
 
-		Convey("When I call IterFunc but iter returns an error", func() {
+		Convey("When I call doIterFunc but iter returns an error", func() {
 
 			m := &testManipulator{
 				data: makeData(45),
@@ -288,13 +303,14 @@ func TestIterFunc(t *testing.T) {
 				return fmt.Errorf("paf")
 			}
 
-			err := IterFunc(
+			err := doIterFunc(
 				context.Background(),
 				m,
 				testmodel.ListsList{},
 				nil,
 				iter,
 				0,
+				false,
 			)
 
 			Convey("Then err should be nil", func() {
@@ -392,6 +408,105 @@ func TestIter(t *testing.T) {
 
 			Convey("Then dest should be correct", func() {
 				So(dest, ShouldBeNil)
+			})
+		})
+	})
+}
+
+func TestIterUntilFunc(t *testing.T) {
+
+	Convey("Given I have a manipulator and some objects in the db", t, func() {
+
+		m := &testManipulator{
+			data:            makeData(45),
+			stopAtIteration: 3,
+		}
+
+		Convey("When I call Iter", func() {
+
+			dest := testmodel.ListsList{}
+			err := IterUntilFunc(
+				context.Background(),
+				m,
+				testmodel.ListsList{},
+				nil,
+				func(block elemental.Identifiables) error {
+					dest = append(dest, *block.(*testmodel.ListsList)...)
+					return nil
+				},
+				10,
+			)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then dest should be correct", func() {
+				So(len(dest.List()), ShouldEqual, len(m.data[:30]))
+			})
+		})
+	})
+
+	Convey("Given I have a manipulator and no object in the db", t, func() {
+
+		m := &testManipulator{
+			data: makeData(0),
+		}
+
+		Convey("When I call Iter", func() {
+
+			dest := testmodel.ListsList{}
+			err := IterUntilFunc(
+				context.Background(),
+				m,
+				testmodel.ListsList{},
+				nil,
+				func(block elemental.Identifiables) error {
+					dest = append(dest, *block.(*testmodel.ListsList)...)
+					return nil
+				},
+				10,
+			)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then dest should be correct", func() {
+				So(len(dest.List()), ShouldEqual, 0)
+			})
+		})
+	})
+
+	Convey("Given I have a manipulator but it returns an error", t, func() {
+
+		m := &testManipulator{
+			data: makeData(43),
+			err:  fmt.Errorf("pif"),
+		}
+
+		Convey("When I call Iter", func() {
+
+			dest := testmodel.ListsList{}
+			err := IterUntilFunc(
+				context.Background(),
+				m,
+				testmodel.ListsList{},
+				nil,
+				func(block elemental.Identifiables) error {
+					dest = append(dest, *block.(*testmodel.ListsList)...)
+					return nil
+				},
+				10,
+			)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "unable to retrieve objects for page 1: pif")
+			})
+
+			Convey("Then dest should be correct", func() {
+				So(len(dest.List()), ShouldEqual, 0)
 			})
 		})
 	})
