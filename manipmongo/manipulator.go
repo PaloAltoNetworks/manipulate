@@ -268,6 +268,10 @@ func (s *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		if err := s.sharder.Shard(s, mctx, object); err != nil {
 			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to execute sharder.Shard: %s", err))
 		}
+
+		if err := s.sharder.OnShardedWrite(s, mctx, elemental.OperationCreate, object); err != nil {
+			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to execute sharder.OnShardedWrite on create: %s", err))
+		}
 	}
 
 	if _, err := RunQuery(
@@ -282,12 +286,6 @@ func (s *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
-	}
-
-	if s.sharder != nil {
-		if err := s.sharder.OnShardedWrite(s, mctx, elemental.OperationCreate, object); err != nil {
-			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to execute sharder.OnShardedWrite on create: %s", err))
-		}
 	}
 
 	return nil
@@ -368,7 +366,12 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 		if sq != nil {
 			filter = bson.M{"$and": []bson.M{sq, filter}}
 		}
+
+		if err := s.sharder.OnShardedWrite(s, mctx, elemental.OperationDelete, object); err != nil {
+			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to execute sharder.OnShardedWrite for delete: %s", err))
+		}
 	}
+
 	if s.forcedReadFilter != nil {
 		filter = bson.M{"$and": []bson.M{s.forcedReadFilter, filter}}
 	}
@@ -390,12 +393,6 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 	// backport all default values that are empty.
 	if a, ok := object.(elemental.AttributeSpecifiable); ok {
 		elemental.ResetDefaultForZeroValues(a)
-	}
-
-	if s.sharder != nil {
-		if err := s.sharder.OnShardedWrite(s, mctx, elemental.OperationDelete, object); err != nil {
-			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to execute sharder.OnShardedWrite for delete: %s", err))
-		}
 	}
 
 	return nil
