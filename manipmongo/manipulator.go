@@ -366,10 +366,6 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 		if sq != nil {
 			filter = bson.M{"$and": []bson.M{sq, filter}}
 		}
-
-		if err := s.sharder.OnShardedWrite(s, mctx, elemental.OperationDelete, object); err != nil {
-			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to execute sharder.OnShardedWrite for delete: %s", err))
-		}
 	}
 
 	if s.forcedReadFilter != nil {
@@ -388,6 +384,12 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
+	}
+
+	if s.sharder != nil {
+		if err := s.sharder.OnShardedWrite(s, mctx, elemental.OperationDelete, object); err != nil {
+			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to execute sharder.OnShardedWrite for delete: %s", err))
+		}
 	}
 
 	// backport all default values that are empty.
