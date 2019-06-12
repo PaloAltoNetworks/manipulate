@@ -35,6 +35,7 @@ type mongoManipulator struct {
 	dbName           string
 	sharder          Sharder
 	defaultRetryFunc manipulate.RetryFunc
+	forcedReadFilter bson.M
 }
 
 // New returns a new manipulator backed by MongoDB.
@@ -81,6 +82,7 @@ func New(url string, db string, options ...Option) (manipulate.TransactionalMani
 		rootSession:      session,
 		sharder:          cfg.sharder,
 		defaultRetryFunc: cfg.defaultRetryFunc,
+		forcedReadFilter: cfg.forcedReadFilter,
 	}, nil
 }
 
@@ -105,10 +107,17 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	}
 
 	if s.sharder != nil {
-		sq := s.sharder.FilterMany(dest.Identity())
+		sq, err := s.sharder.FilterMany(s, mctx, dest.Identity())
+		if err != nil {
+			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
+		}
 		if sq != nil {
 			filter = bson.M{"$and": []bson.M{sq, filter}}
 		}
+	}
+
+	if s.forcedReadFilter != nil {
+		filter = bson.M{"$and": []bson.M{s.forcedReadFilter, filter}}
 	}
 
 	query := c.Find(filter)
@@ -186,10 +195,17 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	filter["_id"] = object.Identifier()
 
 	if s.sharder != nil {
-		sq := s.sharder.FilterOne(object)
+		sq, err := s.sharder.FilterOne(s, mctx, object)
+		if err != nil {
+			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
+		}
 		if sq != nil {
 			filter = bson.M{"$and": []bson.M{sq, filter}}
 		}
+	}
+
+	if s.forcedReadFilter != nil {
+		filter = bson.M{"$and": []bson.M{s.forcedReadFilter, filter}}
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve.object.%s", object.Identity().Name))
@@ -249,7 +265,9 @@ func (s *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 	}
 
 	if s.sharder != nil {
-		s.sharder.Shard(object)
+		if err := s.sharder.Shard(s, mctx, object); err != nil {
+			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to execute sharder.Shard: %s", err))
+		}
 	}
 
 	if _, err := RunQuery(
@@ -264,6 +282,12 @@ func (s *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
+	}
+
+	if s.sharder != nil {
+		if err := s.sharder.OnShardedWrite(s, mctx, elemental.OperationCreate, object); err != nil {
+			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to execute sharder.OnShardedWrite on create: %s", err))
+		}
 	}
 
 	return nil
@@ -288,10 +312,17 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 
 	filter = bson.M{"_id": object.Identifier()}
 	if s.sharder != nil {
-		sq := s.sharder.FilterOne(object)
+		sq, err := s.sharder.FilterOne(s, mctx, object)
+		if err != nil {
+			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
+		}
 		if sq != nil {
 			filter = bson.M{"$and": []bson.M{sq, filter}}
 		}
+	}
+
+	if s.forcedReadFilter != nil {
+		filter = bson.M{"$and": []bson.M{s.forcedReadFilter, filter}}
 	}
 
 	if _, err := RunQuery(
@@ -330,10 +361,17 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 
 	filter = bson.M{"_id": object.Identifier()}
 	if s.sharder != nil {
-		sq := s.sharder.FilterOne(object)
+		sq, err := s.sharder.FilterOne(s, mctx, object)
+		if err != nil {
+			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
+		}
 		if sq != nil {
 			filter = bson.M{"$and": []bson.M{sq, filter}}
 		}
+	}
+
+	if s.forcedReadFilter != nil {
+		filter = bson.M{"$and": []bson.M{s.forcedReadFilter, filter}}
 	}
 
 	if _, err := RunQuery(
@@ -348,6 +386,12 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
+	}
+
+	if s.sharder != nil {
+		if err := s.sharder.OnShardedWrite(s, mctx, elemental.OperationDelete, object); err != nil {
+			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to execute sharder.OnShardedWrite for delete: %s", err))
+		}
 	}
 
 	// backport all default values that are empty.
@@ -374,10 +418,17 @@ func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 
 	filter := compiler.CompileFilter(mctx.Filter())
 	if s.sharder != nil {
-		sq := s.sharder.FilterMany(identity)
+		sq, err := s.sharder.FilterMany(s, mctx, identity)
+		if err != nil {
+			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
+		}
 		if sq != nil {
 			filter = bson.M{"$and": []bson.M{sq, filter}}
 		}
+	}
+
+	if s.forcedReadFilter != nil {
+		filter = bson.M{"$and": []bson.M{s.forcedReadFilter, filter}}
 	}
 
 	if _, err := RunQuery(
@@ -415,10 +466,17 @@ func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	}
 
 	if s.sharder != nil {
-		sq := s.sharder.FilterMany(identity)
+		sq, err := s.sharder.FilterMany(s, mctx, identity)
+		if err != nil {
+			return 0, manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
+		}
 		if sq != nil {
 			filter = bson.M{"$and": []bson.M{sq, filter}}
 		}
+	}
+
+	if s.forcedReadFilter != nil {
+		filter = bson.M{"$and": []bson.M{s.forcedReadFilter, filter}}
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.count.%s", identity.Category))
