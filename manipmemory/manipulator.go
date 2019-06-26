@@ -31,7 +31,7 @@ type memdbManipulator struct {
 	db              *memdb.MemDB
 	schema          *memdb.DBSchema
 	txnRegistry     txnRegistry
-	txnRegistryLock sync.Mutex
+	txnRegistryLock sync.RWMutex
 	dbLock          sync.RWMutex
 }
 
@@ -138,7 +138,7 @@ func (m *memdbManipulator) Create(mctx manipulate.Context, object elemental.Iden
 	}
 
 	if tid == "" {
-		m.commitTxn(txn)
+		txn.Commit()
 	}
 
 	return nil
@@ -165,7 +165,7 @@ func (m *memdbManipulator) Update(mctx manipulate.Context, object elemental.Iden
 	}
 
 	if tid == "" {
-		m.commitTxn(txn)
+		txn.Commit()
 	}
 
 	return nil
@@ -187,7 +187,7 @@ func (m *memdbManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 	}
 
 	if tid == "" {
-		m.commitTxn(txn)
+		txn.Commit()
 	}
 
 	return nil
@@ -219,9 +219,8 @@ func (m *memdbManipulator) Commit(id manipulate.TransactionID) error {
 		return manipulate.NewErrCannotCommit("Cannot find transaction " + string(id))
 	}
 
-	defer func() { m.unregisterTxn(id) }()
-
-	m.commitTxn(txn)
+	txn.Commit()
+	m.unregisterTxn(id)
 
 	return nil
 }
@@ -256,11 +255,6 @@ func (m *memdbManipulator) txnForID(id manipulate.TransactionID) *memdb.Txn {
 	return txn
 }
 
-func (m *memdbManipulator) commitTxn(t *memdb.Txn) {
-
-	t.Commit()
-}
-
 func (m *memdbManipulator) registerTxn(id manipulate.TransactionID, txn *memdb.Txn) {
 
 	m.txnRegistryLock.Lock()
@@ -277,8 +271,8 @@ func (m *memdbManipulator) unregisterTxn(id manipulate.TransactionID) {
 
 func (m *memdbManipulator) registeredTxnWithID(id manipulate.TransactionID) *memdb.Txn {
 
-	m.txnRegistryLock.Lock()
-	defer m.txnRegistryLock.Unlock()
+	m.txnRegistryLock.RLock()
+	defer m.txnRegistryLock.RUnlock()
 	b := m.txnRegistry[id]
 
 	return b
