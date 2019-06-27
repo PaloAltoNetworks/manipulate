@@ -7,12 +7,13 @@ require (
 	github.com/gofrs/uuid v3.2.0+incompatible
 	github.com/gorilla/websocket v1.4.0
 	github.com/hashicorp/go-memdb v1.0.3
+	github.com/hashicorp/go-uuid v1.0.1 // indirect
+	github.com/hashicorp/golang-lru v0.5.1 // indirect
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/opentracing/opentracing-go v1.1.0
-	go.aporeto.io/elemental v1.55.0
-	go.aporeto.io/wsc v1.24.1
-	go.uber.org/atomic v1.4.0 // indirect
-	go.uber.org/multierr v1.1.0 // indirect
+	github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a
+	go.aporeto.io/elemental v1.62.0
+	go.aporeto.io/wsc v1.26.0
 	go.uber.org/zap v1.10.0
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce
 )
