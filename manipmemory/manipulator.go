@@ -18,10 +18,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/globalsign/mgo/bson"
 	memdb "github.com/hashicorp/go-memdb"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
-	"github.com/globalsign/mgo/bson"
 )
 
 type txnRegistry map[manipulate.TransactionID]*memdb.Txn
