@@ -13,5 +13,4 @@ require (
 	go.aporeto.io/elemental v1.67.0
 	go.aporeto.io/wsc v1.27.0
 	go.uber.org/zap v1.10.0
-	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce
 )

@@ -21,7 +21,7 @@ import (
 	memdb "github.com/hashicorp/go-memdb"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/globalsign/mgo/bson"
 )
 
 type txnRegistry map[manipulate.TransactionID]*memdb.Txn
