@@ -3,6 +3,11 @@ module go.aporeto.io/manipulate
 go 1.12
 
 require (
+	go.aporeto.io/elemental master
+	go.aporeto.io/wsc master
+)
+
+require (
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/gofrs/uuid v3.2.0+incompatible
 	github.com/gorilla/websocket v1.4.0
@@ -10,7 +15,5 @@ require (
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a
-	go.aporeto.io/elemental v1.67.0
-	go.aporeto.io/wsc v1.27.0
 	go.uber.org/zap v1.10.0
 )
