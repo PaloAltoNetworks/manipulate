@@ -1425,6 +1425,7 @@ func TestHTTP_send(t *testing.T) {
 
 		m, _ := New(context.Background(), "toto.com")
 		m.(*httpManipulator).tokenManager = maniptest.NewTestTokenManager()
+		m.(*httpManipulator).atomicRenewTokenFunc = elemental.AtomicJob(m.(*httpManipulator).renewToken)
 
 		Convey("When I call send", func() {
 
@@ -1460,6 +1461,7 @@ func TestHTTP_send(t *testing.T) {
 
 		m, _ := New(context.Background(), "toto.com")
 		m.(*httpManipulator).tokenManager = maniptest.NewTestTokenManager()
+		m.(*httpManipulator).atomicRenewTokenFunc = elemental.AtomicJob(m.(*httpManipulator).renewToken)
 
 		Convey("When I call send", func() {
 
