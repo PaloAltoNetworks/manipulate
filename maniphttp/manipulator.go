@@ -43,16 +43,17 @@ const (
 )
 
 type httpManipulator struct {
-	username           string
-	password           string
-	url                string
-	namespace          string
-	renewLock          *sync.RWMutex
-	renewNotifiers     map[string]func(string)
-	renewNotifiersLock *sync.RWMutex
-	disableAutoRetry   bool
-	disableCompression bool
-	defaultRetryFunc   manipulate.RetryFunc
+	username             string
+	password             string
+	url                  string
+	namespace            string
+	renewLock            *sync.RWMutex
+	renewNotifiers       map[string]func(string)
+	renewNotifiersLock   *sync.RWMutex
+	disableAutoRetry     bool
+	disableCompression   bool
+	defaultRetryFunc     manipulate.RetryFunc
+	atomicRenewTokenFunc func(context.Context) error
 
 	// optionnable
 	ctx           context.Context
@@ -117,6 +118,8 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 
 		m.username = "Bearer"
 		m.password = token
+
+		m.atomicRenewTokenFunc = elemental.AtomicJob(m.renewToken)
 
 		go func() {
 			tokenCh := make(chan string)
@@ -707,12 +710,9 @@ func (s *httpManipulator) send(
 				for i := 1; i < 3; i++ {
 
 					time.Sleep(time.Duration(i) * time.Second)
-
-					token, err := s.tokenManager.Issue(mctx.Context())
-
+					err := s.atomicRenewTokenFunc(mctx.Context())
 					if err == nil {
 						lastError = errs
-						s.setPassword(token)
 						goto RETRY
 					}
 				}
@@ -820,4 +820,19 @@ func (s *httpManipulator) currentPassword() string {
 	p := s.password
 	s.renewLock.RUnlock()
 	return p
+}
+
+func (s *httpManipulator) renewToken() error {
+
+	ctx, cancel := context.WithTimeout(s.ctx, 30*time.Second)
+	defer cancel()
+
+	token, err := s.tokenManager.Issue(ctx)
+	if err != nil {
+		return err
+	}
+
+	s.setPassword(token)
+
+	return nil
 }
