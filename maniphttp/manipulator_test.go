@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -26,6 +27,7 @@ import (
 	"go.aporeto.io/manipulate/internal/idempotency"
 	"go.aporeto.io/manipulate/internal/tracing"
 	"go.aporeto.io/manipulate/maniptest"
+	"golang.org/x/sync/errgroup"
 )
 
 func TestHTTP_New(t *testing.T) {
@@ -1409,10 +1411,8 @@ func TestHTTP_send(t *testing.T) {
 
 	Convey("Given I have a server returning 403 and with a token manager", t, func() {
 
-		var call int
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			call++
-			if call == 1 {
+			if r.Header.Get("Authorization") != "Bearer ok-token" {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusForbidden)
 				fmt.Fprint(w, `[{"code": 403, "title": "nope", "description": "boom"}]`)
@@ -1423,8 +1423,18 @@ func TestHTTP_send(t *testing.T) {
 		}))
 		defer ts.Close()
 
+		tm := maniptest.NewTestTokenManager()
+		var tmCalled int64
+		tm.MockIssue(t, func(context.Context) (string, error) {
+			atomic.AddInt64(&tmCalled, 1)
+			time.Sleep(300 * time.Millisecond)
+			return "ok-token", nil
+		})
+
 		m, _ := New(context.Background(), "toto.com")
-		m.(*httpManipulator).tokenManager = maniptest.NewTestTokenManager()
+		m.(*httpManipulator).tokenManager = tm
+		m.(*httpManipulator).username = "Bearer"
+		m.(*httpManipulator).password = "token"
 		m.(*httpManipulator).atomicRenewTokenFunc = elemental.AtomicJob(m.(*httpManipulator).renewToken)
 
 		Convey("When I call send", func() {
@@ -1432,12 +1442,33 @@ func TestHTTP_send(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 
-			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+			var eg errgroup.Group
+
+			eg.Go(func() error {
+				_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+				return err
+			})
+			eg.Go(func() error {
+				_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+				return err
+			})
+			eg.Go(func() error {
+				_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+				return err
+			})
+			eg.Go(func() error {
+				_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+				return err
+			})
+
+			err := eg.Wait()
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldBeNil)
+			})
 
-				So(resp, ShouldNotBeNil)
+			Convey("Then the token manager should have been called only once", func() {
+				So(tmCalled, ShouldEqual, 1)
 			})
 		})
 	})
@@ -1473,7 +1504,6 @@ func TestHTTP_send(t *testing.T) {
 			Convey("Then err should be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "error 403 (): nope: boom")
-
 				So(resp, ShouldBeNil)
 			})
 		})
