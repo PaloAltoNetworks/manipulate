@@ -334,8 +334,8 @@ func (m *vortexManipulator) registerSubscriber(s manipulate.Subscriber) {
 // UpdateFilter updates the current filter.
 func (m *vortexManipulator) updateFilter() {
 
-	m.RLock()
-	defer m.RUnlock()
+	m.Lock()
+	defer m.Unlock()
 
 	if m.upstreamSubscriber == nil {
 		return
@@ -704,6 +704,7 @@ func (m *vortexManipulator) pushEvent(evt *elemental.Event) {
 			continue
 		}
 
+		s.RLock()
 		if !s.filter.IsFilteredOut(evt.Identity, evt.Type) {
 			select {
 			case s.subscriberEventChannel <- sevent.(*elemental.Event):
@@ -711,6 +712,7 @@ func (m *vortexManipulator) pushEvent(evt *elemental.Event) {
 				zap.L().Error("Subscriber channel is full")
 			}
 		}
+		s.RUnlock()
 	}
 }
 
