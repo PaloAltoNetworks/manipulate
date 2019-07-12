@@ -729,11 +729,15 @@ func (m *vortexManipulator) pushStatus(status manipulate.SubscriberStatus) {
 
 func (m *vortexManipulator) pushErrors(err error) {
 	for _, s := range m.subscribers {
+		s.Lock()
+
 		select {
 		case s.subscriberErrorChannel <- err:
 		default:
 			zap.L().Error("Subscriber channel is full")
 		}
+
+		s.Unlock()
 	}
 }
 
