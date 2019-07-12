@@ -18,8 +18,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
+	"github.com/ericrpowers/mgo"
+	"github.com/ericrpowers/mgo/bson"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/backoff"

@@ -15,7 +15,7 @@ import (
 	"crypto/tls"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
+	"github.com/ericrpowers/mgo/bson"
 	"go.aporeto.io/manipulate"
 )
 

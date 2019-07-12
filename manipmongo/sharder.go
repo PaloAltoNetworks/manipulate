@@ -12,7 +12,7 @@
 package manipmongo
 
 import (
-	"github.com/globalsign/mgo/bson"
+	"github.com/ericrpowers/mgo/bson"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 )

@@ -18,8 +18,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
+	"github.com/ericrpowers/mgo"
+	"github.com/ericrpowers/mgo/bson"
 	"github.com/opentracing/opentracing-go/log"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"

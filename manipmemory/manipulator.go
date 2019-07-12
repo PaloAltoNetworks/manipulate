@@ -18,7 +18,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/globalsign/mgo/bson"
+	"github.com/ericrpowers/mgo/bson"
 	memdb "github.com/hashicorp/go-memdb"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"

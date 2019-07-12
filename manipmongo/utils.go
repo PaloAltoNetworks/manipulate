@@ -16,8 +16,8 @@ import (
 	"net"
 	"strings"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
+	"github.com/ericrpowers/mgo"
+	"github.com/ericrpowers/mgo/bson"
 	"go.aporeto.io/manipulate"
 )
 
