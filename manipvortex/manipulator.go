@@ -697,6 +697,9 @@ func (m *vortexManipulator) monitor(ctx context.Context) {
 
 func (m *vortexManipulator) pushEvent(evt *elemental.Event) {
 
+	m.RLock()
+	defer m.RUnlock()
+
 	for _, s := range m.subscribers {
 		sevent, err := copystructure.Copy(evt)
 		if err != nil {
@@ -718,6 +721,9 @@ func (m *vortexManipulator) pushEvent(evt *elemental.Event) {
 
 func (m *vortexManipulator) pushStatus(status manipulate.SubscriberStatus) {
 
+	m.RLock()
+	defer m.RUnlock()
+
 	for _, s := range m.subscribers {
 		select {
 		case s.subscriberStatusChannel <- status:
@@ -728,6 +734,10 @@ func (m *vortexManipulator) pushStatus(status manipulate.SubscriberStatus) {
 }
 
 func (m *vortexManipulator) pushErrors(err error) {
+
+	m.RLock()
+	defer m.RUnlock()
+
 	for _, s := range m.subscribers {
 		s.Lock()
 
