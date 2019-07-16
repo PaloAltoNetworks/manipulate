@@ -3,8 +3,8 @@ module go.aporeto.io/manipulate
 go 1.12
 
 require (
-	go.aporeto.io/elemental v1.69.0
-	go.aporeto.io/wsc v1.27.0
+	go.aporeto.io/elemental v1.80.1
+	go.aporeto.io/wsc v1.28.1
 )
 
 require (
@@ -16,4 +16,5 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a
 	go.uber.org/zap v1.10.0
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 )
