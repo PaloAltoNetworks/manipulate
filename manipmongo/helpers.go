@@ -112,7 +112,7 @@ func EnsureIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 		}
 		if err := collection.EnsureIndex(index); err != nil {
 
-			if strings.HasSuffix(err.Error(), "already exists with different options") {
+			if strings.Contains(err.Error(), "already exists with different options") {
 				if err := collection.DropIndexName(index.Name); err != nil {
 					return fmt.Errorf("cannot delete previous index: %s", err)
 				}
