@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ericrpowers/mgo/bson"
+	"github.com/globalsign/mgo/bson"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
 )

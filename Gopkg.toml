@@ -1,7 +1,3 @@
-[[constraint]]
-  name = "github.com/ericrpowers/mgo"
-  branch = "data-race"
-
 [prune]
   go-tests = true
   unused-packages = true

@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ericrpowers/mgo/bson"
+	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
 )
 
