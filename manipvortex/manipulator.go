@@ -712,7 +712,7 @@ func (m *vortexManipulator) pushEvent(evt *elemental.Event) {
 			select {
 			case s.subscriberEventChannel <- sevent.(*elemental.Event):
 			default:
-				zap.L().Error("Subscriber channel is full")
+				zap.L().Error("Subscriber event channel is full")
 			}
 		}
 		s.RUnlock()
@@ -728,7 +728,7 @@ func (m *vortexManipulator) pushStatus(status manipulate.SubscriberStatus) {
 		select {
 		case s.subscriberStatusChannel <- status:
 		default:
-			zap.L().Error("Subscriber channel is full")
+			zap.L().Error("Subscriber status channel is full")
 		}
 	}
 }
@@ -744,7 +744,7 @@ func (m *vortexManipulator) pushErrors(err error) {
 		select {
 		case s.subscriberErrorChannel <- err:
 		default:
-			zap.L().Error("Subscriber channel is full")
+			zap.L().Error("Subscriber error channel is full")
 		}
 
 		s.Unlock()
