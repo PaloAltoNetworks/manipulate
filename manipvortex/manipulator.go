@@ -708,11 +708,11 @@ func (m *vortexManipulator) pushEvent(evt *elemental.Event) {
 		}
 
 		s.RLock()
-		if !s.filter.IsFilteredOut(evt.Identity, evt.Type) {
+		if !s.filter.IsFilteredOut(evt.Identity, evt.Type) && evt.Type == elemental.EventDelete && evt.Identity == "namespace" {
 			select {
 			case s.subscriberEventChannel <- sevent.(*elemental.Event):
 			default:
-				zap.L().Error("Subscriber event channel is full")
+				zap.L().Debug("Dropping delete event as channel is full")
 			}
 		}
 		s.RUnlock()
