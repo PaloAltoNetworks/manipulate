@@ -594,9 +594,13 @@ func (m *vortexManipulator) backgroundSync(ctx context.Context) {
 		return
 	}
 
+	limiter := time.Tick(200 * time.Millisecond)
+
 	for {
 		select {
 		case t := <-m.transactionQueue:
+			// Rate limit.
+			<-limiter
 
 			// If the dealine is exceeded we just drop the request
 			// no matter what. This allows us to clean up the queue
@@ -621,7 +625,7 @@ func (m *vortexManipulator) backgroundSync(ctx context.Context) {
 			}
 
 			retryCtx, cancel := context.WithDeadline(ctx, t.Deadline)
-			cancel()
+			defer cancel()
 
 			if err := m.commitUpstream(retryCtx, t.Method, t.mctx, t.Object); err != nil {
 				m.RUnlock()
