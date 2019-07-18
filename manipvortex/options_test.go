@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"go.aporeto.io/manipulate"
+	"golang.org/x/time/rate"
 
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/manipulate/maniptest"
@@ -109,6 +110,16 @@ func Test_Options(t *testing.T) {
 			r := NewTestReconciler()
 			OptionDownstreamReconciler(r)(cfg)
 			So(cfg.downstreamReconciler, ShouldEqual, r)
+		})
+
+		Convey("OptRateLimiting should work", func() {
+			OptionRateLimiting(2, 5)(cfg)
+			So(cfg.rateLimiter, ShouldResemble, rate.NewLimiter(2, 5))
+		})
+
+		Convey("OptRateLimiting with defaults should work", func() {
+			OptionRateLimiting(0, 0)(cfg)
+			So(cfg.rateLimiter, ShouldResemble, rate.NewLimiter(3, 6))
 		})
 	})
 }
