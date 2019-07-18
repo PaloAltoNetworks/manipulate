@@ -594,13 +594,14 @@ func (m *vortexManipulator) backgroundSync(ctx context.Context) {
 		return
 	}
 
-	limiter := time.Tick(200 * time.Millisecond)
+	ticker := time.NewTicker(200 * time.Millisecond)
+	defer ticker.Stop()
 
 	for {
 		select {
 		case t := <-m.transactionQueue:
 			// Rate limit.
-			<-limiter
+			<-ticker.C
 
 			// If the dealine is exceeded we just drop the request
 			// no matter what. This allows us to clean up the queue
