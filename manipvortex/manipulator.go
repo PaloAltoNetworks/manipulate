@@ -17,7 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mitchellh/copystructure"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.uber.org/zap"
@@ -701,21 +700,18 @@ func (m *vortexManipulator) pushEvent(evt *elemental.Event) {
 	defer m.RUnlock()
 
 	for _, s := range m.subscribers {
-		sevent, err := copystructure.Copy(evt)
-		if err != nil {
-			zap.L().Error("failed to copy event", zap.Error(err))
-			continue
-		}
 
 		s.RLock()
-		if !s.filter.IsFilteredOut(evt.Identity, evt.Type) && evt.Type == elemental.EventDelete && evt.Identity == "namespace" {
+		ifFiltered := s.filter.IsFilteredOut(evt.Identity, evt.Type)
+		s.RUnlock()
+
+		if !ifFiltered && evt.Type == elemental.EventDelete && evt.Identity == "namespace" {
 			select {
-			case s.subscriberEventChannel <- sevent.(*elemental.Event):
+			case s.subscriberEventChannel <- evt:
 			default:
 				zap.L().Debug("Dropping delete event as channel is full")
 			}
 		}
-		s.RUnlock()
 	}
 }
 
@@ -739,15 +735,11 @@ func (m *vortexManipulator) pushErrors(err error) {
 	defer m.RUnlock()
 
 	for _, s := range m.subscribers {
-		s.Lock()
-
 		select {
 		case s.subscriberErrorChannel <- err:
 		default:
 			zap.L().Error("Subscriber error channel is full")
 		}
-
-		s.Unlock()
 	}
 }
 
