@@ -636,7 +636,7 @@ func (m *vortexManipulator) backgroundSync(ctx context.Context, limiter *rate.Li
 
 			// Update the local copy of the object now.
 			if err := m.commitLocal(t.Method, t.mctx, t.Object); err != nil {
-				zap.L().Error("failed to delete local object after failed resync", zap.Error(err))
+				zap.L().Error("failed to commit object downstream", zap.Error(err))
 			}
 
 			m.RUnlock()
