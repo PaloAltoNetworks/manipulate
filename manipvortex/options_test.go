@@ -112,14 +112,13 @@ func Test_Options(t *testing.T) {
 			So(cfg.downstreamReconciler, ShouldEqual, r)
 		})
 
+		Convey("OptRateLimiting with defaults should work", func() {
+			So(cfg.rateLimiter, ShouldResemble, rate.NewLimiter(3, 6))
+		})
+
 		Convey("OptRateLimiting should work", func() {
 			OptionRateLimiting(2, 5)(cfg)
 			So(cfg.rateLimiter, ShouldResemble, rate.NewLimiter(2, 5))
-		})
-
-		Convey("OptRateLimiting with defaults should work", func() {
-			dcfg := newConfig()
-			So(dcfg.rateLimiter, ShouldResemble, rate.NewLimiter(3, 6))
 		})
 	})
 }
