@@ -21,7 +21,6 @@ import (
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.uber.org/zap"
-	"golang.org/x/time/rate"
 )
 
 // updater is the type of all crud functions.
@@ -131,7 +130,7 @@ func New(
 	// Start the background thread. It will be blocked
 	// when we do resyncs and this is ok. We want it blocked
 	// so that resync continues while any updates are buffered.
-	go m.backgroundSync(ctx, cfg.rateLimiter)
+	go m.backgroundSync(ctx)
 
 	return m, nil
 }
@@ -589,7 +588,7 @@ func (m *vortexManipulator) genericUpdater(method elemental.Operation, mctx mani
 
 // backgroundSync will empty the transaction queue and try to sync it
 // with the backend.
-func (m *vortexManipulator) backgroundSync(ctx context.Context, limiter *rate.Limiter) {
+func (m *vortexManipulator) backgroundSync(ctx context.Context) {
 
 	if m.upstreamManipulator == nil {
 		return
@@ -598,10 +597,6 @@ func (m *vortexManipulator) backgroundSync(ctx context.Context, limiter *rate.Li
 	for {
 		select {
 		case t := <-m.transactionQueue:
-			// Rate limit.
-			if err := limiter.Wait(ctx); err != nil {
-				zap.L().Warn("unable to rate limit", zap.Error(err))
-			}
 
 			// If the dealine is exceeded we just drop the request
 			// no matter what. This allows us to clean up the queue

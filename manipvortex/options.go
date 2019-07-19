@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"go.aporeto.io/manipulate"
-	"golang.org/x/time/rate"
 )
 
 type config struct {
@@ -31,7 +30,6 @@ type config struct {
 	prefetcher           Prefetcher
 	upstreamReconciler   Reconciler
 	downstreamReconciler Reconciler
-	rateLimiter          *rate.Limiter
 }
 
 func newConfig() *config {
@@ -41,7 +39,6 @@ func newConfig() *config {
 		writeConsistency:     manipulate.WriteConsistencyStrong,
 		defaultQueueDuration: time.Second,
 		defaultPageSize:      10000,
-		rateLimiter:          rate.NewLimiter(3, 6),
 	}
 }
 
@@ -125,12 +122,5 @@ func OptionDownstreamReconciler(r Reconciler) Option {
 func OptionUpstreamReconciler(r Reconciler) Option {
 	return func(cfg *config) {
 		cfg.upstreamReconciler = r
-	}
-}
-
-// OptionRateLimiting configures the rate limiting.
-func OptionRateLimiting(limit float64, burst int) Option {
-	return func(cfg *config) {
-		cfg.rateLimiter = rate.NewLimiter(rate.Limit(limit), burst)
 	}
 }
