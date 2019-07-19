@@ -118,8 +118,8 @@ func Test_Options(t *testing.T) {
 		})
 
 		Convey("OptRateLimiting with defaults should work", func() {
-			OptionRateLimiting(0, 0)(cfg)
-			So(cfg.rateLimiter, ShouldResemble, rate.NewLimiter(3, 6))
+			dcfg := newConfig()
+			So(dcfg.rateLimiter, ShouldResemble, rate.NewLimiter(3, 6))
 		})
 	})
 }

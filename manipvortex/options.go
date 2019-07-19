@@ -131,10 +131,6 @@ func OptionUpstreamReconciler(r Reconciler) Option {
 // OptionRateLimiting configures the rate limiting.
 func OptionRateLimiting(limit float64, burst int) Option {
 	return func(cfg *config) {
-		if limit == 0 || burst == 0 {
-			limit = 3
-			burst = 6
-		}
 		cfg.rateLimiter = rate.NewLimiter(rate.Limit(limit), burst)
 	}
 }
