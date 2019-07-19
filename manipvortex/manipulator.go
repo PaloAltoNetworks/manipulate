@@ -724,7 +724,7 @@ func (m *vortexManipulator) pushStatus(status manipulate.SubscriberStatus) {
 		select {
 		case s.subscriberStatusChannel <- status:
 		default:
-			zap.L().Error("Subscriber status channel is full")
+			zap.L().Debug("Dropping status as channel is full")
 		}
 	}
 }
@@ -738,7 +738,7 @@ func (m *vortexManipulator) pushErrors(err error) {
 		select {
 		case s.subscriberErrorChannel <- err:
 		default:
-			zap.L().Error("Subscriber error channel is full")
+			zap.L().Debug("Dropping error as channel is full")
 		}
 	}
 }
