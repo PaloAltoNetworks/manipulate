@@ -702,14 +702,14 @@ func (m *vortexManipulator) pushEvent(evt *elemental.Event) {
 	for _, s := range m.subscribers {
 
 		s.RLock()
-		ifFiltered := s.filter.IsFilteredOut(evt.Identity, evt.Type)
+		isFiltered := s.filter.IsFilteredOut(evt.Identity, evt.Type)
 		s.RUnlock()
 
-		if !ifFiltered && evt.Type == elemental.EventDelete && evt.Identity == "namespace" {
+		if !isFiltered {
 			select {
 			case s.subscriberEventChannel <- evt:
 			default:
-				zap.L().Debug("Dropping delete event as channel is full")
+				zap.L().Error("Subscriber event channel is full")
 			}
 		}
 	}
@@ -724,7 +724,7 @@ func (m *vortexManipulator) pushStatus(status manipulate.SubscriberStatus) {
 		select {
 		case s.subscriberStatusChannel <- status:
 		default:
-			zap.L().Debug("Dropping status as channel is full")
+			zap.L().Error("Subscriber status channel is full")
 		}
 	}
 }
@@ -738,7 +738,7 @@ func (m *vortexManipulator) pushErrors(err error) {
 		select {
 		case s.subscriberErrorChannel <- err:
 		default:
-			zap.L().Debug("Dropping error as channel is full")
+			zap.L().Error("Subscriber error channel is full")
 		}
 	}
 }
