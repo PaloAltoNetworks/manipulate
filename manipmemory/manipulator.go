@@ -20,6 +20,7 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	memdb "github.com/hashicorp/go-memdb"
+	"github.com/mitchellh/copystructure"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 )
@@ -111,7 +112,12 @@ func (m *memdbManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 		return manipulate.NewErrObjectNotFound("cannot find the object for the given ID")
 	}
 
-	reflect.ValueOf(object).Elem().Set(reflect.ValueOf(raw).Elem())
+	cp, err := copystructure.Copy(raw)
+	if err != nil {
+		return manipulate.NewErrCannotExecuteQuery(err.Error())
+	}
+
+	reflect.ValueOf(object).Elem().Set(reflect.ValueOf(cp).Elem())
 
 	return nil
 }
@@ -133,7 +139,12 @@ func (m *memdbManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		object.SetIdentifier(bson.NewObjectId().Hex())
 	}
 
-	if err := txn.Insert(object.Identity().Category, object); err != nil {
+	cp, err := copystructure.Copy(object)
+	if err != nil {
+		return manipulate.NewErrCannotExecuteQuery(err.Error())
+	}
+
+	if err := txn.Insert(object.Identity().Category, cp); err != nil {
 		return manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
 
@@ -160,7 +171,12 @@ func (m *memdbManipulator) Update(mctx manipulate.Context, object elemental.Iden
 		return manipulate.NewErrObjectNotFound("Cannot find object with given ID")
 	}
 
-	if err := txn.Insert(object.Identity().Category, object); err != nil {
+	cp, err := copystructure.Copy(object)
+	if err != nil {
+		return manipulate.NewErrCannotExecuteQuery(err.Error())
+	}
+
+	if err := txn.Insert(object.Identity().Category, cp); err != nil {
 		return manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
 
@@ -403,7 +419,14 @@ func (m *memdbManipulator) retrieveIntersection(identity string, k string, value
 	raw := iterator.Next()
 
 	for raw != nil {
-		obj := raw.(elemental.Identifiable)
+		o, err := copystructure.Copy(raw)
+		if err != nil {
+			return manipulate.NewErrCannotExecuteQuery(err.Error())
+		}
+		obj, ok := o.(elemental.Identifiable)
+		if !ok {
+			return manipulate.NewErrCannotExecuteQuery("stored object is not an identifiable")
+		}
 		if _, ok := existingItems[obj.Identifier()]; ok || fullquery {
 			combinedItems[obj.Identifier()] = obj
 		}
