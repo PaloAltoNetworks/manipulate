@@ -63,7 +63,6 @@ type httpManipulator struct {
 	globalHeaders http.Header
 	transport     *http.Transport
 	encoding      elemental.EncodingType
-	encodingLock  *sync.Mutex
 }
 
 // New returns a maniphttp.Manipulator configured according to the given suite of Option.
@@ -81,7 +80,6 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 		ctx:                ctx,
 		url:                url,
 		encoding:           elemental.EncodingTypeJSON,
-		encodingLock:       &sync.Mutex{},
 	}
 
 	// Apply the options.
@@ -253,9 +251,7 @@ func (s *httpManipulator) Create(mctx manipulate.Context, object elemental.Ident
 		return manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	s.encodingLock.Lock()
 	data, err := elemental.Encode(s.encoding, object)
-	s.encodingLock.Unlock()
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -318,9 +314,7 @@ func (s *httpManipulator) Update(mctx manipulate.Context, object elemental.Ident
 		return manipulate.NewErrCannotBuildQuery(err.Error())
 	}
 
-	s.encodingLock.Lock()
 	data, err := elemental.Encode(s.encoding, object)
-	s.encodingLock.Unlock()
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -703,13 +697,9 @@ func (s *httpManipulator) send(
 		// If we have some other errors, we decode them.
 		if response.StatusCode < 200 || response.StatusCode >= 300 {
 			errs := elemental.NewErrors()
-
-			s.encodingLock.Lock()
 			if err := decodeData(response, &errs); err != nil {
-				s.encodingLock.Unlock()
 				return nil, err
 			}
-			s.encodingLock.Unlock()
 
 			if s.tokenManager != nil && (response.StatusCode == http.StatusForbidden || response.StatusCode == http.StatusUnauthorized) {
 
@@ -743,12 +733,9 @@ func (s *httpManipulator) send(
 
 		// If we have a given dest to decode, we decode it now.
 		if dest != nil {
-			s.encodingLock.Lock()
 			if err := decodeData(response, dest); err != nil {
-				s.encodingLock.Unlock()
 				return nil, err
 			}
-			s.encodingLock.Unlock()
 		}
 
 		// And we return the response
