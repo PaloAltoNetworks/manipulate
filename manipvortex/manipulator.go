@@ -621,7 +621,7 @@ func (m *vortexManipulator) backgroundSync(ctx context.Context) {
 			}
 
 			retryCtx, cancel := context.WithDeadline(ctx, t.Deadline)
-			cancel()
+			defer cancel()
 
 			if err := m.commitUpstream(retryCtx, t.Method, t.mctx, t.Object); err != nil {
 				m.RUnlock()
@@ -631,7 +631,7 @@ func (m *vortexManipulator) backgroundSync(ctx context.Context) {
 
 			// Update the local copy of the object now.
 			if err := m.commitLocal(t.Method, t.mctx, t.Object); err != nil {
-				zap.L().Error("failed to delete local object after failed resync", zap.Error(err))
+				zap.L().Error("failed to commit object downstream", zap.Error(err))
 			}
 
 			m.RUnlock()
