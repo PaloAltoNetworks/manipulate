@@ -39,7 +39,6 @@ func newConfig() *config {
 		writeConsistency:     manipulate.WriteConsistencyStrong,
 		defaultQueueDuration: time.Second,
 		defaultPageSize:      10000,
-		prefetcher:           NewDefaultPrefetcher(),
 	}
 }
 
