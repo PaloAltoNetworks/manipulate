@@ -97,6 +97,7 @@ func Test_New(t *testing.T) {
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionPrefetcher(NewDefaultPrefetcher()),
 		)
 		So(err, ShouldBeNil)
 		So(v, ShouldNotBeNil)
@@ -150,6 +151,7 @@ func Test_UnsupportedMethods(t *testing.T) {
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionPrefetcher(NewDefaultPrefetcher()),
 		)
 		So(err, ShouldBeNil)
 
@@ -181,6 +183,7 @@ func Test_Count(t *testing.T) {
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionPrefetcher(NewDefaultPrefetcher()),
 		)
 		So(err, ShouldBeNil)
 
@@ -217,6 +220,7 @@ func Test_run(t *testing.T) {
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionPrefetcher(NewDefaultPrefetcher()),
 			OptionTransactionLog("./testlog"),
 		)
 		So(err, ShouldBeNil)
@@ -241,6 +245,7 @@ func Test_run(t *testing.T) {
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionPrefetcher(NewDefaultPrefetcher()),
 			OptionTransactionLog("./bad-directory/test"),
 		)
 		So(err, ShouldNotBeNil)
@@ -262,6 +267,7 @@ func Test_run(t *testing.T) {
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionPrefetcher(NewDefaultPrefetcher()),
 			OptionUpstreamSubscriber(s),
 		)
 		So(err, ShouldNotBeNil)
@@ -283,6 +289,7 @@ func Test_run(t *testing.T) {
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionPrefetcher(NewDefaultPrefetcher()),
 			OptionUpstreamSubscriber(s),
 		)
 		So(err, ShouldBeNil)
@@ -321,6 +328,7 @@ func Test_RetrieveMany(t *testing.T) {
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionPrefetcher(NewDefaultPrefetcher()),
 		)
 		So(err, ShouldBeNil)
 
@@ -395,6 +403,7 @@ func Test_Retrieve(t *testing.T) {
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionPrefetcher(NewDefaultPrefetcher()),
 		)
 		So(err, ShouldBeNil)
 
@@ -481,6 +490,7 @@ func Test_Create(t *testing.T) {
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionPrefetcher(NewDefaultPrefetcher()),
 			OptionDownstreamReconciler(a),
 		)
 		So(err, ShouldBeNil)
@@ -603,6 +613,7 @@ func Test_Update(t *testing.T) {
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionPrefetcher(NewDefaultPrefetcher()),
 			OptionDownstreamReconciler(a),
 		)
 		So(err, ShouldBeNil)
@@ -735,6 +746,7 @@ func Test_Delete(t *testing.T) {
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionPrefetcher(NewDefaultPrefetcher()),
 			OptionDownstreamReconciler(a),
 		)
 		So(err, ShouldBeNil)
@@ -963,6 +975,7 @@ func Test_WriteThroughBackend(t *testing.T) {
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionPrefetcher(NewDefaultPrefetcher()),
 		)
 		So(err, ShouldBeNil)
 
@@ -1136,6 +1149,7 @@ func Test_Monitor(t *testing.T) {
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionPrefetcher(NewDefaultPrefetcher()),
 			OptionUpstreamSubscriber(s),
 			OptionDownstreamReconciler(a),
 		)
@@ -1323,6 +1337,7 @@ func Test_WriteBackBackend(t *testing.T) {
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyNone),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionPrefetcher(NewDefaultPrefetcher()),
 		)
 		So(err, ShouldBeNil)
 
@@ -1494,6 +1509,7 @@ func Test_SubscriberRegistration(t *testing.T) {
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionPrefetcher(NewDefaultPrefetcher()),
 			OptionUpstreamSubscriber(us),
 		)
 		So(err, ShouldBeNil)
@@ -1535,6 +1551,7 @@ func Test_updateFilter(t *testing.T) {
 			newIdentityProcessor(manipulate.ReadConsistencyDefault, manipulate.WriteConsistencyDefault),
 			testmodel.Manager(),
 			OptionUpstreamManipulator(m),
+			OptionPrefetcher(NewDefaultPrefetcher()),
 			OptionUpstreamSubscriber(us),
 		)
 		So(err, ShouldBeNil)
