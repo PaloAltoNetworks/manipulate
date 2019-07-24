@@ -707,7 +707,7 @@ func (m *vortexManipulator) pushEvent(evt *elemental.Event) {
 
 		if !isFiltered {
 			select {
-			case s.subscriberEventChannel <- evt:
+			case s.subscriberEventChannel <- evt.Duplicate():
 			default:
 				zap.L().Error("Subscriber event channel is full")
 			}
@@ -724,7 +724,7 @@ func (m *vortexManipulator) pushStatus(status manipulate.SubscriberStatus) {
 		select {
 		case s.subscriberStatusChannel <- status:
 		default:
-			zap.L().Error("Subscriber status channel is full")
+			zap.L().Error("Subscriber status channel is full", zap.Int("status", int(status)))
 		}
 	}
 }
@@ -738,7 +738,7 @@ func (m *vortexManipulator) pushErrors(err error) {
 		select {
 		case s.subscriberErrorChannel <- err:
 		default:
-			zap.L().Error("Subscriber error channel is full")
+			zap.L().Error("Subscriber error channel is full", zap.Error(err))
 		}
 	}
 }
