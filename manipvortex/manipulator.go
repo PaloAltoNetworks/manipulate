@@ -17,7 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mitchellh/copystructure"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.uber.org/zap"
@@ -334,8 +333,8 @@ func (m *vortexManipulator) registerSubscriber(s manipulate.Subscriber) {
 // UpdateFilter updates the current filter.
 func (m *vortexManipulator) updateFilter() {
 
-	m.RLock()
-	defer m.RUnlock()
+	m.Lock()
+	defer m.Unlock()
 
 	if m.upstreamSubscriber == nil {
 		return
@@ -697,18 +696,20 @@ func (m *vortexManipulator) monitor(ctx context.Context) {
 
 func (m *vortexManipulator) pushEvent(evt *elemental.Event) {
 
-	for _, s := range m.subscribers {
-		sevent, err := copystructure.Copy(evt)
-		if err != nil {
-			zap.L().Error("failed to copy event", zap.Error(err))
-			continue
-		}
+	m.RLock()
+	defer m.RUnlock()
 
-		if !s.filter.IsFilteredOut(evt.Identity, evt.Type) {
+	for _, s := range m.subscribers {
+
+		s.RLock()
+		isFiltered := s.filter.IsFilteredOut(evt.Identity, evt.Type)
+		s.RUnlock()
+
+		if !isFiltered {
 			select {
-			case s.subscriberEventChannel <- sevent.(*elemental.Event):
+			case s.subscriberEventChannel <- evt.Duplicate():
 			default:
-				zap.L().Error("Subscriber channel is full")
+				zap.L().Error("Subscriber event channel is full")
 			}
 		}
 	}
@@ -716,21 +717,28 @@ func (m *vortexManipulator) pushEvent(evt *elemental.Event) {
 
 func (m *vortexManipulator) pushStatus(status manipulate.SubscriberStatus) {
 
+	m.RLock()
+	defer m.RUnlock()
+
 	for _, s := range m.subscribers {
 		select {
 		case s.subscriberStatusChannel <- status:
 		default:
-			zap.L().Error("Subscriber channel is full")
+			zap.L().Error("Subscriber status channel is full", zap.Int("status", int(status)))
 		}
 	}
 }
 
 func (m *vortexManipulator) pushErrors(err error) {
+
+	m.RLock()
+	defer m.RUnlock()
+
 	for _, s := range m.subscribers {
 		select {
 		case s.subscriberErrorChannel <- err:
 		default:
-			zap.L().Error("Subscriber channel is full")
+			zap.L().Error("Subscriber error channel is full", zap.Error(err))
 		}
 	}
 }
