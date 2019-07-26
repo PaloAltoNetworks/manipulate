@@ -45,6 +45,7 @@ type vortexManipulator struct {
 	prefetcher              Prefetcher
 	upstreamReconciler      Reconciler
 	downstreamReconciler    Reconciler
+	disableUpstreamCommit   bool
 
 	sync.RWMutex
 }
@@ -83,6 +84,7 @@ func New(
 		upstreamSubscriber:      cfg.upstreamSubscriber,
 		defaultReadConsistency:  cfg.readConsistency,
 		defaultWriteConsistency: cfg.writeConsistency,
+		disableUpstreamCommit:   cfg.disableUpstreamCommit,
 		enableLog:               cfg.enableLog,
 		logfile:                 cfg.logfile,
 		pageSize:                cfg.defaultPageSize,
@@ -416,12 +418,12 @@ func (m *vortexManipulator) shouldProcess(mctx manipulate.Context, identity elem
 // return the upstream error.
 func (m *vortexManipulator) commitUpstream(ctx context.Context, operation elemental.Operation, mctx manipulate.Context, object elemental.Identifiable) error {
 
-	var reconcile bool
-	var err error
-
-	if m.upstreamManipulator == nil {
+	if m.upstreamManipulator == nil || m.disableUpstreamCommit {
 		return nil
 	}
+
+	var reconcile bool
+	var err error
 
 	// If we have an accepter, we see if it accepts the write
 	if m.upstreamReconciler != nil {
@@ -551,7 +553,7 @@ func (m *vortexManipulator) methodFromType(method elemental.Operation) updater {
 // later after the object is stored in the backend.
 func (m *vortexManipulator) genericUpdater(method elemental.Operation, mctx manipulate.Context, object elemental.Identifiable) (bool, error) {
 
-	if m.upstreamManipulator == nil {
+	if m.upstreamManipulator == nil || m.disableUpstreamCommit {
 		return true, nil
 	}
 

@@ -299,6 +299,7 @@ func TestMemManipulator_Retrieve(t *testing.T) {
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
+				So(manipulate.IsObjectNotFoundError(err), ShouldBeTrue)
 			})
 		})
 
@@ -625,6 +626,7 @@ func TestMemManipulator_Update(t *testing.T) {
 
 				Convey("Then err should not be nil", func() {
 					So(err, ShouldNotBeNil)
+					So(manipulate.IsObjectNotFoundError(err), ShouldBeTrue)
 				})
 			})
 		})
@@ -702,6 +704,7 @@ func TestMemManipulator_Delete(t *testing.T) {
 
 				Convey("Then err should not be nil", func() {
 					So(err, ShouldNotBeNil)
+					So(manipulate.IsObjectNotFoundError(err), ShouldBeTrue)
 				})
 			})
 		})

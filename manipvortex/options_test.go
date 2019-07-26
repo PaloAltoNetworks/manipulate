@@ -110,5 +110,10 @@ func Test_Options(t *testing.T) {
 			OptionDownstreamReconciler(r)(cfg)
 			So(cfg.downstreamReconciler, ShouldEqual, r)
 		})
+
+		Convey("OptionDisableCommitUpstream with defaults should work", func() {
+			OptionDisableCommitUpstream(true)(cfg)
+			So(cfg.disableUpstreamCommit, ShouldBeTrue)
+		})
 	})
 }

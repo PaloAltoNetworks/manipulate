@@ -18,18 +18,19 @@ import (
 )
 
 type config struct {
-	upstreamManipulator  manipulate.Manipulator
-	upstreamSubscriber   manipulate.Subscriber
-	logfile              string
-	enableLog            bool
-	transactionQueue     chan *Transaction
-	readConsistency      manipulate.ReadConsistency
-	writeConsistency     manipulate.WriteConsistency
-	defaultQueueDuration time.Duration
-	defaultPageSize      int
-	prefetcher           Prefetcher
-	upstreamReconciler   Reconciler
-	downstreamReconciler Reconciler
+	upstreamManipulator   manipulate.Manipulator
+	upstreamSubscriber    manipulate.Subscriber
+	logfile               string
+	enableLog             bool
+	transactionQueue      chan *Transaction
+	readConsistency       manipulate.ReadConsistency
+	writeConsistency      manipulate.WriteConsistency
+	defaultQueueDuration  time.Duration
+	defaultPageSize       int
+	prefetcher            Prefetcher
+	upstreamReconciler    Reconciler
+	downstreamReconciler  Reconciler
+	disableUpstreamCommit bool
 }
 
 func newConfig() *config {
@@ -122,5 +123,12 @@ func OptionDownstreamReconciler(r Reconciler) Option {
 func OptionUpstreamReconciler(r Reconciler) Option {
 	return func(cfg *config) {
 		cfg.upstreamReconciler = r
+	}
+}
+
+// OptionDisableCommitUpstream sets the global upstream Reconcilers to use.
+func OptionDisableCommitUpstream(disabled bool) Option {
+	return func(cfg *config) {
+		cfg.disableUpstreamCommit = disabled
 	}
 }
