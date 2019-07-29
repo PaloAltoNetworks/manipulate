@@ -199,6 +199,14 @@ func (m *memdbManipulator) Update(mctx manipulate.Context, object elemental.Iden
 		}
 	}
 
+	// Delete prior to insert to avoid tangling indices
+	if err := txn.Delete(object.Identity().Category, object); err != nil {
+		if err == memdb.ErrNotFound {
+			return manipulate.NewErrObjectNotFound(err.Error())
+		}
+		return manipulate.NewErrCannotExecuteQuery(err.Error())
+	}
+
 	if err := txn.Insert(object.Identity().Category, cp); err != nil {
 		return manipulate.NewErrCannotExecuteQuery(err.Error())
 	}
