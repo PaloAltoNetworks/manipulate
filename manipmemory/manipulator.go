@@ -34,10 +34,16 @@ type memdbManipulator struct {
 	txnRegistry     txnRegistry
 	txnRegistryLock sync.RWMutex
 	dbLock          sync.RWMutex
+	noCopy          bool
 }
 
 // New creates a new datastore backed by a memdb.
-func New(c map[string]*IdentitySchema) (manipulate.TransactionalManipulator, error) {
+func New(c map[string]*IdentitySchema, options ...Option) (manipulate.TransactionalManipulator, error) {
+
+	cfg := newConfig()
+	for _, opt := range options {
+		opt(cfg)
+	}
 
 	schema := &memdb.DBSchema{
 		Tables: map[string]*memdb.TableSchema{},
@@ -59,6 +65,7 @@ func New(c map[string]*IdentitySchema) (manipulate.TransactionalManipulator, err
 	return &memdbManipulator{
 		schema:      schema,
 		db:          db,
+		noCopy:      cfg.noCopy,
 		txnRegistry: txnRegistry{},
 	}, nil
 }
@@ -112,9 +119,14 @@ func (m *memdbManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 		return manipulate.NewErrObjectNotFound("cannot find the object for the given ID")
 	}
 
-	cp, err := copystructure.Copy(raw)
-	if err != nil {
-		return manipulate.NewErrCannotExecuteQuery(err.Error())
+	var cp interface{}
+	if m.noCopy {
+		cp = raw
+	} else {
+		cp, err = copystructure.Copy(raw)
+		if err != nil {
+			return manipulate.NewErrCannotExecuteQuery(err.Error())
+		}
 	}
 
 	reflect.ValueOf(object).Elem().Set(reflect.ValueOf(cp).Elem())
@@ -139,9 +151,15 @@ func (m *memdbManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		object.SetIdentifier(bson.NewObjectId().Hex())
 	}
 
-	cp, err := copystructure.Copy(object)
-	if err != nil {
-		return manipulate.NewErrCannotExecuteQuery(err.Error())
+	var cp interface{}
+	if m.noCopy {
+		cp = object
+	} else {
+		var err error
+		cp, err = copystructure.Copy(object)
+		if err != nil {
+			return manipulate.NewErrCannotExecuteQuery(err.Error())
+		}
 	}
 
 	if err := txn.Insert(object.Identity().Category, cp); err != nil {
@@ -171,9 +189,14 @@ func (m *memdbManipulator) Update(mctx manipulate.Context, object elemental.Iden
 		return manipulate.NewErrObjectNotFound("Cannot find object with given ID")
 	}
 
-	cp, err := copystructure.Copy(object)
-	if err != nil {
-		return manipulate.NewErrCannotExecuteQuery(err.Error())
+	var cp interface{}
+	if m.noCopy {
+		cp = object
+	} else {
+		cp, err = copystructure.Copy(object)
+		if err != nil {
+			return manipulate.NewErrCannotExecuteQuery(err.Error())
+		}
 	}
 
 	if err := txn.Insert(object.Identity().Category, cp); err != nil {
@@ -422,10 +445,17 @@ func (m *memdbManipulator) retrieveIntersection(identity string, k string, value
 	raw := iterator.Next()
 
 	for raw != nil {
-		o, err := copystructure.Copy(raw)
-		if err != nil {
-			return manipulate.NewErrCannotExecuteQuery(err.Error())
+
+		var o interface{}
+		if m.noCopy {
+			o = raw
+		} else {
+			o, err = copystructure.Copy(raw)
+			if err != nil {
+				return manipulate.NewErrCannotExecuteQuery(err.Error())
+			}
 		}
+
 		obj, ok := o.(elemental.Identifiable)
 		if !ok {
 			return manipulate.NewErrCannotExecuteQuery("stored object is not an identifiable")
