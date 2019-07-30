@@ -124,3 +124,25 @@ func OptionDisableCompression() Option {
 		m.disableCompression = true
 	}
 }
+
+// OptionSimulateFailures will inject random http codes in
+// normal operations.
+// The key of the map is a float between 0 and 1 that will
+// give the percentage of chance for simulating the failure,
+// and error it should return.
+//
+// For instance, take the following map:
+//      map[float64]error{
+//          0.10: manipulate.NewErrCannotBuildQuery("oh no"),
+//          0.25: manipulate.NewErrCannotCommunicate("service is gone"),
+//      }
+//
+// It will return manipulate.NewErrCannotBuildQuery around 10% of the requests,
+// manipulate.NewErrCannotCommunicate around 25% of the requests.
+// This is obviously designed for simulating backend failures and should
+// not be used in production, obviously.
+func OptionSimulateFailures(failureSimulations map[float64]error) Option {
+	return func(m *httpManipulator) {
+		m.failureSimulations = failureSimulations
+	}
+}

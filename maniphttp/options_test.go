@@ -108,4 +108,11 @@ func TestManipHttp_Optionions(t *testing.T) {
 		OptionDisableCompression()(m)
 		So(m.disableCompression, ShouldEqual, true)
 	})
+
+	Convey("Calling OptionSimulateFailures should work", t, func() {
+		m := &httpManipulator{}
+		f := map[float64]error{}
+		OptionSimulateFailures(f)(m)
+		So(m.failureSimulations, ShouldEqual, f)
+	})
 }
