@@ -125,8 +125,9 @@ func OptionDisableCompression() Option {
 	}
 }
 
-// OptionSimulateFailures will inject random http codes in
-// normal operations.
+// OptionSimulateFailures will inject random error during
+// low level communication with the remote API.
+//
 // The key of the map is a float between 0 and 1 that will
 // give the percentage of chance for simulating the failure,
 // and error it should return.
