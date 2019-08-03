@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -54,6 +55,7 @@ type httpManipulator struct {
 	disableCompression   bool
 	defaultRetryFunc     manipulate.RetryFunc
 	atomicRenewTokenFunc func(context.Context) error
+	failureSimulations   map[float64]error
 
 	// optionnable
 	ctx           context.Context
@@ -551,6 +553,14 @@ func (s *httpManipulator) send(
 	dest interface{},
 	sp opentracing.Span,
 ) (*http.Response, error) {
+
+	if len(s.failureSimulations) > 0 {
+		for chance, err := range s.failureSimulations {
+			if rand.Float64() < chance {
+				return nil, err
+			}
+		}
+	}
 
 	var try int               // try number. Starts at 0
 	var lastError error       // last error before retry.
