@@ -562,8 +562,9 @@ func (s *httpManipulator) send(
 		}
 	}
 
-	var try int         // try number. Starts at 0
-	var lastError error // last error before retry.
+	var try int               // try number. Starts at 0
+	var lastError error       // last error before retry.
+	var tokenRenewedOnce bool // after an authorization failures token is renewed at most once.
 
 	// We get the context deadline.
 	deadline, ok := mctx.Context().Deadline()
@@ -711,7 +712,7 @@ func (s *httpManipulator) send(
 				return nil, err
 			}
 
-			if s.tokenManager != nil && (response.StatusCode == http.StatusForbidden || response.StatusCode == http.StatusUnauthorized) {
+			if !tokenRenewedOnce && s.tokenManager != nil && (response.StatusCode == http.StatusForbidden || response.StatusCode == http.StatusUnauthorized) {
 
 				// This is a special case where we try to renew our token
 				// in case of 401 or 403 error.
@@ -723,6 +724,7 @@ func (s *httpManipulator) send(
 					err := s.atomicRenewTokenFunc(mctx.Context())
 					if err == nil {
 						lastError = errs
+						tokenRenewedOnce = true
 						goto RETRY
 					}
 				}
