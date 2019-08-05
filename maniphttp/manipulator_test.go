@@ -1409,7 +1409,7 @@ func TestHTTP_send(t *testing.T) {
 		})
 	})
 
-	Convey("Given I have a server returning 403 and with a token manager", t, func() {
+	Convey("Given I have a server returning 403 and with a token manager that renews the token", t, func() {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Header.Get("Authorization") != "Bearer ok-token" {
@@ -1505,6 +1505,46 @@ func TestHTTP_send(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "error 403 (): nope: boom")
 				So(resp, ShouldBeNil)
+			})
+		})
+	})
+
+	Convey("Given I have a server returning 403 for all my requests, I should return an error and tokenmanager should only be invoked once", t, func() {
+
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			fmt.Fprint(w, `[{"code": 403, "title": "nope", "description": "boom"}]`)
+		}))
+		defer ts.Close()
+
+		tm := maniptest.NewTestTokenManager()
+		var tmCalled int64
+		tm.MockIssue(t, func(context.Context) (string, error) {
+			atomic.AddInt64(&tmCalled, 1)
+			time.Sleep(300 * time.Millisecond)
+			return "ok-token", nil
+		})
+
+		m, _ := New(context.Background(), "toto.com")
+		m.(*httpManipulator).tokenManager = tm
+		m.(*httpManipulator).username = "Bearer"
+		m.(*httpManipulator).password = "ok-token"
+		m.(*httpManipulator).atomicRenewTokenFunc = elemental.AtomicJob(m.(*httpManipulator).renewToken)
+
+		Convey("When I call send", func() {
+
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+
+			_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+
+			Convey("Then err should be not nil", func() {
+				So(err, ShouldNotBeNil)
+			})
+
+			Convey("Then the token manager should have been called only once", func() {
+				So(tmCalled, ShouldEqual, 1)
 			})
 		})
 	})
