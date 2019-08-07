@@ -1632,6 +1632,61 @@ func TestHTTP_send(t *testing.T) {
 			})
 		})
 	})
+
+	Convey("Given I have a server returning 201 but a simulation error with 100% chance", t, func() {
+
+		m, _ := New(context.Background(), "toto.com", OptionSimulateFailures(
+			map[float64]error{
+				1.0: fmt.Errorf("simulated error"),
+			},
+		))
+
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			panic("this should not be called")
+		}))
+		defer ts.Close()
+
+		Convey("When I call send", func() {
+
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+
+			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+
+			Convey("Then err should not be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "simulated error")
+				So(resp, ShouldBeNil)
+			})
+		})
+	})
+
+	Convey("Given I have a server returning 201 but a simulation error with 0% chance", t, func() {
+
+		m, _ := New(context.Background(), "toto.com", OptionSimulateFailures(
+			map[float64]error{
+				0.0: fmt.Errorf("simulated error"),
+			},
+		))
+
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		}))
+		defer ts.Close()
+
+		Convey("When I call send", func() {
+
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+
+			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+				So(resp, ShouldNotBeNil)
+			})
+		})
+	})
 }
 
 func TestHTTP_makeAuthorizationHeaders(t *testing.T) {
