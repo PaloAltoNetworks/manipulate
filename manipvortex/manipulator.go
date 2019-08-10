@@ -701,10 +701,15 @@ func (m *vortexManipulator) pushEvent(evt *elemental.Event) {
 	m.RLock()
 	defer m.RUnlock()
 
+	var isFiltered bool
+
 	for _, s := range m.subscribers {
 
 		s.RLock()
-		isFiltered := s.filter.IsFilteredOut(evt.Identity, evt.Type)
+		isFiltered = false
+		if s.filter != nil {
+			isFiltered = s.filter.IsFilteredOut(evt.Identity, evt.Type)
+		}
 		s.RUnlock()
 
 		if !isFiltered {
