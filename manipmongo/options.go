@@ -15,6 +15,8 @@ import (
 	"crypto/tls"
 	"time"
 
+	"go.aporeto.io/elemental"
+
 	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/manipulate"
 )
@@ -23,18 +25,19 @@ import (
 type Option func(*config)
 
 type config struct {
-	username         string
-	password         string
-	authsource       string
-	tlsConfig        *tls.Config
-	poolLimit        int
-	connectTimeout   time.Duration
-	socketTimeout    time.Duration
-	readConsistency  manipulate.ReadConsistency
-	writeConsistency manipulate.WriteConsistency
-	sharder          Sharder
-	defaultRetryFunc manipulate.RetryFunc
-	forcedReadFilter bson.M
+	username           string
+	password           string
+	authsource         string
+	tlsConfig          *tls.Config
+	poolLimit          int
+	connectTimeout     time.Duration
+	socketTimeout      time.Duration
+	readConsistency    manipulate.ReadConsistency
+	writeConsistency   manipulate.WriteConsistency
+	sharder            Sharder
+	defaultRetryFunc   manipulate.RetryFunc
+	forcedReadFilter   bson.M
+	attributeEncrypter elemental.AttributeEncrypter
 }
 
 func newConfig() *config {
@@ -118,5 +121,13 @@ func OptionDefaultRetryFunc(f manipulate.RetryFunc) Option {
 func OptionForceReadFilter(f bson.M) Option {
 	return func(c *config) {
 		c.forcedReadFilter = f
+	}
+}
+
+// OptionAttributeEncrypter allows to set an elemental.AttributeEncrypter
+// to use to encrypt/decrypt elemental.AttributeEncryptable.
+func OptionAttributeEncrypter(enc elemental.AttributeEncrypter) Option {
+	return func(c *config) {
+		c.attributeEncrypter = enc
 	}
 }

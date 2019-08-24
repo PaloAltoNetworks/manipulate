@@ -31,11 +31,12 @@ const defaultGlobalContextTimeout = 60 * time.Second
 
 // MongoStore represents a MongoDB session.
 type mongoManipulator struct {
-	rootSession      *mgo.Session
-	dbName           string
-	sharder          Sharder
-	defaultRetryFunc manipulate.RetryFunc
-	forcedReadFilter bson.M
+	rootSession        *mgo.Session
+	dbName             string
+	sharder            Sharder
+	defaultRetryFunc   manipulate.RetryFunc
+	forcedReadFilter   bson.M
+	attributeEncrypter elemental.AttributeEncrypter
 }
 
 // New returns a new manipulator backed by MongoDB.
@@ -78,11 +79,12 @@ func New(url string, db string, options ...Option) (manipulate.TransactionalMani
 	session.SetSafe(convertWriteConsistency(cfg.writeConsistency))
 
 	return &mongoManipulator{
-		dbName:           db,
-		rootSession:      session,
-		sharder:          cfg.sharder,
-		defaultRetryFunc: cfg.defaultRetryFunc,
-		forcedReadFilter: cfg.forcedReadFilter,
+		dbName:             db,
+		rootSession:        session,
+		sharder:            cfg.sharder,
+		defaultRetryFunc:   cfg.defaultRetryFunc,
+		forcedReadFilter:   cfg.forcedReadFilter,
+		attributeEncrypter: cfg.attributeEncrypter,
 	}, nil
 }
 
@@ -170,6 +172,14 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 		if a, ok := o.(elemental.AttributeSpecifiable); ok {
 			elemental.ResetDefaultForZeroValues(a)
 		}
+
+		if s.attributeEncrypter != nil {
+			if a, ok := o.(elemental.AttributeEncryptable); ok {
+				if err := a.DecryptAttributes(s.attributeEncrypter); err != nil {
+					return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to decrypt attributes: %s", err))
+				}
+			}
+		}
 	}
 
 	return nil
@@ -236,6 +246,14 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 		elemental.ResetDefaultForZeroValues(a)
 	}
 
+	if s.attributeEncrypter != nil {
+		if a, ok := object.(elemental.AttributeEncryptable); ok {
+			if err := a.DecryptAttributes(s.attributeEncrypter); err != nil {
+				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to decrypt attributes: %s", err))
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -249,6 +267,14 @@ func (s *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 
 	c, close := s.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
+
+	if s.attributeEncrypter != nil {
+		if a, ok := object.(elemental.AttributeEncryptable); ok {
+			if err := a.EncryptAttributes(s.attributeEncrypter); err != nil {
+				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to encrypt attributes: %s", err))
+			}
+		}
+	}
 
 	object.SetIdentifier(bson.NewObjectId().Hex())
 
@@ -290,6 +316,14 @@ func (s *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		}
 	}
 
+	if s.attributeEncrypter != nil {
+		if a, ok := object.(elemental.AttributeEncryptable); ok {
+			if err := a.DecryptAttributes(s.attributeEncrypter); err != nil {
+				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to decrypt attributes: %s", err))
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -299,6 +333,14 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
 		defer cancel()
 		mctx = manipulate.NewContext(ctx)
+	}
+
+	if s.attributeEncrypter != nil {
+		if a, ok := object.(elemental.AttributeEncryptable); ok {
+			if err := a.EncryptAttributes(s.attributeEncrypter); err != nil {
+				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to encrypt attributes: %s", err))
+			}
+		}
 	}
 
 	c, close := s.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
@@ -337,6 +379,14 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
+	}
+
+	if s.attributeEncrypter != nil {
+		if a, ok := object.(elemental.AttributeEncryptable); ok {
+			if err := a.DecryptAttributes(s.attributeEncrypter); err != nil {
+				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to decrypt attributes: %s", err))
+			}
+		}
 	}
 
 	return nil
@@ -397,6 +447,14 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 	// backport all default values that are empty.
 	if a, ok := object.(elemental.AttributeSpecifiable); ok {
 		elemental.ResetDefaultForZeroValues(a)
+	}
+
+	if s.attributeEncrypter != nil {
+		if a, ok := object.(elemental.AttributeEncryptable); ok {
+			if err := a.DecryptAttributes(s.attributeEncrypter); err != nil {
+				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to decrypt attributes: %s", err))
+			}
+		}
 	}
 
 	return nil
