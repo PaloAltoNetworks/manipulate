@@ -247,8 +247,19 @@ func SetAttributeEncrypter(manipulator manipulate.Manipulator, enc elemental.Att
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
-		panic("you can only pass a mongo manipulator to GetDatabase")
+		panic("you can only pass a mongo manipulator to SetAttributeEncrypter")
 	}
 
 	m.attributeEncrypter = enc
+}
+
+// GetAttributeEncrypter returns the attribute encrypter of the given mongo manipulator..
+func GetAttributeEncrypter(manipulator manipulate.Manipulator) elemental.AttributeEncrypter {
+
+	m, ok := manipulator.(*mongoManipulator)
+	if !ok {
+		panic("you can only pass a mongo manipulator to GetAttributeEncrypter")
+	}
+
+	return m.attributeEncrypter
 }
