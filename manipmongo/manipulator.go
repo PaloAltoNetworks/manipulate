@@ -288,8 +288,10 @@ func (s *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		}
 	}
 
+	var encryptable elemental.AttributeEncryptable
 	if s.attributeEncrypter != nil {
 		if a, ok := object.(elemental.AttributeEncryptable); ok {
+			encryptable = a
 			if err := a.EncryptAttributes(s.attributeEncrypter); err != nil {
 				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("create: unable to encrypt attributes: %s", err))
 			}
@@ -310,11 +312,9 @@ func (s *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		return err
 	}
 
-	if s.attributeEncrypter != nil {
-		if a, ok := object.(elemental.AttributeEncryptable); ok {
-			if err := a.DecryptAttributes(s.attributeEncrypter); err != nil {
-				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("create: unable to decrypt attributes: %s", err))
-			}
+	if encryptable != nil {
+		if err := encryptable.DecryptAttributes(s.attributeEncrypter); err != nil {
+			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("create: unable to decrypt attributes: %s", err))
 		}
 	}
 
@@ -335,8 +335,10 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 		mctx = manipulate.NewContext(ctx)
 	}
 
+	var encryptable elemental.AttributeEncryptable
 	if s.attributeEncrypter != nil {
 		if a, ok := object.(elemental.AttributeEncryptable); ok {
+			encryptable = a
 			if err := a.EncryptAttributes(s.attributeEncrypter); err != nil {
 				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("update: unable to encrypt attributes: %s", err))
 			}
@@ -381,11 +383,9 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 		return err
 	}
 
-	if s.attributeEncrypter != nil {
-		if a, ok := object.(elemental.AttributeEncryptable); ok {
-			if err := a.DecryptAttributes(s.attributeEncrypter); err != nil {
-				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("update: unable to decrypt attributes: %s", err))
-			}
+	if encryptable != nil {
+		if err := encryptable.DecryptAttributes(s.attributeEncrypter); err != nil {
+			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("update: unable to decrypt attributes: %s", err))
 		}
 	}
 
