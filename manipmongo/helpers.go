@@ -240,3 +240,26 @@ func RunQuery(mctx manipulate.Context, operationFunc func() (interface{}, error)
 		try++
 	}
 }
+
+// SetAttributeEncrypter switch the attribute encrypter of the given mongo manipulator.
+// This is only useful in some rare cases like miugration, and it is not go routine safe.
+func SetAttributeEncrypter(manipulator manipulate.Manipulator, enc elemental.AttributeEncrypter) {
+
+	m, ok := manipulator.(*mongoManipulator)
+	if !ok {
+		panic("you can only pass a mongo manipulator to SetAttributeEncrypter")
+	}
+
+	m.attributeEncrypter = enc
+}
+
+// GetAttributeEncrypter returns the attribute encrypter of the given mongo manipulator..
+func GetAttributeEncrypter(manipulator manipulate.Manipulator) elemental.AttributeEncrypter {
+
+	m, ok := manipulator.(*mongoManipulator)
+	if !ok {
+		panic("you can only pass a mongo manipulator to GetAttributeEncrypter")
+	}
+
+	return m.attributeEncrypter
+}

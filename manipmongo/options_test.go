@@ -123,4 +123,11 @@ func TestManipMongo_Options(t *testing.T) {
 		OptionForceReadFilter(f)(c)
 		So(c.forcedReadFilter, ShouldEqual, f)
 	})
+
+	Convey("Calling OptionAttributeEncrypter should work", t, func() {
+		enc, _ := elemental.NewAESAttributeEncrypter("0123456789ABCDEF")
+		c := newConfig()
+		OptionAttributeEncrypter(enc)(c)
+		So(c.attributeEncrypter, ShouldEqual, enc)
+	})
 }

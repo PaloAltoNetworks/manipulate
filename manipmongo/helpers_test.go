@@ -488,3 +488,31 @@ func TestRunQuery(t *testing.T) {
 		})
 	})
 }
+
+func TestSetAttributeEncrypter(t *testing.T) {
+
+	Convey("Given I a test manipulator", t, func() {
+
+		m := maniptest.NewTestManipulator()
+
+		Convey("When I call SetAttributeEncrypter", func() {
+			Convey("Then it should panic", func() {
+				So(func() { SetAttributeEncrypter(m, nil) }, ShouldPanicWith, "you can only pass a mongo manipulator to SetAttributeEncrypter")
+			})
+		})
+	})
+}
+
+func TestGetAttributeEncrypter(t *testing.T) {
+
+	Convey("Given I a test manipulator", t, func() {
+
+		m := maniptest.NewTestManipulator()
+
+		Convey("When I call GetAttributeEncrypter", func() {
+			Convey("Then it should panic", func() {
+				So(func() { _ = GetAttributeEncrypter(m) }, ShouldPanicWith, "you can only pass a mongo manipulator to GetAttributeEncrypter")
+			})
+		})
+	})
+}
