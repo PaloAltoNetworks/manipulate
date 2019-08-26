@@ -12,7 +12,6 @@
 package manipmongo
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -231,12 +230,14 @@ func RunQuery(mctx manipulate.Context, operationFunc func() (interface{}, error)
 			}
 		}
 
-		deadline, ok := mctx.Context().Deadline()
-		if ok && deadline.Before(time.Now()) {
-			return nil, manipulate.NewErrCannotExecuteQuery(context.DeadlineExceeded.Error())
+		select {
+		case <-mctx.Context().Done():
+			return nil, manipulate.NewErrCannotExecuteQuery(mctx.Context().Err().Error())
+		default:
 		}
 
-		<-time.After(backoff.Next(try, deadline))
+		deadline, _ := mctx.Context().Deadline()
+		time.Sleep(backoff.Next(try, deadline))
 		try++
 	}
 }
