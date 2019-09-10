@@ -152,8 +152,8 @@ github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:
 go.aporeto.io/elemental v1.92.0 h1:rZPcTAu2AGJSoNkXkjs3etyzrLlzXfI5hV7+ZMCrJQo=
 go.aporeto.io/elemental v1.92.0/go.mod h1:1m8UGol+P9mQ6i4Taa1dNRs1aJHN1U4dz13Zg0CRK60=
 go.aporeto.io/regolithe v1.43.0/go.mod h1:n5Wi2kGXJ+eZe4fUTiVZ++RlgIo3DKiG71I7TV1Pfz4=
-go.aporeto.io/wsc v1.29.0 h1:WJK27DMUAsvHuB0FYMoxDrhC3ZBfg1Qj1LUzebdV004=
-go.aporeto.io/wsc v1.29.0/go.mod h1:RtLQspKU7si9US0WNw8RnOy70R+ep0MKjhLtvfRKIb0=
+go.aporeto.io/wsc v1.30.0 h1:B4BPajERt/LGT6Aj6erNOLdTlpVlIFg9YV9pFe+9484=
+go.aporeto.io/wsc v1.30.0/go.mod h1:RtLQspKU7si9US0WNw8RnOy70R+ep0MKjhLtvfRKIb0=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.uber.org/atomic v1.4.0 h1:cxzIVoETapQEqDhQu3QfnvXAV4AlzcvUCxkVUFw3+EU=
 go.uber.org/atomic v1.4.0/go.mod h1:gD2HeocX3+yG+ygLZcrzQJaqmWj9AIm7n08wl/qW/PE=
