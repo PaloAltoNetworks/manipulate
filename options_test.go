@@ -134,9 +134,4 @@ func TestManipulate_ContextOption(t *testing.T) {
 		ContextOptionRetryRatio(42)(mctx.(*mcontext))
 		So(mctx.RetryRatio(), ShouldEqual, 42)
 	})
-
-	Convey("Calling ContextOptionMaxResults should work", t, func() {
-		ContextOptionMaxResults(42)(mctx.(*mcontext))
-		So(mctx.MaxResults(), ShouldEqual, 42)
-	})
 }

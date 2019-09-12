@@ -158,10 +158,6 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 		query = query.SetMaxTime(time.Until(d))
 	}
 
-	if maxResults := mctx.MaxResults(); maxResults > 0 {
-		query = query.SetMaxScan(maxResults)
-	}
-
 	if _, err := RunQuery(
 		mctx,
 		func() (interface{}, error) { return nil, query.All(dest) },

@@ -175,11 +175,3 @@ func ContextOptionRetryRatio(r int64) ContextOption {
 		c.retryRatio = r
 	}
 }
-
-// ContextOptionMaxResults sets the maximum number of results
-// a query should return.
-func ContextOptionMaxResults(max int) ContextOption {
-	return func(c *mcontext) {
-		c.maxResults = max
-	}
-}
