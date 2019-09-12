@@ -97,6 +97,7 @@ type Context interface {
 	ClientIP() string
 	RetryFunc() RetryFunc
 	RetryRatio() int64
+	MaxResults() int
 
 	fmt.Stringer
 }
@@ -128,6 +129,7 @@ type mcontext struct {
 	username             string
 	version              int
 	writeConsistency     WriteConsistency
+	maxResults           int
 }
 
 // NewContext creates a context with the given ContextOption.
@@ -180,6 +182,7 @@ func (c *mcontext) Derive(options ...ContextOption) Context {
 		username:             c.username,
 		version:              c.version,
 		writeConsistency:     c.writeConsistency,
+		maxResults:           c.maxResults,
 	}
 
 	for _, opt := range options {
@@ -276,6 +279,9 @@ func (c *mcontext) RetryRatio() int64 { return c.retryRatio }
 // If this function returns an error, retrying stops and the returned error
 // returned by the manipulate operation.
 func (c *mcontext) RetryFunc() RetryFunc { return c.retryFunc }
+
+// MaxResults returns the context max results.
+func (c *mcontext) MaxResults() int { return c.maxResults }
 
 // SetDelegationToken sets the delegation token for this context.
 func (c *mcontext) SetCredentials(username, password string) {
