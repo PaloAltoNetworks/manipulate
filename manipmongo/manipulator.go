@@ -153,6 +153,11 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 		query = query.Select(sels)
 	}
 
+	query = query.SetMaxTime(defaultGlobalContextTimeout)
+	if d, ok := mctx.Context().Deadline(); ok {
+		query = query.SetMaxTime(time.Until(d))
+	}
+
 	if _, err := RunQuery(
 		mctx,
 		func() (interface{}, error) { return nil, query.All(dest) },
@@ -225,6 +230,11 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	query := c.Find(filter)
 	if sels := makeFieldsSelector(mctx.Fields()); sels != nil {
 		query = query.Select(sels)
+	}
+
+	query = query.SetMaxTime(defaultGlobalContextTimeout)
+	if d, ok := mctx.Context().Deadline(); ok {
+		query = query.SetMaxTime(time.Until(d))
 	}
 
 	if _, err := RunQuery(
@@ -532,11 +542,18 @@ func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.count.%s", identity.Category))
 	defer sp.Finish()
 
+	query := c.Find(filter)
+
+	query = query.SetMaxTime(defaultGlobalContextTimeout)
+	if d, ok := mctx.Context().Deadline(); ok {
+		query = query.SetMaxTime(time.Until(d))
+	}
+
 	out, err := RunQuery(
 		mctx,
-		func() (interface{}, error) { return c.Find(filter).Count() },
+		func() (interface{}, error) { return query.Count() },
 		RetryInfo{
-			Operation:        elemental.OperationInfo, // we miss DeleteMany
+			Operation:        elemental.OperationInfo,
 			Identity:         identity,
 			defaultRetryFunc: s.defaultRetryFunc,
 		},
