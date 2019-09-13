@@ -15,9 +15,8 @@ import (
 	"crypto/tls"
 	"time"
 
-	"go.aporeto.io/elemental"
-
 	"github.com/globalsign/mgo/bson"
+	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 )
 
@@ -38,6 +37,7 @@ type config struct {
 	defaultRetryFunc   manipulate.RetryFunc
 	forcedReadFilter   bson.M
 	attributeEncrypter elemental.AttributeEncrypter
+	explain            map[elemental.Identity]map[elemental.Operation]struct{}
 }
 
 func newConfig() *config {
@@ -129,5 +129,21 @@ func OptionForceReadFilter(f bson.M) Option {
 func OptionAttributeEncrypter(enc elemental.AttributeEncrypter) Option {
 	return func(c *config) {
 		c.attributeEncrypter = enc
+	}
+}
+
+// OptionExplain allows to tell manipmongo to explain the query before it
+// runs it for the given identities on the given operations.
+// For example, consider passing:
+//      map[elemental.Identity][]elemental.Operation{
+//          model.ThisIndentity: []elemental.Operation{elemental.OperationRetrieveMany, elemental.OperationCreate},
+//          model.ThatIndentity: []elemental.Operation{}, // or nil
+//      }
+//
+//  This would trigger explanation on retrieveMany and create for model.ThisIndentity
+//  and every operation on model.ThatIndentity.
+func OptionExplain(explain map[elemental.Identity]map[elemental.Operation]struct{}) Option {
+	return func(c *config) {
+		c.explain = explain
 	}
 }

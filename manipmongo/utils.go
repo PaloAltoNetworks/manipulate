@@ -12,12 +12,15 @@
 package manipmongo
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"strings"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 )
 
@@ -202,4 +205,66 @@ func convertWriteConsistency(c manipulate.WriteConsistency) *mgo.Safe {
 	default:
 		return &mgo.Safe{}
 	}
+}
+
+func explainIfNeeded(
+	query *mgo.Query,
+	filter bson.M,
+	identity elemental.Identity,
+	operation elemental.Operation,
+	explainMap map[elemental.Identity]map[elemental.Operation]struct{},
+) func() error {
+
+	if len(explainMap) == 0 {
+		return nil
+	}
+
+	exp, ok := explainMap[identity]
+	if !ok {
+		return nil
+	}
+
+	if len(exp) == 0 {
+		return func() error { return explain(query, operation, identity, filter) }
+	}
+
+	if _, ok = exp[operation]; ok {
+		return func() error { return explain(query, operation, identity, filter) }
+	}
+
+	return nil
+}
+
+func explain(query *mgo.Query, operation elemental.Operation, identity elemental.Identity, filter bson.M) error {
+
+	r := bson.M{}
+	if err := query.Explain(&r); err != nil {
+		return fmt.Errorf("unable to explain: %s", err)
+	}
+
+	f := "<none>"
+	if filter != nil {
+		fdata, err := json.MarshalIndent(filter, "", "  ")
+		if err != nil {
+			return fmt.Errorf("unable to marshal filter: %s", err)
+		}
+		f = string(fdata)
+	}
+
+	rdata, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		return fmt.Errorf("unable to marshal explanation: %s", err)
+	}
+
+	fmt.Println("")
+	fmt.Println("--------------------------------")
+	fmt.Printf("Operation:  %s\n", operation)
+	fmt.Printf("Identity:   %s\n", identity.Name)
+	fmt.Printf("Filter:     %s\n", f)
+	fmt.Println("Explanation:")
+	fmt.Println(string(rdata))
+	fmt.Println("--------------------------------")
+	fmt.Println("")
+
+	return nil
 }

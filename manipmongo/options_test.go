@@ -130,4 +130,11 @@ func TestManipMongo_Options(t *testing.T) {
 		OptionAttributeEncrypter(enc)(c)
 		So(c.attributeEncrypter, ShouldEqual, enc)
 	})
+
+	Convey("Calling OptionExplain should work", t, func() {
+		m := map[elemental.Identity]map[elemental.Operation]struct{}{}
+		c := newConfig()
+		OptionExplain(m)(c)
+		So(c.explain, ShouldEqual, m)
+	})
 }
