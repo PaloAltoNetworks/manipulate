@@ -797,14 +797,15 @@ func (s *httpManipulator) send(
 		}
 
 		// We check is the main context expired.
-		// and if so, we return the last error
-		if time.Until(deadline) <= 0 {
+		select {
+		case <-mctx.Context().Done():
+			// If so, we return the last error
 			return nil, lastError
+		default:
+			// Otherwise we sleep backoff and we restart the retry loop.
+			time.Sleep(backoff.Next(try, deadline))
+			try++
 		}
-
-		// Then we sleep backoff and we restart the retry loop.
-		time.Sleep(backoff.Next(try, deadline))
-		try++
 	}
 }
 
