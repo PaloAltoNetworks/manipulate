@@ -24,14 +24,14 @@ func TestUtils_compiler(t *testing.T) {
 
 	Convey("Given I have a simple manipulate.Filter", t, func() {
 
-		f := elemental.NewFilterComposer().WithKey("id").Equals(1).Done()
+		f := elemental.NewFilterComposer().WithKey("id").Equals("5d83e7eedb40280001887565").Done()
 
 		Convey("When I compile the filter", func() {
 
 			b, _ := bson.MarshalJSON(CompileFilter(f))
 
 			Convey("Then the bson should be correct", func() {
-				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"_id":{"$eq":1}}]}`)
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"_id":{"$eq":{"$oid":"5d83e7eedb40280001887565"}}}]}`)
 			})
 		})
 	})
