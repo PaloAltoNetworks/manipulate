@@ -46,11 +46,25 @@ func massageValue(k string, v interface{}) interface{} {
 	if k == "_id" {
 		switch sv := v.(type) {
 		case string:
-			return bson.ObjectIdHex(sv)
+			if bson.IsObjectIdHex(sv) {
+				return bson.ObjectIdHex(sv)
+			}
 		}
 	}
 
 	return v
+}
+
+func massageValues(key string, values []interface{}) []interface{} {
+
+	k := massageKey(key)
+	out := make([]interface{}, len(values))
+
+	for i, v := range values {
+		out[i] = massageValue(k, v)
+	}
+
+	return out
 }
 
 // CompileFilter compiles the given manipulate Filter into a mongo filter.
@@ -98,10 +112,10 @@ func CompileFilter(f *elemental.Filter) bson.M {
 				items = append(items, bson.M{k: bson.M{"$ne": massageValue(k, f.Values()[i][0])}})
 
 			case elemental.InComparator, elemental.ContainComparator:
-				items = append(items, bson.M{k: bson.M{"$in": f.Values()[i]}})
+				items = append(items, bson.M{k: bson.M{"$in": massageValues(k, f.Values()[i])}})
 
 			case elemental.NotInComparator, elemental.NotContainComparator:
-				items = append(items, bson.M{k: bson.M{"$nin": f.Values()[i]}})
+				items = append(items, bson.M{k: bson.M{"$nin": massageValues(k, f.Values()[i])}})
 
 			case elemental.GreaterOrEqualComparator:
 				items = append(items, bson.M{k: bson.M{"$gte": massageValue(k, f.Values()[i][0])}})

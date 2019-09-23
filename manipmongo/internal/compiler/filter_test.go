@@ -22,6 +22,20 @@ import (
 
 func TestUtils_compiler(t *testing.T) {
 
+	Convey("Given I have a empty manipulate.Filter", t, func() {
+
+		f := elemental.NewFilterComposer().Done()
+
+		Convey("When I compile the filter", func() {
+
+			b, _ := bson.MarshalJSON(CompileFilter(f))
+
+			Convey("Then the bson should be correct", func() {
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{}`)
+			})
+		})
+	})
+
 	Convey("Given I have a simple manipulate.Filter", t, func() {
 
 		f := elemental.NewFilterComposer().WithKey("id").Equals("5d83e7eedb40280001887565").Done()
@@ -168,6 +182,111 @@ func TestUtils_compiler(t *testing.T) {
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$exists":false}}]}`)
+			})
+		})
+	})
+
+	Convey("Given I have a single match on valid ID", t, func() {
+
+		f := elemental.NewFilterComposer().
+			WithKey("ID").Equals("5d85727b919e0c397a58e940").
+			Done()
+
+		Convey("When I compile the filter", func() {
+			b, _ := bson.MarshalJSON(CompileFilter(f))
+
+			Convey("Then the bson should be correct", func() {
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"_id":{"$eq":{"$oid":"5d85727b919e0c397a58e940"}}}]}`)
+			})
+		})
+	})
+
+	Convey("Given I have a single match on invalid ID", t, func() {
+
+		f := elemental.NewFilterComposer().
+			WithKey("ID").Equals("not-object-id").
+			Done()
+
+		Convey("When I compile the filter", func() {
+			b, _ := bson.MarshalJSON(CompileFilter(f))
+
+			Convey("Then the bson should be correct", func() {
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"_id":{"$eq":"not-object-id"}}]}`)
+			})
+		})
+	})
+
+	Convey("Given I have a single match on valid id", t, func() {
+
+		f := elemental.NewFilterComposer().
+			WithKey("id").Equals("5d85727b919e0c397a58e940").
+			Done()
+
+		Convey("When I compile the filter", func() {
+			b, _ := bson.MarshalJSON(CompileFilter(f))
+
+			Convey("Then the bson should be correct", func() {
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"_id":{"$eq":{"$oid":"5d85727b919e0c397a58e940"}}}]}`)
+			})
+		})
+	})
+
+	Convey("Given I have a single match on valid _id", t, func() {
+
+		f := elemental.NewFilterComposer().
+			WithKey("_id").Equals("5d85727b919e0c397a58e940").
+			Done()
+
+		Convey("When I compile the filter", func() {
+			b, _ := bson.MarshalJSON(CompileFilter(f))
+
+			Convey("Then the bson should be correct", func() {
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"_id":{"$eq":{"$oid":"5d85727b919e0c397a58e940"}}}]}`)
+			})
+		})
+	})
+
+	Convey("Given I have a In on valid ID", t, func() {
+
+		f := elemental.NewFilterComposer().
+			WithKey("ID").In("5d85727b919e0c397a58e940", "5d85727b919e0c397a58e941").
+			Done()
+
+		Convey("When I compile the filter", func() {
+			b, _ := bson.MarshalJSON(CompileFilter(f))
+
+			Convey("Then the bson should be correct", func() {
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"_id":{"$in":[{"$oid":"5d85727b919e0c397a58e940"},{"$oid":"5d85727b919e0c397a58e941"}]}}]}`)
+			})
+		})
+	})
+
+	Convey("Given I have a In on invalid ID", t, func() {
+
+		f := elemental.NewFilterComposer().
+			WithKey("ID").In("not-object-id", "5d85727b919e0c397a58e941").
+			Done()
+
+		Convey("When I compile the filter", func() {
+			b, _ := bson.MarshalJSON(CompileFilter(f))
+
+			Convey("Then the bson should be correct", func() {
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"_id":{"$in":["not-object-id",{"$oid":"5d85727b919e0c397a58e941"}]}}]}`)
+			})
+		})
+	})
+
+	Convey("Given I have a NotIn on valid ID", t, func() {
+
+		f := elemental.NewFilterComposer().
+			WithKey("ID").NotIn("5d85727b919e0c397a58e940", "5d85727b919e0c397a58e941").
+			Done()
+
+		Convey("When I compile the filter", func() {
+			b, _ := bson.MarshalJSON(CompileFilter(f))
+
+			Convey("Then the bson should be correct", func() {
+				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"_id":{"$nin":[{"$oid":"5d85727b919e0c397a58e940"},{"$oid":"5d85727b919e0c397a58e941"}]}}]}`)
 			})
 		})
 	})
