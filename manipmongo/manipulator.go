@@ -216,7 +216,11 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 		filter = compiler.CompileFilter(f)
 	}
 
-	filter["_id"] = object.Identifier()
+	if bson.IsObjectIdHex(object.Identifier()) {
+		filter["_id"] = bson.ObjectIdHex(object.Identifier())
+	} else {
+		filter["_id"] = object.Identifier()
+	}
 
 	if m.sharder != nil {
 		sq, err := m.sharder.FilterOne(m, mctx, object)
@@ -380,7 +384,12 @@ func (m *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 	sp.LogFields(log.String("object_id", object.Identifier()))
 	defer sp.Finish()
 
-	filter = bson.M{"_id": object.Identifier()}
+	if bson.IsObjectIdHex(object.Identifier()) {
+		filter = bson.M{"_id": bson.ObjectIdHex(object.Identifier())}
+	} else {
+		filter = bson.M{"_id": object.Identifier()}
+	}
+
 	if m.sharder != nil {
 		sq, err := m.sharder.FilterOne(m, mctx, object)
 		if err != nil {
@@ -435,7 +444,12 @@ func (m *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 	sp.LogFields(log.String("object_id", object.Identifier()))
 	defer sp.Finish()
 
-	filter = bson.M{"_id": object.Identifier()}
+	if bson.IsObjectIdHex(object.Identifier()) {
+		filter = bson.M{"_id": bson.ObjectIdHex(object.Identifier())}
+	} else {
+		filter = bson.M{"_id": object.Identifier()}
+	}
+
 	if m.sharder != nil {
 		sq, err := m.sharder.FilterOne(m, mctx, object)
 		if err != nil {

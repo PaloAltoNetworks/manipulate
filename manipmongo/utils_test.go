@@ -343,6 +343,15 @@ func Test_applyOrdering(t *testing.T) {
 			[]string{"-name", "-toto"},
 		},
 		{
+			"simple double inverted",
+			args{
+				[]string{"-NAME", "", "-toto"},
+				true,
+			},
+			[]string{"name", "toto"},
+		},
+
+		{
 			"ID",
 			args{
 				[]string{"ID"},
@@ -359,6 +368,15 @@ func Test_applyOrdering(t *testing.T) {
 			[]string{"-_id"},
 		},
 		{
+			"ID double inverted",
+			args{
+				[]string{"-ID"},
+				true,
+			},
+			[]string{"_id"},
+		},
+
+		{
 			"id",
 			args{
 				[]string{"id"},
@@ -374,6 +392,40 @@ func Test_applyOrdering(t *testing.T) {
 			},
 			[]string{"-_id"},
 		},
+		{
+			"id double inverted",
+			args{
+				[]string{"-id"},
+				true,
+			},
+			[]string{"_id"},
+		},
+
+		{
+			"_id",
+			args{
+				[]string{"_id"},
+				false,
+			},
+			[]string{"_id"},
+		},
+		{
+			"_id inverted",
+			args{
+				[]string{"_id"},
+				true,
+			},
+			[]string{"-_id"},
+		},
+		{
+			"_id double inverted",
+			args{
+				[]string{"-_id"},
+				true,
+			},
+			[]string{"_id"},
+		},
+
 		{
 			"only empty",
 			args{

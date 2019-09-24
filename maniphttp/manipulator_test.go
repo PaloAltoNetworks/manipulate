@@ -58,7 +58,7 @@ func TestHTTP_New(t *testing.T) {
 			So(m.namespace, ShouldEqual, "myns")
 		})
 
-		Convey("Then the it should implement Manpilater interface", func() {
+		Convey("Then the it should implement Manipulator interface", func() {
 
 			var i interface{} = m
 			var ok bool
@@ -77,7 +77,7 @@ func TestHTTP_New(t *testing.T) {
 	Convey("When I create a manipulator with a token manager that works", t, func() {
 
 		tm := maniptest.NewTestTokenManager()
-		tm.MockIssue(t, func(context.Context) (string, error) { return "token", nil })
+		tm.MockIssue(t, func(context.Context) (string, error) { return "old-token", nil })
 
 		mm, err := New(context.Background(), "http://url.com", OptionTokenManager(tm))
 		m := mm.(*httpManipulator)
@@ -90,21 +90,18 @@ func TestHTTP_New(t *testing.T) {
 			So(m.username, ShouldEqual, "Bearer")
 		})
 
-		Convey("Then password should be correct", func() {
-			So(m.currentPassword(), ShouldEqual, "token")
+		Convey("Then password should be old-token", func() {
+			So(m.currentPassword(), ShouldEqual, "old-token")
 		})
 
-		Convey("When I the token is renewed", func() {
+		tm.MockRun(t, func(ctx context.Context, tokenCh chan string) {
+			tokenCh <- "new-token"
+		})
 
-			tm.MockRun(t, func(ctx context.Context, tokenCh chan string) {
-				tokenCh <- "new-token"
-			})
+		time.Sleep(2 * time.Second) // concourse is sometimes slow...
 
-			time.Sleep(1 * time.Second) // concourse is sometimes slow...
-
-			Convey("Then password should be correct", func() {
-				So(m.currentPassword(), ShouldEqual, "new-token")
-			})
+		Convey("Then password should be new-token", func() {
+			So(m.currentPassword(), ShouldEqual, "new-token")
 		})
 	})
 

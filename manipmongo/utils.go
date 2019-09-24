@@ -52,6 +52,10 @@ func applyOrdering(order []string, inverted bool) []string {
 			f = "_id"
 		}
 
+		if f == "-ID" || f == "-id" {
+			f = "-_id"
+		}
+
 		o = append(o, strings.ToLower(invertSortKey(f, inverted)))
 	}
 
