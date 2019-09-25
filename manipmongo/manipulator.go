@@ -23,6 +23,7 @@ import (
 	"github.com/opentracing/opentracing-go/log"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/internal/objectid"
 	"go.aporeto.io/manipulate/internal/tracing"
 	"go.aporeto.io/manipulate/manipmongo/internal/compiler"
 )
@@ -104,11 +105,20 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	c, close := m.makeSession(dest.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
-	filter := bson.M{}
+	var order []string
+	if o := mctx.Order(); len(o) > 0 {
+		order = applyOrdering(o)
+	} else if orderer, ok := dest.(elemental.DefaultOrderer); ok {
+		order = applyOrdering(orderer.DefaultOrder())
+	}
 
+	// Filtering
+	filter := bson.M{}
 	if f := mctx.Filter(); f != nil {
 		filter = compiler.CompileFilter(f)
 	}
+
+	var ands []bson.M
 
 	if m.sharder != nil {
 		sq, err := m.sharder.FilterMany(m, mctx, dest.Identity())
@@ -116,59 +126,77 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
 		}
 		if sq != nil {
-			filter = bson.M{"$and": []bson.M{sq, filter}}
+			ands = append(ands, sq)
 		}
 	}
 
 	if m.forcedReadFilter != nil {
-		filter = bson.M{"$and": []bson.M{m.forcedReadFilter, filter}}
+		ands = append(ands, m.forcedReadFilter)
 	}
 
-	query := c.Find(filter)
+	if after := mctx.After(); after != "" {
 
-	// This makes squall returning a 500 error.
-	// we should have an ErrBadRequest or something like this.
-	// if mctx.Page > 0 && mctx.PageSize <= 0 {
-	// 	return manipulate.NewErrCannotBuildQuery("Invalid pagination information")
-	// }
+		if len(order) > 1 {
+			return manipulate.NewErrCannotBuildQuery("cannot use multiple ordering fields when using 'after'")
+		}
 
-	var inverted bool
+		var o string
+		if len(order) == 1 {
+			o = order[0]
+		}
 
-	p := mctx.Page()
-	ps := mctx.PageSize()
-	if p > 0 {
-		query = query.Skip((p - 1) * ps).Limit(ps)
-	} else if p < 0 {
-		query = query.Skip((-p - 1) * ps).Limit(ps)
-		inverted = true
+		f, err := prepareNextFilter(c, o, after)
+		if err != nil {
+			return err
+		}
+
+		ands = append(ands, f)
 	}
 
-	if o := mctx.Order(); len(o) > 0 {
-		query = query.Sort(applyOrdering(o, inverted)...)
-	} else if orderer, ok := dest.(elemental.DefaultOrderer); ok {
-		query = query.Sort(applyOrdering(orderer.DefaultOrder(), inverted)...)
-	} else {
-		query = query.Sort(invertSortKey("$natural", inverted))
+	if len(ands) > 0 {
+		filter = bson.M{"$and": append(ands, filter)}
 	}
 
+	// Query building
+	q := c.Find(filter)
+
+	// limiting
+	if limit := mctx.Limit(); limit > 0 {
+		q = q.Limit(limit)
+	} else if pageSize := mctx.PageSize(); pageSize > 0 {
+		q = q.Limit(pageSize)
+	}
+
+	// Old pagination
+	if p := mctx.Page(); p > 0 {
+		q = q.Skip((p - 1) * mctx.PageSize())
+	}
+
+	// Ordering
+	if len(order) > 0 {
+		q = q.Sort(order...)
+	}
+
+	// Fields selection
 	if sels := makeFieldsSelector(mctx.Fields()); sels != nil {
-		query = query.Select(sels)
+		q = q.Select(sels)
 	}
 
-	query = query.SetMaxTime(defaultGlobalContextTimeout)
+	// Query timing limiting
+	q = q.SetMaxTime(defaultGlobalContextTimeout)
 	if d, ok := mctx.Context().Deadline(); ok {
-		query = query.SetMaxTime(time.Until(d))
+		q = q.SetMaxTime(time.Until(d))
 	}
 
 	if _, err := RunQuery(
 		mctx,
 		func() (interface{}, error) {
-			if exp := explainIfNeeded(query, filter, dest.Identity(), elemental.OperationRetrieveMany, m.explain); exp != nil {
+			if exp := explainIfNeeded(q, filter, dest.Identity(), elemental.OperationRetrieveMany, m.explain); exp != nil {
 				if err := exp(); err != nil {
 					return nil, manipulate.NewErrCannotBuildQuery(fmt.Sprintf("retrievemany: unable to explain: %s", err))
 				}
 			}
-			return nil, query.All(dest)
+			return nil, q.All(dest)
 		},
 		RetryInfo{
 			Operation:        elemental.OperationRetrieveMany,
@@ -181,18 +209,31 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 		return err
 	}
 
-	// backport all default values that are empty.
-	for _, o := range dest.List() {
+	var lastID string
+
+	lst := dest.List()
+	for _, o := range lst {
+
+		// backport all default values that are empty.
 		if a, ok := o.(elemental.AttributeSpecifiable); ok {
 			elemental.ResetDefaultForZeroValues(a)
 		}
 
+		// Decrypt attributes if needed.
 		if m.attributeEncrypter != nil {
 			if a, ok := o.(elemental.AttributeEncryptable); ok {
 				if err := a.DecryptAttributes(m.attributeEncrypter); err != nil {
 					return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("retrievemany: unable to decrypt attributes: %s", err))
 				}
 			}
+		}
+
+		lastID = o.Identifier()
+	}
+
+	if lastID != "" && (mctx.After() != "" || mctx.Limit() > 0) && len(lst) == mctx.Limit() {
+		if lastID != mctx.After() {
+			mctx.SetNext(lastID)
 		}
 	}
 
@@ -216,8 +257,8 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 		filter = compiler.CompileFilter(f)
 	}
 
-	if bson.IsObjectIdHex(object.Identifier()) {
-		filter["_id"] = bson.ObjectIdHex(object.Identifier())
+	if oid, ok := objectid.Parse(object.Identifier()); ok {
+		filter["_id"] = oid
 	} else {
 		filter["_id"] = object.Identifier()
 	}
@@ -240,25 +281,25 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	sp.LogFields(log.String("object_id", object.Identifier()), log.Object("filter", filter))
 	defer sp.Finish()
 
-	query := c.Find(filter)
+	q := c.Find(filter)
 	if sels := makeFieldsSelector(mctx.Fields()); sels != nil {
-		query = query.Select(sels)
+		q = q.Select(sels)
 	}
 
-	query = query.SetMaxTime(defaultGlobalContextTimeout)
+	q = q.SetMaxTime(defaultGlobalContextTimeout)
 	if d, ok := mctx.Context().Deadline(); ok {
-		query = query.SetMaxTime(time.Until(d))
+		q = q.SetMaxTime(time.Until(d))
 	}
 
 	if _, err := RunQuery(
 		mctx,
 		func() (interface{}, error) {
-			if exp := explainIfNeeded(query, filter, object.Identity(), elemental.OperationRetrieve, m.explain); exp != nil {
+			if exp := explainIfNeeded(q, filter, object.Identity(), elemental.OperationRetrieve, m.explain); exp != nil {
 				if err := exp(); err != nil {
 					return nil, manipulate.NewErrCannotBuildQuery(fmt.Sprintf("retrieve: unable to explain: %s", err))
 				}
 			}
-			return nil, query.One(object)
+			return nil, q.One(object)
 		},
 		RetryInfo{
 			Operation:        elemental.OperationRetrieve,
@@ -384,8 +425,8 @@ func (m *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 	sp.LogFields(log.String("object_id", object.Identifier()))
 	defer sp.Finish()
 
-	if bson.IsObjectIdHex(object.Identifier()) {
-		filter = bson.M{"_id": bson.ObjectIdHex(object.Identifier())}
+	if oid, ok := objectid.Parse(object.Identifier()); ok {
+		filter = bson.M{"_id": oid}
 	} else {
 		filter = bson.M{"_id": object.Identifier()}
 	}
@@ -444,8 +485,8 @@ func (m *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 	sp.LogFields(log.String("object_id", object.Identifier()))
 	defer sp.Finish()
 
-	if bson.IsObjectIdHex(object.Identifier()) {
-		filter = bson.M{"_id": bson.ObjectIdHex(object.Identifier())}
+	if oid, ok := objectid.Parse(object.Identifier()); ok {
+		filter = bson.M{"_id": oid}
 	} else {
 		filter = bson.M{"_id": object.Identifier()}
 	}
@@ -572,22 +613,21 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.count.%s", identity.Category))
 	defer sp.Finish()
 
-	query := c.Find(filter)
+	q := c.Find(filter).SetMaxTime(defaultGlobalContextTimeout)
 
-	query = query.SetMaxTime(defaultGlobalContextTimeout)
 	if d, ok := mctx.Context().Deadline(); ok {
-		query = query.SetMaxTime(time.Until(d))
+		q = q.SetMaxTime(time.Until(d))
 	}
 
 	out, err := RunQuery(
 		mctx,
 		func() (interface{}, error) {
-			if exp := explainIfNeeded(query, filter, identity, elemental.OperationInfo, m.explain); exp != nil {
+			if exp := explainIfNeeded(q, filter, identity, elemental.OperationInfo, m.explain); exp != nil {
 				if err := exp(); err != nil {
 					return nil, manipulate.NewErrCannotBuildQuery(fmt.Sprintf("count: unable to explain: %s", err))
 				}
 			}
-			return query.Count()
+			return q.Count()
 		},
 		RetryInfo{
 			Operation:        elemental.OperationInfo,

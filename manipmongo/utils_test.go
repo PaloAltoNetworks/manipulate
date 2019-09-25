@@ -24,58 +24,6 @@ import (
 	"go.aporeto.io/manipulate"
 )
 
-func Test_invertSortKey(t *testing.T) {
-	type args struct {
-		k      string
-		revert bool
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{
-			"string",
-			args{
-				"hello",
-				false,
-			},
-			"hello",
-		},
-		{
-			"string revert",
-			args{
-				"hello",
-				true,
-			},
-			"-hello",
-		},
-		{
-			"already reverted string",
-			args{
-				"-hello",
-				false,
-			},
-			"-hello",
-		},
-		{
-			"already reverted string revert",
-			args{
-				"-hello",
-				true,
-			},
-			"hello",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := invertSortKey(tt.args.k, tt.args.revert); got != tt.want {
-				t.Errorf("invertSortKey() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func Test_handleQueryError(t *testing.T) {
 	type args struct {
 		err error
@@ -286,6 +234,15 @@ func Test_makeFieldsSelector(t *testing.T) {
 			},
 		},
 		{
+			"inverted",
+			args{
+				[]string{"-something"},
+			},
+			bson.M{
+				"something": 1,
+			},
+		},
+		{
 			"empty",
 			args{
 				[]string{},
@@ -318,8 +275,7 @@ func Test_makeFieldsSelector(t *testing.T) {
 
 func Test_applyOrdering(t *testing.T) {
 	type args struct {
-		order    []string
-		inverted bool
+		order []string
 	}
 	tests := []struct {
 		name string
@@ -330,23 +286,6 @@ func Test_applyOrdering(t *testing.T) {
 			"simple",
 			args{
 				[]string{"NAME", "toto", ""},
-				false,
-			},
-			[]string{"name", "toto"},
-		},
-		{
-			"simple inverted",
-			args{
-				[]string{"NAME", "", "toto"},
-				true,
-			},
-			[]string{"-name", "-toto"},
-		},
-		{
-			"simple double inverted",
-			args{
-				[]string{"-NAME", "", "-toto"},
-				true,
 			},
 			[]string{"name", "toto"},
 		},
@@ -355,73 +294,36 @@ func Test_applyOrdering(t *testing.T) {
 			"ID",
 			args{
 				[]string{"ID"},
-				false,
 			},
 			[]string{"_id"},
 		},
 		{
-			"ID inverted",
-			args{
-				[]string{"ID"},
-				true,
-			},
-			[]string{"-_id"},
-		},
-		{
-			"ID double inverted",
+			"-ID",
 			args{
 				[]string{"-ID"},
-				true,
 			},
-			[]string{"_id"},
+			[]string{"-_id"},
 		},
 
 		{
 			"id",
 			args{
 				[]string{"id"},
-				false,
 			},
 			[]string{"_id"},
 		},
 		{
-			"id inverted",
-			args{
-				[]string{"id"},
-				true,
-			},
-			[]string{"-_id"},
-		},
-		{
-			"id double inverted",
+			"-id",
 			args{
 				[]string{"-id"},
-				true,
 			},
-			[]string{"_id"},
+			[]string{"-_id"},
 		},
 
 		{
 			"_id",
 			args{
 				[]string{"_id"},
-				false,
-			},
-			[]string{"_id"},
-		},
-		{
-			"_id inverted",
-			args{
-				[]string{"_id"},
-				true,
-			},
-			[]string{"-_id"},
-		},
-		{
-			"_id double inverted",
-			args{
-				[]string{"-_id"},
-				true,
 			},
 			[]string{"_id"},
 		},
@@ -430,22 +332,13 @@ func Test_applyOrdering(t *testing.T) {
 			"only empty",
 			args{
 				[]string{"", ""},
-				false,
-			},
-			[]string{},
-		},
-		{
-			"only empty inverted",
-			args{
-				[]string{"", ""},
-				true,
 			},
 			[]string{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := applyOrdering(tt.args.order, tt.args.inverted); !reflect.DeepEqual(got, tt.want) {
+			if got := applyOrdering(tt.args.order); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("applyOrdering() = %v, want %v", got, tt.want)
 			}
 		})

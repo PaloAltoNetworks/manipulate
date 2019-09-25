@@ -127,6 +127,7 @@ func TestContext_Derive(t *testing.T) {
 		mctx := &mcontext{
 			page:                 1,
 			pageSize:             2,
+			after:                "42",
 			parent:               testmodel.NewList(),
 			filter:               elemental.NewFilterComposer().WithKey("k").Equals("v").Done(),
 			parameters:           url.Values{"a": []string{"b"}},
@@ -178,6 +179,7 @@ func TestContext_Derive(t *testing.T) {
 				So(copy.Override(), ShouldEqual, mctx.overrideProtection)
 				So(copy.Page(), ShouldEqual, mctx.page)
 				So(copy.PageSize(), ShouldEqual, mctx.pageSize)
+				So(copy.After(), ShouldEqual, mctx.after)
 				So(copy.Parameters(), ShouldEqual, mctx.parameters)
 				So(copy.Parent(), ShouldEqual, mctx.parent)
 				So(copy.password, ShouldEqual, mctx.password)
