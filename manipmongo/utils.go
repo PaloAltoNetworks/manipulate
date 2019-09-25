@@ -22,23 +22,10 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/internal/objectid"
 )
 
-// invertSortKey eventually inverts the given sorting key.
-func invertSortKey(k string, revert bool) string {
-
-	if !revert {
-		return k
-	}
-
-	if strings.HasPrefix(k, "-") {
-		return k[1:]
-	}
-
-	return "-" + k
-}
-
-func applyOrdering(order []string, inverted bool) []string {
+func applyOrdering(order []string) []string {
 
 	o := []string{} // nolint: prealloc
 
@@ -56,10 +43,37 @@ func applyOrdering(order []string, inverted bool) []string {
 			f = "-_id"
 		}
 
-		o = append(o, strings.ToLower(invertSortKey(f, inverted)))
+		o = append(o, strings.ToLower(f))
 	}
 
 	return o
+}
+
+func prepareNextFilter(collection *mgo.Collection, orderingField string, next string) (bson.M, error) {
+
+	var id interface{}
+	if oid, ok := objectid.Parse(next); ok {
+		id = oid
+	} else {
+		id = next
+	}
+
+	if orderingField == "" {
+		return bson.M{"_id": bson.M{"$gt": id}}, nil
+	}
+
+	comp := "$gt"
+	if strings.HasPrefix(orderingField, "-") {
+		orderingField = strings.TrimPrefix(orderingField, "-")
+		comp = "$lt"
+	}
+
+	doc := bson.M{}
+	if err := collection.FindId(id).Select(bson.M{orderingField: 1}).One(&doc); err != nil {
+		return nil, handleQueryError(err)
+	}
+
+	return bson.M{orderingField: bson.M{comp: doc[orderingField]}}, nil
 }
 
 func handleQueryError(err error) error {
@@ -167,12 +181,17 @@ func makeFieldsSelector(fields []string) bson.M {
 
 	sels := bson.M{}
 	for _, f := range fields {
+
 		if f == "" {
 			continue
 		}
+
+		f = strings.TrimPrefix(f, "-")
+
 		if f == "ID" || f == "id" {
 			f = "_id"
 		}
+
 		sels[strings.ToLower(f)] = 1
 	}
 

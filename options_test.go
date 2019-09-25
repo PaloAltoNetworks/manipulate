@@ -56,6 +56,12 @@ func TestManipulate_ContextOption(t *testing.T) {
 		So(mctx.PageSize(), ShouldEqual, 2)
 	})
 
+	Convey("Calling ContextOptionAfter should work", t, func() {
+		ContextOptionAfter("42", 2)(mctx.(*mcontext))
+		So(mctx.After(), ShouldEqual, "42")
+		So(mctx.Limit(), ShouldEqual, 2)
+	})
+
 	Convey("Calling ContextOptionTracking should work", t, func() {
 		ContextOptionTracking("a", "b")(mctx.(*mcontext))
 		So(mctx.ExternalTrackingID(), ShouldEqual, "a")

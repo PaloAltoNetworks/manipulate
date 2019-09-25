@@ -18,6 +18,7 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
+	"go.aporeto.io/manipulate/internal/objectid"
 )
 
 func massageKey(key string) string {
@@ -46,8 +47,9 @@ func massageValue(k string, v interface{}) interface{} {
 	if k == "_id" {
 		switch sv := v.(type) {
 		case string:
-			if bson.IsObjectIdHex(sv) {
-				return bson.ObjectIdHex(sv)
+			oid, ok := objectid.Parse(sv)
+			if ok {
+				return oid
 			}
 		}
 	}

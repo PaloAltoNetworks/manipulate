@@ -61,6 +61,14 @@ func addQueryParameters(req *http.Request, ctx manipulate.Context) error {
 		q.Add("pagesize", strconv.Itoa(p))
 	}
 
+	if p := ctx.After(); p != "" {
+		q.Add("after", p)
+	}
+
+	if l := ctx.Limit(); l > 0 {
+		q.Add("limit", strconv.Itoa(l))
+	}
+
 	if ctx.Recursive() {
 		q.Add("recursive", "true")
 	}

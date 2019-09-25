@@ -63,6 +63,14 @@ func ContextOptionPage(n, size int) ContextOption {
 	}
 }
 
+// ContextOptionAfter sets the lazy pagination option of the context.
+func ContextOptionAfter(from string, limit int) ContextOption {
+	return func(c *mcontext) {
+		c.after = from
+		c.limit = limit
+	}
+}
+
 // ContextOptionTracking sets the opentracing tracking option of the context.
 func ContextOptionTracking(identifier, typ string) ContextOption {
 	return func(c *mcontext) {

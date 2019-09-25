@@ -135,22 +135,18 @@ func doIterFunc(
 		blockSize = iterDefaultBlockSize
 	}
 
-	var page int
-
-	if disablePageIncrease {
-		page = 1
-	}
+	var iter int
+	var after string
 
 	for {
-
-		if !disablePageIncrease {
-			page++
-		}
+		iter++
 
 		objects := identifiablesTemplate.Copy()
 
-		if err := manipulator.RetrieveMany(mctx.Derive(ContextOptionPage(page, blockSize)), objects); err != nil {
-			return fmt.Errorf("unable to retrieve objects for page %d: %s", page, err.Error())
+		smctx := mctx.Derive(ContextOptionAfter(after, blockSize))
+
+		if err := manipulator.RetrieveMany(smctx, objects); err != nil {
+			return fmt.Errorf("unable to retrieve objects for iteration %d: %s", iter, err.Error())
 		}
 
 		if len(objects.List()) == 0 {
@@ -158,7 +154,15 @@ func doIterFunc(
 		}
 
 		if err := iteratorFunc(objects); err != nil {
-			return fmt.Errorf("iter function returned an error on page %d: %s", page, err)
+			return fmt.Errorf("iter function returned an error on iteration %d: %s", iter, err)
+		}
+
+		if smctx.Next() == "" {
+			return nil
+		}
+
+		if !disablePageIncrease {
+			after = smctx.Next()
 		}
 	}
 }
