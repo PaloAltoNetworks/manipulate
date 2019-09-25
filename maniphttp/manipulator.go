@@ -497,6 +497,7 @@ func (s *httpManipulator) readHeaders(response *http.Response, mctx manipulate.C
 	t, _ := strconv.Atoi(response.Header.Get("X-Count-Total"))
 
 	mctx.SetCount(t)
+	mctx.SetNext(response.Header.Get("X-Next"))
 	mctx.SetMessages(response.Header["X-Messages"])
 }
 
