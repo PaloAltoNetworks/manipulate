@@ -140,4 +140,9 @@ func TestManipulate_ContextOption(t *testing.T) {
 		ContextOptionRetryRatio(42)(mctx.(*mcontext))
 		So(mctx.RetryRatio(), ShouldEqual, 42)
 	})
+
+	Convey("Calling ContextOptionIdempotencyKey should work", t, func() {
+		ContextOptionIdempotencyKey("42")(mctx.(*mcontext))
+		So(mctx.(*mcontext).idempotencyKey, ShouldEqual, "42")
+	})
 }

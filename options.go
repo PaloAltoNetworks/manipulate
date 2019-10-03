@@ -183,3 +183,10 @@ func ContextOptionRetryRatio(r int64) ContextOption {
 		c.retryRatio = r
 	}
 }
+
+// ContextOptionIdempotencyKey sets a custom idempotency key.
+func ContextOptionIdempotencyKey(key string) ContextOption {
+	return func(c *mcontext) {
+		c.idempotencyKey = key
+	}
+}
