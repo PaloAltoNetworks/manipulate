@@ -12,6 +12,7 @@
 package manipmongo
 
 import (
+	"context"
 	"crypto/tls"
 	"testing"
 	"time"
@@ -37,7 +38,7 @@ func (*fakeSharder) FilterMany(manipulate.TransactionalManipulator, manipulate.C
 	return nil, nil
 }
 
-func TestManipMongo_newConfig(t *testing.T) {
+func Test_newConfig(t *testing.T) {
 
 	Convey("Given call newConfig", t, func() {
 
@@ -56,7 +57,7 @@ func TestManipMongo_newConfig(t *testing.T) {
 	})
 }
 
-func TestManipMongo_Options(t *testing.T) {
+func Test_Options(t *testing.T) {
 
 	Convey("Calling OptionCredentials should work", t, func() {
 		c := newConfig()
@@ -136,5 +137,27 @@ func TestManipMongo_Options(t *testing.T) {
 		c := newConfig()
 		OptionExplain(m)(c)
 		So(c.explain, ShouldEqual, m)
+	})
+}
+
+func Test_ContextOptions(t *testing.T) {
+
+	Convey("Calling ContextOptionUpsert should work", t, func() {
+		b := bson.M{
+			"$setOnInsert": bson.M{"hello": "world"},
+		}
+		mctx := manipulate.NewContext(context.Background())
+		ContextOptionUpsert(b)(mctx)
+		So(mctx.(opaquer).Opaque()[opaqueKeyUpsert], ShouldEqual, b)
+	})
+
+	Convey("Calling ContextOptionUpsert with $set should panic", t, func() {
+		b := bson.M{"$set": true}
+		So(func() { ContextOptionUpsert(b)(nil) }, ShouldPanicWith, "cannot use $set in upsert operations")
+	})
+
+	Convey("Calling ContextOptionUpsert with $setOnInsert with _id should panic", t, func() {
+		b := bson.M{"$setOnInsert": bson.M{"_id": 1}}
+		So(func() { ContextOptionUpsert(b)(nil) }, ShouldPanicWith, "cannot use $setOnInsert on _id in upsert operations")
 	})
 }
