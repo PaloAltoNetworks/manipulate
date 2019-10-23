@@ -401,11 +401,20 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 			}
 		}
 
+		filter := compiler.CompileFilter(mctx.Filter())
+		if m.sharder != nil {
+			sq, err := m.sharder.FilterOne(m, mctx, object)
+			if err != nil {
+				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
+			}
+			if sq != nil {
+				filter = bson.M{"$and": []bson.M{sq, filter}}
+			}
+		}
+
 		_, err = RunQuery(
 			mctx,
-			func() (interface{}, error) {
-				return c.Upsert(compiler.CompileFilter(mctx.Filter()), baseOps)
-			},
+			func() (interface{}, error) { return c.Upsert(filter, baseOps) },
 			RetryInfo{
 				Operation:        elemental.OperationCreate,
 				Identity:         object.Identity(),
