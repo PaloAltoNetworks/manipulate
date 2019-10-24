@@ -78,6 +78,10 @@ type Context interface {
 	TransactionID() TransactionID
 	Page() int
 	PageSize() int
+	After() string
+	Limit() int
+	Next() string
+	SetNext(string)
 	Override() bool
 	Recursive() bool
 	Namespace() string
@@ -117,6 +121,9 @@ type mcontext struct {
 	overrideProtection   bool
 	page                 int
 	pageSize             int
+	after                string
+	limit                int
+	next                 string
 	parameters           url.Values
 	parent               elemental.Identifiable
 	password             string
@@ -169,6 +176,8 @@ func (c *mcontext) Derive(options ...ContextOption) Context {
 		overrideProtection:   c.overrideProtection,
 		page:                 c.page,
 		pageSize:             c.pageSize,
+		after:                c.after,
+		limit:                c.limit,
 		parameters:           c.parameters,
 		parent:               c.parent,
 		password:             c.password,
@@ -212,6 +221,18 @@ func (c *mcontext) Page() int { return c.page }
 
 // PageSize returns the pageSize.
 func (c *mcontext) PageSize() int { return c.pageSize }
+
+// After returns the after parameter used in lazy pagination.
+func (c *mcontext) After() string { return c.after }
+
+// Limit returns the limit parameter used in lazy pagination.
+func (c *mcontext) Limit() int { return c.limit }
+
+// After returns the after parameter used in lazy pagination.
+func (c *mcontext) Next() string { return c.next }
+
+// After returns the after parameter used in lazy pagination.
+func (c *mcontext) SetNext(next string) { c.next = next }
 
 // Override returns the override value.
 func (c *mcontext) Override() bool { return c.overrideProtection }

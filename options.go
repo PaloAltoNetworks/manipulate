@@ -63,6 +63,14 @@ func ContextOptionPage(n, size int) ContextOption {
 	}
 }
 
+// ContextOptionAfter sets the lazy pagination option of the context.
+func ContextOptionAfter(from string, limit int) ContextOption {
+	return func(c *mcontext) {
+		c.after = from
+		c.limit = limit
+	}
+}
+
 // ContextOptionTracking sets the opentracing tracking option of the context.
 func ContextOptionTracking(identifier, typ string) ContextOption {
 	return func(c *mcontext) {
@@ -173,5 +181,12 @@ func ContextOptionRetryFunc(f RetryFunc) ContextOption {
 func ContextOptionRetryRatio(r int64) ContextOption {
 	return func(c *mcontext) {
 		c.retryRatio = r
+	}
+}
+
+// ContextOptionIdempotencyKey sets a custom idempotency key.
+func ContextOptionIdempotencyKey(key string) ContextOption {
+	return func(c *mcontext) {
+		c.idempotencyKey = key
 	}
 }

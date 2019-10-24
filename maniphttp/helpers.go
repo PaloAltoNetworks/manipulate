@@ -76,7 +76,7 @@ func ExtractTLSConfig(manipulator manipulate.Manipulator) *tls.Config {
 		RootCAs:            m.tlsConfig.RootCAs,
 		Certificates:       m.tlsConfig.Certificates,
 		InsecureSkipVerify: m.tlsConfig.InsecureSkipVerify,
-	}
+	} // #nosec
 }
 
 // ExtractEncoding returns the encoding used by the given manipulator.

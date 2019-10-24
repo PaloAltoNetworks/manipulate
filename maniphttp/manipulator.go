@@ -497,6 +497,7 @@ func (s *httpManipulator) readHeaders(response *http.Response, mctx manipulate.C
 	t, _ := strconv.Atoi(response.Header.Get("X-Count-Total"))
 
 	mctx.SetCount(t)
+	mctx.SetNext(response.Header.Get("X-Next"))
 	mctx.SetMessages(response.Header["X-Messages"])
 }
 
@@ -597,7 +598,7 @@ func (s *httpManipulator) send(
 	closeCurrentBody := func() {
 		if bodyCloser != nil {
 			_, _ = io.Copy(ioutil.Discard, bodyCloser)
-			bodyCloser.Close() // nolint
+			_ = bodyCloser.Close() // nolint
 		}
 	}
 	defer closeCurrentBody()
@@ -797,14 +798,15 @@ func (s *httpManipulator) send(
 		}
 
 		// We check is the main context expired.
-		// and if so, we return the last error
-		if time.Until(deadline) <= 0 {
+		select {
+		case <-mctx.Context().Done():
+			// If so, we return the last error
 			return nil, lastError
+		default:
+			// Otherwise we sleep backoff and we restart the retry loop.
+			time.Sleep(backoff.Next(try, deadline))
+			try++
 		}
-
-		// Then we sleep backoff and we restart the retry loop.
-		time.Sleep(backoff.Next(try, deadline))
-		try++
 	}
 }
 

@@ -18,6 +18,7 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
+	"go.aporeto.io/manipulate/internal/objectid"
 )
 
 func massageKey(key string) string {
@@ -37,13 +38,35 @@ func massageKey(key string) string {
 	return k
 }
 
-func massageValue(v interface{}) interface{} {
+func massageValue(k string, v interface{}) interface{} {
 
 	if reflect.TypeOf(v).Name() == "Duration" {
 		return time.Now().Add(v.(time.Duration))
 	}
 
+	if k == "_id" {
+		switch sv := v.(type) {
+		case string:
+			oid, ok := objectid.Parse(sv)
+			if ok {
+				return oid
+			}
+		}
+	}
+
 	return v
+}
+
+func massageValues(key string, values []interface{}) []interface{} {
+
+	k := massageKey(key)
+	out := make([]interface{}, len(values))
+
+	for i, v := range values {
+		out[i] = massageValue(k, v)
+	}
+
+	return out
 }
 
 // CompileFilter compiles the given manipulate Filter into a mongo filter.
@@ -84,29 +107,29 @@ func CompileFilter(f *elemental.Filter) bson.M {
 						)
 					}
 				default:
-					items = append(items, bson.M{k: bson.M{"$eq": massageValue(v)}})
+					items = append(items, bson.M{k: bson.M{"$eq": massageValue(k, v)}})
 				}
 
 			case elemental.NotEqualComparator:
-				items = append(items, bson.M{k: bson.M{"$ne": massageValue(f.Values()[i][0])}})
+				items = append(items, bson.M{k: bson.M{"$ne": massageValue(k, f.Values()[i][0])}})
 
 			case elemental.InComparator, elemental.ContainComparator:
-				items = append(items, bson.M{k: bson.M{"$in": f.Values()[i]}})
+				items = append(items, bson.M{k: bson.M{"$in": massageValues(k, f.Values()[i])}})
 
 			case elemental.NotInComparator, elemental.NotContainComparator:
-				items = append(items, bson.M{k: bson.M{"$nin": f.Values()[i]}})
+				items = append(items, bson.M{k: bson.M{"$nin": massageValues(k, f.Values()[i])}})
 
 			case elemental.GreaterOrEqualComparator:
-				items = append(items, bson.M{k: bson.M{"$gte": massageValue(f.Values()[i][0])}})
+				items = append(items, bson.M{k: bson.M{"$gte": massageValue(k, f.Values()[i][0])}})
 
 			case elemental.GreaterComparator:
-				items = append(items, bson.M{k: bson.M{"$gt": massageValue(f.Values()[i][0])}})
+				items = append(items, bson.M{k: bson.M{"$gt": massageValue(k, f.Values()[i][0])}})
 
 			case elemental.LesserOrEqualComparator:
-				items = append(items, bson.M{k: bson.M{"$lte": massageValue(f.Values()[i][0])}})
+				items = append(items, bson.M{k: bson.M{"$lte": massageValue(k, f.Values()[i][0])}})
 
 			case elemental.LesserComparator:
-				items = append(items, bson.M{k: bson.M{"$lt": massageValue(f.Values()[i][0])}})
+				items = append(items, bson.M{k: bson.M{"$lt": massageValue(k, f.Values()[i][0])}})
 
 			case elemental.ExistsComparator:
 				items = append(items, bson.M{k: bson.M{"$exists": true}})
