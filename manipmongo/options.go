@@ -147,3 +147,34 @@ func OptionExplain(explain map[elemental.Identity]map[elemental.Operation]struct
 		c.explain = explain
 	}
 }
+
+const opaqueKeyUpsert = "manipmongo.upsert"
+
+type opaquer interface {
+	Opaque() map[string]interface{}
+}
+
+// ContextOptionUpsert tells to use upsert for an Create operation.
+// The given operation will be executed for the upsert command.
+// You cannot use "$set" which is always set to be the identifier.
+// If you do so, ContextOptionUpsert will panic.
+// If you use $setOnInsert, you must not set _id. If you do so,
+// it will panic.
+func ContextOptionUpsert(operations bson.M) manipulate.ContextOption {
+
+	if _, ok := operations["$set"]; ok {
+		panic("cannot use $set in upsert operations")
+	}
+
+	if soi, ok := operations["$setOnInsert"]; ok {
+		for k := range soi.(bson.M) {
+			if k == "_id" {
+				panic("cannot use $setOnInsert on _id in upsert operations")
+			}
+		}
+	}
+
+	return func(c manipulate.Context) {
+		c.(opaquer).Opaque()[opaqueKeyUpsert] = operations
+	}
+}

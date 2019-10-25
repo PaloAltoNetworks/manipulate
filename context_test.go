@@ -147,6 +147,7 @@ func TestContext_Derive(t *testing.T) {
 			readConsistency:      ReadConsistencyMonotonic,
 			clientIP:             "1.1.1.1",
 			retryRatio:           12,
+			opaque:               map[string]interface{}{"a": "b"},
 		}
 
 		mctx.SetCount(3)
@@ -172,15 +173,18 @@ func TestContext_Derive(t *testing.T) {
 				So(copy.ExternalTrackingID(), ShouldEqual, mctx.externalTrackingID)
 				So(copy.ExternalTrackingType(), ShouldEqual, mctx.externalTrackingType)
 				So(copy.Fields(), ShouldResemble, mctx.fields)
+				So(copy.Fields(), ShouldNotEqual, mctx.fields)
 				So(copy.Filter().String(), ShouldEqual, `k == "v"`)
 				So(copy.Finalizer(), ShouldEqual, mctx.createFinalizer)
 				So(copy.Namespace(), ShouldEqual, mctx.namespace)
 				So(copy.Order(), ShouldResemble, mctx.order)
+				So(copy.Order(), ShouldNotEqual, mctx.order)
 				So(copy.Override(), ShouldEqual, mctx.overrideProtection)
 				So(copy.Page(), ShouldEqual, mctx.page)
 				So(copy.PageSize(), ShouldEqual, mctx.pageSize)
 				So(copy.After(), ShouldEqual, mctx.after)
-				So(copy.Parameters(), ShouldEqual, mctx.parameters)
+				So(copy.Parameters(), ShouldResemble, mctx.parameters)
+				So(copy.Parameters(), ShouldNotEqual, mctx.parameters)
 				So(copy.Parent(), ShouldEqual, mctx.parent)
 				So(copy.password, ShouldEqual, mctx.password)
 				So(copy.ReadConsistency(), ShouldEqual, mctx.readConsistency)
@@ -193,6 +197,8 @@ func TestContext_Derive(t *testing.T) {
 				So(copy.WriteConsistency(), ShouldEqual, mctx.writeConsistency)
 				So(copy.Context(), ShouldEqual, mctx.ctx)
 				So(copy.RetryRatio(), ShouldEqual, mctx.retryRatio)
+				So(copy.Opaque(), ShouldResemble, mctx.opaque)
+				So(copy.Opaque(), ShouldNotEqual, mctx.opaque)
 			})
 		})
 
@@ -217,11 +223,14 @@ func TestContext_Derive(t *testing.T) {
 				So(copy.ExternalTrackingID(), ShouldEqual, mctx.externalTrackingID)
 				So(copy.ExternalTrackingType(), ShouldEqual, mctx.externalTrackingType)
 				So(copy.Fields(), ShouldResemble, mctx.fields)
+				So(copy.Fields(), ShouldNotEqual, mctx.fields)
 				So(copy.Finalizer(), ShouldEqual, mctx.createFinalizer)
 				So(copy.Namespace(), ShouldEqual, mctx.namespace)
 				So(copy.Order(), ShouldResemble, mctx.order)
+				So(copy.Order(), ShouldNotEqual, mctx.order)
 				So(copy.Override(), ShouldEqual, mctx.overrideProtection)
-				So(copy.Parameters(), ShouldEqual, mctx.parameters)
+				So(copy.Parameters(), ShouldResemble, mctx.parameters)
+				So(copy.Parameters(), ShouldNotEqual, mctx.parameters)
 				So(copy.Parent(), ShouldEqual, mctx.parent)
 				So(copy.password, ShouldEqual, mctx.password)
 				So(copy.ReadConsistency(), ShouldEqual, mctx.readConsistency)
@@ -233,6 +242,8 @@ func TestContext_Derive(t *testing.T) {
 				So(copy.WriteConsistency(), ShouldEqual, mctx.writeConsistency)
 				So(copy.Context(), ShouldEqual, mctx.ctx)
 				So(copy.RetryRatio(), ShouldEqual, mctx.retryRatio)
+				So(copy.Opaque(), ShouldResemble, mctx.opaque)
+				So(copy.Opaque(), ShouldNotEqual, mctx.opaque)
 			})
 		})
 	})

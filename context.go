@@ -135,6 +135,7 @@ type mcontext struct {
 	username             string
 	version              int
 	writeConsistency     WriteConsistency
+	opaque               map[string]interface{}
 }
 
 // NewContext creates a context with the given ContextOption.
@@ -149,6 +150,7 @@ func NewContext(ctx context.Context, options ...ContextOption) Context {
 		writeConsistency: WriteConsistencyDefault,
 		readConsistency:  ReadConsistencyDefault,
 		retryRatio:       4,
+		opaque:           map[string]interface{}{},
 	}
 
 	for _, opt := range options {
@@ -163,22 +165,38 @@ func NewContext(ctx context.Context, options ...ContextOption) Context {
 // are reset for the derived context.
 func (c *mcontext) Derive(options ...ContextOption) Context {
 
+	var opaqueCopy map[string]interface{}
+	if len(c.opaque) > 0 {
+		opaqueCopy = make(map[string]interface{}, len(c.opaque))
+		for k, v := range c.opaque {
+			opaqueCopy[k] = v
+		}
+	}
+
+	var paramsCopy url.Values
+	if len(c.parameters) > 0 {
+		paramsCopy = url.Values{}
+		for k, v := range c.parameters {
+			paramsCopy[k] = v
+		}
+	}
+
 	copy := &mcontext{
 		clientIP:             c.clientIP,
 		createFinalizer:      c.createFinalizer,
 		ctx:                  c.ctx,
 		externalTrackingID:   c.externalTrackingID,
 		externalTrackingType: c.externalTrackingType,
-		fields:               c.fields,
+		fields:               append([]string{}, c.fields...),
 		filter:               c.filter,
 		namespace:            c.namespace,
-		order:                c.order,
+		order:                append([]string{}, c.order...),
 		overrideProtection:   c.overrideProtection,
 		page:                 c.page,
 		pageSize:             c.pageSize,
 		after:                c.after,
 		limit:                c.limit,
-		parameters:           c.parameters,
+		parameters:           paramsCopy,
 		parent:               c.parent,
 		password:             c.password,
 		readConsistency:      c.readConsistency,
@@ -189,6 +207,7 @@ func (c *mcontext) Derive(options ...ContextOption) Context {
 		username:             c.username,
 		version:              c.version,
 		writeConsistency:     c.writeConsistency,
+		opaque:               opaqueCopy,
 	}
 
 	for _, opt := range options {
@@ -297,6 +316,9 @@ func (c *mcontext) RetryRatio() int64 { return c.retryRatio }
 // If this function returns an error, retrying stops and the returned error
 // returned by the manipulate operation.
 func (c *mcontext) RetryFunc() RetryFunc { return c.retryFunc }
+
+// Opaque returns the context opaque data.
+func (c *mcontext) Opaque() map[string]interface{} { return c.opaque }
 
 // SetDelegationToken sets the delegation token for this context.
 func (c *mcontext) SetCredentials(username, password string) {
