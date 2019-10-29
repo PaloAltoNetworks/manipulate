@@ -339,7 +339,8 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 	c, close := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
-	object.SetIdentifier(bson.NewObjectId().Hex())
+	oid := bson.NewObjectId()
+	object.SetIdentifier(oid.Hex())
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.create.object.%s", object.Identity().Name))
 	sp.LogFields(log.String("object_id", object.Identifier()))
@@ -372,7 +373,6 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 	var err error
 	if operations, upsert := mctx.(opaquer).Opaque()[opaqueKeyUpsert]; upsert {
 
-		id := object.Identifier()
 		object.SetIdentifier("")
 
 		ops, ok := operations.(bson.M)
@@ -382,7 +382,7 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 
 		baseOps := bson.M{
 			"$set":         object,
-			"$setOnInsert": bson.M{"_id": id},
+			"$setOnInsert": bson.M{"_id": oid},
 		}
 
 		if len(ops) > 0 {
@@ -421,7 +421,7 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 				defaultRetryFunc: m.defaultRetryFunc,
 			},
 		)
-		object.SetIdentifier(id)
+		object.SetIdentifier(oid.Hex())
 	} else {
 		_, err = RunQuery(
 			mctx,
