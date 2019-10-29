@@ -369,15 +369,72 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		}
 	}
 
-	if _, err := RunQuery(
-		mctx,
-		func() (interface{}, error) { return nil, c.Insert(object) },
-		RetryInfo{
-			Operation:        elemental.OperationCreate,
-			Identity:         object.Identity(),
-			defaultRetryFunc: m.defaultRetryFunc,
-		},
-	); err != nil {
+	var err error
+	if operations, upsert := mctx.(opaquer).Opaque()[opaqueKeyUpsert]; upsert {
+
+		id := object.Identifier()
+		object.SetIdentifier("")
+
+		ops, ok := operations.(bson.M)
+		if !ok {
+			return manipulate.NewErrCannotBuildQuery("Upsert operations must be of type bson.M")
+		}
+
+		baseOps := bson.M{
+			"$set":         object,
+			"$setOnInsert": bson.M{"_id": id},
+		}
+
+		if len(ops) > 0 {
+
+			if soi, ok := ops["$setOnInsert"]; ok {
+				for k, v := range soi.(bson.M) {
+					baseOps["$setOnInsert"].(bson.M)[k] = v
+				}
+			}
+
+			for k, v := range ops {
+				if k == "$setOnInsert" {
+					continue
+				}
+				baseOps[k] = v
+			}
+		}
+
+		filter := compiler.CompileFilter(mctx.Filter())
+		if m.sharder != nil {
+			sq, err := m.sharder.FilterOne(m, mctx, object)
+			if err != nil {
+				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
+			}
+			if sq != nil {
+				filter = bson.M{"$and": []bson.M{sq, filter}}
+			}
+		}
+
+		_, err = RunQuery(
+			mctx,
+			func() (interface{}, error) { return c.Upsert(filter, baseOps) },
+			RetryInfo{
+				Operation:        elemental.OperationCreate,
+				Identity:         object.Identity(),
+				defaultRetryFunc: m.defaultRetryFunc,
+			},
+		)
+		object.SetIdentifier(id)
+	} else {
+		_, err = RunQuery(
+			mctx,
+			func() (interface{}, error) { return nil, c.Insert(object) },
+			RetryInfo{
+				Operation:        elemental.OperationCreate,
+				Identity:         object.Identity(),
+				defaultRetryFunc: m.defaultRetryFunc,
+			},
+		)
+	}
+
+	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err

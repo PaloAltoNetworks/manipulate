@@ -18,143 +18,143 @@ import (
 )
 
 // ContextOption represents an option can can be passed to NewContext.
-type ContextOption func(*mcontext)
+type ContextOption func(Context)
 
 // ContextOptionFilter sets the filter.
 func ContextOptionFilter(f *elemental.Filter) ContextOption {
-	return func(c *mcontext) {
-		c.filter = f
+	return func(c Context) {
+		c.(*mcontext).filter = f
 	}
 }
 
 // ContextOptionNamespace sets the namespace.
 func ContextOptionNamespace(n string) ContextOption {
-	return func(c *mcontext) {
-		c.namespace = n
+	return func(c Context) {
+		c.(*mcontext).namespace = n
 	}
 }
 
 // ContextOptionRecursive sets the recursive option of the context.
 func ContextOptionRecursive(r bool) ContextOption {
-	return func(c *mcontext) {
-		c.recursive = r
+	return func(c Context) {
+		c.(*mcontext).recursive = r
 	}
 }
 
 // ContextOptionVersion sets the version option of the context.
 func ContextOptionVersion(v int) ContextOption {
-	return func(c *mcontext) {
-		c.version = v
+	return func(c Context) {
+		c.(*mcontext).version = v
 	}
 }
 
 // ContextOptionOverride sets the override option of the context.
 func ContextOptionOverride(o bool) ContextOption {
-	return func(c *mcontext) {
-		c.overrideProtection = o
+	return func(c Context) {
+		c.(*mcontext).overrideProtection = o
 	}
 }
 
 // ContextOptionPage sets the pagination option of the context.
 func ContextOptionPage(n, size int) ContextOption {
-	return func(c *mcontext) {
-		c.page = n
-		c.pageSize = size
+	return func(c Context) {
+		c.(*mcontext).page = n
+		c.(*mcontext).pageSize = size
 	}
 }
 
 // ContextOptionAfter sets the lazy pagination option of the context.
 func ContextOptionAfter(from string, limit int) ContextOption {
-	return func(c *mcontext) {
-		c.after = from
-		c.limit = limit
+	return func(c Context) {
+		c.(*mcontext).after = from
+		c.(*mcontext).limit = limit
 	}
 }
 
 // ContextOptionTracking sets the opentracing tracking option of the context.
 func ContextOptionTracking(identifier, typ string) ContextOption {
-	return func(c *mcontext) {
-		c.externalTrackingID = identifier
-		c.externalTrackingType = typ
+	return func(c Context) {
+		c.(*mcontext).externalTrackingID = identifier
+		c.(*mcontext).externalTrackingType = typ
 	}
 }
 
 // ContextOptionOrder sets the ordering option of the context.
 func ContextOptionOrder(orders ...string) ContextOption {
-	return func(c *mcontext) {
-		c.order = orders
+	return func(c Context) {
+		c.(*mcontext).order = orders
 	}
 }
 
 // ContextOptionParameters sets the parameters option of the context.
 func ContextOptionParameters(p url.Values) ContextOption {
-	return func(c *mcontext) {
-		c.parameters = p
+	return func(c Context) {
+		c.(*mcontext).parameters = p
 	}
 }
 
 // ContextOptionFinalizer sets the create finalizer option of the context.
 func ContextOptionFinalizer(f FinalizerFunc) ContextOption {
-	return func(c *mcontext) {
-		c.createFinalizer = f
+	return func(c Context) {
+		c.(*mcontext).createFinalizer = f
 	}
 }
 
 // ContextOptionTransactionID sets the parameters option of the context.
 func ContextOptionTransactionID(tid TransactionID) ContextOption {
-	return func(c *mcontext) {
-		c.transactionID = tid
+	return func(c Context) {
+		c.(*mcontext).transactionID = tid
 	}
 }
 
 // ContextOptionParent sets the parent option of the context.
 func ContextOptionParent(i elemental.Identifiable) ContextOption {
-	return func(c *mcontext) {
-		c.parent = i
+	return func(c Context) {
+		c.(*mcontext).parent = i
 	}
 }
 
 // ContextOptionFields sets the list of fields to include in the reply.
 func ContextOptionFields(fields []string) ContextOption {
-	return func(c *mcontext) {
-		c.fields = fields
+	return func(c Context) {
+		c.(*mcontext).fields = fields
 	}
 }
 
 // ContextOptionWriteConsistency sets the desired write consistency of the request.
 func ContextOptionWriteConsistency(consistency WriteConsistency) ContextOption {
-	return func(c *mcontext) {
-		c.writeConsistency = consistency
+	return func(c Context) {
+		c.(*mcontext).writeConsistency = consistency
 	}
 }
 
 // ContextOptionReadConsistency sets the desired read consistency of the request.
 func ContextOptionReadConsistency(consistency ReadConsistency) ContextOption {
-	return func(c *mcontext) {
-		c.readConsistency = consistency
+	return func(c Context) {
+		c.(*mcontext).readConsistency = consistency
 	}
 }
 
 // ContextOptionCredentials sets user name and password for this context.
 func ContextOptionCredentials(username, password string) ContextOption {
-	return func(c *mcontext) {
-		c.username = username
-		c.password = password
+	return func(c Context) {
+		c.(*mcontext).username = username
+		c.(*mcontext).password = password
 	}
 }
 
 // ContextOptionToken sets the token for this request.
 func ContextOptionToken(token string) ContextOption {
-	return func(c *mcontext) {
-		c.username = "Bearer"
-		c.password = token
+	return func(c Context) {
+		c.(*mcontext).username = "Bearer"
+		c.(*mcontext).password = token
 	}
 }
 
 // ContextOptionClientIP sets the optional headers for the request.
 func ContextOptionClientIP(clientIP string) ContextOption {
-	return func(c *mcontext) {
-		c.clientIP = clientIP
+	return func(c Context) {
+		c.(*mcontext).clientIP = clientIP
 	}
 }
 
@@ -163,8 +163,8 @@ func ContextOptionClientIP(clientIP string) ContextOption {
 // the try number and the error. If it itself return an error, retrying will stop and
 // that error will be returned from the manipulator operation.
 func ContextOptionRetryFunc(f RetryFunc) ContextOption {
-	return func(c *mcontext) {
-		c.retryFunc = f
+	return func(c Context) {
+		c.(*mcontext).retryFunc = f
 	}
 }
 
@@ -179,14 +179,22 @@ func ContextOptionRetryFunc(f RetryFunc) ContextOption {
 // each retry will use a sub context with a timeout
 // of 30s.
 func ContextOptionRetryRatio(r int64) ContextOption {
-	return func(c *mcontext) {
-		c.retryRatio = r
+	return func(c Context) {
+		c.(*mcontext).retryRatio = r
 	}
 }
 
 // ContextOptionIdempotencyKey sets a custom idempotency key.
 func ContextOptionIdempotencyKey(key string) ContextOption {
-	return func(c *mcontext) {
-		c.idempotencyKey = key
+	return func(c Context) {
+		c.(*mcontext).idempotencyKey = key
+	}
+}
+
+// ContextOptionOpaque sets a opaque data. Their interpretation
+// depends on the manipulator implementation.
+func ContextOptionOpaque(o map[string]interface{}) ContextOption {
+	return func(c Context) {
+		c.(*mcontext).opaque = o
 	}
 }

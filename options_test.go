@@ -145,4 +145,10 @@ func TestManipulate_ContextOption(t *testing.T) {
 		ContextOptionIdempotencyKey("42")(mctx.(*mcontext))
 		So(mctx.(*mcontext).idempotencyKey, ShouldEqual, "42")
 	})
+
+	Convey("Calling ContextOptionOpaque should work", t, func() {
+		m := map[string]interface{}{}
+		ContextOptionOpaque(m)(mctx.(*mcontext))
+		So(mctx.(*mcontext).opaque, ShouldEqual, m)
+	})
 }
