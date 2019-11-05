@@ -153,8 +153,9 @@ func getDefaultTransport(url string) (*http.Transport, string) {
 	return &http.Transport{
 		Proxy:                 http.ProxyFromEnvironment,
 		DialContext:           dialer,
-		MaxIdleConns:          100,
-		MaxIdleConnsPerHost:   50,
+		MaxConnsPerHost:       32,
+		MaxIdleConns:          32,
+		MaxIdleConnsPerHost:   32,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
