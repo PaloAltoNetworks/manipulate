@@ -27,7 +27,7 @@ type testTokenManager struct{}
 func (t *testTokenManager) Issue(context.Context) (string, error)        { return "", nil }
 func (t *testTokenManager) Run(ctx context.Context, tokenCh chan string) {}
 
-func TestManipHttp_Optionions(t *testing.T) {
+func Test_Options(t *testing.T) {
 
 	Convey("Calling OptionCredentials should work", t, func() {
 		m := &httpManipulator{}

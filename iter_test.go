@@ -38,6 +38,7 @@ type testManipulator struct {
 	data            testmodel.ListsList
 	err             error
 	stopAtIteration int
+	cursor          int
 	iteration       int
 }
 
@@ -54,18 +55,33 @@ func (m *testManipulator) RetrieveMany(mctx Context, dest elemental.Identifiable
 		}
 	}
 
-	start := (mctx.Page() - 1) * mctx.PageSize()
-	end := start + mctx.PageSize()
-
-	if start > len(m.data) {
+	if m.cursor > len(m.data) {
 		return nil
 	}
 
-	if end > len(m.data) {
-		end = len(m.data)
+	for i, d := range m.data {
+		if d.ID == mctx.After() {
+			m.cursor = i + 1
+		}
 	}
 
-	*dest.(*testmodel.ListsList) = append(*dest.(*testmodel.ListsList), m.data[start:end]...)
+	end := m.cursor + mctx.Limit()
+	setNext := true
+	if end >= len(m.data) {
+		end = len(m.data)
+		setNext = false
+	}
+
+	if setNext {
+		if end-1 < 0 {
+			mctx.SetNext(m.data[0].ID)
+		} else {
+			mctx.SetNext(m.data[end-1].ID)
+		}
+	}
+
+	// fmt.Println("cursor:", m.cursor, "size:", size, "after:", mctx.After())
+	*dest.(*testmodel.ListsList) = append(*dest.(*testmodel.ListsList), m.data[m.cursor:end]...)
 
 	return nil
 }
@@ -86,7 +102,6 @@ func (m *testManipulator) Delete(mctx Context, object elemental.Identifiable) er
 	return nil
 }
 
-// DeleteMany is part of the implementation of the Manipulator interface.
 func (m *testManipulator) DeleteMany(mctx Context, identity elemental.Identity) error {
 	return nil
 }
@@ -281,7 +296,7 @@ func TestDoIterFunc(t *testing.T) {
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "unable to retrieve objects for page 1: boom")
+				So(err.Error(), ShouldEqual, "unable to retrieve objects for iteration 1: boom")
 			})
 
 			Convey("Then the number of calls to iter func should be correct", func() {
@@ -315,7 +330,7 @@ func TestDoIterFunc(t *testing.T) {
 
 			Convey("Then err should be nil", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "iter function returned an error on page 1: paf")
+				So(err.Error(), ShouldEqual, "iter function returned an error on iteration 1: paf")
 			})
 
 			Convey("Then the number of calls to iter func should be correct", func() {
@@ -403,7 +418,7 @@ func TestIter(t *testing.T) {
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "unable to retrieve objects for page 1: pif")
+				So(err.Error(), ShouldEqual, "unable to retrieve objects for iteration 1: pif")
 			})
 
 			Convey("Then dest should be correct", func() {
@@ -502,7 +517,7 @@ func TestIterUntilFunc(t *testing.T) {
 
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "unable to retrieve objects for page 1: pif")
+				So(err.Error(), ShouldEqual, "unable to retrieve objects for iteration 1: pif")
 			})
 
 			Convey("Then dest should be correct", func() {

@@ -20,60 +20,9 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 )
-
-func Test_invertSortKey(t *testing.T) {
-	type args struct {
-		k      string
-		revert bool
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{
-			"string",
-			args{
-				"hello",
-				false,
-			},
-			"hello",
-		},
-		{
-			"string revert",
-			args{
-				"hello",
-				true,
-			},
-			"-hello",
-		},
-		{
-			"already reverted string",
-			args{
-				"-hello",
-				false,
-			},
-			"-hello",
-		},
-		{
-			"already reverted string revert",
-			args{
-				"-hello",
-				true,
-			},
-			"hello",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := invertSortKey(tt.args.k, tt.args.revert); got != tt.want {
-				t.Errorf("invertSortKey() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func Test_handleQueryError(t *testing.T) {
 	type args struct {
@@ -285,6 +234,15 @@ func Test_makeFieldsSelector(t *testing.T) {
 			},
 		},
 		{
+			"inverted",
+			args{
+				[]string{"-something"},
+			},
+			bson.M{
+				"something": 1,
+			},
+		},
+		{
 			"empty",
 			args{
 				[]string{},
@@ -317,8 +275,7 @@ func Test_makeFieldsSelector(t *testing.T) {
 
 func Test_applyOrdering(t *testing.T) {
 	type args struct {
-		order    []string
-		inverted bool
+		order []string
 	}
 	tests := []struct {
 		name string
@@ -329,70 +286,59 @@ func Test_applyOrdering(t *testing.T) {
 			"simple",
 			args{
 				[]string{"NAME", "toto", ""},
-				false,
 			},
 			[]string{"name", "toto"},
 		},
-		{
-			"simple inverted",
-			args{
-				[]string{"NAME", "", "toto"},
-				true,
-			},
-			[]string{"-name", "-toto"},
-		},
+
 		{
 			"ID",
 			args{
 				[]string{"ID"},
-				false,
 			},
 			[]string{"_id"},
 		},
 		{
-			"ID inverted",
+			"-ID",
 			args{
-				[]string{"ID"},
-				true,
+				[]string{"-ID"},
 			},
 			[]string{"-_id"},
 		},
+
 		{
 			"id",
 			args{
 				[]string{"id"},
-				false,
 			},
 			[]string{"_id"},
 		},
 		{
-			"id inverted",
+			"-id",
 			args{
-				[]string{"id"},
-				true,
+				[]string{"-id"},
 			},
 			[]string{"-_id"},
 		},
+
+		{
+			"_id",
+			args{
+				[]string{"_id"},
+			},
+			[]string{"_id"},
+		},
+
 		{
 			"only empty",
 			args{
 				[]string{"", ""},
-				false,
-			},
-			[]string{},
-		},
-		{
-			"only empty inverted",
-			args{
-				[]string{"", ""},
-				true,
 			},
 			[]string{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := applyOrdering(tt.args.order, tt.args.inverted); !reflect.DeepEqual(got, tt.want) {
+			if got := applyOrdering(tt.args.order); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("applyOrdering() = %v, want %v", got, tt.want)
 			}
 		})
@@ -631,6 +577,106 @@ func Test_getErrorCode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := getErrorCode(tt.args.err); got != tt.want {
 				t.Errorf("getErrorCode() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_explainIfNeeded(t *testing.T) {
+
+	identity := elemental.MakeIdentity("thing", "things")
+
+	type args struct {
+		query      *mgo.Query
+		filter     bson.M
+		identity   elemental.Identity
+		operation  elemental.Operation
+		explainMap map[elemental.Identity]map[elemental.Operation]struct{}
+	}
+	tests := []struct {
+		name     string
+		args     args
+		wantFunc bool
+	}{
+		{
+			"empty",
+			args{
+				nil,
+				nil,
+				identity,
+				elemental.OperationCreate,
+				map[elemental.Identity]map[elemental.Operation]struct{}{},
+			},
+			false,
+		},
+		{
+			"nil",
+			args{
+				nil,
+				nil,
+				identity,
+				elemental.OperationCreate,
+				nil,
+			},
+			false,
+		},
+		{
+			"matching exactly",
+			args{
+				nil,
+				nil,
+				identity,
+				elemental.OperationCreate,
+				map[elemental.Identity]map[elemental.Operation]struct{}{
+					identity: map[elemental.Operation]struct{}{elemental.OperationCreate: struct{}{}},
+				},
+			},
+			true,
+		},
+		{
+			"matching with no operation",
+			args{
+				nil,
+				nil,
+				identity,
+				elemental.OperationCreate,
+				map[elemental.Identity]map[elemental.Operation]struct{}{
+					identity: map[elemental.Operation]struct{}{},
+				},
+			},
+			true,
+		},
+		{
+			"matching with nil operation",
+			args{
+				nil,
+				nil,
+				identity,
+				elemental.OperationCreate,
+				map[elemental.Identity]map[elemental.Operation]struct{}{
+					identity: nil,
+				},
+			},
+			true,
+		},
+		{
+			"not matching",
+			args{
+				nil,
+				nil,
+				identity,
+				elemental.OperationCreate,
+				map[elemental.Identity]map[elemental.Operation]struct{}{
+					elemental.MakeIdentity("hello", "hellos"): map[elemental.Operation]struct{}{},
+				},
+			},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := explainIfNeeded(tt.args.query, tt.args.filter, tt.args.identity, tt.args.operation, tt.args.explainMap); (got != nil) != tt.wantFunc {
+				t.Errorf("explainIfNeeded() = %v, want %v", (got != nil), tt.wantFunc)
 			}
 		})
 	}

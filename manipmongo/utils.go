@@ -12,30 +12,20 @@
 package manipmongo
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"strings"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/internal/objectid"
 )
 
-// invertSortKey eventually inverts the given sorting key.
-func invertSortKey(k string, revert bool) string {
-
-	if !revert {
-		return k
-	}
-
-	if strings.HasPrefix(k, "-") {
-		return k[1:]
-	}
-
-	return "-" + k
-}
-
-func applyOrdering(order []string, inverted bool) []string {
+func applyOrdering(order []string) []string {
 
 	o := []string{} // nolint: prealloc
 
@@ -49,10 +39,41 @@ func applyOrdering(order []string, inverted bool) []string {
 			f = "_id"
 		}
 
-		o = append(o, strings.ToLower(invertSortKey(f, inverted)))
+		if f == "-ID" || f == "-id" {
+			f = "-_id"
+		}
+
+		o = append(o, strings.ToLower(f))
 	}
 
 	return o
+}
+
+func prepareNextFilter(collection *mgo.Collection, orderingField string, next string) (bson.M, error) {
+
+	var id interface{}
+	if oid, ok := objectid.Parse(next); ok {
+		id = oid
+	} else {
+		id = next
+	}
+
+	if orderingField == "" {
+		return bson.M{"_id": bson.M{"$gt": id}}, nil
+	}
+
+	comp := "$gt"
+	if strings.HasPrefix(orderingField, "-") {
+		orderingField = strings.TrimPrefix(orderingField, "-")
+		comp = "$lt"
+	}
+
+	doc := bson.M{}
+	if err := collection.FindId(id).Select(bson.M{orderingField: 1}).One(&doc); err != nil {
+		return nil, handleQueryError(err)
+	}
+
+	return bson.M{orderingField: bson.M{comp: doc[orderingField]}}, nil
 }
 
 func handleQueryError(err error) error {
@@ -160,12 +181,17 @@ func makeFieldsSelector(fields []string) bson.M {
 
 	sels := bson.M{}
 	for _, f := range fields {
+
 		if f == "" {
 			continue
 		}
+
+		f = strings.TrimPrefix(f, "-")
+
 		if f == "ID" || f == "id" {
 			f = "_id"
 		}
+
 		sels[strings.ToLower(f)] = 1
 	}
 
@@ -202,4 +228,66 @@ func convertWriteConsistency(c manipulate.WriteConsistency) *mgo.Safe {
 	default:
 		return &mgo.Safe{}
 	}
+}
+
+func explainIfNeeded(
+	query *mgo.Query,
+	filter bson.M,
+	identity elemental.Identity,
+	operation elemental.Operation,
+	explainMap map[elemental.Identity]map[elemental.Operation]struct{},
+) func() error {
+
+	if len(explainMap) == 0 {
+		return nil
+	}
+
+	exp, ok := explainMap[identity]
+	if !ok {
+		return nil
+	}
+
+	if len(exp) == 0 {
+		return func() error { return explain(query, operation, identity, filter) }
+	}
+
+	if _, ok = exp[operation]; ok {
+		return func() error { return explain(query, operation, identity, filter) }
+	}
+
+	return nil
+}
+
+func explain(query *mgo.Query, operation elemental.Operation, identity elemental.Identity, filter bson.M) error {
+
+	r := bson.M{}
+	if err := query.Explain(&r); err != nil {
+		return fmt.Errorf("unable to explain: %s", err)
+	}
+
+	f := "<none>"
+	if filter != nil {
+		fdata, err := json.MarshalIndent(filter, "", "  ")
+		if err != nil {
+			return fmt.Errorf("unable to marshal filter: %s", err)
+		}
+		f = string(fdata)
+	}
+
+	rdata, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		return fmt.Errorf("unable to marshal explanation: %s", err)
+	}
+
+	fmt.Println("")
+	fmt.Println("--------------------------------")
+	fmt.Printf("Operation:  %s\n", operation)
+	fmt.Printf("Identity:   %s\n", identity.Name)
+	fmt.Printf("Filter:     %s\n", f)
+	fmt.Println("Explanation:")
+	fmt.Println(string(rdata))
+	fmt.Println("--------------------------------")
+	fmt.Println("")
+
+	return nil
 }

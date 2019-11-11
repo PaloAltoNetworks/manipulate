@@ -56,6 +56,12 @@ func TestManipulate_ContextOption(t *testing.T) {
 		So(mctx.PageSize(), ShouldEqual, 2)
 	})
 
+	Convey("Calling ContextOptionAfter should work", t, func() {
+		ContextOptionAfter("42", 2)(mctx.(*mcontext))
+		So(mctx.After(), ShouldEqual, "42")
+		So(mctx.Limit(), ShouldEqual, 2)
+	})
+
 	Convey("Calling ContextOptionTracking should work", t, func() {
 		ContextOptionTracking("a", "b")(mctx.(*mcontext))
 		So(mctx.ExternalTrackingID(), ShouldEqual, "a")
@@ -133,5 +139,16 @@ func TestManipulate_ContextOption(t *testing.T) {
 	Convey("Calling ContextOptionRetryRatio should work", t, func() {
 		ContextOptionRetryRatio(42)(mctx.(*mcontext))
 		So(mctx.RetryRatio(), ShouldEqual, 42)
+	})
+
+	Convey("Calling ContextOptionIdempotencyKey should work", t, func() {
+		ContextOptionIdempotencyKey("42")(mctx.(*mcontext))
+		So(mctx.(*mcontext).idempotencyKey, ShouldEqual, "42")
+	})
+
+	Convey("Calling ContextOptionOpaque should work", t, func() {
+		m := map[string]interface{}{}
+		ContextOptionOpaque(m)(mctx.(*mcontext))
+		So(mctx.(*mcontext).opaque, ShouldEqual, m)
 	})
 }

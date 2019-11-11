@@ -129,6 +129,24 @@ func Test_addQueryParameters(t *testing.T) {
 			})
 		})
 
+		Convey("When I call the method addQueryParameters with lazy pagination", func() {
+
+			ctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionAfter("12", 42),
+			)
+
+			err := addQueryParameters(request, ctx)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then the query string should be correct ", func() {
+				So(request.URL.RawQuery, ShouldEqual, "after=12&limit=42")
+			})
+		})
+
 		Convey("When I call the method addQueryParameters with a recursive", func() {
 
 			ctx := manipulate.NewContext(

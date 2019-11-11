@@ -23,6 +23,7 @@ import (
 	"github.com/opentracing/opentracing-go/log"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/internal/objectid"
 	"go.aporeto.io/manipulate/internal/tracing"
 	"go.aporeto.io/manipulate/manipmongo/internal/compiler"
 )
@@ -31,11 +32,13 @@ const defaultGlobalContextTimeout = 60 * time.Second
 
 // MongoStore represents a MongoDB session.
 type mongoManipulator struct {
-	rootSession      *mgo.Session
-	dbName           string
-	sharder          Sharder
-	defaultRetryFunc manipulate.RetryFunc
-	forcedReadFilter bson.M
+	rootSession        *mgo.Session
+	dbName             string
+	sharder            Sharder
+	defaultRetryFunc   manipulate.RetryFunc
+	forcedReadFilter   bson.M
+	attributeEncrypter elemental.AttributeEncrypter
+	explain            map[elemental.Identity]map[elemental.Operation]struct{}
 }
 
 // New returns a new manipulator backed by MongoDB.
@@ -78,15 +81,17 @@ func New(url string, db string, options ...Option) (manipulate.TransactionalMani
 	session.SetSafe(convertWriteConsistency(cfg.writeConsistency))
 
 	return &mongoManipulator{
-		dbName:           db,
-		rootSession:      session,
-		sharder:          cfg.sharder,
-		defaultRetryFunc: cfg.defaultRetryFunc,
-		forcedReadFilter: cfg.forcedReadFilter,
+		dbName:             db,
+		rootSession:        session,
+		sharder:            cfg.sharder,
+		defaultRetryFunc:   cfg.defaultRetryFunc,
+		forcedReadFilter:   cfg.forcedReadFilter,
+		attributeEncrypter: cfg.attributeEncrypter,
+		explain:            cfg.explain,
 	}, nil
 }
 
-func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.Identifiables) error {
+func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.Identifiables) error {
 
 	if mctx == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
@@ -97,67 +102,106 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve_many.%s", dest.Identity().Category))
 	defer sp.Finish()
 
-	c, close := s.makeSession(dest.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
+	c, close := m.makeSession(dest.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
-	filter := bson.M{}
+	var order []string
+	if o := mctx.Order(); len(o) > 0 {
+		order = applyOrdering(o)
+	} else if orderer, ok := dest.(elemental.DefaultOrderer); ok {
+		order = applyOrdering(orderer.DefaultOrder())
+	}
 
+	// Filtering
+	filter := bson.M{}
 	if f := mctx.Filter(); f != nil {
 		filter = compiler.CompileFilter(f)
 	}
 
-	if s.sharder != nil {
-		sq, err := s.sharder.FilterMany(s, mctx, dest.Identity())
+	var ands []bson.M
+
+	if m.sharder != nil {
+		sq, err := m.sharder.FilterMany(m, mctx, dest.Identity())
 		if err != nil {
 			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
 		}
 		if sq != nil {
-			filter = bson.M{"$and": []bson.M{sq, filter}}
+			ands = append(ands, sq)
 		}
 	}
 
-	if s.forcedReadFilter != nil {
-		filter = bson.M{"$and": []bson.M{s.forcedReadFilter, filter}}
+	if m.forcedReadFilter != nil {
+		ands = append(ands, m.forcedReadFilter)
 	}
 
-	query := c.Find(filter)
+	if after := mctx.After(); after != "" {
 
-	// This makes squall returning a 500 error.
-	// we should have an ErrBadRequest or something like this.
-	// if mctx.Page > 0 && mctx.PageSize <= 0 {
-	// 	return manipulate.NewErrCannotBuildQuery("Invalid pagination information")
-	// }
+		if len(order) > 1 {
+			return manipulate.NewErrCannotBuildQuery("cannot use multiple ordering fields when using 'after'")
+		}
 
-	var inverted bool
+		var o string
+		if len(order) == 1 {
+			o = order[0]
+		}
 
-	p := mctx.Page()
-	ps := mctx.PageSize()
-	if p > 0 {
-		query = query.Skip((p - 1) * ps).Limit(ps)
-	} else if p < 0 {
-		query = query.Skip((-p - 1) * ps).Limit(ps)
-		inverted = true
+		f, err := prepareNextFilter(c, o, after)
+		if err != nil {
+			return err
+		}
+
+		ands = append(ands, f)
 	}
 
-	if o := mctx.Order(); len(o) > 0 {
-		query = query.Sort(applyOrdering(o, inverted)...)
-	} else if orderer, ok := dest.(elemental.DefaultOrderer); ok {
-		query = query.Sort(applyOrdering(orderer.DefaultOrder(), inverted)...)
-	} else {
-		query = query.Sort(invertSortKey("$natural", inverted))
+	if len(ands) > 0 {
+		filter = bson.M{"$and": append(ands, filter)}
 	}
 
+	// Query building
+	q := c.Find(filter)
+
+	// limiting
+	if limit := mctx.Limit(); limit > 0 {
+		q = q.Limit(limit)
+	} else if pageSize := mctx.PageSize(); pageSize > 0 {
+		q = q.Limit(pageSize)
+	}
+
+	// Old pagination
+	if p := mctx.Page(); p > 0 {
+		q = q.Skip((p - 1) * mctx.PageSize())
+	}
+
+	// Ordering
+	if len(order) > 0 {
+		q = q.Sort(order...)
+	}
+
+	// Fields selection
 	if sels := makeFieldsSelector(mctx.Fields()); sels != nil {
-		query = query.Select(sels)
+		q = q.Select(sels)
+	}
+
+	// Query timing limiting
+	q = q.SetMaxTime(defaultGlobalContextTimeout)
+	if d, ok := mctx.Context().Deadline(); ok {
+		q = q.SetMaxTime(time.Until(d))
 	}
 
 	if _, err := RunQuery(
 		mctx,
-		func() (interface{}, error) { return nil, query.All(dest) },
+		func() (interface{}, error) {
+			if exp := explainIfNeeded(q, filter, dest.Identity(), elemental.OperationRetrieveMany, m.explain); exp != nil {
+				if err := exp(); err != nil {
+					return nil, manipulate.NewErrCannotBuildQuery(fmt.Sprintf("retrievemany: unable to explain: %s", err))
+				}
+			}
+			return nil, q.All(dest)
+		},
 		RetryInfo{
 			Operation:        elemental.OperationRetrieveMany,
 			Identity:         dest.Identity(),
-			defaultRetryFunc: s.defaultRetryFunc,
+			defaultRetryFunc: m.defaultRetryFunc,
 		},
 	); err != nil {
 		sp.SetTag("error", true)
@@ -165,17 +209,38 @@ func (s *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 		return err
 	}
 
-	// backport all default values that are empty.
-	for _, o := range dest.List() {
+	var lastID string
+
+	lst := dest.List()
+	for _, o := range lst {
+
+		// backport all default values that are empty.
 		if a, ok := o.(elemental.AttributeSpecifiable); ok {
 			elemental.ResetDefaultForZeroValues(a)
+		}
+
+		// Decrypt attributes if needed.
+		if m.attributeEncrypter != nil {
+			if a, ok := o.(elemental.AttributeEncryptable); ok {
+				if err := a.DecryptAttributes(m.attributeEncrypter); err != nil {
+					return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("retrievemany: unable to decrypt attributes: %s", err))
+				}
+			}
+		}
+
+		lastID = o.Identifier()
+	}
+
+	if lastID != "" && (mctx.After() != "" || mctx.Limit() > 0) && len(lst) == mctx.Limit() {
+		if lastID != mctx.After() {
+			mctx.SetNext(lastID)
 		}
 	}
 
 	return nil
 }
 
-func (s *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Identifiable) error {
+func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
@@ -183,7 +248,7 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 		mctx = manipulate.NewContext(ctx)
 	}
 
-	c, close := s.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
+	c, close := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
 	filter := bson.M{}
@@ -192,10 +257,14 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 		filter = compiler.CompileFilter(f)
 	}
 
-	filter["_id"] = object.Identifier()
+	if oid, ok := objectid.Parse(object.Identifier()); ok {
+		filter["_id"] = oid
+	} else {
+		filter["_id"] = object.Identifier()
+	}
 
-	if s.sharder != nil {
-		sq, err := s.sharder.FilterOne(s, mctx, object)
+	if m.sharder != nil {
+		sq, err := m.sharder.FilterOne(m, mctx, object)
 		if err != nil {
 			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
 		}
@@ -204,26 +273,38 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 		}
 	}
 
-	if s.forcedReadFilter != nil {
-		filter = bson.M{"$and": []bson.M{s.forcedReadFilter, filter}}
+	if m.forcedReadFilter != nil {
+		filter = bson.M{"$and": []bson.M{m.forcedReadFilter, filter}}
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve.object.%s", object.Identity().Name))
 	sp.LogFields(log.String("object_id", object.Identifier()), log.Object("filter", filter))
 	defer sp.Finish()
 
-	query := c.Find(filter)
+	q := c.Find(filter)
 	if sels := makeFieldsSelector(mctx.Fields()); sels != nil {
-		query = query.Select(sels)
+		q = q.Select(sels)
+	}
+
+	q = q.SetMaxTime(defaultGlobalContextTimeout)
+	if d, ok := mctx.Context().Deadline(); ok {
+		q = q.SetMaxTime(time.Until(d))
 	}
 
 	if _, err := RunQuery(
 		mctx,
-		func() (interface{}, error) { return nil, query.One(object) },
+		func() (interface{}, error) {
+			if exp := explainIfNeeded(q, filter, object.Identity(), elemental.OperationRetrieve, m.explain); exp != nil {
+				if err := exp(); err != nil {
+					return nil, manipulate.NewErrCannotBuildQuery(fmt.Sprintf("retrieve: unable to explain: %s", err))
+				}
+			}
+			return nil, q.One(object)
+		},
 		RetryInfo{
 			Operation:        elemental.OperationRetrieve,
 			Identity:         object.Identity(),
-			defaultRetryFunc: s.defaultRetryFunc,
+			defaultRetryFunc: m.defaultRetryFunc,
 		},
 	); err != nil {
 		sp.SetTag("error", true)
@@ -236,10 +317,18 @@ func (s *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 		elemental.ResetDefaultForZeroValues(a)
 	}
 
+	if m.attributeEncrypter != nil {
+		if a, ok := object.(elemental.AttributeEncryptable); ok {
+			if err := a.DecryptAttributes(m.attributeEncrypter); err != nil {
+				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("retrieve: unable to decrypt attributes: %s", err))
+			}
+		}
+	}
+
 	return nil
 }
 
-func (s *mongoManipulator) Create(mctx manipulate.Context, object elemental.Identifiable) error {
+func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
@@ -247,10 +336,11 @@ func (s *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		mctx = manipulate.NewContext(ctx)
 	}
 
-	c, close := s.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
+	c, close := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
-	object.SetIdentifier(bson.NewObjectId().Hex())
+	oid := bson.NewObjectId()
+	object.SetIdentifier(oid.Hex())
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.create.object.%s", object.Identity().Name))
 	sp.LogFields(log.String("object_id", object.Identifier()))
@@ -264,28 +354,100 @@ func (s *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		}
 	}
 
-	if s.sharder != nil {
-		if err := s.sharder.Shard(s, mctx, object); err != nil {
+	if m.sharder != nil {
+		if err := m.sharder.Shard(m, mctx, object); err != nil {
 			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to execute sharder.Shard: %s", err))
 		}
 	}
 
-	if _, err := RunQuery(
-		mctx,
-		func() (interface{}, error) { return nil, c.Insert(object) },
-		RetryInfo{
-			Operation:        elemental.OperationCreate,
-			Identity:         object.Identity(),
-			defaultRetryFunc: s.defaultRetryFunc,
-		},
-	); err != nil {
+	var encryptable elemental.AttributeEncryptable
+	if m.attributeEncrypter != nil {
+		if a, ok := object.(elemental.AttributeEncryptable); ok {
+			encryptable = a
+			if err := a.EncryptAttributes(m.attributeEncrypter); err != nil {
+				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("create: unable to encrypt attributes: %s", err))
+			}
+		}
+	}
+
+	var err error
+	if operations, upsert := mctx.(opaquer).Opaque()[opaqueKeyUpsert]; upsert {
+
+		object.SetIdentifier("")
+
+		ops, ok := operations.(bson.M)
+		if !ok {
+			return manipulate.NewErrCannotBuildQuery("Upsert operations must be of type bson.M")
+		}
+
+		baseOps := bson.M{
+			"$set":         object,
+			"$setOnInsert": bson.M{"_id": oid},
+		}
+
+		if len(ops) > 0 {
+
+			if soi, ok := ops["$setOnInsert"]; ok {
+				for k, v := range soi.(bson.M) {
+					baseOps["$setOnInsert"].(bson.M)[k] = v
+				}
+			}
+
+			for k, v := range ops {
+				if k == "$setOnInsert" {
+					continue
+				}
+				baseOps[k] = v
+			}
+		}
+
+		filter := compiler.CompileFilter(mctx.Filter())
+		if m.sharder != nil {
+			sq, err := m.sharder.FilterOne(m, mctx, object)
+			if err != nil {
+				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
+			}
+			if sq != nil {
+				filter = bson.M{"$and": []bson.M{sq, filter}}
+			}
+		}
+
+		_, err = RunQuery(
+			mctx,
+			func() (interface{}, error) { return c.Upsert(filter, baseOps) },
+			RetryInfo{
+				Operation:        elemental.OperationCreate,
+				Identity:         object.Identity(),
+				defaultRetryFunc: m.defaultRetryFunc,
+			},
+		)
+		object.SetIdentifier(oid.Hex())
+	} else {
+		_, err = RunQuery(
+			mctx,
+			func() (interface{}, error) { return nil, c.Insert(object) },
+			RetryInfo{
+				Operation:        elemental.OperationCreate,
+				Identity:         object.Identity(),
+				defaultRetryFunc: m.defaultRetryFunc,
+			},
+		)
+	}
+
+	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
 		return err
 	}
 
-	if s.sharder != nil {
-		if err := s.sharder.OnShardedWrite(s, mctx, elemental.OperationCreate, object); err != nil {
+	if encryptable != nil {
+		if err := encryptable.DecryptAttributes(m.attributeEncrypter); err != nil {
+			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("create: unable to decrypt attributes: %s", err))
+		}
+	}
+
+	if m.sharder != nil {
+		if err := m.sharder.OnShardedWrite(m, mctx, elemental.OperationCreate, object); err != nil {
 			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to execute sharder.OnShardedWrite on create: %s", err))
 		}
 	}
@@ -293,7 +455,7 @@ func (s *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 	return nil
 }
 
-func (s *mongoManipulator) Update(mctx manipulate.Context, object elemental.Identifiable) error {
+func (m *mongoManipulator) Update(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
@@ -301,7 +463,17 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 		mctx = manipulate.NewContext(ctx)
 	}
 
-	c, close := s.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
+	var encryptable elemental.AttributeEncryptable
+	if m.attributeEncrypter != nil {
+		if a, ok := object.(elemental.AttributeEncryptable); ok {
+			encryptable = a
+			if err := a.EncryptAttributes(m.attributeEncrypter); err != nil {
+				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("update: unable to encrypt attributes: %s", err))
+			}
+		}
+	}
+
+	c, close := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
 	var filter bson.M
@@ -310,9 +482,14 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 	sp.LogFields(log.String("object_id", object.Identifier()))
 	defer sp.Finish()
 
-	filter = bson.M{"_id": object.Identifier()}
-	if s.sharder != nil {
-		sq, err := s.sharder.FilterOne(s, mctx, object)
+	if oid, ok := objectid.Parse(object.Identifier()); ok {
+		filter = bson.M{"_id": oid}
+	} else {
+		filter = bson.M{"_id": object.Identifier()}
+	}
+
+	if m.sharder != nil {
+		sq, err := m.sharder.FilterOne(m, mctx, object)
 		if err != nil {
 			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
 		}
@@ -321,8 +498,8 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 		}
 	}
 
-	if s.forcedReadFilter != nil {
-		filter = bson.M{"$and": []bson.M{s.forcedReadFilter, filter}}
+	if m.forcedReadFilter != nil {
+		filter = bson.M{"$and": []bson.M{m.forcedReadFilter, filter}}
 	}
 
 	if _, err := RunQuery(
@@ -331,7 +508,7 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 		RetryInfo{
 			Operation:        elemental.OperationUpdate,
 			Identity:         object.Identity(),
-			defaultRetryFunc: s.defaultRetryFunc,
+			defaultRetryFunc: m.defaultRetryFunc,
 		},
 	); err != nil {
 		sp.SetTag("error", true)
@@ -339,10 +516,16 @@ func (s *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 		return err
 	}
 
+	if encryptable != nil {
+		if err := encryptable.DecryptAttributes(m.attributeEncrypter); err != nil {
+			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("update: unable to decrypt attributes: %s", err))
+		}
+	}
+
 	return nil
 }
 
-func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Identifiable) error {
+func (m *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if mctx == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
@@ -350,7 +533,7 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 		mctx = manipulate.NewContext(ctx)
 	}
 
-	c, close := s.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
+	c, close := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
 	var filter bson.M
@@ -359,9 +542,14 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 	sp.LogFields(log.String("object_id", object.Identifier()))
 	defer sp.Finish()
 
-	filter = bson.M{"_id": object.Identifier()}
-	if s.sharder != nil {
-		sq, err := s.sharder.FilterOne(s, mctx, object)
+	if oid, ok := objectid.Parse(object.Identifier()); ok {
+		filter = bson.M{"_id": oid}
+	} else {
+		filter = bson.M{"_id": object.Identifier()}
+	}
+
+	if m.sharder != nil {
+		sq, err := m.sharder.FilterOne(m, mctx, object)
 		if err != nil {
 			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
 		}
@@ -370,8 +558,8 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 		}
 	}
 
-	if s.forcedReadFilter != nil {
-		filter = bson.M{"$and": []bson.M{s.forcedReadFilter, filter}}
+	if m.forcedReadFilter != nil {
+		filter = bson.M{"$and": []bson.M{m.forcedReadFilter, filter}}
 	}
 
 	if _, err := RunQuery(
@@ -380,7 +568,7 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 		RetryInfo{
 			Operation:        elemental.OperationDelete,
 			Identity:         object.Identity(),
-			defaultRetryFunc: s.defaultRetryFunc,
+			defaultRetryFunc: m.defaultRetryFunc,
 		},
 	); err != nil {
 		sp.SetTag("error", true)
@@ -388,8 +576,8 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 		return err
 	}
 
-	if s.sharder != nil {
-		if err := s.sharder.OnShardedWrite(s, mctx, elemental.OperationDelete, object); err != nil {
+	if m.sharder != nil {
+		if err := m.sharder.OnShardedWrite(m, mctx, elemental.OperationDelete, object); err != nil {
 			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to execute sharder.OnShardedWrite for delete: %s", err))
 		}
 	}
@@ -402,7 +590,7 @@ func (s *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 	return nil
 }
 
-func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elemental.Identity) error {
+func (m *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elemental.Identity) error {
 
 	if mctx == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
@@ -413,12 +601,12 @@ func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.delete_many.%s", identity.Name))
 	defer sp.Finish()
 
-	c, close := s.makeSession(identity, mctx.ReadConsistency(), mctx.WriteConsistency())
+	c, close := m.makeSession(identity, mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
 	filter := compiler.CompileFilter(mctx.Filter())
-	if s.sharder != nil {
-		sq, err := s.sharder.FilterMany(s, mctx, identity)
+	if m.sharder != nil {
+		sq, err := m.sharder.FilterMany(m, mctx, identity)
 		if err != nil {
 			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
 		}
@@ -427,8 +615,8 @@ func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 		}
 	}
 
-	if s.forcedReadFilter != nil {
-		filter = bson.M{"$and": []bson.M{s.forcedReadFilter, filter}}
+	if m.forcedReadFilter != nil {
+		filter = bson.M{"$and": []bson.M{m.forcedReadFilter, filter}}
 	}
 
 	if _, err := RunQuery(
@@ -437,7 +625,7 @@ func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 		RetryInfo{
 			Operation:        elemental.OperationDelete, // we miss DeleteMany
 			Identity:         identity,
-			defaultRetryFunc: s.defaultRetryFunc,
+			defaultRetryFunc: m.defaultRetryFunc,
 		},
 	); err != nil {
 		sp.SetTag("error", true)
@@ -448,7 +636,7 @@ func (s *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 	return nil
 }
 
-func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Identity) (int, error) {
+func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Identity) (int, error) {
 
 	if mctx == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), defaultGlobalContextTimeout)
@@ -456,7 +644,7 @@ func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 		mctx = manipulate.NewContext(ctx)
 	}
 
-	c, close := s.makeSession(identity, mctx.ReadConsistency(), mctx.WriteConsistency())
+	c, close := m.makeSession(identity, mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
 	filter := bson.M{}
@@ -465,8 +653,8 @@ func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 		filter = compiler.CompileFilter(f)
 	}
 
-	if s.sharder != nil {
-		sq, err := s.sharder.FilterMany(s, mctx, identity)
+	if m.sharder != nil {
+		sq, err := m.sharder.FilterMany(m, mctx, identity)
 		if err != nil {
 			return 0, manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
 		}
@@ -475,20 +663,33 @@ func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 		}
 	}
 
-	if s.forcedReadFilter != nil {
-		filter = bson.M{"$and": []bson.M{s.forcedReadFilter, filter}}
+	if m.forcedReadFilter != nil {
+		filter = bson.M{"$and": []bson.M{m.forcedReadFilter, filter}}
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.count.%s", identity.Category))
 	defer sp.Finish()
 
+	q := c.Find(filter).SetMaxTime(defaultGlobalContextTimeout)
+
+	if d, ok := mctx.Context().Deadline(); ok {
+		q = q.SetMaxTime(time.Until(d))
+	}
+
 	out, err := RunQuery(
 		mctx,
-		func() (interface{}, error) { return c.Find(filter).Count() },
+		func() (interface{}, error) {
+			if exp := explainIfNeeded(q, filter, identity, elemental.OperationInfo, m.explain); exp != nil {
+				if err := exp(); err != nil {
+					return nil, manipulate.NewErrCannotBuildQuery(fmt.Sprintf("count: unable to explain: %s", err))
+				}
+			}
+			return q.Count()
+		},
 		RetryInfo{
-			Operation:        elemental.OperationInfo, // we miss DeleteMany
+			Operation:        elemental.OperationInfo,
 			Identity:         identity,
-			defaultRetryFunc: s.defaultRetryFunc,
+			defaultRetryFunc: m.defaultRetryFunc,
 		},
 	)
 	if err != nil {
@@ -500,16 +701,16 @@ func (s *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	return out.(int), nil
 }
 
-func (s *mongoManipulator) Commit(id manipulate.TransactionID) error { return nil }
+func (m *mongoManipulator) Commit(id manipulate.TransactionID) error { return nil }
 
-func (s *mongoManipulator) Abort(id manipulate.TransactionID) bool { return true }
+func (m *mongoManipulator) Abort(id manipulate.TransactionID) bool { return true }
 
-func (s *mongoManipulator) Ping(timeout time.Duration) error {
+func (m *mongoManipulator) Ping(timeout time.Duration) error {
 
 	errChannel := make(chan error, 1)
 
 	go func() {
-		errChannel <- s.rootSession.Ping()
+		errChannel <- m.rootSession.Ping()
 	}()
 
 	select {
@@ -520,13 +721,13 @@ func (s *mongoManipulator) Ping(timeout time.Duration) error {
 	}
 }
 
-func (s *mongoManipulator) makeSession(
+func (m *mongoManipulator) makeSession(
 	identity elemental.Identity,
 	readConsistency manipulate.ReadConsistency,
 	writeConsistency manipulate.WriteConsistency,
 ) (*mgo.Collection, func()) {
 
-	session := s.rootSession.Copy()
+	session := m.rootSession.Copy()
 
 	if mrc := convertReadConsistency(readConsistency); mrc != -1 {
 		session.SetMode(mrc, true)
@@ -534,5 +735,5 @@ func (s *mongoManipulator) makeSession(
 
 	session.SetSafe(convertWriteConsistency(writeConsistency))
 
-	return session.DB(s.dbName).C(identity.Name), session.Close
+	return session.DB(m.dbName).C(identity.Name), session.Close
 }

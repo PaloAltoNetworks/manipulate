@@ -61,6 +61,14 @@ func addQueryParameters(req *http.Request, ctx manipulate.Context) error {
 		q.Add("pagesize", strconv.Itoa(p))
 	}
 
+	if p := ctx.After(); p != "" {
+		q.Add("after", p)
+	}
+
+	if l := ctx.Limit(); l > 0 {
+		q.Add("limit", strconv.Itoa(l))
+	}
+
 	if ctx.Recursive() {
 		q.Add("recursive", "true")
 	}
@@ -145,8 +153,9 @@ func getDefaultTransport(url string) (*http.Transport, string) {
 	return &http.Transport{
 		Proxy:                 http.ProxyFromEnvironment,
 		DialContext:           dialer,
-		MaxIdleConns:          100,
-		MaxIdleConnsPerHost:   50,
+		MaxConnsPerHost:       32,
+		MaxIdleConns:          32,
+		MaxIdleConnsPerHost:   32,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,

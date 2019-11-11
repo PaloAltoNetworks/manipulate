@@ -76,7 +76,7 @@ func ExtractTLSConfig(manipulator manipulate.Manipulator) *tls.Config {
 		RootCAs:            m.tlsConfig.RootCAs,
 		Certificates:       m.tlsConfig.Certificates,
 		InsecureSkipVerify: m.tlsConfig.InsecureSkipVerify,
-	}
+	} // #nosec
 }
 
 // ExtractEncoding returns the encoding used by the given manipulator.
@@ -119,7 +119,7 @@ func DirectSend(manipulator manipulate.Manipulator, mctx manipulate.Context, end
 	}
 
 	v := m.computeVersion(0, mctx.Version())
-	url := m.url + "/" + v + endpoint
+	url := m.url + strings.Replace("/"+v+endpoint, "//", "/", -1)
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.directsend"))
 	defer sp.Finish()
