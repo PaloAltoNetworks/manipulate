@@ -119,7 +119,7 @@ func DirectSend(manipulator manipulate.Manipulator, mctx manipulate.Context, end
 	}
 
 	v := m.computeVersion(0, mctx.Version())
-	url := m.url + "/" + v + endpoint
+	url := m.url + strings.Replace("/"+v+endpoint, "//", "/", -1)
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.directsend"))
 	defer sp.Finish()
