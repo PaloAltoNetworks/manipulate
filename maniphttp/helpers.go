@@ -76,6 +76,7 @@ func ExtractTLSConfig(manipulator manipulate.Manipulator) *tls.Config {
 		RootCAs:            m.tlsConfig.RootCAs,
 		Certificates:       m.tlsConfig.Certificates,
 		InsecureSkipVerify: m.tlsConfig.InsecureSkipVerify,
+		ClientSessionCache: m.tlsConfig.ClientSessionCache,
 	} // #nosec
 }
 
