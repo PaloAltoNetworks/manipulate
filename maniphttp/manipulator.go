@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -77,6 +78,8 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 	if url == "" {
 		panic("empty url")
 	}
+
+	url = strings.TrimRight(url, "/")
 
 	// initialize solid varialbles.
 	m := &httpManipulator{

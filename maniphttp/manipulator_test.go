@@ -36,7 +36,7 @@ func TestHTTP_New(t *testing.T) {
 
 		mm, _ := New(
 			context.Background(),
-			"http://url.com",
+			"http://url.com/",
 			OptionCredentials("username", "password"),
 			OptionNamespace("myns"),
 		)

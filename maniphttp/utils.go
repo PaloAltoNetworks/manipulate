@@ -123,7 +123,10 @@ func getDefaultTLSConfig() *tls.Config {
 		}
 	}
 
-	return &tls.Config{RootCAs: systemCertPool}
+	return &tls.Config{
+		RootCAs:            systemCertPool,
+		ClientSessionCache: tls.NewLRUClientSessionCache(0),
+	}
 }
 
 func getDefaultTransport(url string) (*http.Transport, string) {
@@ -151,6 +154,7 @@ func getDefaultTransport(url string) (*http.Transport, string) {
 	}
 
 	return &http.Transport{
+		// ForceAttemptHTTP2: true,
 		Proxy:                 http.ProxyFromEnvironment,
 		DialContext:           dialer,
 		MaxConnsPerHost:       32,
