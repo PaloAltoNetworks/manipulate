@@ -43,8 +43,8 @@ type subscription struct {
 	recursive               bool
 	status                  chan manipulate.SubscriberStatus
 	url                     string
-	filters                 chan *elemental.PushFilter
-	currentFilter           *elemental.PushFilter
+	filters                 chan *elemental.PushConfig
+	currentFilter           *elemental.PushConfig
 	currentFilterLock       sync.RWMutex
 	currentToken            string
 	currentTokenLock        sync.RWMutex
@@ -83,7 +83,7 @@ func NewSubscriber(
 		events:                  make(chan *elemental.Event, eventChSize),
 		errors:                  make(chan error, errorChSize),
 		status:                  make(chan manipulate.SubscriberStatus, statusChSize),
-		filters:                 make(chan *elemental.PushFilter, filterChSize),
+		filters:                 make(chan *elemental.PushConfig, filterChSize),
 		currentFilterLock:       sync.RWMutex{},
 		readEncoding:            readEncoding,
 		writeEncoding:           writeEncoding,
@@ -102,7 +102,7 @@ func (s *subscription) Events() chan *elemental.Event            { return s.even
 func (s *subscription) Errors() chan error                       { return s.errors }
 func (s *subscription) Status() chan manipulate.SubscriberStatus { return s.status }
 
-func (s *subscription) Start(ctx context.Context, filter *elemental.PushFilter) {
+func (s *subscription) Start(ctx context.Context, filter *elemental.PushConfig) {
 
 	if filter != nil {
 		s.setCurrentFilter(filter)
@@ -113,7 +113,7 @@ func (s *subscription) Start(ctx context.Context, filter *elemental.PushFilter) 
 	go s.listen(ctx)
 }
 
-func (s *subscription) UpdateFilter(filter *elemental.PushFilter) {
+func (s *subscription) UpdateFilter(filter *elemental.PushConfig) {
 
 	s.setCurrentFilter(filter)
 
@@ -275,7 +275,7 @@ func (s *subscription) setCurrentToken(t string) {
 	filter := s.getCurrentFilter()
 	if filter == nil {
 		// if it's nil, we create an empty one.
-		filter = elemental.NewPushFilter()
+		filter = elemental.NewPushConfig()
 	}
 	filter.SetParameter("token", t)
 
@@ -292,14 +292,14 @@ func (s *subscription) getCurrentToken() string {
 	return t
 }
 
-func (s *subscription) setCurrentFilter(f *elemental.PushFilter) {
+func (s *subscription) setCurrentFilter(f *elemental.PushConfig) {
 
 	s.currentFilterLock.Lock()
 	s.currentFilter = f
 	s.currentFilterLock.Unlock()
 }
 
-func (s *subscription) getCurrentFilter() *elemental.PushFilter {
+func (s *subscription) getCurrentFilter() *elemental.PushConfig {
 
 	s.currentFilterLock.RLock()
 	defer s.currentFilterLock.RUnlock()

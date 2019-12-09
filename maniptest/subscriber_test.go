@@ -27,7 +27,7 @@ func TestTestSubscriber_MockStart(t *testing.T) {
 		m := NewTestSubscriber()
 
 		Convey("When I call Start with a panic mock", func() {
-			m.MockStart(t, func(ctx context.Context, filter *elemental.PushFilter) {
+			m.MockStart(t, func(ctx context.Context, filter *elemental.PushConfig) {
 				panic("test")
 			})
 
@@ -42,7 +42,7 @@ func TestTestSubscriber_MockUpdateFilter(t *testing.T) {
 		m := NewTestSubscriber()
 
 		Convey("When I call UpdateFilter with a panic mock", func() {
-			m.MockUpdateFilter(t, func(filter *elemental.PushFilter) {
+			m.MockUpdateFilter(t, func(filter *elemental.PushConfig) {
 				panic("test")
 			})
 

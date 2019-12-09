@@ -115,7 +115,7 @@ func New(
 
 	if m.upstreamSubscriber != nil {
 
-		filter := elemental.NewPushFilter()
+		filter := elemental.NewPushConfig()
 		for identity, cfg := range m.processors {
 			if cfg.CommitOnEvent {
 				m.commitIdentityEvent[identity] = struct{}{}
@@ -344,7 +344,7 @@ func (m *vortexManipulator) updateFilter() {
 
 	m.commitIdentityEvent = map[string]struct{}{}
 
-	filter := elemental.NewPushFilter()
+	filter := elemental.NewPushConfig()
 	for identity := range m.processors {
 		m.commitIdentityEvent[identity] = struct{}{}
 		filter.FilterIdentity(identity)
