@@ -11,3 +11,6 @@ testresults.xml
 profile.out
 *.cov
 artifacts
+remod.dev
+.remod
+.idea
