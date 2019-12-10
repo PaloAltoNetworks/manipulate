@@ -26,7 +26,7 @@ type vortexSubscriber struct {
 	subscriberErrorChannel  chan error
 	subscriberEventChannel  chan *elemental.Event
 	subscriberStatusChannel chan manipulate.SubscriberStatus
-	filter                  *elemental.PushFilter
+	filter                  *elemental.PushConfig
 
 	sync.RWMutex
 }
@@ -56,13 +56,13 @@ func NewSubscriber(m manipulate.Manipulator, queueSize int) (manipulate.Subscrib
 }
 
 // Start starts the subscriber.
-func (s *vortexSubscriber) Start(ctx context.Context, e *elemental.PushFilter) {
+func (s *vortexSubscriber) Start(ctx context.Context, e *elemental.PushConfig) {
 
 	s.UpdateFilter(e)
 }
 
-// UpdateFilter updates the current filter.
-func (s *vortexSubscriber) UpdateFilter(e *elemental.PushFilter) {
+// UpdateFilter updates the current push config.
+func (s *vortexSubscriber) UpdateFilter(e *elemental.PushConfig) {
 
 	if e == nil {
 		return

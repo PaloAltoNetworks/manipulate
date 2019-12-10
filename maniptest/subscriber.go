@@ -21,8 +21,8 @@ import (
 )
 
 type mockedSubscriberMethods struct {
-	startMock       func(context.Context, *elemental.PushFilter)
-	updateFilerMock func(*elemental.PushFilter)
+	startMock       func(context.Context, *elemental.PushConfig)
+	updateFilerMock func(*elemental.PushConfig)
 	eventsMock      func() chan *elemental.Event
 	errorsMock      func() chan error
 	statusMock      func() chan manipulate.SubscriberStatus
@@ -31,8 +31,8 @@ type mockedSubscriberMethods struct {
 // A TestSubscriber is the interface of mockable test manipulator.
 type TestSubscriber interface {
 	manipulate.Subscriber
-	MockStart(t *testing.T, impl func(context.Context, *elemental.PushFilter))
-	MockUpdateFilter(t *testing.T, impl func(*elemental.PushFilter))
+	MockStart(t *testing.T, impl func(context.Context, *elemental.PushConfig))
+	MockUpdateFilter(t *testing.T, impl func(*elemental.PushConfig))
 	MockEvents(t *testing.T, impl func() chan *elemental.Event)
 	MockErrors(t *testing.T, impl func() chan error)
 	MockStatus(t *testing.T, impl func() chan manipulate.SubscriberStatus)
@@ -53,7 +53,7 @@ func NewTestSubscriber() TestSubscriber {
 	}
 }
 
-func (m *testSubscriber) MockStart(t *testing.T, impl func(context.Context, *elemental.PushFilter)) {
+func (m *testSubscriber) MockStart(t *testing.T, impl func(context.Context, *elemental.PushConfig)) {
 
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -61,7 +61,7 @@ func (m *testSubscriber) MockStart(t *testing.T, impl func(context.Context, *ele
 	m.currentMocks(t).startMock = impl
 }
 
-func (m *testSubscriber) MockUpdateFilter(t *testing.T, impl func(*elemental.PushFilter)) {
+func (m *testSubscriber) MockUpdateFilter(t *testing.T, impl func(*elemental.PushConfig)) {
 
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -93,7 +93,7 @@ func (m *testSubscriber) MockStatus(t *testing.T, impl func() chan manipulate.Su
 	m.currentMocks(t).statusMock = impl
 }
 
-func (m *testSubscriber) Start(ctx context.Context, filter *elemental.PushFilter) {
+func (m *testSubscriber) Start(ctx context.Context, filter *elemental.PushConfig) {
 
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -104,7 +104,7 @@ func (m *testSubscriber) Start(ctx context.Context, filter *elemental.PushFilter
 
 }
 
-func (m *testSubscriber) UpdateFilter(filter *elemental.PushFilter) {
+func (m *testSubscriber) UpdateFilter(filter *elemental.PushConfig) {
 
 	m.lock.Lock()
 	defer m.lock.Unlock()

@@ -1125,7 +1125,7 @@ func Test_Monitor(t *testing.T) {
 		m := maniptest.NewTestManipulator()
 		s := maniptest.NewTestSubscriber()
 
-		s.MockStart(t, func(ctx context.Context, filter *elemental.PushFilter) {})
+		s.MockStart(t, func(ctx context.Context, filter *elemental.PushConfig) {})
 
 		eventChannel := make(chan *elemental.Event)
 		s.MockEvents(t, func() chan *elemental.Event { return eventChannel })
@@ -1570,9 +1570,9 @@ func Test_updateFilter(t *testing.T) {
 		So(allSubscribers[1], ShouldResemble, s2)
 
 		Convey("When I update the filter a subscriber the filter should be updated", func() {
-			filter := elemental.NewPushFilter()
+			filter := elemental.NewPushConfig()
 			filter.FilterIdentity(testmodel.ListIdentity.Name)
-			us.MockUpdateFilter(t, func(e *elemental.PushFilter) {
+			us.MockUpdateFilter(t, func(e *elemental.PushConfig) {
 				if len(e.Identities) == 1 {
 					if _, ok := e.Identities[testmodel.ListIdentity.Name]; ok {
 						panic("test")
