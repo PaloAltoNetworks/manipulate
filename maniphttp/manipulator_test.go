@@ -13,6 +13,7 @@ package maniphttp
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -64,6 +65,60 @@ func TestHTTP_New(t *testing.T) {
 			var ok bool
 			_, ok = i.(manipulate.Manipulator)
 			So(ok, ShouldBeTrue)
+		})
+	})
+
+	Convey("When I create a simple manipulator with custom tls config", t, func() {
+
+		tlsConfig := &tls.Config{}
+
+		mm, _ := New(
+			context.Background(),
+			"http://url.com/",
+			OptionTLSConfig(tlsConfig),
+		)
+		m := mm.(*httpManipulator)
+
+		Convey("Then the tls config is correct", func() {
+			So(m.tlsConfig, ShouldEqual, tlsConfig)
+		})
+	})
+
+	Convey("When I create a simple manipulator with custom transport", t, func() {
+
+		transport := &http.Transport{}
+		transport.TLSClientConfig = &tls.Config{}
+
+		mm, _ := New(
+			context.Background(),
+			"http://url.com/",
+			OptionHTTPTransport(transport),
+		)
+		m := mm.(*httpManipulator)
+
+		Convey("Then the tls config is correct", func() {
+			So(m.tlsConfig, ShouldEqual, transport.TLSClientConfig)
+		})
+	})
+
+	Convey("When I create a simple manipulator with custom client", t, func() {
+
+		transport := &http.Transport{}
+		transport.TLSClientConfig = &tls.Config{}
+
+		client := &http.Client{
+			Transport: transport,
+		}
+
+		mm, _ := New(
+			context.Background(),
+			"http://url.com/",
+			OptionHTTPClient(client),
+		)
+		m := mm.(*httpManipulator)
+
+		Convey("Then the tls config is correct", func() {
+			So(m.tlsConfig, ShouldEqual, transport.TLSClientConfig)
 		})
 	})
 

@@ -115,6 +115,11 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 		m.client.Transport = m.transport
 	}
 
+	// if we don't have a internal tls config, we sync with the current client.
+	if m.tlsConfig == nil {
+		m.tlsConfig = m.client.Transport.(*http.Transport).TLSClientConfig
+	}
+
 	if m.tokenManager != nil {
 
 		ictx, cancel := context.WithTimeout(m.ctx, 30*time.Second)
