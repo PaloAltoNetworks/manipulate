@@ -763,10 +763,8 @@ func (s *httpManipulator) send(
 		}
 
 		// If we have a given dest to decode, we decode it now.
-		if dest != nil {
-			if err := decodeData(response, dest); err != nil {
-				return nil, err
-			}
+		if err := decodeData(response, dest); err != nil {
+			return nil, err
 		}
 
 		// And we return the response
