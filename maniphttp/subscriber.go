@@ -22,10 +22,11 @@ import (
 )
 
 type subscribeConfig struct {
-	namespace string
-	endpoint  string
-	recursive bool
-	tlsConfig *tls.Config
+	namespace           string
+	endpoint            string
+	recursive           bool
+	tlsConfig           *tls.Config
+	credentialCookieKey string
 }
 
 func newSubscribeConfig(m *httpManipulator) subscribeConfig {
@@ -64,6 +65,14 @@ func SubscriberOptionEndpoint(endpoint string) SubscriberOption {
 	}
 }
 
+// SubscriberSendCredentialsAsCookie makes the subscriber send the
+// crendentials as cookie using the provided key
+func SubscriberSendCredentialsAsCookie(key string) SubscriberOption {
+	return func(cfg *subscribeConfig) {
+		cfg.credentialCookieKey = key
+	}
+}
+
 // NewSubscriber returns a new subscription.
 func NewSubscriber(manipulator manipulate.Manipulator, options ...SubscriberOption) manipulate.Subscriber {
 
@@ -92,6 +101,7 @@ func NewSubscriber(manipulator manipulate.Manipulator, options ...SubscriberOpti
 			"Accept":       []string{string(m.encoding)},
 		},
 		cfg.recursive,
+		cfg.credentialCookieKey,
 	)
 }
 

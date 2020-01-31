@@ -67,4 +67,10 @@ func TestOptions(t *testing.T) {
 		SubscriberOptionEndpoint("/labas/")(&cfg)
 		So(cfg.endpoint, ShouldEqual, "labas")
 	})
+
+	Convey("SubscriberSendCredentialsAsCookie should work", t, func() {
+		cfg := newSubscribeConfig(m)
+		SubscriberSendCredentialsAsCookie("creds")(&cfg)
+		So(cfg.credentialCookieKey, ShouldEqual, "creds")
+	})
 }
