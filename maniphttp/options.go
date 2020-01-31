@@ -125,6 +125,14 @@ func OptionDisableCompression() Option {
 	}
 }
 
+// OptionSendCrendientialAsCookie configures the manipulator to
+// send the password as a cookie using the provided key.
+func OptionSendCrendientialAsCookie(key string) Option {
+	return func(m *httpManipulator) {
+		m.tokenCookieKey = key
+	}
+}
+
 // OptionSimulateFailures will inject random error during
 // low level communication with the remote API.
 //

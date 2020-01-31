@@ -61,6 +61,7 @@ type httpManipulator struct {
 	defaultRetryFunc     manipulate.RetryFunc
 	atomicRenewTokenFunc func(context.Context) error
 	failureSimulations   map[float64]error
+	tokenCookieKey       string
 
 	// optionnable
 	ctx           context.Context
@@ -463,7 +464,9 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.
 		username = s.username
 	}
 
-	if username != "" && password != "" {
+	if password != "" && s.tokenCookieKey != "" {
+		request.Header.Add("Cookie", fmt.Sprintf("%s=%s", s.tokenCookieKey, password))
+	} else if username != "" && password != "" {
 		request.Header.Set("Authorization", s.makeAuthorizationHeaders(username, password))
 	}
 
@@ -494,6 +497,8 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.
 	if v := mctx.ClientIP(); v != "" {
 		request.Header.Set("X-Forwarded-For", v)
 	}
+
+	fmt.Println(request.Header)
 }
 
 func (s *httpManipulator) readHeaders(response *http.Response, mctx manipulate.Context) {

@@ -52,6 +52,7 @@ type subscription struct {
 	registerTokenNotifier   func(string, func(string))
 	readEncoding            elemental.EncodingType
 	writeEncoding           elemental.EncodingType
+	credsInTokenKey         string
 }
 
 // NewSubscriber creates a new Subscription.
@@ -64,7 +65,12 @@ func NewSubscriber(
 	tlsConfig *tls.Config,
 	headers http.Header,
 	recursive bool,
+	credsInTokenKey string,
 ) manipulate.Subscriber {
+
+	if headers == nil {
+		headers = http.Header{}
+	}
 
 	readEncoding, writeEncoding, err := elemental.EncodingFromHeaders(headers)
 	if err != nil {
@@ -87,6 +93,7 @@ func NewSubscriber(
 		currentFilterLock:       sync.RWMutex{},
 		readEncoding:            readEncoding,
 		writeEncoding:           writeEncoding,
+		credsInTokenKey:         credsInTokenKey,
 		config: wsc.Config{
 			PongWait:     10 * time.Second,
 			WriteWait:    10 * time.Second,
@@ -138,7 +145,16 @@ func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 			_ = resp.Body.Close() // nolint
 		}
 
-		if s.conn, resp, err = wsc.Connect(ctx, makeURL(s.url, s.ns, s.getCurrentToken(), s.recursive), s.config); err == nil {
+		var url string
+		switch s.credsInTokenKey {
+		case "":
+			url = makeURL(s.url, s.ns, s.getCurrentToken(), s.recursive)
+		default:
+			url = makeURL(s.url, s.ns, "", s.recursive)
+			s.config.Headers.Set("Cookie", fmt.Sprintf("%s=%s", s.credsInTokenKey, s.getCurrentToken()))
+		}
+
+		if s.conn, resp, err = wsc.Connect(ctx, url, s.config); err == nil {
 
 			if initial {
 				s.publishStatus(manipulate.SubscriberStatusInitialConnection)
