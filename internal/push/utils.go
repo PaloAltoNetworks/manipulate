@@ -49,22 +49,25 @@ func decodeErrors(r io.Reader) error {
 func makeURL(u string, namespace string, password string, recursive bool) string {
 
 	u = strings.Replace(u, "https://", "wss://", 1)
-	u = fmt.Sprintf("%s?token=%s", u, password)
 
-	if namespace != "" {
-		u += "&namespace=" + url.QueryEscape(namespace)
+	args := []string{
+		fmt.Sprintf("namespace=%s", url.QueryEscape(namespace)),
+	}
+
+	if password != "" {
+		args = append(args, fmt.Sprintf("token=%s", password))
 	}
 
 	if recursive {
-		u = u + "&mode=all"
+		args = append(args, "mode=all")
 	}
 
-	return u
+	return fmt.Sprintf("%s?%s", u, strings.Join(args, "&"))
 }
 
 const maxBackoff = 8000
 
 func nextBackoff(try int) time.Duration {
 
-	return time.Duration(math.Min(math.Pow(2.0, float64(try))-1, maxBackoff)) * time.Millisecond
+	return time.Duration(math.Min(math.Pow(4.0, float64(try))-1, maxBackoff)) * time.Millisecond
 }
