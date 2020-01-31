@@ -116,9 +116,9 @@ func Test_Options(t *testing.T) {
 		So(m.failureSimulations, ShouldEqual, f)
 	})
 
-	Convey("Calling OptionSendCrendientialAsCookie should work", t, func() {
+	Convey("Calling OptionSendCrendentialsAsCookie should work", t, func() {
 		m := &httpManipulator{}
-		OptionSendCrendientialAsCookie("x-token")(m)
+		OptionSendCrendentialsAsCookie("x-token")(m)
 		So(m.tokenCookieKey, ShouldEqual, "x-token")
 	})
 }

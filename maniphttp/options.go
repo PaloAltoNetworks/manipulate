@@ -125,9 +125,9 @@ func OptionDisableCompression() Option {
 	}
 }
 
-// OptionSendCrendientialAsCookie configures the manipulator to
+// OptionSendCrendentialsAsCookie configures the manipulator to
 // send the password as a cookie using the provided key.
-func OptionSendCrendientialAsCookie(key string) Option {
+func OptionSendCrendentialsAsCookie(key string) Option {
 	return func(m *httpManipulator) {
 		m.tokenCookieKey = key
 	}
