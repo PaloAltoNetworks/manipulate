@@ -497,8 +497,6 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.
 	if v := mctx.ClientIP(); v != "" {
 		request.Header.Set("X-Forwarded-For", v)
 	}
-
-	fmt.Println(request.Header)
 }
 
 func (s *httpManipulator) readHeaders(response *http.Response, mctx manipulate.Context) {
