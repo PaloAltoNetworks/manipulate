@@ -1387,7 +1387,7 @@ func TestHTTP_send(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
 		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
@@ -1567,7 +1567,7 @@ func TestHTTP_send(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
 		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)

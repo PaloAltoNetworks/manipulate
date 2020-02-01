@@ -40,6 +40,7 @@ type subscription struct {
 	errors                  chan error
 	events                  chan *elemental.Event
 	ns                      string
+	supportErrorEvents      bool
 	recursive               bool
 	status                  chan manipulate.SubscriberStatus
 	url                     string
@@ -64,6 +65,7 @@ func NewSubscriber(
 	unregisterTokenNotifier func(string),
 	tlsConfig *tls.Config,
 	headers http.Header,
+	supportErrorEvents bool,
 	recursive bool,
 	credsInTokenKey string,
 ) manipulate.Subscriber {
@@ -82,6 +84,7 @@ func NewSubscriber(
 		url:                     url,
 		ns:                      ns,
 		recursive:               recursive,
+		supportErrorEvents:      supportErrorEvents,
 		currentToken:            token,
 		currentTokenLock:        sync.RWMutex{},
 		unregisterTokenNotifier: unregisterTokenNotifier,
@@ -148,9 +151,9 @@ func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 		var url string
 		switch s.credsInTokenKey {
 		case "":
-			url = makeURL(s.url, s.ns, s.getCurrentToken(), s.recursive)
+			url = makeURL(s.url, s.ns, s.getCurrentToken(), s.recursive, s.supportErrorEvents)
 		default:
-			url = makeURL(s.url, s.ns, "", s.recursive)
+			url = makeURL(s.url, s.ns, "", s.recursive, s.supportErrorEvents)
 			s.config.Headers.Set("Cookie", fmt.Sprintf("%s=%s", s.credsInTokenKey, s.getCurrentToken()))
 		}
 
