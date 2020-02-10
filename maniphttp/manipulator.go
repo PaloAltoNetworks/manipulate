@@ -755,7 +755,13 @@ func (s *httpManipulator) send(
 
 		// If we have content, we return the response.
 		// The body will be drained by the defered call to closeCurrentBody().
-		if response.StatusCode == http.StatusNoContent || response.ContentLength == 0 || dest == nil {
+		if response.StatusCode == http.StatusNoContent || response.ContentLength == 0 {
+			bodyCloser = nil
+
+			return response, nil
+		}
+
+		if dest == nil {
 			return response, nil
 		}
 
