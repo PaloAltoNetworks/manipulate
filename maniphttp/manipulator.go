@@ -688,7 +688,7 @@ func (s *httpManipulator) send(
 
 		// We passed the basic error, we have a body.
 		// We register it so next loop will be clean.
-		bodyCloser = request.Body
+		bodyCloser = response.Body
 
 		// We check for http status codes that triggers a retry
 		switch response.StatusCode {
@@ -755,13 +755,7 @@ func (s *httpManipulator) send(
 
 		// If we have content, we return the response.
 		// The body will be drained by the defered call to closeCurrentBody().
-		if response.StatusCode == http.StatusNoContent || response.ContentLength == 0 {
-			bodyCloser = nil
-
-			return response, nil
-		}
-
-		if dest == nil {
+		if response.StatusCode == http.StatusNoContent || response.ContentLength == 0 || dest == nil {
 			return response, nil
 		}
 
@@ -779,8 +773,8 @@ func (s *httpManipulator) send(
 		//
 
 		// We cancel any pending request context and the pending body.
-		cancelCurrentRequest()
 		closeCurrentBody()
+		cancelCurrentRequest()
 
 		// If the manipulator has auto retry disabled we return the last error
 		if s.disableAutoRetry {
