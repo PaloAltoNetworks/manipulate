@@ -160,6 +160,14 @@ func TestNext(t *testing.T) {
 			},
 			1 * time.Second,
 		},
+		{
+			"almost expired deadline with, try 1",
+			args{
+				1,
+				time.Now().Add(1000 * time.Nanosecond),
+			},
+			1 * time.Millisecond,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

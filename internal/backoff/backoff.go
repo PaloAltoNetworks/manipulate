@@ -18,7 +18,7 @@ func Next(try int, deadline time.Time) time.Duration {
 	}
 
 	now := time.Now().Round(time.Second)
-	if now.Add(wait).After(deadline) {
+	if now.Add(wait).After(deadline) && deadline.Sub(now) > 0 {
 		return deadline.Sub(now)
 	}
 
