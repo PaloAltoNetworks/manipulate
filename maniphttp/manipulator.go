@@ -664,7 +664,9 @@ func (s *httpManipulator) send(
 				goto RETRY
 
 			case io.ErrUnexpectedEOF, io.EOF:
-				lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
+				if lastError == nil {
+					lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
+				}
 				goto RETRY
 			}
 
@@ -672,7 +674,9 @@ func (s *httpManipulator) send(
 			switch uerr.Err.(type) {
 
 			case net.Error:
-				lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
+				if lastError == nil {
+					lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
+				}
 				goto RETRY
 
 			case x509.UnknownAuthorityError, x509.CertificateInvalidError, x509.HostnameError:
