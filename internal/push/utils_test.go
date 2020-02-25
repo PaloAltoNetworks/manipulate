@@ -82,7 +82,7 @@ func Test_makeURL(t *testing.T) {
 				false,
 				true,
 			},
-			"wss://toto?namespace=%2Fns&supportsErrors=true",
+			"wss://toto?namespace=%2Fns&enableErrors=true",
 		},
 	}
 	for _, tt := range tests {

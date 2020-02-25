@@ -63,7 +63,7 @@ func makeURL(u string, namespace string, password string, recursive, supportErro
 	}
 
 	if supportErrorEvents {
-		args = append(args, "supportsErrors=true")
+		args = append(args, "enableErrors=true")
 	}
 
 	return fmt.Sprintf("%s?%s", u, strings.Join(args, "&"))
