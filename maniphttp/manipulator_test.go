@@ -980,7 +980,7 @@ func TestHTTP_send(t *testing.T) {
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotExecuteQuery{})
-				So(err.Error(), ShouldEqual, `Unable to execute query: Post nop: unsupported protocol scheme ""`)
+				So(err.Error(), ShouldEqual, `Unable to execute query: Post "nop": unsupported protocol scheme ""`)
 
 				So(resp, ShouldBeNil)
 			})
@@ -1001,7 +1001,7 @@ func TestHTTP_send(t *testing.T) {
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
-				So(err.Error(), ShouldEqual, "Cannot communicate: Post https://google.com: context deadline exceeded")
+				So(err.Error(), ShouldEqual, `Cannot communicate: Post "https://google.com": context deadline exceeded`)
 
 				So(resp, ShouldBeNil)
 			})
@@ -1014,7 +1014,7 @@ func TestHTTP_send(t *testing.T) {
 
 		Convey("When I call send", func() {
 
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
 			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, "https://NANANAN", nil, nil, sp)
@@ -1024,7 +1024,7 @@ func TestHTTP_send(t *testing.T) {
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
 
 				// On linux, the message is slightly different than on macOS
-				So(err.Error(), ShouldStartWith, "Cannot communicate: Post https://NANANAN: dial tcp: lookup NANANAN")
+				So(err.Error(), ShouldStartWith, `Cannot communicate: Post "https://NANANAN": dial tcp: lookup NANANAN`)
 
 				So(resp, ShouldBeNil)
 			})
@@ -1048,7 +1048,7 @@ func TestHTTP_send(t *testing.T) {
 		Convey("Then err should not be nil", func() {
 			So(err, ShouldNotBeNil)
 			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
-			So(err.Error(), ShouldEqual, fmt.Sprintf("Cannot communicate: Post %s: EOF", ts.URL))
+			So(err.Error(), ShouldEqual, fmt.Sprintf(`Cannot communicate: Post "%s": EOF`, ts.URL))
 
 			So(resp, ShouldBeNil)
 		})
@@ -1073,7 +1073,7 @@ func TestHTTP_send(t *testing.T) {
 			Convey("Then err should not be nil", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrTLS{})
-				So(err.Error(), ShouldEqual, fmt.Sprintf("TLS error: Post %s: x509: certificate signed by unknown authority", ts.URL))
+				So(err.Error(), ShouldEqual, fmt.Sprintf(`TLS error: Post "%s": x509: certificate signed by unknown authority`, ts.URL))
 
 				So(resp, ShouldBeNil)
 			})
@@ -1270,7 +1270,7 @@ func TestHTTP_send(t *testing.T) {
 		Convey("Then err should not be nil", func() {
 			So(err, ShouldNotBeNil)
 			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
-			So(err.Error(), ShouldEqual, fmt.Sprintf("Cannot communicate: Post %s: context deadline exceeded", ts.URL))
+			So(err.Error(), ShouldEqual, fmt.Sprintf(`Cannot communicate: Post "%s": context deadline exceeded`, ts.URL))
 
 			So(resp, ShouldBeNil)
 		})
