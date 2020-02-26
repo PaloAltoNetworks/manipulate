@@ -370,7 +370,6 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		}
 	}
 
-	var err error
 	if operations, upsert := mctx.(opaquer).Opaque()[opaqueKeyUpsert]; upsert {
 
 		object.SetIdentifier("")
@@ -412,7 +411,7 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 			}
 		}
 
-		_, err = RunQuery(
+		info, err := RunQuery(
 			mctx,
 			func() (interface{}, error) { return c.Upsert(filter, baseOps) },
 			RetryInfo{
@@ -421,9 +420,21 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 				defaultRetryFunc: m.defaultRetryFunc,
 			},
 		)
-		object.SetIdentifier(oid.Hex())
+		if err != nil {
+			sp.SetTag("error", true)
+			sp.LogFields(log.Error(err))
+			return err
+		}
+
+		switch chinfo := info.(type) {
+		case *mgo.ChangeInfo:
+			if noid, ok := chinfo.UpsertedId.(bson.ObjectId); ok {
+				object.SetIdentifier(noid.Hex())
+			}
+		}
+
 	} else {
-		_, err = RunQuery(
+		_, err := RunQuery(
 			mctx,
 			func() (interface{}, error) { return nil, c.Insert(object) },
 			RetryInfo{
@@ -432,12 +443,12 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 				defaultRetryFunc: m.defaultRetryFunc,
 			},
 		)
-	}
 
-	if err != nil {
-		sp.SetTag("error", true)
-		sp.LogFields(log.Error(err))
-		return err
+		if err != nil {
+			sp.SetTag("error", true)
+			sp.LogFields(log.Error(err))
+			return err
+		}
 	}
 
 	if encryptable != nil {
