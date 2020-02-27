@@ -18,10 +18,11 @@ import (
 
 func Test_makeURL(t *testing.T) {
 	type args struct {
-		u         string
-		namespace string
-		password  string
-		recursive bool
+		u             string
+		namespace     string
+		password      string
+		recursive     bool
+		supportErrors bool
 	}
 	tests := []struct {
 		name string
@@ -35,6 +36,7 @@ func Test_makeURL(t *testing.T) {
 				"/ns",
 				"password",
 				true,
+				false,
 			},
 			"wss://toto?namespace=%2Fns&token=password&mode=all",
 		},
@@ -44,6 +46,7 @@ func Test_makeURL(t *testing.T) {
 				"https://toto",
 				"/ns",
 				"password",
+				false,
 				false,
 			},
 			"wss://toto?namespace=%2Fns&token=password",
@@ -55,6 +58,7 @@ func Test_makeURL(t *testing.T) {
 				"/ns",
 				"",
 				true,
+				false,
 			},
 			"wss://toto?namespace=%2Fns&mode=all",
 		},
@@ -65,13 +69,25 @@ func Test_makeURL(t *testing.T) {
 				"/ns",
 				"",
 				false,
+				false,
 			},
 			"wss://toto?namespace=%2Fns",
+		},
+		{
+			"with support errors",
+			args{
+				"https://toto",
+				"/ns",
+				"",
+				false,
+				true,
+			},
+			"wss://toto?namespace=%2Fns&enableErrors=true",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := makeURL(tt.args.u, tt.args.namespace, tt.args.password, tt.args.recursive); got != tt.want {
+			if got := makeURL(tt.args.u, tt.args.namespace, tt.args.password, tt.args.recursive, tt.args.supportErrors); got != tt.want {
 				t.Errorf("makeURL() = %v, want %v", got, tt.want)
 			}
 		})

@@ -37,8 +37,8 @@ func TestNewSubscriberOption(t *testing.T) {
 				So(cfg.endpoint, ShouldEqual, "events")
 				So(cfg.namespace, ShouldEqual, "mns")
 				So(cfg.tlsConfig, ShouldEqual, m.tlsConfig)
+				So(cfg.supportErrorEvents, ShouldBeFalse)
 			})
-
 		})
 	})
 }
@@ -72,5 +72,11 @@ func TestOptions(t *testing.T) {
 		cfg := newSubscribeConfig(m)
 		SubscriberSendCredentialsAsCookie("creds")(&cfg)
 		So(cfg.credentialCookieKey, ShouldEqual, "creds")
+	})
+
+	Convey("SubscriberOptionSupportErrorEvents should work", t, func() {
+		cfg := newSubscribeConfig(m)
+		SubscriberOptionSupportErrorEvents()(&cfg)
+		So(cfg.supportErrorEvents, ShouldBeTrue)
 	})
 }

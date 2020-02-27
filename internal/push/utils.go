@@ -46,7 +46,7 @@ func decodeErrors(r io.Reader) error {
 	return errs
 }
 
-func makeURL(u string, namespace string, password string, recursive bool) string {
+func makeURL(u string, namespace string, password string, recursive, supportErrorEvents bool) string {
 
 	u = strings.Replace(u, "https://", "wss://", 1)
 
@@ -60,6 +60,10 @@ func makeURL(u string, namespace string, password string, recursive bool) string
 
 	if recursive {
 		args = append(args, "mode=all")
+	}
+
+	if supportErrorEvents {
+		args = append(args, "enableErrors=true")
 	}
 
 	return fmt.Sprintf("%s?%s", u, strings.Join(args, "&"))

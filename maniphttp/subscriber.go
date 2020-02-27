@@ -23,10 +23,11 @@ import (
 
 type subscribeConfig struct {
 	namespace           string
+	credentialCookieKey string
 	endpoint            string
+	supportErrorEvents  bool
 	recursive           bool
 	tlsConfig           *tls.Config
-	credentialCookieKey string
 }
 
 func newSubscribeConfig(m *httpManipulator) subscribeConfig {
@@ -73,6 +74,14 @@ func SubscriberSendCredentialsAsCookie(key string) SubscriberOption {
 	}
 }
 
+// SubscriberOptionSupportErrorEvents will result in connecting to the socket server by declaring that you are capable of
+// handling error events.
+func SubscriberOptionSupportErrorEvents() SubscriberOption {
+	return func(cfg *subscribeConfig) {
+		cfg.supportErrorEvents = true
+	}
+}
+
 // NewSubscriber returns a new subscription.
 func NewSubscriber(manipulator manipulate.Manipulator, options ...SubscriberOption) manipulate.Subscriber {
 
@@ -100,6 +109,7 @@ func NewSubscriber(manipulator manipulate.Manipulator, options ...SubscriberOpti
 			"Content-Type": []string{string(m.encoding)},
 			"Accept":       []string{string(m.encoding)},
 		},
+		cfg.supportErrorEvents,
 		cfg.recursive,
 		cfg.credentialCookieKey,
 	)
