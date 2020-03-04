@@ -129,7 +129,7 @@ func getDefaultTLSConfig() *tls.Config {
 	}
 }
 
-func getDefaultTransport(url string) (*http.Transport, string) {
+func getDefaultTransport(url string, forceAttemptHTTP2 bool) (*http.Transport, string) {
 
 	dialer := (&net.Dialer{
 		Timeout:   10 * time.Second,
@@ -154,7 +154,7 @@ func getDefaultTransport(url string) (*http.Transport, string) {
 	}
 
 	return &http.Transport{
-		ForceAttemptHTTP2:     true,
+		ForceAttemptHTTP2:     forceAttemptHTTP2,
 		Proxy:                 http.ProxyFromEnvironment,
 		DialContext:           dialer,
 		MaxConnsPerHost:       32,
