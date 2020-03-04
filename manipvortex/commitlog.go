@@ -29,6 +29,7 @@ func newLogWriter(ctx context.Context, filename string, size int) (chan *Transac
 	events := make(chan *Transaction, size)
 
 	go func(f *os.File) {
+		// #nosec G307
 		defer f.Close() // nolint errcheck
 
 		for {
