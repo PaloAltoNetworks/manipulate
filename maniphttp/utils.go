@@ -154,7 +154,7 @@ func getDefaultTransport(url string) (*http.Transport, string) {
 	}
 
 	return &http.Transport{
-		// ForceAttemptHTTP2: true,
+		ForceAttemptHTTP2:     true,
 		Proxy:                 http.ProxyFromEnvironment,
 		DialContext:           dialer,
 		MaxConnsPerHost:       32,
