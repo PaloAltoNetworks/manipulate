@@ -27,6 +27,7 @@ import (
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/maniphttp/internal/compiler"
+	"golang.org/x/net/http2"
 )
 
 // AddQueryParameters appends each key-value pair from ctx.Parameters
@@ -129,7 +130,15 @@ func getDefaultTLSConfig() *tls.Config {
 	}
 }
 
-func getDefaultTransport(url string, forceAttemptHTTP2 bool) (*http.Transport, string) {
+func getDefaultHTTP2Transport(url string, tlsConfig *tls.Config, disableCompression bool) (*http2.Transport, string) {
+
+	return &http2.Transport{
+		TLSClientConfig:    tlsConfig,
+		DisableCompression: disableCompression,
+	}, url
+}
+
+func getDefaultHTTPTransport(url string, disableCompression bool) (*http.Transport, string) {
 
 	dialer := (&net.Dialer{
 		Timeout:   10 * time.Second,
@@ -154,7 +163,7 @@ func getDefaultTransport(url string, forceAttemptHTTP2 bool) (*http.Transport, s
 	}
 
 	return &http.Transport{
-		ForceAttemptHTTP2:     forceAttemptHTTP2,
+		ForceAttemptHTTP2:     true,
 		Proxy:                 http.ProxyFromEnvironment,
 		DialContext:           dialer,
 		MaxConnsPerHost:       32,
@@ -163,6 +172,7 @@ func getDefaultTransport(url string, forceAttemptHTTP2 bool) (*http.Transport, s
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+		DisableCompression:    disableCompression,
 	}, outURL
 }
 

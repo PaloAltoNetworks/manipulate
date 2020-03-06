@@ -64,14 +64,14 @@ type httpManipulator struct {
 	tokenCookieKey       string
 
 	// optionnable
-	ctx               context.Context
-	client            *http.Client
-	tlsConfig         *tls.Config
-	tokenManager      manipulate.TokenManager
-	globalHeaders     http.Header
-	transport         *http.Transport
-	encoding          elemental.EncodingType
-	forceAttemptHTTP2 bool
+	ctx           context.Context
+	client        *http.Client
+	tlsConfig     *tls.Config
+	tokenManager  manipulate.TokenManager
+	globalHeaders http.Header
+	transport     http.RoundTripper
+	encoding      elemental.EncodingType
+	useHTTP2      bool
 }
 
 // New returns a maniphttp.Manipulator configured according to the given suite of Option.
@@ -104,14 +104,33 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 
 		if m.transport == nil {
 
-			m.transport, m.url = getDefaultTransport(url, m.forceAttemptHTTP2)
-			m.transport.DisableCompression = m.disableCompression
+			if m.useHTTP2 {
 
-			if m.tlsConfig == nil {
-				m.tlsConfig = getDefaultTLSConfig()
+				transport, url := getDefaultHTTP2Transport(url, m.tlsConfig, m.disableCompression)
+
+				if m.tlsConfig == nil {
+					m.tlsConfig = getDefaultTLSConfig()
+				}
+
+				transport.TLSClientConfig = m.tlsConfig
+
+				m.transport = transport
+				m.url = url
+
+			} else {
+
+				transport, url := getDefaultHTTPTransport(url, m.disableCompression)
+
+				if m.tlsConfig == nil {
+					m.tlsConfig = getDefaultTLSConfig()
+				}
+
+				transport.TLSClientConfig = m.tlsConfig
+
+				m.transport = transport
+				m.url = url
 			}
 
-			m.transport.TLSClientConfig = m.tlsConfig
 		}
 
 		m.client.Transport = m.transport

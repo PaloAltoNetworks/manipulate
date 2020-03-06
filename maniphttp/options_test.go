@@ -122,9 +122,9 @@ func Test_Options(t *testing.T) {
 		So(m.tokenCookieKey, ShouldEqual, "x-token")
 	})
 
-	Convey("Calling OptionForceAttemptHTTP2 should work", t, func() {
+	Convey("Calling OptionUseHTTP2 should work", t, func() {
 		m := &httpManipulator{}
-		OptionForceAttemptHTTP2(true)(m)
-		So(m.forceAttemptHTTP2, ShouldBeTrue)
+		OptionUseHTTP2(true)(m)
+		So(m.useHTTP2, ShouldBeTrue)
 	})
 }

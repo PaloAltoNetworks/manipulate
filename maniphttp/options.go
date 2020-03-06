@@ -91,6 +91,14 @@ func OptionTLSConfig(tlsConfig *tls.Config) Option {
 	}
 }
 
+// OptionUseHTTP2 will make the manipulator to
+// use an HTTP2 Transport.
+func OptionUseHTTP2(enable bool) Option {
+	return func(m *httpManipulator) {
+		m.useHTTP2 = enable
+	}
+}
+
 // OptionDisableBuiltInRetry disables the auto retry mechanism
 // built in maniphttp Manipulator.
 // By default, the manipulator will silently retry on communication
@@ -153,16 +161,5 @@ func OptionSendCredentialsAsCookie(key string) Option {
 func OptionSimulateFailures(failureSimulations map[float64]error) Option {
 	return func(m *httpManipulator) {
 		m.failureSimulations = failureSimulations
-	}
-}
-
-// OptionForceAttemptHTTP2 will force the http client
-// to attempt an HTTP2 connection. On go 1.13 this
-// was causing a panic.
-// This option has no incidence if a custom transport
-// or client has been set,
-func OptionForceAttemptHTTP2(enable bool) Option {
-	return func(m *httpManipulator) {
-		m.forceAttemptHTTP2 = enable
 	}
 }
