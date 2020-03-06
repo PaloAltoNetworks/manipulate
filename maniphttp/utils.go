@@ -27,7 +27,6 @@ import (
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/maniphttp/internal/compiler"
-	"golang.org/x/net/http2"
 )
 
 // AddQueryParameters appends each key-value pair from ctx.Parameters
@@ -128,14 +127,6 @@ func getDefaultTLSConfig() *tls.Config {
 		RootCAs:            systemCertPool,
 		ClientSessionCache: tls.NewLRUClientSessionCache(0),
 	}
-}
-
-func getDefaultHTTP2Transport(url string, tlsConfig *tls.Config, disableCompression bool) (*http2.Transport, string) {
-
-	return &http2.Transport{
-		TLSClientConfig:    tlsConfig,
-		DisableCompression: disableCompression,
-	}, url
 }
 
 func getDefaultHTTPTransport(url string, disableCompression bool) (*http.Transport, string) {
