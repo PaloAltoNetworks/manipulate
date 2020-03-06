@@ -91,14 +91,6 @@ func OptionTLSConfig(tlsConfig *tls.Config) Option {
 	}
 }
 
-// OptionUseHTTP2 will make the manipulator to
-// use an HTTP2 Transport.
-func OptionUseHTTP2(enable bool) Option {
-	return func(m *httpManipulator) {
-		m.useHTTP2 = enable
-	}
-}
-
 // OptionDisableBuiltInRetry disables the auto retry mechanism
 // built in maniphttp Manipulator.
 // By default, the manipulator will silently retry on communication

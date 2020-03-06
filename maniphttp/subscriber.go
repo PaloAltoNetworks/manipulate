@@ -98,6 +98,11 @@ func NewSubscriber(manipulator manipulate.Manipulator, options ...SubscriberOpti
 		opt(&cfg)
 	}
 
+	if cfg.tlsConfig != nil {
+		cfg.tlsConfig = cfg.tlsConfig.Clone()
+		cfg.tlsConfig.NextProtos = nil
+	}
+
 	return push.NewSubscriber(
 		fmt.Sprintf("%s/%s", m.url, cfg.endpoint),
 		cfg.namespace,

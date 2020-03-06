@@ -69,9 +69,8 @@ type httpManipulator struct {
 	tlsConfig     *tls.Config
 	tokenManager  manipulate.TokenManager
 	globalHeaders http.Header
-	transport     http.RoundTripper
+	transport     *http.Transport
 	encoding      elemental.EncodingType
-	useHTTP2      bool
 }
 
 // New returns a maniphttp.Manipulator configured according to the given suite of Option.
@@ -104,33 +103,13 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 
 		if m.transport == nil {
 
-			if m.useHTTP2 {
+			m.transport, m.url = getDefaultHTTPTransport(url, m.disableCompression)
 
-				transport, url := getDefaultHTTP2Transport(url, m.tlsConfig, m.disableCompression)
-
-				if m.tlsConfig == nil {
-					m.tlsConfig = getDefaultTLSConfig()
-				}
-
-				transport.TLSClientConfig = m.tlsConfig
-
-				m.transport = transport
-				m.url = url
-
-			} else {
-
-				transport, url := getDefaultHTTPTransport(url, m.disableCompression)
-
-				if m.tlsConfig == nil {
-					m.tlsConfig = getDefaultTLSConfig()
-				}
-
-				transport.TLSClientConfig = m.tlsConfig
-
-				m.transport = transport
-				m.url = url
+			if m.tlsConfig == nil {
+				m.tlsConfig = getDefaultTLSConfig()
 			}
 
+			m.transport.TLSClientConfig = m.tlsConfig
 		}
 
 		m.client.Transport = m.transport
