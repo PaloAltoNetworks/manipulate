@@ -53,9 +53,9 @@ type httpManipulator struct {
 	password             string
 	url                  string
 	namespace            string
-	renewLock            *sync.RWMutex
+	renewLock            sync.RWMutex
 	renewNotifiers       map[string]func(string)
-	renewNotifiersLock   *sync.RWMutex
+	renewNotifiersLock   sync.RWMutex
 	disableAutoRetry     bool
 	disableCompression   bool
 	defaultRetryFunc     manipulate.RetryFunc
@@ -84,8 +84,8 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 
 	// initialize solid varialbles.
 	m := &httpManipulator{
-		renewLock:          &sync.RWMutex{},
-		renewNotifiersLock: &sync.RWMutex{},
+		renewLock:          sync.RWMutex{},
+		renewNotifiersLock: sync.RWMutex{},
 		renewNotifiers:     map[string]func(string){},
 		ctx:                ctx,
 		url:                url,
