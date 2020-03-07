@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"go.aporeto.io/manipulate/maniptest"
 )
 
 func TestNewSubscriberOption(t *testing.T) {
@@ -79,4 +80,31 @@ func TestOptions(t *testing.T) {
 		SubscriberOptionSupportErrorEvents()(&cfg)
 		So(cfg.supportErrorEvents, ShouldBeTrue)
 	})
+}
+
+func TestNewSubscriber(t *testing.T) {
+
+	m := &httpManipulator{
+		url:       "https://toto.com",
+		namespace: "mns",
+		tlsConfig: &tls.Config{},
+	}
+
+	Convey("Creating a new subscriber should work", t, func() {
+
+		out := NewSubscriber(m, SubscriberOptionEndpoint("/"))
+
+		So(out, ShouldNotBeNil)
+	})
+
+	Convey("Creating a new subscriber with a nil option should panic", t, func() {
+
+		So(func() { NewSubscriber(m, nil) }, ShouldPanicWith, "nil passed as subscriber option")
+	})
+
+	Convey("Creating a new subscriber with a non http manipulator should panic", t, func() {
+
+		So(func() { NewSubscriber(maniptest.NewTestManipulator(), nil) }, ShouldPanicWith, "You must pass a HTTP manipulator to maniphttp.NewSubscriber or maniphttp.NewSubscriberWithEndpoint")
+	})
+
 }

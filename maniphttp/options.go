@@ -155,14 +155,3 @@ func OptionSimulateFailures(failureSimulations map[float64]error) Option {
 		m.failureSimulations = failureSimulations
 	}
 }
-
-// OptionForceAttemptHTTP2 will force the http client
-// to attempt an HTTP2 connection. On go 1.13 this
-// was causing a panic.
-// This option has no incidence if a custom transport
-// or client has been set,
-func OptionForceAttemptHTTP2(enable bool) Option {
-	return func(m *httpManipulator) {
-		m.forceAttemptHTTP2 = enable
-	}
-}

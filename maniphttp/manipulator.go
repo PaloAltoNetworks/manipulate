@@ -53,9 +53,9 @@ type httpManipulator struct {
 	password             string
 	url                  string
 	namespace            string
-	renewLock            *sync.RWMutex
+	renewLock            sync.RWMutex
 	renewNotifiers       map[string]func(string)
-	renewNotifiersLock   *sync.RWMutex
+	renewNotifiersLock   sync.RWMutex
 	disableAutoRetry     bool
 	disableCompression   bool
 	defaultRetryFunc     manipulate.RetryFunc
@@ -64,14 +64,13 @@ type httpManipulator struct {
 	tokenCookieKey       string
 
 	// optionnable
-	ctx               context.Context
-	client            *http.Client
-	tlsConfig         *tls.Config
-	tokenManager      manipulate.TokenManager
-	globalHeaders     http.Header
-	transport         *http.Transport
-	encoding          elemental.EncodingType
-	forceAttemptHTTP2 bool
+	ctx           context.Context
+	client        *http.Client
+	tlsConfig     *tls.Config
+	tokenManager  manipulate.TokenManager
+	globalHeaders http.Header
+	transport     *http.Transport
+	encoding      elemental.EncodingType
 }
 
 // New returns a maniphttp.Manipulator configured according to the given suite of Option.
@@ -85,8 +84,8 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 
 	// initialize solid varialbles.
 	m := &httpManipulator{
-		renewLock:          &sync.RWMutex{},
-		renewNotifiersLock: &sync.RWMutex{},
+		renewLock:          sync.RWMutex{},
+		renewNotifiersLock: sync.RWMutex{},
 		renewNotifiers:     map[string]func(string){},
 		ctx:                ctx,
 		url:                url,
@@ -104,8 +103,7 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 
 		if m.transport == nil {
 
-			m.transport, m.url = getDefaultTransport(url, m.forceAttemptHTTP2)
-			m.transport.DisableCompression = m.disableCompression
+			m.transport, m.url = getDefaultHTTPTransport(url, m.disableCompression)
 
 			if m.tlsConfig == nil {
 				m.tlsConfig = getDefaultTLSConfig()
