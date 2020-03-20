@@ -40,7 +40,7 @@ func ExtractCredentials(manipulator manipulate.Manipulator) (string, string) {
 }
 
 // ExtractEndpoint extracts the endpoint url from the given manipulator.
-// Note: the given manipulator must be an HTTP Manipulator or it will return an error.
+// Note: the given manipulator must be an HTTP Manipulator or it will panic.
 func ExtractEndpoint(manipulator manipulate.Manipulator) string {
 
 	m, ok := manipulator.(*httpManipulator)
@@ -52,7 +52,7 @@ func ExtractEndpoint(manipulator manipulate.Manipulator) string {
 }
 
 // ExtractNamespace extracts the default namespace from the given manipulator.
-// Note: the given manipulator must be an HTTP Manipulator or it will return an error.
+// Note: the given manipulator must be an HTTP Manipulator or it will panic.
 func ExtractNamespace(manipulator manipulate.Manipulator) string {
 
 	m, ok := manipulator.(*httpManipulator)
@@ -64,7 +64,7 @@ func ExtractNamespace(manipulator manipulate.Manipulator) string {
 }
 
 // ExtractTLSConfig returns a copy of the tls config from the given manipulator.
-// Note: the given manipulator must be an HTTP Manipulator or it will return an error.
+// Note: the given manipulator must be an HTTP Manipulator or it will panic.
 func ExtractTLSConfig(manipulator manipulate.Manipulator) *tls.Config {
 
 	m, ok := manipulator.(*httpManipulator)
@@ -81,6 +81,7 @@ func ExtractTLSConfig(manipulator manipulate.Manipulator) *tls.Config {
 }
 
 // ExtractEncoding returns the encoding used by the given manipulator.
+// Note: the given manipulator must be an HTTP Manipulator or it will panic.
 func ExtractEncoding(manipulator manipulate.Manipulator) elemental.EncodingType {
 
 	m, ok := manipulator.(*httpManipulator)
@@ -92,6 +93,7 @@ func ExtractEncoding(manipulator manipulate.Manipulator) elemental.EncodingType 
 }
 
 // SetGlobalHeaders sets the given headers to all requests that will be sent.
+// Note: the given manipulator must be an HTTP Manipulator or it will panic.
 func SetGlobalHeaders(manipulator manipulate.Manipulator, headers http.Header) {
 
 	m, ok := manipulator.(*httpManipulator)
@@ -104,6 +106,7 @@ func SetGlobalHeaders(manipulator manipulate.Manipulator, headers http.Header) {
 
 // DirectSend allows to send direct bytes using the given manipulator.
 // This is only useful in extremely particular scenario, like fuzzing.
+// Note: the given manipulator must be an HTTP Manipulator or it will panic.
 func DirectSend(manipulator manipulate.Manipulator, mctx manipulate.Context, endpoint string, method string, body []byte) (*http.Response, error) {
 
 	m, ok := manipulator.(*httpManipulator)
