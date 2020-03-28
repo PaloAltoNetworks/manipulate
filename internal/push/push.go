@@ -179,7 +179,7 @@ func (s *subscription) connect(ctx context.Context, initial bool) (err error) {
 		if resp == nil {
 			s.errors <- err
 		} else if resp.StatusCode != http.StatusSwitchingProtocols {
-			s.errors <- decodeErrors(resp.Body)
+			s.errors <- decodeErrors(resp.Body, s.writeEncoding)
 		}
 
 		select {

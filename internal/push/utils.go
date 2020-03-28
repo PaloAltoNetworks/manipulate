@@ -12,7 +12,6 @@
 package push
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -25,7 +24,7 @@ import (
 	"go.aporeto.io/manipulate"
 )
 
-func decodeErrors(r io.Reader) error {
+func decodeErrors(r io.Reader, encoding elemental.EncodingType) error {
 
 	es := []elemental.Error{}
 
@@ -34,7 +33,7 @@ func decodeErrors(r io.Reader) error {
 		return manipulate.NewErrCannotUnmarshal(fmt.Sprintf("%s: %s", err.Error(), string(data)))
 	}
 
-	if err := json.Unmarshal(data, &es); err != nil {
+	if err := elemental.Decode(encoding, data, &es); err != nil {
 		return manipulate.NewErrCannotUnmarshal(fmt.Sprintf("%s: %s", err.Error(), string(data)))
 	}
 
