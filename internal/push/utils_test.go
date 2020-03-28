@@ -12,8 +12,14 @@
 package push
 
 import (
+	"bytes"
+	"fmt"
+	"io"
+	"strings"
 	"testing"
 	"time"
+
+	"go.aporeto.io/elemental"
 )
 
 func Test_makeURL(t *testing.T) {
@@ -153,6 +159,83 @@ func Test_nextBackoff(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := nextBackoff(tt.args.try); got != tt.want {
 				t.Errorf("nextBackoff() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type brokenReader struct{}
+
+func (r *brokenReader) Read(p []byte) (n int, err error) {
+	return 0, fmt.Errorf("boom")
+}
+
+func Test_decodeErrors(t *testing.T) {
+
+	err1, err := elemental.Encode(elemental.EncodingTypeMSGPACK, []error{elemental.NewError("name", "desc", "subj", 3)})
+	if err != nil {
+		panic(err)
+	}
+
+	err2, err := elemental.Encode(elemental.EncodingTypeJSON, []error{elemental.NewError("name", "desc", "subj", 3)})
+	if err != nil {
+		panic(err)
+	}
+
+	type args struct {
+		r        io.Reader
+		encoding elemental.EncodingType
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr string
+	}{
+		{
+			"msgpack with good content type",
+			args{
+				bytes.NewBuffer(err1),
+				elemental.EncodingTypeMSGPACK,
+			},
+			`error 3 (subj): name: desc`,
+		},
+		{
+			"msgpack with bad content type",
+			args{
+				bytes.NewBuffer(err1),
+				elemental.EncodingTypeJSON,
+			},
+			`Unable to unmarshal data: unable to decode application/json: json decode error [pos 1]: only encoded map or array can be decoded into a slice (0):`,
+		},
+		{
+			"json with good content type",
+			args{
+				bytes.NewBuffer(err2),
+				elemental.EncodingTypeJSON,
+			},
+			`error 3 (subj): name: desc`,
+		},
+		{
+			"json with bad content type",
+			args{
+				bytes.NewBuffer(err2),
+				elemental.EncodingTypeMSGPACK,
+			},
+			`Unable to unmarshal data: unable to decode application/msgpack: msgpack decode error [pos 1]: only encoded map or array can be decoded into a slice (0): [{"code":3,"description":"desc","subject":"subj","title":"name"}]`,
+		},
+		{
+			"broken buffer",
+			args{
+				&brokenReader{},
+				elemental.EncodingTypeMSGPACK,
+			},
+			`Unable to unmarshal data: boom:`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := decodeErrors(tt.args.r, tt.args.encoding); !strings.HasPrefix(err.Error(), tt.wantErr) {
+				t.Errorf("decodeErrors() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
