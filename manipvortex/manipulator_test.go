@@ -37,21 +37,21 @@ func newObject(name string, tags []string) *testmodel.List {
 func newDatastore() (manipulate.Manipulator, error) {
 
 	config := map[string]*manipmemory.IdentitySchema{
-		testmodel.ListIdentity.Category: &manipmemory.IdentitySchema{
+		testmodel.ListIdentity.Category: {
 			Identity: testmodel.ListIdentity,
 			Indexes: []*manipmemory.Index{
-				&manipmemory.Index{
+				{
 					Name:      "id",
 					Type:      manipmemory.IndexTypeString,
 					Unique:    true,
 					Attribute: "ID",
 				},
-				&manipmemory.Index{
+				{
 					Name:      "Name",
 					Type:      manipmemory.IndexTypeString,
 					Attribute: "Name",
 				},
-				&manipmemory.Index{
+				{
 					Name:      "Slice",
 					Type:      manipmemory.IndexTypeSlice,
 					Attribute: "Slice",
@@ -71,7 +71,7 @@ func newDatastore() (manipulate.Manipulator, error) {
 func newIdentityProcessor(readConsistency manipulate.ReadConsistency, writeConsistency manipulate.WriteConsistency) map[string]*Processor {
 
 	return map[string]*Processor{
-		testmodel.ListIdentity.Name: &Processor{
+		testmodel.ListIdentity.Name: {
 			Identity:         testmodel.ListIdentity,
 			ReadConsistency:  readConsistency,
 			WriteConsistency: writeConsistency,

@@ -37,7 +37,7 @@ func TestCompileFilter(t *testing.T) {
 			cf := CompileFilter(f)
 
 			Convey("Then cf should be correct", func() {
-				So(cf, ShouldResemble, bson.M{"$and": []bson.M{bson.M{"a": bson.M{"$eq": "b"}}}})
+				So(cf, ShouldResemble, bson.M{"$and": []bson.M{{"a": bson.M{"$eq": "b"}}}})
 			})
 		})
 	})

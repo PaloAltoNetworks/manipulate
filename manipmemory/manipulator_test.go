@@ -29,26 +29,26 @@ import (
 func datastoreIndexConfig() map[string]*IdentitySchema {
 
 	return map[string]*IdentitySchema{
-		testmodel.ListIdentity.Category: &IdentitySchema{
+		testmodel.ListIdentity.Category: {
 			Identity: testmodel.ListIdentity,
 			Indexes: []*Index{
-				&Index{
+				{
 					Name:      "id",
 					Type:      IndexTypeString,
 					Unique:    true,
 					Attribute: "ID",
 				},
-				&Index{
+				{
 					Name:      "name",
 					Type:      IndexTypeString,
 					Attribute: "Name",
 				},
-				&Index{
+				{
 					Name:      "name_prefix",
 					Type:      IndexTypeString,
 					Attribute: "Name",
 				},
-				&Index{
+				{
 					Name:      "slice",
 					Type:      IndexTypeSlice,
 					Attribute: "Slice",
@@ -72,36 +72,36 @@ func TestMemManipulator_New(t *testing.T) {
 
 		m, err := New(
 			map[string]*IdentitySchema{
-				testmodel.ListIdentity.Category: &IdentitySchema{
+				testmodel.ListIdentity.Category: {
 					Identity: testmodel.ListIdentity,
 					Indexes: []*Index{
-						&Index{
+						{
 							Name:      "id",
 							Type:      IndexTypeString,
 							Unique:    true,
 							Attribute: "ID",
 						},
-						&Index{
+						{
 							Name:      "Name",
 							Type:      IndexTypeString,
 							Attribute: "Name",
 						},
-						&Index{
+						{
 							Name:      "Slice",
 							Type:      IndexTypeSlice,
 							Attribute: "Slice",
 						},
-						&Index{
+						{
 							Name:      "Map",
 							Type:      IndexTypeMap,
 							Attribute: "Map",
 						},
-						&Index{
+						{
 							Name:      "Bool",
 							Type:      IndexTypeBoolean,
 							Attribute: "Bool",
 						},
-						&Index{
+						{
 							Name:      "StringBased",
 							Type:      IndexTypeStringBased,
 							Attribute: "StringBased",

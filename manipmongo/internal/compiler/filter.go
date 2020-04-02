@@ -100,8 +100,8 @@ func CompileFilter(f *elemental.Filter) bson.M {
 							items,
 							bson.M{
 								"$or": []bson.M{
-									bson.M{k: bson.M{"$eq": v}},
-									bson.M{k: bson.M{"$exists": false}},
+									{k: bson.M{"$eq": v}},
+									{k: bson.M{"$exists": false}},
 								},
 							},
 						)

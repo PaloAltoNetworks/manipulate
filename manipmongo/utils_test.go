@@ -628,7 +628,7 @@ func Test_explainIfNeeded(t *testing.T) {
 				identity,
 				elemental.OperationCreate,
 				map[elemental.Identity]map[elemental.Operation]struct{}{
-					identity: map[elemental.Operation]struct{}{elemental.OperationCreate: struct{}{}},
+					identity: {elemental.OperationCreate: {}},
 				},
 			},
 			true,
@@ -641,7 +641,7 @@ func Test_explainIfNeeded(t *testing.T) {
 				identity,
 				elemental.OperationCreate,
 				map[elemental.Identity]map[elemental.Operation]struct{}{
-					identity: map[elemental.Operation]struct{}{},
+					identity: {},
 				},
 			},
 			true,
@@ -667,7 +667,7 @@ func Test_explainIfNeeded(t *testing.T) {
 				identity,
 				elemental.OperationCreate,
 				map[elemental.Identity]map[elemental.Operation]struct{}{
-					elemental.MakeIdentity("hello", "hellos"): map[elemental.Operation]struct{}{},
+					elemental.MakeIdentity("hello", "hellos"): {},
 				},
 			},
 			false,
