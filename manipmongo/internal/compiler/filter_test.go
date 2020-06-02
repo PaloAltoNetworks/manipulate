@@ -14,6 +14,7 @@ package compiler
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/globalsign/mgo/bson"
 	. "github.com/smartystreets/goconvey/convey"
@@ -193,6 +194,21 @@ func TestUtils_compiler(t *testing.T) {
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$exists":true}}]}`)
+			})
+		})
+	})
+
+	Convey("Given I have filter that contains a duration", t, func() {
+
+		f := elemental.NewFilterComposer().
+			WithKey("x").Equals(3 * time.Second).
+			Done()
+
+		Convey("When I compile the filter", func() {
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
+
+			Convey("Then the bson should be correct", func() {
+				So(strings.Replace(string(b), "\n", "", 1), ShouldStartWith, `{"$and":[{"x":{"$eq":{"$date":"`)
 			})
 		})
 	})

@@ -269,22 +269,12 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
 		}
 		if sq != nil {
-			filter = bson.D{
-				{
-					Name:  "$and",
-					Value: []bson.D{sq, filter},
-				},
-			}
+			filter = bson.D{{Name: "$and", Value: []bson.D{sq, filter}}}
 		}
 	}
 
 	if m.forcedReadFilter != nil {
-		filter = bson.D{
-			{
-				Name:  "$and",
-				Value: []bson.D{m.forcedReadFilter, filter},
-			},
-		}
+		filter = bson.D{{Name: "$and", Value: []bson.D{m.forcedReadFilter, filter}}}
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve.object.%s", object.Identity().Name))
@@ -417,12 +407,7 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
 			}
 			if sq != nil {
-				filter = bson.D{
-					{
-						Name:  "$and",
-						Value: []bson.D{sq, filter},
-					},
-				}
+				filter = bson.D{{Name: "$and", Value: []bson.D{sq, filter}}}
 			}
 		}
 
@@ -520,12 +505,7 @@ func (m *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
 		}
 		if sq != nil {
-			filter = bson.D{
-				{
-					Name:  "$and",
-					Value: []bson.D{sq, filter},
-				},
-			}
+			filter = bson.D{{Name: "$and", Value: []bson.D{sq, filter}}}
 		}
 	}
 
@@ -590,22 +570,12 @@ func (m *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
 		}
 		if sq != nil {
-			filter = bson.D{
-				{
-					Name:  "$and",
-					Value: []bson.D{sq, filter},
-				},
-			}
+			filter = bson.D{{Name: "$and", Value: []bson.D{sq, filter}}}
 		}
 	}
 
 	if m.forcedReadFilter != nil {
-		filter = bson.D{
-			{
-				Name:  "$and",
-				Value: []bson.D{m.forcedReadFilter, filter},
-			},
-		}
+		filter = bson.D{{Name: "$and", Value: []bson.D{m.forcedReadFilter, filter}}}
 	}
 
 	if _, err := RunQuery(
@@ -657,22 +627,12 @@ func (m *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
 		}
 		if sq != nil {
-			filter = bson.D{
-				{
-					Name:  "$and",
-					Value: []bson.D{sq, filter},
-				},
-			}
+			filter = bson.D{{Name: "$and", Value: []bson.D{sq, filter}}}
 		}
 	}
 
 	if m.forcedReadFilter != nil {
-		filter = bson.D{
-			{
-				Name:  "$and",
-				Value: []bson.D{m.forcedReadFilter, filter},
-			},
-		}
+		filter = bson.D{{Name: "$and", Value: []bson.D{m.forcedReadFilter, filter}}}
 	}
 
 	if _, err := RunQuery(
@@ -715,22 +675,12 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 			return 0, manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
 		}
 		if sq != nil {
-			filter = bson.D{
-				{
-					Name:  "$and",
-					Value: []bson.D{sq, filter},
-				},
-			}
+			filter = bson.D{{Name: "$and", Value: []bson.D{sq, filter}}}
 		}
 	}
 
 	if m.forcedReadFilter != nil {
-		filter = bson.D{
-			{
-				Name:  "$and",
-				Value: []bson.D{m.forcedReadFilter, filter},
-			},
-		}
+		filter = bson.D{{Name: "$and", Value: []bson.D{m.forcedReadFilter, filter}}}
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.count.%s", identity.Category))
