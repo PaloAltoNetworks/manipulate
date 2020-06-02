@@ -49,7 +49,7 @@ func applyOrdering(order []string) []string {
 	return o
 }
 
-func prepareNextFilter(collection *mgo.Collection, orderingField string, next string) (bson.M, error) {
+func prepareNextFilter(collection *mgo.Collection, orderingField string, next string) (bson.D, error) {
 
 	var id interface{}
 	if oid, ok := objectid.Parse(next); ok {
@@ -59,7 +59,17 @@ func prepareNextFilter(collection *mgo.Collection, orderingField string, next st
 	}
 
 	if orderingField == "" {
-		return bson.M{"_id": bson.M{"$gt": id}}, nil
+		return bson.D{
+			{
+				Name: "_id",
+				Value: bson.D{
+					{
+						Name:  "$gt",
+						Value: id,
+					},
+				},
+			},
+		}, nil
 	}
 
 	comp := "$gt"
@@ -73,7 +83,17 @@ func prepareNextFilter(collection *mgo.Collection, orderingField string, next st
 		return nil, handleQueryError(err)
 	}
 
-	return bson.M{orderingField: bson.M{comp: doc[orderingField]}}, nil
+	return bson.D{
+		{
+			Name: orderingField,
+			Value: bson.D{
+				{
+					Name:  comp,
+					Value: doc[orderingField],
+				},
+			},
+		},
+	}, nil
 }
 
 func handleQueryError(err error) error {
@@ -232,7 +252,7 @@ func convertWriteConsistency(c manipulate.WriteConsistency) *mgo.Safe {
 
 func explainIfNeeded(
 	query *mgo.Query,
-	filter bson.M,
+	filter bson.D,
 	identity elemental.Identity,
 	operation elemental.Operation,
 	explainMap map[elemental.Identity]map[elemental.Operation]struct{},
@@ -258,7 +278,7 @@ func explainIfNeeded(
 	return nil
 }
 
-func explain(query *mgo.Query, operation elemental.Operation, identity elemental.Identity, filter bson.M) error {
+func explain(query *mgo.Query, operation elemental.Operation, identity elemental.Identity, filter bson.D) error {
 
 	r := bson.M{}
 	if err := query.Explain(&r); err != nil {

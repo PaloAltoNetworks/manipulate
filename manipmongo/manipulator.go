@@ -36,7 +36,7 @@ type mongoManipulator struct {
 	dbName             string
 	sharder            Sharder
 	defaultRetryFunc   manipulate.RetryFunc
-	forcedReadFilter   bson.M
+	forcedReadFilter   bson.D
 	attributeEncrypter elemental.AttributeEncrypter
 	explain            map[elemental.Identity]map[elemental.Operation]struct{}
 }
@@ -113,12 +113,12 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	}
 
 	// Filtering
-	filter := bson.M{}
+	filter := bson.D{}
 	if f := mctx.Filter(); f != nil {
 		filter = compiler.CompileFilter(f)
 	}
 
-	var ands []bson.M
+	var ands []bson.D
 
 	if m.sharder != nil {
 		sq, err := m.sharder.FilterMany(m, mctx, dest.Identity())
@@ -154,7 +154,7 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	}
 
 	if len(ands) > 0 {
-		filter = bson.M{"$and": append(ands, filter)}
+		filter = bson.D{{Name: "$and", Value: append(ands, filter)}}
 	}
 
 	// Query building
@@ -251,16 +251,16 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	c, close := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
-	filter := bson.M{}
+	filter := bson.D{}
 
 	if f := mctx.Filter(); f != nil {
 		filter = compiler.CompileFilter(f)
 	}
 
 	if oid, ok := objectid.Parse(object.Identifier()); ok {
-		filter["_id"] = oid
+		filter = append(filter, bson.DocElem{Name: "_id", Value: oid})
 	} else {
-		filter["_id"] = object.Identifier()
+		filter = append(filter, bson.DocElem{Name: "_id", Value: object.Identifier()})
 	}
 
 	if m.sharder != nil {
@@ -269,12 +269,22 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
 		}
 		if sq != nil {
-			filter = bson.M{"$and": []bson.M{sq, filter}}
+			filter = bson.D{
+				{
+					Name:  "$and",
+					Value: []bson.D{sq, filter},
+				},
+			}
 		}
 	}
 
 	if m.forcedReadFilter != nil {
-		filter = bson.M{"$and": []bson.M{m.forcedReadFilter, filter}}
+		filter = bson.D{
+			{
+				Name:  "$and",
+				Value: []bson.D{m.forcedReadFilter, filter},
+			},
+		}
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve.object.%s", object.Identity().Name))
@@ -407,7 +417,12 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
 			}
 			if sq != nil {
-				filter = bson.M{"$and": []bson.M{sq, filter}}
+				filter = bson.D{
+					{
+						Name:  "$and",
+						Value: []bson.D{sq, filter},
+					},
+				}
 			}
 		}
 
@@ -487,16 +502,16 @@ func (m *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 	c, close := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
-	var filter bson.M
+	var filter bson.D
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.update.object.%s", object.Identity().Name))
 	sp.LogFields(log.String("object_id", object.Identifier()))
 	defer sp.Finish()
 
 	if oid, ok := objectid.Parse(object.Identifier()); ok {
-		filter = bson.M{"_id": oid}
+		filter = append(filter, bson.DocElem{Name: "_id", Value: oid})
 	} else {
-		filter = bson.M{"_id": object.Identifier()}
+		filter = append(filter, bson.DocElem{Name: "_id", Value: object.Identifier()})
 	}
 
 	if m.sharder != nil {
@@ -505,12 +520,22 @@ func (m *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
 		}
 		if sq != nil {
-			filter = bson.M{"$and": []bson.M{sq, filter}}
+			filter = bson.D{
+				{
+					Name:  "$and",
+					Value: []bson.D{sq, filter},
+				},
+			}
 		}
 	}
 
 	if m.forcedReadFilter != nil {
-		filter = bson.M{"$and": []bson.M{m.forcedReadFilter, filter}}
+		filter = bson.D{
+			{
+				Name:  "$and",
+				Value: []bson.D{m.forcedReadFilter, filter},
+			},
+		}
 	}
 
 	if _, err := RunQuery(
@@ -547,16 +572,16 @@ func (m *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 	c, close := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
-	var filter bson.M
+	var filter bson.D
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongobject.delete.object.%s", object.Identity().Name))
 	sp.LogFields(log.String("object_id", object.Identifier()))
 	defer sp.Finish()
 
 	if oid, ok := objectid.Parse(object.Identifier()); ok {
-		filter = bson.M{"_id": oid}
+		filter = append(filter, bson.DocElem{Name: "_id", Value: oid})
 	} else {
-		filter = bson.M{"_id": object.Identifier()}
+		filter = append(filter, bson.DocElem{Name: "_id", Value: object.Identifier()})
 	}
 
 	if m.sharder != nil {
@@ -565,12 +590,22 @@ func (m *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
 		}
 		if sq != nil {
-			filter = bson.M{"$and": []bson.M{sq, filter}}
+			filter = bson.D{
+				{
+					Name:  "$and",
+					Value: []bson.D{sq, filter},
+				},
+			}
 		}
 	}
 
 	if m.forcedReadFilter != nil {
-		filter = bson.M{"$and": []bson.M{m.forcedReadFilter, filter}}
+		filter = bson.D{
+			{
+				Name:  "$and",
+				Value: []bson.D{m.forcedReadFilter, filter},
+			},
+		}
 	}
 
 	if _, err := RunQuery(
@@ -622,12 +657,22 @@ func (m *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
 		}
 		if sq != nil {
-			filter = bson.M{"$and": []bson.M{sq, filter}}
+			filter = bson.D{
+				{
+					Name:  "$and",
+					Value: []bson.D{sq, filter},
+				},
+			}
 		}
 	}
 
 	if m.forcedReadFilter != nil {
-		filter = bson.M{"$and": []bson.M{m.forcedReadFilter, filter}}
+		filter = bson.D{
+			{
+				Name:  "$and",
+				Value: []bson.D{m.forcedReadFilter, filter},
+			},
+		}
 	}
 
 	if _, err := RunQuery(
@@ -658,7 +703,7 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	c, close := m.makeSession(identity, mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
-	filter := bson.M{}
+	filter := bson.D{}
 
 	if f := mctx.Filter(); f != nil {
 		filter = compiler.CompileFilter(f)
@@ -670,12 +715,22 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 			return 0, manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
 		}
 		if sq != nil {
-			filter = bson.M{"$and": []bson.M{sq, filter}}
+			filter = bson.D{
+				{
+					Name:  "$and",
+					Value: []bson.D{sq, filter},
+				},
+			}
 		}
 	}
 
 	if m.forcedReadFilter != nil {
-		filter = bson.M{"$and": []bson.M{m.forcedReadFilter, filter}}
+		filter = bson.D{
+			{
+				Name:  "$and",
+				Value: []bson.D{m.forcedReadFilter, filter},
+			},
+		}
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.count.%s", identity.Category))
