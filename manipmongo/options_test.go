@@ -31,10 +31,10 @@ func (*fakeSharder) Shard(manipulate.TransactionalManipulator, manipulate.Contex
 func (*fakeSharder) OnShardedWrite(manipulate.TransactionalManipulator, manipulate.Context, elemental.Operation, elemental.Identifiable) error {
 	return nil
 }
-func (*fakeSharder) FilterOne(manipulate.TransactionalManipulator, manipulate.Context, elemental.Identifiable) (bson.M, error) {
+func (*fakeSharder) FilterOne(manipulate.TransactionalManipulator, manipulate.Context, elemental.Identifiable) (bson.D, error) {
 	return nil, nil
 }
-func (*fakeSharder) FilterMany(manipulate.TransactionalManipulator, manipulate.Context, elemental.Identity) (bson.M, error) {
+func (*fakeSharder) FilterMany(manipulate.TransactionalManipulator, manipulate.Context, elemental.Identity) (bson.D, error) {
 	return nil, nil
 }
 
@@ -119,10 +119,10 @@ func Test_Options(t *testing.T) {
 	})
 
 	Convey("Calling OptionForceReadFilter should work", t, func() {
-		f := bson.M{}
+		f := bson.D{}
 		c := newConfig()
 		OptionForceReadFilter(f)(c)
-		So(c.forcedReadFilter, ShouldEqual, f)
+		So(c.forcedReadFilter, ShouldResemble, f)
 	})
 
 	Convey("Calling OptionAttributeEncrypter should work", t, func() {
