@@ -35,7 +35,7 @@ type config struct {
 	writeConsistency   manipulate.WriteConsistency
 	sharder            Sharder
 	defaultRetryFunc   manipulate.RetryFunc
-	forcedReadFilter   bson.M
+	forcedReadFilter   bson.D
 	attributeEncrypter elemental.AttributeEncrypter
 	explain            map[elemental.Identity]map[elemental.Operation]struct{}
 }
@@ -116,9 +116,9 @@ func OptionDefaultRetryFunc(f manipulate.RetryFunc) Option {
 	}
 }
 
-// OptionForceReadFilter allows to set a bson.M filter that
+// OptionForceReadFilter allows to set a bson.D filter that
 // will always reducing the scope of the reads to that filter.
-func OptionForceReadFilter(f bson.M) Option {
+func OptionForceReadFilter(f bson.D) Option {
 	return func(c *config) {
 		c.forcedReadFilter = f
 	}

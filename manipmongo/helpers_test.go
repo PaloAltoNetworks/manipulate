@@ -36,8 +36,27 @@ func TestCompileFilter(t *testing.T) {
 
 			cf := CompileFilter(f)
 
+			ddd := bson.D{
+				{
+					Name: "$and",
+					Value: []bson.D{
+						{
+							{
+								Name: "a",
+								Value: bson.D{
+									{
+										Name:  "$eq",
+										Value: "b",
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
 			Convey("Then cf should be correct", func() {
-				So(cf, ShouldResemble, bson.M{"$and": []bson.M{{"a": bson.M{"$eq": "b"}}}})
+				So(cf, ShouldResemble, ddd)
 			})
 		})
 	})

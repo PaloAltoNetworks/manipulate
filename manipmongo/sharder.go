@@ -35,11 +35,11 @@ type Sharder interface {
 	// used to perform an efficient localized query for a single object.
 	//
 	// You can return nil which will trigger a broadcast.
-	FilterOne(manipulate.TransactionalManipulator, manipulate.Context, elemental.Identifiable) (bson.M, error)
+	FilterOne(manipulate.TransactionalManipulator, manipulate.Context, elemental.Identifiable) (bson.D, error)
 
 	// FilterMany returns the filter bit as bson.M that must be
 	// used to perform an efficient localized query for multiple objects.
 	//
 	// You can return nil which will trigger a broadcast.
-	FilterMany(manipulate.TransactionalManipulator, manipulate.Context, elemental.Identity) (bson.M, error)
+	FilterMany(manipulate.TransactionalManipulator, manipulate.Context, elemental.Identity) (bson.D, error)
 }
