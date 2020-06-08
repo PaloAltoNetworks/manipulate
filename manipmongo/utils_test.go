@@ -588,7 +588,7 @@ func Test_explainIfNeeded(t *testing.T) {
 
 	type args struct {
 		query      *mgo.Query
-		filter     bson.M
+		filter     bson.D
 		identity   elemental.Identity
 		operation  elemental.Operation
 		explainMap map[elemental.Identity]map[elemental.Operation]struct{}

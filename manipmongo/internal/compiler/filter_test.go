@@ -14,11 +14,38 @@ package compiler
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/globalsign/mgo/bson"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
 )
+
+func toMap(in bson.D) bson.M {
+
+	out := make(bson.M, len(in))
+
+	for _, item := range in {
+
+		switch iv := item.Value.(type) {
+
+		case bson.D:
+			out[item.Name] = toMap(iv)
+
+		case []bson.D:
+			outs := make([]bson.M, len(iv))
+			for i, subitem := range iv {
+				outs[i] = toMap(subitem)
+			}
+			out[item.Name] = outs
+
+		default:
+			out[item.Name] = item.Value
+		}
+	}
+
+	return out
+}
 
 func TestUtils_compiler(t *testing.T) {
 
@@ -28,7 +55,7 @@ func TestUtils_compiler(t *testing.T) {
 
 		Convey("When I compile the filter", func() {
 
-			b, _ := bson.MarshalJSON(CompileFilter(f))
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{}`)
@@ -42,7 +69,7 @@ func TestUtils_compiler(t *testing.T) {
 
 		Convey("When I compile the filter", func() {
 
-			b, _ := bson.MarshalJSON(CompileFilter(f))
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"_id":{"$eq":{"$oid":"5d83e7eedb40280001887565"}}}]}`)
@@ -56,7 +83,7 @@ func TestUtils_compiler(t *testing.T) {
 
 		Convey("When I compile the filter", func() {
 
-			b, _ := bson.MarshalJSON(CompileFilter(f))
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"bool":{"$eq":true}}]}`)
@@ -70,7 +97,7 @@ func TestUtils_compiler(t *testing.T) {
 
 		Convey("When I compile the filter", func() {
 
-			b, _ := bson.MarshalJSON(CompileFilter(f))
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"$or":[{"bool":{"$eq":false}},{"bool":{"$exists":false}}]}]}`)
@@ -84,7 +111,7 @@ func TestUtils_compiler(t *testing.T) {
 
 		Convey("When I compile the filter", func() {
 
-			b, _ := bson.MarshalJSON(CompileFilter(f))
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x.TOTO.Titu":{"$eq":1}}]}`)
@@ -98,7 +125,7 @@ func TestUtils_compiler(t *testing.T) {
 
 		Convey("When I compile the filter", func() {
 
-			b, _ := bson.MarshalJSON(CompileFilter(f))
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$eq":1}},{"y":{"$eq":2}}]}`)
@@ -112,7 +139,7 @@ func TestUtils_compiler(t *testing.T) {
 
 		Convey("When I compile the filter", func() {
 
-			b, _ := bson.MarshalJSON(CompileFilter(f))
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$ne":1}},{"x":{"$ne":2}}]}`)
@@ -133,7 +160,7 @@ func TestUtils_compiler(t *testing.T) {
 
 		Convey("When I compile the filter", func() {
 
-			b, _ := bson.MarshalJSON(CompileFilter(f))
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$eq":1}},{"z":{"$in":["a","b"]}},{"a":{"$gte":1}},{"b":{"$lte":1}},{"c":{"$gt":1}},{"d":{"$lt":1}}]}`)
@@ -148,7 +175,7 @@ func TestUtils_compiler(t *testing.T) {
 			Done()
 
 		Convey("When I compile the filter", func() {
-			b, _ := bson.MarshalJSON(CompileFilter(f))
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"$or":[{"x":{"$regex":"$abc^"}},{"x":{"$regex":".*"}}]}]}`)
@@ -163,10 +190,25 @@ func TestUtils_compiler(t *testing.T) {
 			Done()
 
 		Convey("When I compile the filter", func() {
-			b, _ := bson.MarshalJSON(CompileFilter(f))
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$exists":true}}]}`)
+			})
+		})
+	})
+
+	Convey("Given I have filter that contains a duration", t, func() {
+
+		f := elemental.NewFilterComposer().
+			WithKey("x").Equals(3 * time.Second).
+			Done()
+
+		Convey("When I compile the filter", func() {
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
+
+			Convey("Then the bson should be correct", func() {
+				So(strings.Replace(string(b), "\n", "", 1), ShouldStartWith, `{"$and":[{"x":{"$eq":{"$date":"`)
 			})
 		})
 	})
@@ -178,7 +220,7 @@ func TestUtils_compiler(t *testing.T) {
 			Done()
 
 		Convey("When I compile the filter", func() {
-			b, _ := bson.MarshalJSON(CompileFilter(f))
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"x":{"$exists":false}}]}`)
@@ -193,7 +235,7 @@ func TestUtils_compiler(t *testing.T) {
 			Done()
 
 		Convey("When I compile the filter", func() {
-			b, _ := bson.MarshalJSON(CompileFilter(f))
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"_id":{"$eq":{"$oid":"5d85727b919e0c397a58e940"}}}]}`)
@@ -208,7 +250,7 @@ func TestUtils_compiler(t *testing.T) {
 			Done()
 
 		Convey("When I compile the filter", func() {
-			b, _ := bson.MarshalJSON(CompileFilter(f))
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"_id":{"$eq":"not-object-id"}}]}`)
@@ -223,7 +265,7 @@ func TestUtils_compiler(t *testing.T) {
 			Done()
 
 		Convey("When I compile the filter", func() {
-			b, _ := bson.MarshalJSON(CompileFilter(f))
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"_id":{"$eq":{"$oid":"5d85727b919e0c397a58e940"}}}]}`)
@@ -238,7 +280,7 @@ func TestUtils_compiler(t *testing.T) {
 			Done()
 
 		Convey("When I compile the filter", func() {
-			b, _ := bson.MarshalJSON(CompileFilter(f))
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"_id":{"$eq":{"$oid":"5d85727b919e0c397a58e940"}}}]}`)
@@ -253,7 +295,7 @@ func TestUtils_compiler(t *testing.T) {
 			Done()
 
 		Convey("When I compile the filter", func() {
-			b, _ := bson.MarshalJSON(CompileFilter(f))
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"_id":{"$in":[{"$oid":"5d85727b919e0c397a58e940"},{"$oid":"5d85727b919e0c397a58e941"}]}}]}`)
@@ -268,7 +310,7 @@ func TestUtils_compiler(t *testing.T) {
 			Done()
 
 		Convey("When I compile the filter", func() {
-			b, _ := bson.MarshalJSON(CompileFilter(f))
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"_id":{"$in":["not-object-id",{"$oid":"5d85727b919e0c397a58e941"}]}}]}`)
@@ -283,7 +325,7 @@ func TestUtils_compiler(t *testing.T) {
 			Done()
 
 		Convey("When I compile the filter", func() {
-			b, _ := bson.MarshalJSON(CompileFilter(f))
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"_id":{"$nin":[{"$oid":"5d85727b919e0c397a58e940"},{"$oid":"5d85727b919e0c397a58e941"}]}}]}`)
@@ -318,7 +360,7 @@ func TestUtils_compiler(t *testing.T) {
 			Done()
 
 		Convey("When I compile the filter", func() {
-			b, _ := bson.MarshalJSON(CompileFilter(f))
+			b, _ := bson.MarshalJSON(toMap(CompileFilter(f)))
 
 			Convey("Then the bson should be correct", func() {
 				So(strings.Replace(string(b), "\n", "", 1), ShouldEqual, `{"$and":[{"namespace":{"$eq":"coucou"}},{"$and":[{"$and":[{"name":{"$eq":"toto"}},{"surname":{"$eq":"titi"}}]},{"$and":[{"color":{"$eq":"blue"}},{"$or":[{"$and":[{"size":{"$eq":"big"}}]},{"$and":[{"size":{"$eq":"medium"}}]},{"$and":[{"list":{"$nin":["a","b","c"]}}]}]}]}]}]}`)
