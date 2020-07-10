@@ -18,10 +18,17 @@ const (
 
 // SetTCPUserTimeout sets the TCP timeout for a socket connection
 func SetTCPUserTimeout(t time.Duration) func(string, string, syscall.RawConn) error {
+
+	// return if the tcpUserTimeout is not set.
+	if t == 0 {
+		return nil
+	}
 	tcpTimeout := defaultTCPNetworkTimeout
-	if t != defaultTCPNetworkTimeout {
+
+	if t > 0 && t != defaultTCPNetworkTimeout {
 		tcpTimeout = t
 	}
+
 	return func(network, address string, c syscall.RawConn) error {
 		var sysErr error
 		var err = c.Control(func(fd uintptr) {
