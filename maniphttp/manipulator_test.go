@@ -63,7 +63,7 @@ func TestHTTP_New(t *testing.T) {
 			So(m.namespace, ShouldEqual, "myns")
 		})
 
-		Convey("Then the control dailer should be nil", func() {
+		Convey("Then the control dialer should be nil", func() {
 			So(m.tcpUserTimeout, ShouldEqual, 0)
 		})
 
@@ -208,7 +208,7 @@ func TestHTTP_TCPUserTimeout(t *testing.T) {
 		Convey("Then the tls config is correct", func() {
 			So(m.tlsConfig, ShouldEqual, transport.TLSClientConfig)
 		})
-		Convey("Then the dailer is correct", func() {
+		Convey("Then the dialer is correct", func() {
 			l, err := net.Listen("tcp", ":0")
 			So(err, ShouldBeNil)
 
@@ -241,7 +241,7 @@ func TestHTTP_TCPUserTimeout(t *testing.T) {
 
 		m := mm.(*httpManipulator)
 
-		Convey("Then the dailer is correct", func() {
+		Convey("Then the dialer is correct", func() {
 			l, err := net.Listen("tcp", ":0")
 			So(err, ShouldBeNil)
 
@@ -274,7 +274,7 @@ func TestHTTP_TCPUserTimeout(t *testing.T) {
 
 		m := mm.(*httpManipulator)
 
-		Convey("Then the dailer is correct", func() {
+		Convey("Then the dialer is correct", func() {
 			l, err := net.Listen("tcp4", ":0")
 			So(err, ShouldBeNil)
 
