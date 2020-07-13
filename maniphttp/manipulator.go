@@ -42,7 +42,6 @@ import (
 const (
 	defaultGlobalContextTimeout = 2 * time.Minute
 	minContextTimeout           = 20 * time.Second
-	defaultTCPNetworkTimeout    = 30 * time.Second
 )
 
 func init() {

@@ -15,9 +15,11 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -27,8 +29,10 @@ import (
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/idempotency"
 	"go.aporeto.io/manipulate/internal/tracing"
+	internalsyscall "go.aporeto.io/manipulate/maniphttp/internal/syscall"
 	"go.aporeto.io/manipulate/maniptest"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sys/unix"
 )
 
 func TestHTTP_New(t *testing.T) {
@@ -59,6 +63,10 @@ func TestHTTP_New(t *testing.T) {
 			So(m.namespace, ShouldEqual, "myns")
 		})
 
+		Convey("Then the control dailer should be nil", func() {
+			So(m.tcpUserTimeout, ShouldEqual, 0)
+		})
+
 		Convey("Then the it should implement Manipulator interface", func() {
 
 			var i interface{} = m
@@ -85,22 +93,86 @@ func TestHTTP_New(t *testing.T) {
 	})
 
 	Convey("When I create a simple manipulator with custom transport", t, func() {
+		dialer := (&net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 30 * time.Second,
+			Control:   internalsyscall.MakeDialerControlFunc(30 * time.Second),
+		}).DialContext
 
-		transport := &http.Transport{}
+		transport := &http.Transport{
+			DialContext: dialer,
+		}
 		transport.TLSClientConfig = &tls.Config{}
 
 		mm, _ := New(
 			context.Background(),
 			"http://url.com/",
 			OptionHTTPTransport(transport),
+			OptionTCPUserTimeout(40*time.Second),
 		)
+
 		m := mm.(*httpManipulator)
 
 		Convey("Then the tls config is correct", func() {
 			So(m.tlsConfig, ShouldEqual, transport.TLSClientConfig)
 		})
-	})
+		Convey("Then the dailer is correct", func() {
+			l, err := net.Listen("tcp", "127.0.0.1:80")
+			So(err, ShouldBeNil)
 
+			opt := -1
+			dctx := m.client.Transport.(*http.Transport).DialContext
+			So(dctx, ShouldNotBeNil)
+			conn, err := dctx(context.TODO(), "tcp", "127.0.0.1:80")
+			So(err, ShouldBeNil)
+
+			tcpConn, ok := conn.(*net.TCPConn)
+			So(ok, ShouldBeTrue)
+
+			rawConn, err := tcpConn.SyscallConn()
+			So(err, ShouldBeNil)
+
+			err = rawConn.Control(func(fd uintptr) {
+				opt, err = syscall.GetsockoptInt(int(fd), syscall.IPPROTO_TCP, unix.TCP_USER_TIMEOUT)
+			})
+			So(err, ShouldBeNil)
+			So(opt, ShouldEqual, 30*time.Second/time.Millisecond)
+			l.Close()
+		})
+	})
+	Convey("When I create a simple manipulator with default transport, with TCP_USER_TIMEOUT", t, func() {
+		mm, _ := New(
+			context.Background(),
+			"http://url.com/",
+			OptionTCPUserTimeout(40*time.Second),
+		)
+
+		m := mm.(*httpManipulator)
+
+		Convey("Then the dailer is correct", func() {
+			_, err := net.Listen("tcp", "127.0.0.1:80")
+			So(err, ShouldBeNil)
+
+			opt := -1
+			dctx := m.client.Transport.(*http.Transport).DialContext
+			So(dctx, ShouldNotBeNil)
+			conn, err := dctx(context.TODO(), "tcp", "127.0.0.1:80")
+			So(err, ShouldBeNil)
+
+			tcpConn, ok := conn.(*net.TCPConn)
+			So(ok, ShouldBeTrue)
+
+			rawConn, err := tcpConn.SyscallConn()
+			So(err, ShouldBeNil)
+
+			err = rawConn.Control(func(fd uintptr) {
+				opt, err = syscall.GetsockoptInt(int(fd), syscall.IPPROTO_TCP, unix.TCP_USER_TIMEOUT)
+			})
+			So(err, ShouldBeNil)
+			So(opt, ShouldEqual, 40*time.Second/time.Millisecond)
+
+		})
+	})
 	Convey("When I create a simple manipulator with custom client", t, func() {
 
 		transport := &http.Transport{}

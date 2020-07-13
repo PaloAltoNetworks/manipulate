@@ -135,7 +135,7 @@ func getDefaultHTTPTransport(url string, disableCompression bool, tcpUserTimeout
 	dialer := (&net.Dialer{
 		Timeout:   10 * time.Second,
 		KeepAlive: 30 * time.Second,
-		Control:   syscall.SetTCPUserTimeout(tcpUserTimeout),
+		Control:   syscall.MakeDialerControlFunc(tcpUserTimeout),
 	}).DialContext
 
 	outURL := url
