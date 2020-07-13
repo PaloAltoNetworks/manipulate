@@ -174,6 +174,39 @@ func TestHTTP_New(t *testing.T) {
 			l.Close() // nolint
 		})
 	})
+	Convey("When I create a simple manipulator with default transport, without TCP_USER_TIMEOUT", t, func() {
+		mm, _ := New(
+			context.Background(),
+			"http://url.com/",
+		)
+
+		m := mm.(*httpManipulator)
+
+		Convey("Then the dailer is correct", func() {
+			l, err := net.Listen("tcp", "127.0.0.1:8097")
+			So(err, ShouldBeNil)
+
+			opt := -1
+			dctx := m.client.Transport.(*http.Transport).DialContext
+			So(dctx, ShouldNotBeNil)
+			conn, err := dctx(context.TODO(), "tcp", "127.0.0.1:8097")
+			So(err, ShouldBeNil)
+
+			tcpConn, ok := conn.(*net.TCPConn)
+			So(ok, ShouldBeTrue)
+
+			rawConn, err := tcpConn.SyscallConn()
+			So(err, ShouldBeNil)
+
+			err = rawConn.Control(func(fd uintptr) {
+				opt, err = syscall.GetsockoptInt(int(fd), syscall.IPPROTO_TCP, unix.TCP_USER_TIMEOUT)
+			})
+			So(err, ShouldBeNil)
+			So(opt, ShouldEqual, 0)
+
+			l.Close() // nolint
+		})
+	})
 	Convey("When I create a simple manipulator with custom client", t, func() {
 
 		transport := &http.Transport{}
