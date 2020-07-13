@@ -117,13 +117,13 @@ func TestHTTP_New(t *testing.T) {
 			So(m.tlsConfig, ShouldEqual, transport.TLSClientConfig)
 		})
 		Convey("Then the dailer is correct", func() {
-			l, err := net.Listen("tcp", "127.0.0.1:80")
+			l, err := net.Listen("tcp", "127.0.0.1:8097")
 			So(err, ShouldBeNil)
 
 			opt := -1
 			dctx := m.client.Transport.(*http.Transport).DialContext
 			So(dctx, ShouldNotBeNil)
-			conn, err := dctx(context.TODO(), "tcp", "127.0.0.1:80")
+			conn, err := dctx(context.TODO(), "tcp", "127.0.0.1:8097")
 			So(err, ShouldBeNil)
 
 			tcpConn, ok := conn.(*net.TCPConn)
@@ -150,13 +150,13 @@ func TestHTTP_New(t *testing.T) {
 		m := mm.(*httpManipulator)
 
 		Convey("Then the dailer is correct", func() {
-			l, err := net.Listen("tcp", "127.0.0.1:80")
+			l, err := net.Listen("tcp", "127.0.0.1:8097")
 			So(err, ShouldBeNil)
 
 			opt := -1
 			dctx := m.client.Transport.(*http.Transport).DialContext
 			So(dctx, ShouldNotBeNil)
-			conn, err := dctx(context.TODO(), "tcp", "127.0.0.1:80")
+			conn, err := dctx(context.TODO(), "tcp", "127.0.0.1:8097")
 			So(err, ShouldBeNil)
 
 			tcpConn, ok := conn.(*net.TCPConn)
