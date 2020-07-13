@@ -137,7 +137,7 @@ func TestHTTP_New(t *testing.T) {
 			})
 			So(err, ShouldBeNil)
 			So(opt, ShouldEqual, 30*time.Second/time.Millisecond)
-			l.Close()
+			l.Close() // nolint
 		})
 	})
 	Convey("When I create a simple manipulator with default transport, with TCP_USER_TIMEOUT", t, func() {
@@ -150,7 +150,7 @@ func TestHTTP_New(t *testing.T) {
 		m := mm.(*httpManipulator)
 
 		Convey("Then the dailer is correct", func() {
-			_, err := net.Listen("tcp", "127.0.0.1:80")
+			l, err := net.Listen("tcp", "127.0.0.1:80")
 			So(err, ShouldBeNil)
 
 			opt := -1
@@ -171,6 +171,7 @@ func TestHTTP_New(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(opt, ShouldEqual, 40*time.Second/time.Millisecond)
 
+			l.Close() // nolint
 		})
 	})
 	Convey("When I create a simple manipulator with custom client", t, func() {
