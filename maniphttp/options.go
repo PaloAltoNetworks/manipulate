@@ -14,6 +14,7 @@ package maniphttp
 import (
 	"crypto/tls"
 	"net/http"
+	"time"
 
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
@@ -153,5 +154,13 @@ func OptionSendCredentialsAsCookie(key string) Option {
 func OptionSimulateFailures(failureSimulations map[float64]error) Option {
 	return func(m *httpManipulator) {
 		m.failureSimulations = failureSimulations
+	}
+}
+
+// OptionTCPUserTimeout configures the manipulator to
+// have a custom tcp user timeout.
+func OptionTCPUserTimeout(t time.Duration) Option {
+	return func(m *httpManipulator) {
+		m.tcpUserTimeout = t
 	}
 }

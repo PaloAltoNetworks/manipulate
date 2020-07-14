@@ -27,6 +27,7 @@ import (
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/maniphttp/internal/compiler"
+	"go.aporeto.io/manipulate/maniphttp/internal/syscall"
 )
 
 // AddQueryParameters appends each key-value pair from ctx.Parameters
@@ -129,11 +130,12 @@ func getDefaultTLSConfig() *tls.Config {
 	}
 }
 
-func getDefaultHTTPTransport(url string, disableCompression bool) (*http.Transport, string) {
+func getDefaultHTTPTransport(url string, disableCompression bool, tcpUserTimeout time.Duration) (*http.Transport, string) {
 
 	dialer := (&net.Dialer{
 		Timeout:   10 * time.Second,
 		KeepAlive: 30 * time.Second,
+		Control:   syscall.MakeDialerControlFunc(tcpUserTimeout),
 	}).DialContext
 
 	outURL := url

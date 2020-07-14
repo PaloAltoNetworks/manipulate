@@ -15,9 +15,11 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -27,8 +29,10 @@ import (
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/idempotency"
 	"go.aporeto.io/manipulate/internal/tracing"
+	internalsyscall "go.aporeto.io/manipulate/maniphttp/internal/syscall"
 	"go.aporeto.io/manipulate/maniptest"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sys/unix"
 )
 
 func TestHTTP_New(t *testing.T) {
@@ -57,6 +61,10 @@ func TestHTTP_New(t *testing.T) {
 
 		Convey("Then the property namespace should be 'myns'", func() {
 			So(m.namespace, ShouldEqual, "myns")
+		})
+
+		Convey("Then the control dialer should be nil", func() {
+			So(m.tcpUserTimeout, ShouldEqual, 0)
 		})
 
 		Convey("Then the it should implement Manipulator interface", func() {
@@ -94,6 +102,7 @@ func TestHTTP_New(t *testing.T) {
 			"http://url.com/",
 			OptionHTTPTransport(transport),
 		)
+
 		m := mm.(*httpManipulator)
 
 		Convey("Then the tls config is correct", func() {
@@ -174,6 +183,123 @@ func TestHTTP_New(t *testing.T) {
 	})
 }
 
+func TestHTTP_TCPUserTimeout(t *testing.T) {
+	Convey("When I create a simple manipulator with custom transport, with TCP option", t, func() {
+		dialer := (&net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 30 * time.Second,
+			Control:   internalsyscall.MakeDialerControlFunc(30 * time.Second),
+		}).DialContext
+
+		transport := &http.Transport{
+			DialContext: dialer,
+		}
+		transport.TLSClientConfig = &tls.Config{}
+
+		mm, _ := New(
+			context.Background(),
+			"http://url.com/",
+			OptionHTTPTransport(transport),
+			OptionTCPUserTimeout(40*time.Second),
+		)
+
+		m := mm.(*httpManipulator)
+
+		Convey("Then the tls config is correct", func() {
+			So(m.tlsConfig, ShouldEqual, transport.TLSClientConfig)
+		})
+		Convey("Then the dialer is correct", func() {
+			l, err := net.Listen("tcp", ":0")
+			So(err, ShouldBeNil)
+
+			opt := -1
+			dctx := m.client.Transport.(*http.Transport).DialContext
+			So(dctx, ShouldNotBeNil)
+			conn, err := dctx(context.TODO(), "tcp", l.Addr().String())
+			So(err, ShouldBeNil)
+
+			tcpConn, ok := conn.(*net.TCPConn)
+			So(ok, ShouldBeTrue)
+
+			rawConn, err := tcpConn.SyscallConn()
+			So(err, ShouldBeNil)
+
+			err = rawConn.Control(func(fd uintptr) {
+				opt, err = syscall.GetsockoptInt(int(fd), syscall.IPPROTO_TCP, unix.TCP_USER_TIMEOUT)
+			})
+			So(err, ShouldBeNil)
+			So(opt, ShouldEqual, 30*time.Second/time.Millisecond)
+			l.Close() // nolint
+		})
+	})
+	Convey("When I create a simple manipulator with default transport, with TCP_USER_TIMEOUT", t, func() {
+		mm, _ := New(
+			context.Background(),
+			"http://url.com/",
+			OptionTCPUserTimeout(40*time.Second),
+		)
+
+		m := mm.(*httpManipulator)
+
+		Convey("Then the dialer is correct", func() {
+			l, err := net.Listen("tcp", ":0")
+			So(err, ShouldBeNil)
+
+			opt := -1
+			dctx := m.client.Transport.(*http.Transport).DialContext
+			So(dctx, ShouldNotBeNil)
+			conn, err := dctx(context.TODO(), "tcp", l.Addr().String())
+			So(err, ShouldBeNil)
+
+			tcpConn, ok := conn.(*net.TCPConn)
+			So(ok, ShouldBeTrue)
+
+			rawConn, err := tcpConn.SyscallConn()
+			So(err, ShouldBeNil)
+
+			err = rawConn.Control(func(fd uintptr) {
+				opt, err = syscall.GetsockoptInt(int(fd), syscall.IPPROTO_TCP, unix.TCP_USER_TIMEOUT)
+			})
+			So(err, ShouldBeNil)
+			So(opt, ShouldEqual, 40*time.Second/time.Millisecond)
+
+			l.Close() // nolint
+		})
+	})
+	Convey("When I create a simple manipulator with default transport, without TCP_USER_TIMEOUT", t, func() {
+		mm, _ := New(
+			context.Background(),
+			"http://url.com/",
+		)
+
+		m := mm.(*httpManipulator)
+
+		Convey("Then the dialer is correct", func() {
+			l, err := net.Listen("tcp4", ":0")
+			So(err, ShouldBeNil)
+
+			opt := -1
+			dctx := m.client.Transport.(*http.Transport).DialContext
+			So(dctx, ShouldNotBeNil)
+			conn, err := dctx(context.TODO(), "tcp4", l.Addr().String())
+			So(err, ShouldBeNil)
+
+			tcpConn, ok := conn.(*net.TCPConn)
+			So(ok, ShouldBeTrue)
+
+			rawConn, err := tcpConn.SyscallConn()
+			So(err, ShouldBeNil)
+
+			err = rawConn.Control(func(fd uintptr) {
+				opt, err = syscall.GetsockoptInt(int(fd), syscall.IPPROTO_TCP, unix.TCP_USER_TIMEOUT)
+			})
+			So(err, ShouldBeNil)
+			So(opt, ShouldEqual, 0)
+
+			l.Close() // nolint
+		})
+	})
+}
 func TestHTTP_RetrieveMany(t *testing.T) {
 
 	Convey("Given I have a manipulator and a working server", t, func() {

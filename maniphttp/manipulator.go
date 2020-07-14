@@ -64,13 +64,14 @@ type httpManipulator struct {
 	tokenCookieKey       string
 
 	// optionnable
-	ctx           context.Context
-	client        *http.Client
-	tlsConfig     *tls.Config
-	tokenManager  manipulate.TokenManager
-	globalHeaders http.Header
-	transport     *http.Transport
-	encoding      elemental.EncodingType
+	ctx            context.Context
+	client         *http.Client
+	tlsConfig      *tls.Config
+	tokenManager   manipulate.TokenManager
+	globalHeaders  http.Header
+	transport      *http.Transport
+	encoding       elemental.EncodingType
+	tcpUserTimeout time.Duration
 }
 
 // New returns a maniphttp.Manipulator configured according to the given suite of Option.
@@ -103,7 +104,7 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 
 		if m.transport == nil {
 
-			m.transport, m.url = getDefaultHTTPTransport(url, m.disableCompression)
+			m.transport, m.url = getDefaultHTTPTransport(url, m.disableCompression, m.tcpUserTimeout)
 
 			if m.tlsConfig == nil {
 				m.tlsConfig = getDefaultTLSConfig()

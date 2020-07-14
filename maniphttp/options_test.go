@@ -16,6 +16,7 @@ import (
 	"crypto/tls"
 	"net/http"
 	"testing"
+	"time"
 
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
@@ -120,5 +121,12 @@ func Test_Options(t *testing.T) {
 		m := &httpManipulator{}
 		OptionSendCredentialsAsCookie("x-token")(m)
 		So(m.tokenCookieKey, ShouldEqual, "x-token")
+	})
+
+	Convey("Calling OptionTcpUserTimeout should work", t, func() {
+		m := &httpManipulator{}
+		t := 10 * time.Second
+		OptionTCPUserTimeout(t)(m)
+		So(m.tcpUserTimeout, ShouldEqual, t)
 	})
 }
