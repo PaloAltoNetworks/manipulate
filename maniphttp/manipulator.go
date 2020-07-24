@@ -273,7 +273,7 @@ func (s *httpManipulator) Create(mctx manipulate.Context, object elemental.Ident
 		return manipulate.NewErrCannotMarshal(err.Error())
 	}
 
-	response, err := s.send(mctx, http.MethodPost, url, data, object, sp)
+	response, err := s.send(mctx, http.MethodPost, url, bytes.NewBuffer(data), object, sp)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -336,7 +336,7 @@ func (s *httpManipulator) Update(mctx manipulate.Context, object elemental.Ident
 		return manipulate.NewErrCannotMarshal(err.Error())
 	}
 
-	response, err := s.send(mctx, method, url, data, object, sp)
+	response, err := s.send(mctx, method, url, bytes.NewBuffer(data), object, sp)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -448,8 +448,19 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.
 		request.Header[k] = v
 	}
 
-	request.Header.Set("Content-Type", string(s.encoding))
-	request.Header.Set("Accept", string(s.encoding))
+	opaque := mctx.(opaquer).Opaque()
+
+	if value, ok := opaque[opaqueKeyOverrideHeaderContentType]; ok {
+		request.Header.Set("Content-Type", value.(string))
+	} else {
+		request.Header.Set("Content-Type", string(s.encoding))
+	}
+
+	if value, ok := opaque[opaqueKeyOverrideHeaderAccept]; ok {
+		request.Header.Set("Accept", value.(string))
+	} else {
+		request.Header.Set("Accept", string(s.encoding))
+	}
 
 	if ns != "" {
 		request.Header.Set("X-Namespace", ns)
@@ -565,7 +576,7 @@ func (s *httpManipulator) send(
 	mctx manipulate.Context,
 	method string,
 	requrl string,
-	body []byte,
+	body io.Reader,
 	dest interface{},
 	sp opentracing.Span,
 ) (*http.Response, error) {
@@ -604,7 +615,7 @@ func (s *httpManipulator) send(
 	}
 	defer cancelCurrentRequest()
 
-	// Helpers to deal with closing the body of the current request
+	// Helpers to deal with closing the body of the current response
 	var bodyCloser io.ReadCloser
 	closeCurrentBody := func() {
 		if bodyCloser != nil {
@@ -618,7 +629,7 @@ func (s *httpManipulator) send(
 	// It also sets the current request cancel function.
 	newRequest := func() (*http.Request, error) {
 
-		req, err := http.NewRequest(method, requrl, bytes.NewBuffer(body))
+		req, err := http.NewRequest(method, requrl, body)
 		if err != nil {
 			return nil, manipulate.NewErrCannotBuildQuery(err.Error())
 		}

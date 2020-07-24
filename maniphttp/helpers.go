@@ -12,6 +12,7 @@
 package maniphttp
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -128,5 +129,42 @@ func DirectSend(manipulator manipulate.Manipulator, mctx manipulate.Context, end
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.directsend"))
 	defer sp.Finish()
 
-	return m.send(mctx, method, url, body, nil, sp)
+	return m.send(mctx, method, url, bytes.NewBuffer(body), nil, sp)
+}
+
+// BatchCreate is an experimental feature that may eventually be incorporated in the standard interface.
+//
+// But for now it is not recommended to use it unless you know exactly how
+// this works on the server side. This API is NOT considered as stable and may break
+// at any time.
+func BatchCreate(manipulator manipulate.Manipulator, mctx manipulate.Context, objects ...elemental.Identifiable) (*http.Response, error) {
+
+	m, ok := manipulator.(*httpManipulator)
+	if !ok {
+		panic("You can only pass a HTTP Manipulator to DirectSend")
+	}
+
+	if mctx == nil {
+		mctx = manipulate.NewContext(context.Background())
+	}
+
+	mctx.(opaquer).Opaque()[opaqueKeyOverrideHeaderContentType] = "application/msgpack+batch"
+
+	url := m.getGeneralURL(objects[0], mctx.Version())
+
+	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.batchcreate"))
+	defer sp.Finish()
+
+	body := bytes.NewBuffer(nil)
+
+	encoder, close := elemental.MakeStreamEncoder(m.encoding, body)
+	defer close()
+
+	for _, o := range objects {
+		if err := encoder(o); err != nil {
+			return nil, err
+		}
+	}
+
+	return m.send(mctx, http.MethodPost, url, body, nil, sp)
 }

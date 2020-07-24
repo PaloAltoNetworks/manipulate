@@ -178,6 +178,10 @@ github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
 go.aporeto.io/elemental v1.100.1-0.20200617155434-2d1f67120246 h1:XAr8fTWBzfMr9G6QHk2vIHAld4FHbrnxLrdFMPqXTZg=
 go.aporeto.io/elemental v1.100.1-0.20200617155434-2d1f67120246/go.mod h1:qg7CFo/VBvjTvWhp1ZybRU5vkD80r8rTMjlSFfcCPec=
+go.aporeto.io/elemental v1.100.1-0.20200724212335-94ee5741dbc0 h1:b8K50keA8DBIVWmhkD8oRqvh4OtGY2XgRjRatdaJy6o=
+go.aporeto.io/elemental v1.100.1-0.20200724212335-94ee5741dbc0/go.mod h1:qg7CFo/VBvjTvWhp1ZybRU5vkD80r8rTMjlSFfcCPec=
+go.aporeto.io/elemental v1.100.1-0.20200724224850-0d46ff803ceb h1:3WNrV5K1rZvHXfMGx9rwoMtZLEMsBmgjPWuELoAkoCY=
+go.aporeto.io/elemental v1.100.1-0.20200724224850-0d46ff803ceb/go.mod h1:qg7CFo/VBvjTvWhp1ZybRU5vkD80r8rTMjlSFfcCPec=
 go.aporeto.io/regolithe v1.50.1-0.20200611183808-03c6f321c9ec/go.mod h1:+CaUtk6vhi0QJKdW6rabnCbqXUUBzQeQb6uMUNzmqZE=
 go.aporeto.io/wsc v1.36.1-0.20200407170617-67536038420e h1:x/ivqUrykGmMqkhP0sHS8XH6gSpWyKQugdUDJph8y8A=
 go.aporeto.io/wsc v1.36.1-0.20200407170617-67536038420e/go.mod h1:cYMosMNU+0KRwUe7VirIv6+Ak1gHcYPKlEFBG8d3XgU=
