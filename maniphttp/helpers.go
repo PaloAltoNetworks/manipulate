@@ -141,14 +141,25 @@ func BatchCreate(manipulator manipulate.Manipulator, mctx manipulate.Context, ob
 
 	m, ok := manipulator.(*httpManipulator)
 	if !ok {
-		panic("You can only pass a HTTP Manipulator to DirectSend")
+		panic("You can only pass a HTTP Manipulator to BatchCreate")
+	}
+
+	if len(objects) == 0 {
+		panic("You must pass at least one object to BatchCreate")
 	}
 
 	if mctx == nil {
 		mctx = manipulate.NewContext(context.Background())
 	}
 
-	mctx.(opaquer).Opaque()[opaqueKeyOverrideHeaderContentType] = "application/msgpack+batch"
+	var encoding elemental.EncodingType
+	opaque := mctx.(opaquer).Opaque()
+
+	if v, ok := opaque[opaqueKeyOverrideHeaderContentType]; ok {
+		encoding = elemental.EncodingType(v.(string))
+	} else {
+		encoding = m.encoding
+	}
 
 	url := m.getGeneralURL(objects[0], mctx.Version())
 
@@ -157,7 +168,7 @@ func BatchCreate(manipulator manipulate.Manipulator, mctx manipulate.Context, ob
 
 	body := bytes.NewBuffer(nil)
 
-	encoder, close := elemental.MakeStreamEncoder(m.encoding, body)
+	encoder, close := elemental.MakeStreamEncoder(encoding, body)
 	defer close()
 
 	for _, o := range objects {
@@ -165,6 +176,10 @@ func BatchCreate(manipulator manipulate.Manipulator, mctx manipulate.Context, ob
 			return nil, err
 		}
 	}
+
+	// Whatever is encoding and where it is coming from,
+	// we always set a custom encoding by suffixing with '+batch'.
+	opaque[opaqueKeyOverrideHeaderContentType] = string(encoding) + "+batch"
 
 	return m.send(mctx, http.MethodPost, url, body, nil, sp)
 }
