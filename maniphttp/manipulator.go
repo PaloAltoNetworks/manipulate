@@ -629,16 +629,17 @@ func (s *httpManipulator) send(
 	// It also sets the current request cancel function.
 	newRequest := func() (*http.Request, error) {
 
-		var bod io.Reader
+		// This var is needed because calling Len() bytes.Reader
+		// when it's nil panics.
+		var currentRequestBody io.Reader
 		if body != nil {
-			_, err := body.Seek(0, 0)
-			if err != nil {
+			if _, err := body.Seek(0, 0); err != nil {
 				return nil, manipulate.NewErrCannotBuildQuery(err.Error())
 			}
-			bod = body
+			currentRequestBody = body
 		}
 
-		req, err := http.NewRequest(method, requrl, bod)
+		req, err := http.NewRequest(method, requrl, currentRequestBody)
 		if err != nil {
 			return nil, manipulate.NewErrCannotBuildQuery(err.Error())
 		}
