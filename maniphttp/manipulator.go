@@ -820,7 +820,7 @@ func (s *httpManipulator) send(
 
 			t := try
 			if manipulate.IsTooManyRequestsError(lastError) && t < 3 {
-				// Here the backend explicitely asked to calm down.
+				// Here the backend explicitly asked to calm down.
 				// We bump the try number used to calculate the backoff
 				// so we don't retry immediately and wait at least 10s.
 				t = 3
