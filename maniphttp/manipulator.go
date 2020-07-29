@@ -616,14 +616,14 @@ func (s *httpManipulator) send(
 	defer cancelCurrentRequest()
 
 	// Helpers to deal with closing the body of the current response
-	var bodyCloser io.ReadCloser
-	closeCurrentBody := func() {
-		if bodyCloser != nil {
-			_, _ = io.Copy(ioutil.Discard, bodyCloser)
-			_ = bodyCloser.Close() // nolint
+	var responseBodyCloser io.ReadCloser
+	closeCurrentResponseBody := func() {
+		if responseBodyCloser != nil {
+			_, _ = io.Copy(ioutil.Discard, responseBodyCloser)
+			_ = responseBodyCloser.Close() // nolint
 		}
 	}
-	defer closeCurrentBody()
+	defer closeCurrentResponseBody()
 
 	// Function that creates a new request to avoid reusing some buffers.
 	// It also sets the current request cancel function.
@@ -713,7 +713,7 @@ func (s *httpManipulator) send(
 
 		// We passed the basic error, we have a body.
 		// We register it so next loop will be clean.
-		bodyCloser = response.Body
+		responseBodyCloser = response.Body
 
 		// We check for http status codes that triggers a retry
 		switch response.StatusCode {
@@ -781,7 +781,7 @@ func (s *httpManipulator) send(
 		// If we have content, we return the response.
 		// The body will be drained by the defered call to closeCurrentBody().
 		if response.StatusCode == http.StatusNoContent || response.ContentLength == 0 {
-			bodyCloser = nil
+			responseBodyCloser = nil
 
 			return response, nil
 		}
@@ -804,7 +804,7 @@ func (s *httpManipulator) send(
 		//
 
 		// We cancel any pending request context and the pending body.
-		closeCurrentBody()
+		closeCurrentResponseBody()
 		cancelCurrentRequest()
 
 		// If the manipulator has auto retry disabled we return the last error
