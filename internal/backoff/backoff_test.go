@@ -21,7 +21,7 @@ func TestNext(t *testing.T) {
 				0,
 				time.Time{},
 			},
-			0,
+			0 * time.Second,
 		},
 		{
 			"basic with no deadline, try 1",
@@ -29,7 +29,7 @@ func TestNext(t *testing.T) {
 				1,
 				time.Time{},
 			},
-			1 * time.Millisecond,
+			1 * time.Second,
 		},
 		{
 			"basic with no deadline, try 2",
@@ -37,7 +37,7 @@ func TestNext(t *testing.T) {
 				2,
 				time.Time{},
 			},
-			3 * time.Millisecond,
+			5 * time.Second,
 		},
 		{
 			"basic with no deadline, try 3",
@@ -45,7 +45,7 @@ func TestNext(t *testing.T) {
 				3,
 				time.Time{},
 			},
-			7 * time.Millisecond,
+			10 * time.Second,
 		},
 		{
 			"basic with no deadline, try 4",
@@ -53,7 +53,7 @@ func TestNext(t *testing.T) {
 				4,
 				time.Time{},
 			},
-			15 * time.Millisecond,
+			20 * time.Second,
 		},
 		{
 			"basic with no deadline, try 5",
@@ -61,7 +61,7 @@ func TestNext(t *testing.T) {
 				5,
 				time.Time{},
 			},
-			31 * time.Millisecond,
+			30 * time.Second,
 		},
 		{
 			"basic with no deadline, try 10",
@@ -69,7 +69,7 @@ func TestNext(t *testing.T) {
 				10,
 				time.Time{},
 			},
-			1*time.Second + 23*time.Millisecond,
+			60 * time.Second,
 		},
 		{
 			"basic with no deadline, try 11",
@@ -77,7 +77,7 @@ func TestNext(t *testing.T) {
 				11,
 				time.Time{},
 			},
-			2*time.Second + 47*time.Millisecond,
+			60 * time.Second,
 		},
 		{
 			"basic with no deadline, try 12",
@@ -85,7 +85,7 @@ func TestNext(t *testing.T) {
 				12,
 				time.Time{},
 			},
-			4*time.Second + 95*time.Millisecond,
+			60 * time.Second,
 		},
 		{
 			"basic with no deadline, try 13",
@@ -93,7 +93,7 @@ func TestNext(t *testing.T) {
 				13,
 				time.Time{},
 			},
-			8 * time.Second,
+			60 * time.Second,
 		},
 
 		{
@@ -102,15 +102,15 @@ func TestNext(t *testing.T) {
 				0,
 				time.Now().Add(1 * time.Second).Round(time.Second),
 			},
-			0,
+			0 * time.Second,
 		},
 		{
-			"deadline in 1s with, try 1",
+			"deadline in 4s with, try 1",
 			args{
 				1,
-				time.Now().Add(1 * time.Second).Round(time.Second),
+				time.Now().Add(4 * time.Second).Round(time.Second),
 			},
-			1 * time.Millisecond,
+			1 * time.Second,
 		},
 		{
 			"deadline in 1s with, try 2",
@@ -118,55 +118,39 @@ func TestNext(t *testing.T) {
 				2,
 				time.Now().Add(1 * time.Second).Round(time.Second),
 			},
-			3 * time.Millisecond,
+			1 * time.Second,
 		},
 		{
-			"deadline in 1s with, try 3",
+			"deadline in 19s with, try 3",
 			args{
 				3,
-				time.Now().Add(1 * time.Second).Round(time.Second),
+				time.Now().Add(19 * time.Second).Round(time.Second),
 			},
-			7 * time.Millisecond,
+			10 * time.Second,
 		},
 		{
-			"deadline in 1s with, try 4",
+			"deadline in 60s with, try 4",
 			args{
 				4,
-				time.Now().Add(1 * time.Second).Round(time.Second),
+				time.Now().Add(60 * time.Second).Round(time.Second),
 			},
-			15 * time.Millisecond,
+			20 * time.Second,
 		},
 		{
-			"deadline in 1s with, try 5",
+			"deadline in 27s with, try 20",
 			args{
-				5,
-				time.Now().Add(1 * time.Second).Round(time.Second),
+				20,
+				time.Now().Add(27 * time.Second).Round(time.Second),
 			},
-			31 * time.Millisecond,
+			27 * time.Second,
 		},
 		{
-			"deadline in 1s with, try 10",
+			"deadline in 2700s with, try 20",
 			args{
-				10,
-				time.Now().Add(1 * time.Second).Round(time.Second),
+				20,
+				time.Now().Add(2700 * time.Second).Round(time.Second),
 			},
-			1 * time.Second,
-		},
-		{
-			"deadline in 1s with, try 100",
-			args{
-				100,
-				time.Now().Add(1 * time.Second).Round(time.Second),
-			},
-			1 * time.Second,
-		},
-		{
-			"almost expired deadline with, try 1",
-			args{
-				1,
-				time.Now().Add(1000 * time.Nanosecond),
-			},
-			1 * time.Millisecond,
+			60 * time.Second,
 		},
 	}
 	for _, tt := range tests {

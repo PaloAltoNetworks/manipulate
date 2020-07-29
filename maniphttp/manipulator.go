@@ -815,9 +815,18 @@ func (s *httpManipulator) send(
 		case <-mctx.Context().Done():
 			// If so, we return the last error
 			return nil, lastError
-		default:
-			// Otherwise we sleep backoff and we restart the retry loop.
-			time.Sleep(backoff.Next(try, deadline))
+
+		default: // Otherwise we sleep backoff and we restart the retry loop.
+
+			t := try
+			if manipulate.IsTooManyRequestsError(lastError) && t < 3 {
+				// Here the backend explicitely asked to calm down.
+				// We bump the try number used to calculate the backoff
+				// so we don't retry immediately and wait at least 10s.
+				t = 3
+			}
+
+			time.Sleep(backoff.Next(t, deadline))
 			try++
 		}
 	}
