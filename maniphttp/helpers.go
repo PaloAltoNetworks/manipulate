@@ -129,7 +129,7 @@ func DirectSend(manipulator manipulate.Manipulator, mctx manipulate.Context, end
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.directsend"))
 	defer sp.Finish()
 
-	return m.send(mctx, method, url, bytes.NewBuffer(body), nil, sp)
+	return m.send(mctx, method, url, bytes.NewReader(body), nil, sp)
 }
 
 // BatchCreate is an experimental feature that may eventually be incorporated in the standard interface.
@@ -181,5 +181,5 @@ func BatchCreate(manipulator manipulate.Manipulator, mctx manipulate.Context, ob
 	// we always set a custom encoding by suffixing with '+batch'.
 	opaque[opaqueKeyOverrideHeaderContentType] = string(encoding) + "+batch"
 
-	return m.send(mctx, http.MethodPost, url, body, nil, sp)
+	return m.send(mctx, http.MethodPost, url, bytes.NewReader(body.Bytes()), nil, sp)
 }

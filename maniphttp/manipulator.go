@@ -273,7 +273,7 @@ func (s *httpManipulator) Create(mctx manipulate.Context, object elemental.Ident
 		return manipulate.NewErrCannotMarshal(err.Error())
 	}
 
-	response, err := s.send(mctx, http.MethodPost, url, bytes.NewBuffer(data), object, sp)
+	response, err := s.send(mctx, http.MethodPost, url, bytes.NewReader(data), object, sp)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -336,7 +336,7 @@ func (s *httpManipulator) Update(mctx manipulate.Context, object elemental.Ident
 		return manipulate.NewErrCannotMarshal(err.Error())
 	}
 
-	response, err := s.send(mctx, method, url, bytes.NewBuffer(data), object, sp)
+	response, err := s.send(mctx, method, url, bytes.NewReader(data), object, sp)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -576,7 +576,7 @@ func (s *httpManipulator) send(
 	mctx manipulate.Context,
 	method string,
 	requrl string,
-	body io.Reader,
+	body *bytes.Reader,
 	dest interface{},
 	sp opentracing.Span,
 ) (*http.Response, error) {
@@ -629,7 +629,16 @@ func (s *httpManipulator) send(
 	// It also sets the current request cancel function.
 	newRequest := func() (*http.Request, error) {
 
-		req, err := http.NewRequest(method, requrl, body)
+		var bod io.Reader
+		if body != nil {
+			_, err := body.Seek(0, 0)
+			if err != nil {
+				return nil, manipulate.NewErrCannotBuildQuery(err.Error())
+			}
+			bod = body
+		}
+
+		req, err := http.NewRequest(method, requrl, bod)
 		if err != nil {
 			return nil, manipulate.NewErrCannotBuildQuery(err.Error())
 		}
