@@ -143,4 +143,16 @@ func Test_Options(t *testing.T) {
 		OptionStrongBackoffCurve(t)(m)
 		So(m.strongBackoffCurve, ShouldResemble, t)
 	})
+
+	Convey("Calling ContextOptionOverrideContentType should work", t, func() {
+		mctx := manipulate.NewContext(context.Background())
+		ContextOptionOverrideContentType("chien")(mctx)
+		So(mctx.(opaquer).Opaque()[opaqueKeyOverrideHeaderContentType], ShouldEqual, "chien")
+	})
+
+	Convey("Calling ContextOptionOverrideAccept should work", t, func() {
+		mctx := manipulate.NewContext(context.Background())
+		ContextOptionOverrideAccept("chien")(mctx)
+		So(mctx.(opaquer).Opaque()[opaqueKeyOverrideHeaderAccept], ShouldEqual, "chien")
+	})
 }

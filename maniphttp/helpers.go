@@ -12,6 +12,7 @@
 package maniphttp
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -128,5 +129,57 @@ func DirectSend(manipulator manipulate.Manipulator, mctx manipulate.Context, end
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.directsend"))
 	defer sp.Finish()
 
-	return m.send(mctx, method, url, body, nil, sp)
+	return m.send(mctx, method, url, bytes.NewReader(body), nil, sp)
+}
+
+// BatchCreate is an experimental feature that may eventually be incorporated in the standard interface.
+//
+// But for now it is not recommended to use it unless you know exactly how
+// this works on the server side. This API is NOT considered as stable and may break
+// at any time.
+func BatchCreate(manipulator manipulate.Manipulator, mctx manipulate.Context, objects ...elemental.Identifiable) (*http.Response, error) {
+
+	m, ok := manipulator.(*httpManipulator)
+	if !ok {
+		panic("You can only pass a HTTP Manipulator to BatchCreate")
+	}
+
+	if len(objects) == 0 {
+		panic("You must pass at least one object to BatchCreate")
+	}
+
+	if mctx == nil {
+		mctx = manipulate.NewContext(context.Background())
+	}
+
+	var encoding elemental.EncodingType
+	opaque := mctx.(opaquer).Opaque()
+
+	if v, ok := opaque[opaqueKeyOverrideHeaderContentType]; ok {
+		encoding = elemental.EncodingType(v.(string))
+	} else {
+		encoding = m.encoding
+	}
+
+	url := m.getGeneralURL(objects[0], mctx.Version())
+
+	sp := tracing.StartTrace(mctx, fmt.Sprintf("maniphttp.batchcreate"))
+	defer sp.Finish()
+
+	body := bytes.NewBuffer(nil)
+
+	encoder, close := elemental.MakeStreamEncoder(encoding, body)
+	defer close()
+
+	for _, o := range objects {
+		if err := encoder(o); err != nil {
+			return nil, err
+		}
+	}
+
+	// Whatever is encoding and where it is coming from,
+	// we always set a custom encoding by suffixing with '+batch'.
+	opaque[opaqueKeyOverrideHeaderContentType] = string(encoding) + "+batch"
+
+	return m.send(mctx, http.MethodPost, url, bytes.NewReader(body.Bytes()), nil, sp)
 }

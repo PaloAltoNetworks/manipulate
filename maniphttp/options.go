@@ -185,3 +185,32 @@ func OptionStrongBackoffCurve(curve []time.Duration) Option {
 		m.strongBackoffCurve = curve
 	}
 }
+
+var (
+	opaqueKeyOverrideHeaderContentType = "maniphttp.opaqueKeyOverrideHeaderContentType"
+	opaqueKeyOverrideHeaderAccept      = "maniphttp.opaqueKeyOverrideHeaderAccept"
+)
+
+type opaquer interface {
+	Opaque() map[string]interface{}
+}
+
+// ContextOptionOverrideContentType is an advanced feature that allows you
+// to override with the actual Content-Type header value.
+// This should not be used in 99% of the case.
+func ContextOptionOverrideContentType(encoding string) manipulate.ContextOption {
+
+	return func(c manipulate.Context) {
+		c.(opaquer).Opaque()[opaqueKeyOverrideHeaderContentType] = encoding
+	}
+}
+
+// ContextOptionOverrideAccept is an advanced feature that allows you
+// to override with the actual Accept header value.
+// This should not be used in 99% of the case.
+func ContextOptionOverrideAccept(accept string) manipulate.ContextOption {
+
+	return func(c manipulate.Context) {
+		c.(opaquer).Opaque()[opaqueKeyOverrideHeaderAccept] = accept
+	}
+}

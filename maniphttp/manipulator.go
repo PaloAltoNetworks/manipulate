@@ -277,7 +277,7 @@ func (s *httpManipulator) Create(mctx manipulate.Context, object elemental.Ident
 		return manipulate.NewErrCannotMarshal(err.Error())
 	}
 
-	response, err := s.send(mctx, http.MethodPost, url, data, object, sp)
+	response, err := s.send(mctx, http.MethodPost, url, bytes.NewReader(data), object, sp)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -340,7 +340,7 @@ func (s *httpManipulator) Update(mctx manipulate.Context, object elemental.Ident
 		return manipulate.NewErrCannotMarshal(err.Error())
 	}
 
-	response, err := s.send(mctx, method, url, data, object, sp)
+	response, err := s.send(mctx, method, url, bytes.NewReader(data), object, sp)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
@@ -452,8 +452,19 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.
 		request.Header[k] = v
 	}
 
-	request.Header.Set("Content-Type", string(s.encoding))
-	request.Header.Set("Accept", string(s.encoding))
+	opaque := mctx.(opaquer).Opaque()
+
+	if value, ok := opaque[opaqueKeyOverrideHeaderContentType]; ok {
+		request.Header.Set("Content-Type", value.(string))
+	} else {
+		request.Header.Set("Content-Type", string(s.encoding))
+	}
+
+	if value, ok := opaque[opaqueKeyOverrideHeaderAccept]; ok {
+		request.Header.Set("Accept", value.(string))
+	} else {
+		request.Header.Set("Accept", string(s.encoding))
+	}
 
 	if ns != "" {
 		request.Header.Set("X-Namespace", ns)
@@ -569,7 +580,7 @@ func (s *httpManipulator) send(
 	mctx manipulate.Context,
 	method string,
 	requrl string,
-	body []byte,
+	body *bytes.Reader,
 	dest interface{},
 	sp opentracing.Span,
 ) (*http.Response, error) {
@@ -608,21 +619,31 @@ func (s *httpManipulator) send(
 	}
 	defer cancelCurrentRequest()
 
-	// Helpers to deal with closing the body of the current request
-	var bodyCloser io.ReadCloser
-	closeCurrentBody := func() {
-		if bodyCloser != nil {
-			_, _ = io.Copy(ioutil.Discard, bodyCloser)
-			_ = bodyCloser.Close() // nolint
+	// Helpers to deal with closing the body of the current response
+	var responseBodyCloser io.ReadCloser
+	closeCurrentResponseBody := func() {
+		if responseBodyCloser != nil {
+			_, _ = io.Copy(ioutil.Discard, responseBodyCloser)
+			_ = responseBodyCloser.Close() // nolint
 		}
 	}
-	defer closeCurrentBody()
+	defer closeCurrentResponseBody()
 
 	// Function that creates a new request to avoid reusing some buffers.
 	// It also sets the current request cancel function.
 	newRequest := func() (*http.Request, error) {
 
-		req, err := http.NewRequest(method, requrl, bytes.NewBuffer(body))
+		// This var is needed because calling Len() bytes.Reader
+		// when it's nil panics.
+		var currentRequestBody io.Reader
+		if body != nil {
+			if _, err := body.Seek(0, 0); err != nil {
+				return nil, manipulate.NewErrCannotBuildQuery(err.Error())
+			}
+			currentRequestBody = body
+		}
+
+		req, err := http.NewRequest(method, requrl, currentRequestBody)
 		if err != nil {
 			return nil, manipulate.NewErrCannotBuildQuery(err.Error())
 		}
@@ -696,7 +717,7 @@ func (s *httpManipulator) send(
 
 		// We passed the basic error, we have a body.
 		// We register it so next loop will be clean.
-		bodyCloser = response.Body
+		responseBodyCloser = response.Body
 
 		// We check for http status codes that triggers a retry
 		switch response.StatusCode {
@@ -764,7 +785,7 @@ func (s *httpManipulator) send(
 		// If we have content, we return the response.
 		// The body will be drained by the defered call to closeCurrentBody().
 		if response.StatusCode == http.StatusNoContent || response.ContentLength == 0 {
-			bodyCloser = nil
+			responseBodyCloser = nil
 
 			return response, nil
 		}
@@ -787,7 +808,7 @@ func (s *httpManipulator) send(
 		//
 
 		// We cancel any pending request context and the pending body.
-		closeCurrentBody()
+		closeCurrentResponseBody()
 		cancelCurrentRequest()
 
 		// If the manipulator has auto retry disabled we return the last error
