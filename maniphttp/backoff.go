@@ -13,6 +13,12 @@ var (
 		60 * time.Second,
 	}
 
+	strongBackoffCurve = []time.Duration{
+		10 * time.Second,
+		30 * time.Second,
+		60 * time.Second,
+	}
+
 	testingBackoffCurve = []time.Duration{
 		0,
 		1 * time.Millisecond,

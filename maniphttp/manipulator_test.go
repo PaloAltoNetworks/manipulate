@@ -980,6 +980,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 		)
 
 		resp, err := m.(*httpManipulator).send(manipulate.NewContext(context.Background()), http.MethodPost, "nop", nil, nil, sp)
@@ -997,6 +998,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 		)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 0)
@@ -1017,6 +1019,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 		)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -1040,6 +1043,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1065,6 +1069,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 		)
 
 		ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1090,6 +1095,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1136,6 +1142,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1183,6 +1190,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 			OptionDefaultRetryFunc(func(i manipulate.RetryInfo) error {
 				t = i.Try()
 				rerr = i.Err()
@@ -1225,6 +1233,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 			OptionDefaultRetryFunc(func(i manipulate.RetryInfo) error {
 				t = i.Try()
 				if t == 3 {
@@ -1287,6 +1296,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1314,6 +1324,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1341,6 +1352,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1368,6 +1380,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1395,6 +1408,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1464,6 +1478,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 		)
 		m.(*httpManipulator).tokenManager = tm
 		m.(*httpManipulator).username = "Bearer"
@@ -1519,6 +1534,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 		)
 		m.(*httpManipulator).tokenManager = maniptest.NewTestTokenManager()
 		m.(*httpManipulator).atomicRenewTokenFunc = elemental.AtomicJob(m.(*httpManipulator).renewToken)
@@ -1554,6 +1570,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 		)
 		m.(*httpManipulator).tokenManager = tm
 		m.(*httpManipulator).username = "Bearer"
@@ -1575,6 +1592,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1603,6 +1621,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1630,6 +1649,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1657,6 +1677,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 			OptionSimulateFailures(
 				map[float64]error{
 					1.0: fmt.Errorf("simulated error"),
@@ -1685,6 +1706,7 @@ func TestHTTP_send(t *testing.T) {
 			context.Background(),
 			"toto.com",
 			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 			OptionSimulateFailures(
 				map[float64]error{
 					0.0: fmt.Errorf("simulated error"),

@@ -63,6 +63,7 @@ type httpManipulator struct {
 	failureSimulations   map[float64]error
 	tokenCookieKey       string
 	backoffCurve         []time.Duration
+	strongBackoffCurve   []time.Duration
 
 	// optionnable
 	ctx            context.Context
@@ -93,6 +94,7 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 		url:                url,
 		encoding:           elemental.EncodingTypeJSON,
 		backoffCurve:       defaultBackoffCurve,
+		strongBackoffCurve: strongBackoffCurve,
 	}
 
 	// Apply the options.
@@ -818,17 +820,17 @@ func (s *httpManipulator) send(
 			// If so, we return the last error
 			return nil, lastError
 
-		default: // Otherwise we sleep backoff and we restart the retry loop.
+		default:
+			// Otherwise we sleep backoff and we restart the retry loop.
 
-			t := try
-			if manipulate.IsTooManyRequestsError(lastError) && t < 3 {
-				// Here the backend explicitly asked to calm down.
-				// We bump the try number used to calculate the backoff
-				// so we don't retry immediately and wait at least 10s.
-				t = 3
+			curve := s.backoffCurve
+			if manipulate.IsTooManyRequestsError(lastError) {
+				// Here the backend explicitly asked to calm down
+				// so we use the strong backoff curve.
+				curve = strongBackoffCurve
 			}
 
-			time.Sleep(backoff.NextWithCurve(t, deadline, s.backoffCurve))
+			time.Sleep(backoff.NextWithCurve(try, deadline, curve))
 			try++
 		}
 	}

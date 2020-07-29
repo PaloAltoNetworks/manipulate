@@ -123,10 +123,24 @@ func Test_Options(t *testing.T) {
 		So(m.tokenCookieKey, ShouldEqual, "x-token")
 	})
 
-	Convey("Calling OptionTcpUserTimeout should work", t, func() {
+	Convey("Calling OptionTCPUserTimeout should work", t, func() {
 		m := &httpManipulator{}
 		t := 10 * time.Second
 		OptionTCPUserTimeout(t)(m)
 		So(m.tcpUserTimeout, ShouldEqual, t)
+	})
+
+	Convey("Calling OptionBackoffCurve should work", t, func() {
+		m := &httpManipulator{}
+		t := []time.Duration{10 * time.Second}
+		OptionBackoffCurve(t)(m)
+		So(m.backoffCurve, ShouldResemble, t)
+	})
+
+	Convey("Calling OptionStrongBackoffCurve should work", t, func() {
+		m := &httpManipulator{}
+		t := []time.Duration{10 * time.Second}
+		OptionStrongBackoffCurve(t)(m)
+		So(m.strongBackoffCurve, ShouldResemble, t)
 	})
 }
