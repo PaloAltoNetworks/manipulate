@@ -62,6 +62,7 @@ type httpManipulator struct {
 	atomicRenewTokenFunc func(context.Context) error
 	failureSimulations   map[float64]error
 	tokenCookieKey       string
+	backoffCurve         []time.Duration
 
 	// optionnable
 	ctx            context.Context
@@ -91,6 +92,7 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 		ctx:                ctx,
 		url:                url,
 		encoding:           elemental.EncodingTypeJSON,
+		backoffCurve:       defaultBackoffCurve,
 	}
 
 	// Apply the options.
@@ -826,7 +828,7 @@ func (s *httpManipulator) send(
 				t = 3
 			}
 
-			time.Sleep(backoff.Next(t, deadline))
+			time.Sleep(backoff.NextWithCurve(t, deadline, s.backoffCurve))
 			try++
 		}
 	}

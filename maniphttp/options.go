@@ -164,3 +164,13 @@ func OptionTCPUserTimeout(t time.Duration) Option {
 		m.tcpUserTimeout = t
 	}
 }
+
+// OptionBackoffCurve configures the backoff curve
+// the manipulator will use when performing internal retry
+// operations.
+// The default backoff curve is
+func OptionBackoffCurve(curve []time.Duration) Option {
+	return func(m *httpManipulator) {
+		m.backoffCurve = curve
+	}
+}

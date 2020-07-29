@@ -6,9 +6,11 @@ import (
 )
 
 func TestNext(t *testing.T) {
+
 	type args struct {
 		try      int
 		deadline time.Time
+		curve    []time.Duration
 	}
 	tests := []struct {
 		name string
@@ -16,146 +18,96 @@ func TestNext(t *testing.T) {
 		want time.Duration
 	}{
 		{
-			"basic with no deadline, try 0",
+			"empty curve no deadlie",
 			args{
 				0,
 				time.Time{},
+				nil,
 			},
 			0 * time.Second,
-		},
-		{
-			"basic with no deadline, try 1",
-			args{
-				1,
-				time.Time{},
-			},
-			1 * time.Second,
-		},
-		{
-			"basic with no deadline, try 2",
-			args{
-				2,
-				time.Time{},
-			},
-			5 * time.Second,
-		},
-		{
-			"basic with no deadline, try 3",
-			args{
-				3,
-				time.Time{},
-			},
-			10 * time.Second,
-		},
-		{
-			"basic with no deadline, try 4",
-			args{
-				4,
-				time.Time{},
-			},
-			20 * time.Second,
-		},
-		{
-			"basic with no deadline, try 5",
-			args{
-				5,
-				time.Time{},
-			},
-			30 * time.Second,
-		},
-		{
-			"basic with no deadline, try 10",
-			args{
-				10,
-				time.Time{},
-			},
-			60 * time.Second,
-		},
-		{
-			"basic with no deadline, try 11",
-			args{
-				11,
-				time.Time{},
-			},
-			60 * time.Second,
-		},
-		{
-			"basic with no deadline, try 12",
-			args{
-				12,
-				time.Time{},
-			},
-			60 * time.Second,
-		},
-		{
-			"basic with no deadline, try 13",
-			args{
-				13,
-				time.Time{},
-			},
-			60 * time.Second,
 		},
 
 		{
-			"deadline in 1s with, try 0",
+			"try 0 no deadline",
 			args{
 				0,
-				time.Now().Add(1 * time.Second).Round(time.Second),
+				time.Time{},
+				[]time.Duration{
+					1 * time.Second,
+					2 * time.Second,
+					3 * time.Second,
+				},
 			},
-			0 * time.Second,
+			1 * time.Second,
 		},
 		{
-			"deadline in 4s with, try 1",
+			"try 1 no deadline",
 			args{
 				1,
-				time.Now().Add(4 * time.Second).Round(time.Second),
+				time.Time{},
+				[]time.Duration{
+					1 * time.Second,
+					2 * time.Second,
+					3 * time.Second,
+				},
 			},
-			1 * time.Second,
+			2 * time.Second,
 		},
 		{
-			"deadline in 1s with, try 2",
+			"try 2 no deadline",
 			args{
 				2,
-				time.Now().Add(1 * time.Second).Round(time.Second),
+				time.Time{},
+				[]time.Duration{
+					1 * time.Second,
+					2 * time.Second,
+					3 * time.Second,
+				},
 			},
-			1 * time.Second,
+			3 * time.Second,
 		},
 		{
-			"deadline in 19s with, try 3",
+			"try 2+ no deadline",
 			args{
 				3,
-				time.Now().Add(19 * time.Second).Round(time.Second),
+				time.Time{},
+				[]time.Duration{
+					1 * time.Second,
+					2 * time.Second,
+					3 * time.Second,
+				},
 			},
-			10 * time.Second,
+			3 * time.Second,
+		},
+
+		{
+			"try before deadline",
+			args{
+				3,
+				time.Now().Add(4 * time.Second),
+				[]time.Duration{
+					1 * time.Second,
+					2 * time.Second,
+					3 * time.Second,
+				},
+			},
+			3 * time.Second,
 		},
 		{
-			"deadline in 60s with, try 4",
+			"try after deadline",
 			args{
-				4,
-				time.Now().Add(60 * time.Second).Round(time.Second),
+				3,
+				time.Now().Add(5 * time.Second).Round(time.Second),
+				[]time.Duration{
+					10 * time.Second,
+				},
 			},
-			20 * time.Second,
-		},
-		{
-			"deadline in 27s with, try 20",
-			args{
-				20,
-				time.Now().Add(27 * time.Second).Round(time.Second),
-			},
-			27 * time.Second,
-		},
-		{
-			"deadline in 2700s with, try 20",
-			args{
-				20,
-				time.Now().Add(2700 * time.Second).Round(time.Second),
-			},
-			60 * time.Second,
+			5 * time.Second,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Next(tt.args.try, tt.args.deadline); got != tt.want {
+			if got := NextWithCurve(tt.args.try, tt.args.deadline, tt.args.curve); got != tt.want {
 				t.Errorf("Next() = %v, want %v", got, tt.want)
 			}
 		})

@@ -4,26 +4,19 @@ import (
 	"time"
 )
 
-// Mathematically advanced backoff curve :)
-var backoffs = []time.Duration{
-	0 * time.Second,
-	1 * time.Second,
-	5 * time.Second,
-	10 * time.Second,
-	20 * time.Second,
-	30 * time.Second,
-	60 * time.Second,
-}
+// NextWithCurve computes the next backoff time for a given try number,
+// optional (non zero) hard deadline using the given backoffs curve.
+func NextWithCurve(try int, deadline time.Time, curve []time.Duration) time.Duration {
 
-// Next computes the next backoff time for a give try number
-// with a hard given deadline.
-func Next(try int, deadline time.Time) time.Duration {
+	if len(curve) == 0 {
+		return 0
+	}
 
 	var wait time.Duration
-	if try > len(backoffs) {
-		wait = backoffs[len(backoffs)-1]
+	if try >= len(curve) {
+		wait = curve[len(curve)-1]
 	} else {
-		wait = backoffs[try]
+		wait = curve[try]
 	}
 
 	if deadline.IsZero() {
