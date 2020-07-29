@@ -12,6 +12,7 @@
 package maniphttp
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -23,6 +24,9 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"go.aporeto.io/elemental"
+	testmodel "go.aporeto.io/elemental/test/model"
+	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/maniptest"
 )
 
@@ -245,4 +249,234 @@ func TestManiphttp_DirectSend(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestManiphttp_BatchCreate(t *testing.T) {
+
+	Convey("Given I have a manipulator and a test server and I use JSON encoding", t, func() {
+
+		l1 := testmodel.NewList()
+		l1.Name = "a"
+		l2 := testmodel.NewList()
+		l2.Name = "b"
+		l3 := testmodel.NewList()
+		l3.Name = "c"
+
+		expectedBody := bytes.NewBuffer(nil)
+		enc, cl := elemental.MakeStreamEncoder(elemental.EncodingTypeJSON, expectedBody)
+		defer cl()
+		_ = enc(l1)
+		_ = enc(l2)
+		_ = enc(l3)
+
+		errCh := make(chan error, 1)
+
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+			body, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				errCh <- err
+			}
+
+			expectedEncoding := "application/json+batch"
+			if ct := r.Header.Get("Content-Type"); ct != expectedEncoding {
+				errCh <- fmt.Errorf("wrong content type received. want: '%s', got: '%s'", expectedEncoding, ct)
+			}
+
+			if !bytes.Equal(body, expectedBody.Bytes()) {
+				errCh <- fmt.Errorf("wrong body received. want:\n%s\n\ngot:\n%s", string(body), expectedBody.String())
+			}
+
+			w.WriteHeader(http.StatusOK)
+			errCh <- nil
+		}))
+		defer ts.Close()
+
+		m, _ := New(
+			context.Background(),
+			ts.URL,
+			OptionEncoding(elemental.EncodingTypeJSON),
+		)
+
+		Convey("When I call BatchCreate", func() {
+
+			resp, err := BatchCreate(m, nil, l1, l2, l3)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then the response should be correct", func() {
+				So(resp, ShouldNotBeNil)
+				So(resp.StatusCode, ShouldEqual, http.StatusOK)
+				So(<-errCh, ShouldBeNil)
+			})
+		})
+
+		Convey("When I call BatchCreate with an unmarshallable object", func() {
+
+			resp, err := BatchCreate(m, nil, testmodel.NewUnmarshalableList())
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, `unable to encode application/json: json encode error: error marshalling`)
+			})
+
+			Convey("Then the response should be correct", func() {
+				So(resp, ShouldBeNil)
+			})
+		})
+	})
+
+	Convey("Given I have a manipulator and a test server and I use MSGPACK encoding", t, func() {
+
+		l1 := testmodel.NewList()
+		l1.Name = "a"
+		l2 := testmodel.NewList()
+		l2.Name = "b"
+		l3 := testmodel.NewList()
+		l3.Name = "c"
+
+		expectedBody := bytes.NewBuffer(nil)
+		enc, cl := elemental.MakeStreamEncoder(elemental.EncodingTypeMSGPACK, expectedBody)
+		defer cl()
+		_ = enc(l1)
+		_ = enc(l2)
+		_ = enc(l3)
+
+		errCh := make(chan error, 10)
+
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+			body, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				errCh <- err
+			}
+
+			expectedEncoding := "application/msgpack+batch"
+			if ct := r.Header.Get("Content-Type"); ct != expectedEncoding {
+				errCh <- fmt.Errorf("wrong content type received. want: '%s', got: '%s'", expectedEncoding, ct)
+			}
+
+			if !bytes.Equal(body, expectedBody.Bytes()) {
+				errCh <- fmt.Errorf("wrong body received. want:\n%s\n\ngot:\n%s", string(body), expectedBody.String())
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+			errCh <- nil
+		}))
+		defer ts.Close()
+
+		m, _ := New(
+			context.Background(),
+			ts.URL,
+			OptionEncoding(elemental.EncodingTypeMSGPACK),
+		)
+
+		Convey("When I call BatchCreate", func() {
+
+			resp, err := BatchCreate(m, nil, l1, l2, l3)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then the response should be correct", func() {
+				So(resp, ShouldNotBeNil)
+				So(resp.StatusCode, ShouldEqual, http.StatusOK)
+				So(<-errCh, ShouldBeNil)
+			})
+		})
+	})
+
+	Convey("Given I have a manipulator and a test server and I use custom encoding", t, func() {
+
+		l1 := testmodel.NewList()
+		l1.Name = "a"
+		l2 := testmodel.NewList()
+		l2.Name = "b"
+		l3 := testmodel.NewList()
+		l3.Name = "c"
+
+		expectedBody := bytes.NewBuffer(nil)
+		enc, cl := elemental.MakeStreamEncoder(elemental.EncodingTypeJSON, expectedBody)
+		defer cl()
+		_ = enc(l1)
+		_ = enc(l2)
+		_ = enc(l3)
+
+		errCh := make(chan error, 10)
+
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+			body, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				errCh <- err
+			}
+
+			expectedEncoding := "custom+batch"
+			if ct := r.Header.Get("Content-Type"); ct != expectedEncoding {
+				errCh <- fmt.Errorf("wrong content type received. want: '%s', got: '%s'", expectedEncoding, ct)
+			}
+
+			if !bytes.Equal(body, expectedBody.Bytes()) {
+				errCh <- fmt.Errorf("wrong body received. want:\n%s\n\ngot:\n%s", string(body), expectedBody.String())
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+			errCh <- nil
+		}))
+		defer ts.Close()
+
+		m, _ := New(
+			context.Background(),
+			ts.URL,
+			OptionEncoding(elemental.EncodingTypeMSGPACK),
+		)
+
+		Convey("When I call BatchCreate", func() {
+
+			mctx := manipulate.NewContext(
+				context.Background(),
+				ContextOptionOverrideContentType("custom"),
+			)
+			resp, err := BatchCreate(m, mctx, l1, l2, l3)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then the response should be correct", func() {
+				So(resp, ShouldNotBeNil)
+				So(resp.StatusCode, ShouldEqual, http.StatusOK)
+				So(<-errCh, ShouldBeNil)
+			})
+		})
+	})
+
+	Convey("When I call BatchCreate with a non httpmanipulator", t, func() {
+
+		m := maniptest.NewTestManipulator()
+		l1 := testmodel.NewList()
+
+		Convey("Then it should panic", func() {
+			So(func() { _, _ = BatchCreate(m, nil, l1) }, ShouldPanicWith, "You can only pass a HTTP Manipulator to BatchCreate")
+		})
+	})
+
+	Convey("When I call BatchCreate with no objects", t, func() {
+
+		m, _ := New(
+			context.Background(),
+			"https://totot.com",
+			OptionEncoding(elemental.EncodingTypeMSGPACK),
+		)
+
+		Convey("Then it should panic", func() {
+			So(func() { _, _ = BatchCreate(m, nil) }, ShouldPanicWith, "You must pass at least one object to BatchCreate")
+		})
+	})
+
 }

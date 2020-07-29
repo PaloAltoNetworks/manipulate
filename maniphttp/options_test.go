@@ -129,4 +129,16 @@ func Test_Options(t *testing.T) {
 		OptionTCPUserTimeout(t)(m)
 		So(m.tcpUserTimeout, ShouldEqual, t)
 	})
+
+	Convey("Calling ContextOptionOverrideContentType should work", t, func() {
+		mctx := manipulate.NewContext(context.Background())
+		ContextOptionOverrideContentType("chien")(mctx)
+		So(mctx.(opaquer).Opaque()[opaqueKeyOverrideHeaderContentType], ShouldEqual, "chien")
+	})
+
+	Convey("Calling ContextOptionOverrideAccept should work", t, func() {
+		mctx := manipulate.NewContext(context.Background())
+		ContextOptionOverrideAccept("chien")(mctx)
+		So(mctx.(opaquer).Opaque()[opaqueKeyOverrideHeaderAccept], ShouldEqual, "chien")
+	})
 }

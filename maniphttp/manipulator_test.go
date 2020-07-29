@@ -1733,17 +1733,12 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 
 				m.prepareHeaders(req, manipulate.NewContext(context.Background()))
 
-				Convey("Then I should have a the X-Namespace set to 'myns'", func() {
+				Convey("headers should be correct", func() {
 					So(req.Header.Get("X-Namespace"), ShouldEqual, "myns")
-				})
-
-				Convey("Then I should not have a value for X-Count-Total", func() {
 					So(req.Header.Get("X-Count-Total"), ShouldEqual, "")
-				})
-
-				Convey("Then I should get the global headers", func() {
 					So(req.Header.Get("Header-1"), ShouldEqual, "hey")
 					So(req.Header.Get("Header-2"), ShouldEqual, "ho")
+					So(req.Header.Get("Content-Type"), ShouldEqual, "application/json")
 				})
 			})
 
@@ -1763,36 +1758,32 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 
 				m.prepareHeaders(req, ctx)
 
-				Convey("Then I should have a value for X-External-Tracking-ID", func() {
+				Convey("Then header should be correct", func() {
 					So(req.Header.Get("X-External-Tracking-ID"), ShouldEqual, "tid")
-				})
-
-				Convey("Then I should have a value for X-External-Tracking-Type", func() {
 					So(req.Header.Get("X-External-Tracking-Type"), ShouldEqual, "type")
-				})
-
-				Convey("Then I should have a value for X-Read-Consistency", func() {
 					So(req.Header.Get("X-Read-Consistency"), ShouldEqual, "strong")
-				})
-
-				Convey("Then I should have a value for X-Write-Consistency", func() {
 					So(req.Header.Get("X-Write-Consistency"), ShouldEqual, "strong")
-				})
-
-				Convey("Then I should have a value for Idempotency-Key", func() {
 					So(req.Header.Get("Idempotency-Key"), ShouldEqual, "coucou")
-				})
-
-				Convey("Then I should have a value for X-Fields", func() {
 					So(req.Header["X-Fields"], ShouldResemble, []string{"a", "b"})
-				})
-
-				Convey("Then I should have a value for the Authorization", func() {
 					So(req.Header.Get("Authorization"), ShouldResemble, "username password")
-				})
-
-				Convey("Then I should have a value for the client IP in X-Forwarded-For", func() {
 					So(req.Header["X-Forwarded-For"], ShouldResemble, []string{"10.1.1.1"})
+					So(req.Header.Get("Content-Type"), ShouldEqual, "application/json")
+				})
+			})
+
+			Convey("When I prepareHeaders with using ContextOptionOverrideContentType and ContextOptionOverrideAccept", func() {
+
+				ctx := manipulate.NewContext(
+					context.Background(),
+					ContextOptionOverrideContentType("dawg"),
+					ContextOptionOverrideAccept("mew"),
+				)
+
+				m.prepareHeaders(req, ctx)
+
+				Convey("Then header should be correct", func() {
+					So(req.Header.Get("Content-Type"), ShouldEqual, "dawg")
+					So(req.Header.Get("Accept"), ShouldEqual, "mew")
 				})
 			})
 		})
