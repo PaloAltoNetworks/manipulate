@@ -3,17 +3,20 @@ module go.aporeto.io/manipulate
 go 1.13
 
 require (
-	go.aporeto.io/elemental v1.100.1-0.20200729012332-b8c6e84fe209
-	go.aporeto.io/wsc v1.36.1-0.20200625070416-f79596292373
+	go.aporeto.io/elemental v1.100.1-0.20200731065958-3c0219b4b984
+	go.aporeto.io/wsc v1.36.1-0.20200731064733-e5c5718dc58f
 )
 
 require (
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/gofrs/uuid v3.3.0+incompatible
+	github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00 // indirect
 	github.com/gorilla/websocket v1.4.2
 	github.com/hashicorp/go-memdb v1.2.1
 	github.com/mitchellh/copystructure v1.0.0
+	github.com/mitchellh/reflectwalk v1.0.1 // indirect
 	github.com/opentracing/opentracing-go v1.2.0
+	github.com/smartystreets/assertions v1.0.0 // indirect
 	github.com/smartystreets/goconvey v1.6.4
 	go.uber.org/zap v1.15.0
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
