@@ -976,69 +976,75 @@ func TestHTTP_send(t *testing.T) {
 
 	Convey("Given I have a m with bad url", t, func() {
 
-		m, _ := New(context.Background(), "toto.com")
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
 
-		Convey("When I call send", func() {
+		resp, err := m.(*httpManipulator).send(manipulate.NewContext(context.Background()), http.MethodPost, "nop", nil, nil, sp)
 
-			resp, err := m.(*httpManipulator).send(manipulate.NewContext(context.Background()), http.MethodPost, "nop", nil, nil, sp)
+		So(err, ShouldNotBeNil)
+		So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotExecuteQuery{})
+		So(err.Error(), ShouldEqual, `Unable to execute query: Post "nop": unsupported protocol scheme ""`)
 
-			Convey("Then err should not be nil", func() {
-				So(err, ShouldNotBeNil)
-				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotExecuteQuery{})
-				So(err.Error(), ShouldEqual, `Unable to execute query: Post "nop": unsupported protocol scheme ""`)
-
-				So(resp, ShouldBeNil)
-			})
-		})
+		So(resp, ShouldBeNil)
 	})
 
 	Convey("Given I have an already canceled context", t, func() {
 
-		m, _ := New(context.Background(), "toto.com")
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
 
-		Convey("When I call send", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 0)
+		cancel()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 0)
-			cancel()
+		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, "https://google.com", nil, nil, sp)
 
-			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, "https://google.com", nil, nil, sp)
+		So(err, ShouldNotBeNil)
+		So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+		So(err.Error(), ShouldEqual, `Cannot communicate: Post "https://google.com": context deadline exceeded`)
 
-			Convey("Then err should not be nil", func() {
-				So(err, ShouldNotBeNil)
-				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
-				So(err.Error(), ShouldEqual, `Cannot communicate: Post "https://google.com": context deadline exceeded`)
-
-				So(resp, ShouldBeNil)
-			})
-		})
+		So(resp, ShouldBeNil)
 	})
 
 	Convey("Given I have a server returning net.Error", t, func() {
 
-		m, _ := New(context.Background(), "toto.com")
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
 
-		Convey("When I call send", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
+		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, "https://NANANAN", nil, nil, sp)
 
-			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, "https://NANANAN", nil, nil, sp)
+		So(err, ShouldNotBeNil)
+		So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
 
-			Convey("Then err should not be nil", func() {
-				So(err, ShouldNotBeNil)
-				So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+		// On linux, the message is slightly different than on macOS
+		So(err.Error(), ShouldStartWith, `Cannot communicate: Post "https://NANANAN": dial tcp: lookup NANANAN`)
 
-				// On linux, the message is slightly different than on macOS
-				So(err.Error(), ShouldStartWith, `Cannot communicate: Post "https://NANANAN": dial tcp: lookup NANANAN`)
+		So(resp, ShouldBeNil)
 
-				So(resp, ShouldBeNil)
-			})
-		})
 	})
 
 	Convey("Given I have a server returning EOF error and I call send", t, func() {
 
-		m, _ := New(context.Background(), "toto.com")
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			panic("eof")
@@ -1050,44 +1056,47 @@ func TestHTTP_send(t *testing.T) {
 
 		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
-		Convey("Then err should not be nil", func() {
-			So(err, ShouldNotBeNil)
-			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
-			So(err.Error(), ShouldEqual, fmt.Sprintf(`Cannot communicate: Post "%s": EOF`, ts.URL))
+		So(err, ShouldNotBeNil)
+		So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+		So(err.Error(), ShouldEqual, fmt.Sprintf(`Cannot communicate: Post "%s": EOF`, ts.URL))
 
-			So(resp, ShouldBeNil)
-		})
+		So(resp, ShouldBeNil)
 	})
 
 	Convey("Given I have a server returning TLS error", t, func() {
 
-		m, _ := New(context.Background(), "toto.com")
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
 
 		ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		}))
 		defer ts.Close()
 
-		Convey("When I call send", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-			defer cancel()
+		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
-			resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+		So(err, ShouldNotBeNil)
+		So(err, ShouldHaveSameTypeAs, manipulate.ErrTLS{})
+		So(err.Error(), ShouldEqual, fmt.Sprintf(`TLS error: Post "%s": x509: certificate signed by unknown authority`, ts.URL))
 
-			Convey("Then err should not be nil", func() {
-				So(err, ShouldNotBeNil)
-				So(err, ShouldHaveSameTypeAs, manipulate.ErrTLS{})
-				So(err.Error(), ShouldEqual, fmt.Sprintf(`TLS error: Post "%s": x509: certificate signed by unknown authority`, ts.URL))
-
-				So(resp, ShouldBeNil)
-			})
-		})
+		So(resp, ShouldBeNil)
 	})
 
 	Convey("Given I have a server and a retry func and I call send", t, func() {
 
-		m, _ := New(context.Background(), "toto.com")
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -1117,20 +1126,24 @@ func TestHTTP_send(t *testing.T) {
 			sp,
 		)
 
-		Convey("Then err should not be nil", func() {
-			So(err, ShouldNotBeNil)
-			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
-			So(err.Error(), ShouldEqual, "Cannot communicate: Request Timeout")
-			So(t, ShouldBeGreaterThan, 1)
-			So(rerr.Error(), ShouldEqual, err.Error())
+		So(err, ShouldNotBeNil)
+		So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+		So(err.Error(), ShouldEqual, "Cannot communicate: Request Timeout")
+		So(t, ShouldBeGreaterThan, 1)
+		So(rerr.Error(), ShouldEqual, err.Error())
 
-			So(resp, ShouldBeNil)
-		})
+		So(resp, ShouldBeNil)
 	})
 
 	Convey("Given I have a server and a retry func that returns a error at try 3", t, func() {
 
-		m, _ := New(context.Background(), "toto.com")
+		// LALALAL
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -1161,13 +1174,11 @@ func TestHTTP_send(t *testing.T) {
 			sp,
 		)
 
-		Convey("Then err should not be nil", func() {
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, "bam")
-			So(t, ShouldEqual, 3)
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldEqual, "bam")
+		So(t, ShouldEqual, 3)
 
-			So(resp, ShouldBeNil)
-		})
+		So(resp, ShouldBeNil)
 	})
 
 	Convey("Given I have a server and a default retry func", t, func() {
@@ -1178,6 +1189,8 @@ func TestHTTP_send(t *testing.T) {
 		m, _ := New(
 			context.Background(),
 			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 			OptionDefaultRetryFunc(func(i manipulate.RetryInfo) error {
 				t = i.Try()
 				rerr = i.Err()
@@ -1203,15 +1216,13 @@ func TestHTTP_send(t *testing.T) {
 			sp,
 		)
 
-		Convey("Then err should not be nil", func() {
-			So(err, ShouldNotBeNil)
-			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
-			So(err.Error(), ShouldEqual, "Cannot communicate: Request Timeout")
-			So(t, ShouldBeGreaterThan, 1)
-			So(rerr.Error(), ShouldEqual, err.Error())
+		So(err, ShouldNotBeNil)
+		So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+		So(err.Error(), ShouldEqual, "Cannot communicate: Request Timeout")
+		So(t, ShouldBeGreaterThan, 1)
+		So(rerr.Error(), ShouldEqual, err.Error())
 
-			So(resp, ShouldBeNil)
-		})
+		So(resp, ShouldBeNil)
 	})
 
 	Convey("Given I have a server and a default retry func that returns a error at try 3", t, func() {
@@ -1221,6 +1232,8 @@ func TestHTTP_send(t *testing.T) {
 		m, _ := New(
 			context.Background(),
 			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
 			OptionDefaultRetryFunc(func(i manipulate.RetryInfo) error {
 				t = i.Try()
 				if t == 3 {
@@ -1248,13 +1261,11 @@ func TestHTTP_send(t *testing.T) {
 			sp,
 		)
 
-		Convey("Then err should not be nil", func() {
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, "bam")
-			So(t, ShouldEqual, 3)
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldEqual, "bam")
+		So(t, ShouldEqual, 3)
 
-			So(resp, ShouldBeNil)
-		})
+		So(resp, ShouldBeNil)
 	})
 
 	Convey("Given I have a server never returning", t, func() {
@@ -1272,18 +1283,21 @@ func TestHTTP_send(t *testing.T) {
 		resp, err := m.(*httpManipulator).send(
 			manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
-		Convey("Then err should not be nil", func() {
-			So(err, ShouldNotBeNil)
-			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
-			So(err.Error(), ShouldEqual, fmt.Sprintf(`Cannot communicate: Post "%s": context deadline exceeded`, ts.URL))
+		So(err, ShouldNotBeNil)
+		So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+		So(err.Error(), ShouldEqual, fmt.Sprintf(`Cannot communicate: Post "%s": context deadline exceeded`, ts.URL))
 
-			So(resp, ShouldBeNil)
-		})
+		So(resp, ShouldBeNil)
 	})
 
 	Convey("Given I have a server returning 408", t, func() {
 
-		m, _ := New(context.Background(), "toto.com")
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -1297,18 +1311,21 @@ func TestHTTP_send(t *testing.T) {
 
 		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
-		Convey("Then err should not be nil", func() {
-			So(err, ShouldNotBeNil)
-			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
-			So(err.Error(), ShouldEqual, "Cannot communicate: Request Timeout")
+		So(err, ShouldNotBeNil)
+		So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+		So(err.Error(), ShouldEqual, "Cannot communicate: Request Timeout")
 
-			So(resp, ShouldBeNil)
-		})
+		So(resp, ShouldBeNil)
 	})
 
 	Convey("Given I have a server returning 502", t, func() {
 
-		m, _ := New(context.Background(), "toto.com")
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -1322,18 +1339,21 @@ func TestHTTP_send(t *testing.T) {
 
 		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
-		Convey("Then err should not be nil", func() {
-			So(err, ShouldNotBeNil)
-			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
-			So(err.Error(), ShouldEqual, "Cannot communicate: Bad gateway")
+		So(err, ShouldNotBeNil)
+		So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+		So(err.Error(), ShouldEqual, "Cannot communicate: Bad gateway")
 
-			So(resp, ShouldBeNil)
-		})
+		So(resp, ShouldBeNil)
 	})
 
 	Convey("Given I have a server returning 503", t, func() {
 
-		m, _ := New(context.Background(), "toto.com")
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -1347,18 +1367,21 @@ func TestHTTP_send(t *testing.T) {
 
 		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
-		Convey("Then err should not be nil", func() {
-			So(err, ShouldNotBeNil)
-			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
-			So(err.Error(), ShouldEqual, "Cannot communicate: Service unavailable")
+		So(err, ShouldNotBeNil)
+		So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+		So(err.Error(), ShouldEqual, "Cannot communicate: Service unavailable")
 
-			So(resp, ShouldBeNil)
-		})
+		So(resp, ShouldBeNil)
 	})
 
 	Convey("Given I have a server returning 504", t, func() {
 
-		m, _ := New(context.Background(), "toto.com")
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -1372,18 +1395,21 @@ func TestHTTP_send(t *testing.T) {
 
 		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
-		Convey("Then err should not be nil", func() {
-			So(err, ShouldNotBeNil)
-			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
-			So(err.Error(), ShouldEqual, "Cannot communicate: Gateway timeout")
+		So(err, ShouldNotBeNil)
+		So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+		So(err.Error(), ShouldEqual, "Cannot communicate: Gateway timeout")
 
-			So(resp, ShouldBeNil)
-		})
+		So(resp, ShouldBeNil)
 	})
 
 	Convey("Given I have a server returning 429", t, func() {
 
-		m, _ := New(context.Background(), "toto.com")
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -1397,13 +1423,11 @@ func TestHTTP_send(t *testing.T) {
 
 		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
-		Convey("Then err should not be nil", func() {
-			So(err, ShouldNotBeNil)
-			So(err, ShouldHaveSameTypeAs, manipulate.ErrTooManyRequests{})
-			So(err.Error(), ShouldEqual, "Too many requests: Too Many Requests")
+		So(err, ShouldNotBeNil)
+		So(err, ShouldHaveSameTypeAs, manipulate.ErrTooManyRequests{})
+		So(err.Error(), ShouldEqual, "Too many requests: Too Many Requests")
 
-			So(resp, ShouldBeNil)
-		})
+		So(resp, ShouldBeNil)
 	})
 
 	Convey("Given I have a server returning 403 and no token manager", t, func() {
@@ -1422,12 +1446,10 @@ func TestHTTP_send(t *testing.T) {
 
 		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
-		Convey("Then err should not be nil", func() {
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, "error 403 (): nope: boom")
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldEqual, "error 403 (): nope: boom")
 
-			So(resp, ShouldBeNil)
-		})
+		So(resp, ShouldBeNil)
 	})
 
 	Convey("Given I have a server returning 403 and with a token manager that renews the token", t, func() {
@@ -1452,7 +1474,12 @@ func TestHTTP_send(t *testing.T) {
 			return "ok-token", nil
 		})
 
-		m, _ := New(context.Background(), "toto.com")
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
 		m.(*httpManipulator).tokenManager = tm
 		m.(*httpManipulator).username = "Bearer"
 		m.(*httpManipulator).password = "token"
@@ -1482,13 +1509,8 @@ func TestHTTP_send(t *testing.T) {
 
 		err := eg.Wait()
 
-		Convey("Then err should be nil", func() {
-			So(err, ShouldBeNil)
-		})
-
-		Convey("Then the token manager should have been called only once", func() {
-			So(tmCalled, ShouldEqual, 1)
-		})
+		So(err, ShouldBeNil)
+		So(tmCalled, ShouldEqual, 1)
 	})
 
 	Convey("Given I have a server returning 403 with a token manager but a timeout during retry", t, func() {
@@ -1508,7 +1530,12 @@ func TestHTTP_send(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		m, _ := New(context.Background(), "toto.com")
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
 		m.(*httpManipulator).tokenManager = maniptest.NewTestTokenManager()
 		m.(*httpManipulator).atomicRenewTokenFunc = elemental.AtomicJob(m.(*httpManipulator).renewToken)
 
@@ -1517,11 +1544,9 @@ func TestHTTP_send(t *testing.T) {
 
 		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
-		Convey("Then err should be nil", func() {
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, "error 403 (): nope: boom")
-			So(resp, ShouldBeNil)
-		})
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldEqual, "error 403 (): nope: boom")
+		So(resp, ShouldBeNil)
 	})
 
 	Convey("Given I have a server returning 403 for all my requests, I should return an error and tokenmanager should only be invoked once", t, func() {
@@ -1541,7 +1566,12 @@ func TestHTTP_send(t *testing.T) {
 			return "ok-token", nil
 		})
 
-		m, _ := New(context.Background(), "toto.com")
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
 		m.(*httpManipulator).tokenManager = tm
 		m.(*httpManipulator).username = "Bearer"
 		m.(*httpManipulator).password = "ok-token"
@@ -1552,18 +1582,18 @@ func TestHTTP_send(t *testing.T) {
 
 		_, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
-		Convey("Then err should be not nil", func() {
-			So(err, ShouldNotBeNil)
-		})
-
-		Convey("Then the token manager should have been called only once", func() {
-			So(tmCalled, ShouldEqual, 1)
-		})
+		So(err, ShouldNotBeNil)
+		So(tmCalled, ShouldEqual, 1)
 	})
 
 	Convey("Given I have a server returning 423", t, func() {
 
-		m, _ := New(context.Background(), "toto.com")
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -1577,18 +1607,22 @@ func TestHTTP_send(t *testing.T) {
 
 		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
-		Convey("Then err should not be nil", func() {
-			So(err, ShouldNotBeNil)
-			So(err, ShouldHaveSameTypeAs, manipulate.ErrLocked{})
-			So(err.Error(), ShouldEqual, "Cannot communicate: The api has been locked down by the server.")
+		So(err, ShouldNotBeNil)
+		So(err, ShouldHaveSameTypeAs, manipulate.ErrLocked{})
+		So(err.Error(), ShouldEqual, "Cannot communicate: The api has been locked down by the server.")
 
-			So(resp, ShouldBeNil)
-		})
+		So(resp, ShouldBeNil)
+
 	})
 
 	Convey("Given I have a server returning an unmarshalable body", t, func() {
 
-		m, _ := New(context.Background(), "toto.com")
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -1602,18 +1636,21 @@ func TestHTTP_send(t *testing.T) {
 
 		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
-		Convey("Then err should not be nil", func() {
-			So(err, ShouldNotBeNil)
-			So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotUnmarshal{})
-			So(err.Error(), ShouldEqual, "Unable to unmarshal data: unable to decode application/json: EOF. original data:\n[{\"code\": 423, \"]")
+		So(err, ShouldNotBeNil)
+		So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotUnmarshal{})
+		So(err.Error(), ShouldEqual, "Unable to unmarshal data: unable to decode application/json: EOF. original data:\n[{\"code\": 423, \"]")
 
-			So(resp, ShouldBeNil)
-		})
+		So(resp, ShouldBeNil)
 	})
 
 	Convey("Given I have a server returning 500", t, func() {
 
-		m, _ := New(context.Background(), "toto.com")
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -1627,22 +1664,26 @@ func TestHTTP_send(t *testing.T) {
 
 		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
-		Convey("Then err should not be nil", func() {
-			So(err, ShouldNotBeNil)
-			So(err, ShouldHaveSameTypeAs, elemental.Errors{})
-			So(err.Error(), ShouldEqual, "error 500 (): nope: boom")
+		So(err, ShouldNotBeNil)
+		So(err, ShouldHaveSameTypeAs, elemental.Errors{})
+		So(err.Error(), ShouldEqual, "error 500 (): nope: boom")
 
-			So(resp, ShouldBeNil)
-		})
+		So(resp, ShouldBeNil)
 	})
 
 	Convey("Given I have a server returning 201 but a simulation error with 100% chance", t, func() {
 
-		m, _ := New(context.Background(), "toto.com", OptionSimulateFailures(
-			map[float64]error{
-				1.0: fmt.Errorf("simulated error"),
-			},
-		))
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+			OptionSimulateFailures(
+				map[float64]error{
+					1.0: fmt.Errorf("simulated error"),
+				},
+			),
+		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			panic("this should not be called")
@@ -1654,20 +1695,24 @@ func TestHTTP_send(t *testing.T) {
 
 		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
-		Convey("Then err should not be nil", func() {
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, "simulated error")
-			So(resp, ShouldBeNil)
-		})
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldEqual, "simulated error")
+		So(resp, ShouldBeNil)
 	})
 
 	Convey("Given I have a server returning 201 but a simulation error with 0% chance", t, func() {
 
-		m, _ := New(context.Background(), "toto.com", OptionSimulateFailures(
-			map[float64]error{
-				0.0: fmt.Errorf("simulated error"),
-			},
-		))
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+			OptionSimulateFailures(
+				map[float64]error{
+					0.0: fmt.Errorf("simulated error"),
+				},
+			),
+		)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
@@ -1679,10 +1724,8 @@ func TestHTTP_send(t *testing.T) {
 
 		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
 
-		Convey("Then err should be nil", func() {
-			So(err, ShouldBeNil)
-			So(resp, ShouldNotBeNil)
-		})
+		So(err, ShouldBeNil)
+		So(resp, ShouldNotBeNil)
 	})
 }
 

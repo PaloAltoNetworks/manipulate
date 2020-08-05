@@ -237,7 +237,7 @@ func RunQuery(mctx manipulate.Context, operationFunc func() (interface{}, error)
 		}
 
 		deadline, _ := mctx.Context().Deadline()
-		time.Sleep(backoff.Next(try, deadline))
+		time.Sleep(backoff.NextWithCurve(try, deadline, defaultBackoffCurve))
 		try++
 	}
 }

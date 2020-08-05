@@ -1,17 +1,23 @@
 package backoff
 
 import (
-	"math"
 	"time"
 )
 
-const maxBackoff = 8000
+// NextWithCurve computes the next backoff time for a given try number,
+// optional (non zero) hard deadline using the given backoffs curve.
+func NextWithCurve(try int, deadline time.Time, curve []time.Duration) time.Duration {
 
-// Next computes the next backoff time for a give try number
-// with a hard given deadline.
-func Next(try int, deadline time.Time) time.Duration {
+	if len(curve) == 0 {
+		return 0
+	}
 
-	wait := time.Duration(math.Min(math.Pow(2.0, float64(try))-1, maxBackoff)) * time.Millisecond
+	var wait time.Duration
+	if try >= len(curve) {
+		wait = curve[len(curve)-1]
+	} else {
+		wait = curve[try]
+	}
 
 	if deadline.IsZero() {
 		return wait

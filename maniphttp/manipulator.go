@@ -62,6 +62,8 @@ type httpManipulator struct {
 	atomicRenewTokenFunc func(context.Context) error
 	failureSimulations   map[float64]error
 	tokenCookieKey       string
+	backoffCurve         []time.Duration
+	strongBackoffCurve   []time.Duration
 
 	// optionnable
 	ctx            context.Context
@@ -91,6 +93,8 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 		ctx:                ctx,
 		url:                url,
 		encoding:           elemental.EncodingTypeJSON,
+		backoffCurve:       defaultBackoffCurve,
+		strongBackoffCurve: strongBackoffCurve,
 	}
 
 	// Apply the options.
@@ -836,9 +840,18 @@ func (s *httpManipulator) send(
 		case <-mctx.Context().Done():
 			// If so, we return the last error
 			return nil, lastError
+
 		default:
 			// Otherwise we sleep backoff and we restart the retry loop.
-			time.Sleep(backoff.Next(try, deadline))
+
+			curve := s.backoffCurve
+			if manipulate.IsTooManyRequestsError(lastError) {
+				// Here the backend explicitly asked to calm down
+				// so we use the strong backoff curve.
+				curve = strongBackoffCurve
+			}
+
+			time.Sleep(backoff.NextWithCurve(try, deadline, curve))
 			try++
 		}
 	}

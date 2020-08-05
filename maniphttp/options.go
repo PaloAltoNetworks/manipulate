@@ -165,6 +165,27 @@ func OptionTCPUserTimeout(t time.Duration) Option {
 	}
 }
 
+// OptionBackoffCurve configures the backoff curve
+// the manipulator will use when performing internal retry
+// operations.
+// Default curve is: 0s, 1s, 4s, 10s, 20s, 30s, 60s
+func OptionBackoffCurve(curve []time.Duration) Option {
+	return func(m *httpManipulator) {
+		m.backoffCurve = curve
+	}
+}
+
+// OptionStrongBackoffCurve configures the strong backoff curve
+// the manipulator will use when performing internal retry
+// operations that necessitate to wait more than usual like
+// a 429 code.
+// Default curve is: 10s, 20s, 30s
+func OptionStrongBackoffCurve(curve []time.Duration) Option {
+	return func(m *httpManipulator) {
+		m.strongBackoffCurve = curve
+	}
+}
+
 var (
 	opaqueKeyOverrideHeaderContentType = "maniphttp.opaqueKeyOverrideHeaderContentType"
 	opaqueKeyOverrideHeaderAccept      = "maniphttp.opaqueKeyOverrideHeaderAccept"

@@ -3,21 +3,22 @@ module go.aporeto.io/manipulate
 go 1.13
 
 require (
-	go.aporeto.io/elemental v1.100.1-0.20200729012332-b8c6e84fe209
-	go.aporeto.io/wsc v1.36.1-0.20200625070416-f79596292373
+	go.aporeto.io/elemental v1.100.1-0.20200731065958-3c0219b4b984
+	go.aporeto.io/wsc v1.36.1-0.20200731064733-e5c5718dc58f
 )
 
 require (
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
-	github.com/gofrs/uuid v3.2.0+incompatible
-	github.com/gorilla/websocket v1.4.1
-	github.com/hashicorp/go-memdb v1.1.0
-	github.com/hashicorp/golang-lru v0.5.4 // indirect
+	github.com/gofrs/uuid v3.3.0+incompatible
+	github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00 // indirect
+	github.com/gorilla/websocket v1.4.2
+	github.com/hashicorp/go-memdb v1.2.1
 	github.com/mitchellh/copystructure v1.0.0
-	github.com/opentracing/opentracing-go v1.1.0
+	github.com/mitchellh/reflectwalk v1.0.1 // indirect
+	github.com/opentracing/opentracing-go v1.2.0
+	github.com/smartystreets/assertions v1.0.0 // indirect
 	github.com/smartystreets/goconvey v1.6.4
-	go.uber.org/zap v1.14.0
-	golang.org/x/lint v0.0.0-20200130185559-910be7a94367 // indirect
-	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-	golang.org/x/sys v0.0.0-20200223170610-d5e6a3e2c0ae
+	go.uber.org/zap v1.15.0
+	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
+	golang.org/x/sys v0.0.0-20200728102440-3e129f6d46b1
 )
