@@ -731,15 +731,6 @@ func (s *httpManipulator) send(
 				return nil, manipulate.NewErrTLS(err.Error())
 
 			default:
-
-				// HACK: http.nothingWrittenError is not exposed se we cannot trap that one
-				if fmt.Sprintf("%T", uerr.Err) == "http.nothingWrittenError" {
-					if lastError == nil {
-						lastError = manipulate.NewErrDisconnected(snip.Snip(err, s.currentPassword()).Error())
-					}
-					goto RETRY
-				}
-
 				return nil, manipulate.NewErrCannotExecuteQuery(err.Error())
 			}
 		}
