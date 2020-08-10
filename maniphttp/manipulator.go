@@ -23,9 +23,11 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -702,15 +704,38 @@ func (s *httpManipulator) send(
 			switch uerr.Err.(type) {
 
 			case net.Error:
-				if lastError == nil {
-					lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
+
+				// If we have unerlying op.Error
+				if opErr, ok := uerr.Err.(*net.OpError); ok {
+					// Which lead to a con reset
+					if syscallErr, ok := opErr.Err.(*os.SyscallError); ok {
+						if syscallErr.Err == syscall.ECONNRESET {
+							if lastError == nil {
+								lastError = manipulate.NewErrDisconnected(snip.Snip(err, s.currentPassword()).Error())
+							}
+						}
+					} else {
+						if lastError == nil {
+							lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
+						}
+					}
 				}
+
 				goto RETRY
 
 			case x509.UnknownAuthorityError, x509.CertificateInvalidError, x509.HostnameError:
 				return nil, manipulate.NewErrTLS(err.Error())
 
 			default:
+
+				// HACK: http.nothingWrittenError is not exposed se we cannot trap that one
+				if fmt.Sprintf("%T", uerr.Err) == "http.nothingWrittenError" {
+					if lastError == nil {
+						lastError = manipulate.NewErrDisconnected(snip.Snip(err, s.currentPassword()).Error())
+					}
+					goto RETRY
+				}
+
 				return nil, manipulate.NewErrCannotExecuteQuery(err.Error())
 			}
 		}
@@ -845,7 +870,8 @@ func (s *httpManipulator) send(
 			// Otherwise we sleep backoff and we restart the retry loop.
 
 			curve := s.backoffCurve
-			if manipulate.IsTooManyRequestsError(lastError) {
+
+			if manipulate.IsTooManyRequestsError(lastError) || manipulate.IsDisconnectedError(lastError) {
 				// Here the backend explicitly asked to calm down
 				// so we use the strong backoff curve.
 				curve = strongBackoffCurve
