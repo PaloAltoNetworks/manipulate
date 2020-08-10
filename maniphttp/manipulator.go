@@ -708,10 +708,10 @@ func (s *httpManipulator) send(
 
 				// If we have unerlying op.Error
 				var opErr *net.OpError
-				if errors.As(uerr.Err, opErr) {
+				if errors.As(uerr.Err, &opErr) {
 					// Which leads to a syscallError
 					var syscallErr *os.SyscallError
-					if errors.As(opErr, syscallErr) {
+					if errors.As(opErr, &syscallErr) {
 						// Of type conn reset
 						if errors.Is(syscallErr.Err, syscall.ECONNRESET) {
 							if lastError == nil {
