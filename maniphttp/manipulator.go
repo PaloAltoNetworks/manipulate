@@ -16,6 +16,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -706,10 +707,13 @@ func (s *httpManipulator) send(
 			case net.Error:
 
 				// If we have unerlying op.Error
-				if opErr, ok := uerr.Err.(*net.OpError); ok {
-					// Which lead to a con reset
-					if syscallErr, ok := opErr.Err.(*os.SyscallError); ok {
-						if syscallErr.Err == syscall.ECONNRESET {
+				var opErr *net.OpError
+				if errors.As(uerr.Err, opErr) {
+					// Which leads to a syscallError
+					var syscallErr *os.SyscallError
+					if errors.As(opErr, syscallErr) {
+						// Of type conn reset
+						if errors.Is(syscallErr.Err, syscall.ECONNRESET) {
 							if lastError == nil {
 								lastError = manipulate.NewErrDisconnected(snip.Snip(err, s.currentPassword()).Error())
 							}
