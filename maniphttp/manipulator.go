@@ -706,23 +706,20 @@ func (s *httpManipulator) send(
 
 			case net.Error:
 
-				// If we have unerlying op.Error
+				// default error
+				var derr error = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
+
+				// check if the connection has been reset by the gateway
 				var opErr *net.OpError
-				if errors.As(uerr.Err, &opErr) {
-					// Which leads to a syscallError
-					var syscallErr *os.SyscallError
-					if errors.As(opErr, &syscallErr) {
-						// Of type conn reset
-						if errors.Is(syscallErr.Err, syscall.ECONNRESET) {
-							if lastError == nil {
-								lastError = manipulate.NewErrDisconnected(snip.Snip(err, s.currentPassword()).Error())
-							}
-						}
-					} else {
-						if lastError == nil {
-							lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
-						}
-					}
+				var syscallErr *os.SyscallError
+				if errors.As(uerr.Err, &opErr) &&
+					errors.As(opErr.Err, &syscallErr) &&
+					errors.Is(syscallErr.Err, syscall.ECONNRESET) {
+					derr = manipulate.NewErrDisconnected(snip.Snip(err, s.currentPassword()).Error())
+				}
+
+				if lastError == nil {
+					lastError = derr
 				}
 
 				goto RETRY

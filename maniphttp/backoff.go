@@ -1,6 +1,9 @@
 package maniphttp
 
-import "time"
+import (
+	"math/rand"
+	"time"
+)
 
 var (
 	defaultBackoffCurve = []time.Duration{
@@ -14,12 +17,12 @@ var (
 	}
 
 	strongBackoffCurve = []time.Duration{
-		2 * time.Second,
-		4 * time.Second,
-		8 * time.Second,
-		16 * time.Second,
-		32 * time.Second,
-		64 * time.Second,
+		time.Duration(1500+rand.Intn(1000)) * time.Millisecond,  // t in (1.5, 2.5)
+		time.Duration(3000+rand.Intn(1000)) * time.Millisecond,  // t in (3,4)
+		time.Duration(7000+rand.Intn(2000)) * time.Millisecond,  // t in (7,9)
+		time.Duration(14000+rand.Intn(2000)) * time.Millisecond, // t in (14,16)
+		time.Duration(30000+rand.Intn(2000)) * time.Millisecond, // t in (30,32)
+		time.Duration(62000+rand.Intn(2000)) * time.Millisecond, // t in (62, 64)
 	}
 
 	testingBackoffCurve = []time.Duration{
