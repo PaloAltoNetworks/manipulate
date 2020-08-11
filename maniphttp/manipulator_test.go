@@ -44,8 +44,8 @@ func (l *hangupListerner) Accept() (net.Conn, error) {
 		return nil, err
 	}
 	// No idea how it works so don't touch it
-	c.(*net.TCPConn).SetNoDelay(true)
-	c.(*net.TCPConn).SetLinger(0)
+	c.(*net.TCPConn).SetNoDelay(true) //nolint
+	c.(*net.TCPConn).SetLinger(0)     //nolint
 	time.Sleep(100 * time.Millisecond)
 	c.Close() //nolint
 	return c, nil
