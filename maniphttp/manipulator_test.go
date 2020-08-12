@@ -1035,7 +1035,7 @@ func TestHTTP_send(t *testing.T) {
 		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodGet, ts.URL, nil, nil, sp)
 
 		So(err, ShouldNotBeNil)
-		So(err, ShouldHaveSameTypeAs, manipulate.ErrDisconnected{})
+		So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
 		So(err.Error(), ShouldEndWith, "connection reset by peer")
 
 		So(resp, ShouldBeNil)
