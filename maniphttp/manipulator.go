@@ -16,6 +16,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -23,9 +24,11 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -597,6 +600,8 @@ func (s *httpManipulator) send(
 	var lastError error       // last error before retry.
 	var tokenRenewedOnce bool // after an authorization failures token is renewed at most once.
 
+	retryCurve := s.backoffCurve // Set the regular backoff curve by default
+
 	// We get the context deadline.
 	deadline, ok := mctx.Context().Deadline()
 	if !ok {
@@ -702,9 +707,21 @@ func (s *httpManipulator) send(
 			switch uerr.Err.(type) {
 
 			case net.Error:
+
 				if lastError == nil {
 					lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
 				}
+
+				// check if the connection has been reset by the gateway
+				// If so we change the retryCurve to be slower
+				var opErr *net.OpError
+				var syscallErr *os.SyscallError
+				if errors.As(uerr.Err, &opErr) &&
+					errors.As(opErr.Err, &syscallErr) &&
+					errors.Is(syscallErr.Err, syscall.ECONNRESET) {
+					retryCurve = s.strongBackoffCurve
+				}
+
 				goto RETRY
 
 			case x509.UnknownAuthorityError, x509.CertificateInvalidError, x509.HostnameError:
@@ -744,6 +761,7 @@ func (s *httpManipulator) send(
 
 		case http.StatusTooManyRequests:
 			lastError = manipulate.NewErrTooManyRequests("Too Many Requests")
+			retryCurve = s.strongBackoffCurve
 			goto RETRY
 		}
 
@@ -844,14 +862,7 @@ func (s *httpManipulator) send(
 		default:
 			// Otherwise we sleep backoff and we restart the retry loop.
 
-			curve := s.backoffCurve
-			if manipulate.IsTooManyRequestsError(lastError) {
-				// Here the backend explicitly asked to calm down
-				// so we use the strong backoff curve.
-				curve = strongBackoffCurve
-			}
-
-			time.Sleep(backoff.NextWithCurve(try, deadline, curve))
+			time.Sleep(backoff.NextWithCurve(try, deadline, retryCurve))
 			try++
 		}
 	}

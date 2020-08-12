@@ -15,6 +15,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -30,6 +31,41 @@ import (
 	"go.aporeto.io/manipulate/maniptest"
 	"golang.org/x/sync/errgroup"
 )
+
+// hangupListerner is a tcp listener that will close upon accept
+type hangupListerner struct {
+	net.Listener
+}
+
+func (l *hangupListerner) Accept() (net.Conn, error) {
+
+	c, err := l.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	// No idea how it works so don't touch it
+	c.(*net.TCPConn).SetNoDelay(true) //nolint
+	c.(*net.TCPConn).SetLinger(0)     //nolint
+	time.Sleep(100 * time.Millisecond)
+	c.Close() //nolint
+	return c, nil
+}
+
+func (l *hangupListerner) Addr() net.Addr {
+	return l.Listener.Addr()
+}
+
+func (l *hangupListerner) Close() error {
+	return l.Listener.Close()
+}
+
+func newHangupListerner() net.Listener {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		panic(err)
+	}
+	return &hangupListerner{l}
+}
 
 func TestHTTP_New(t *testing.T) {
 
@@ -974,6 +1010,37 @@ func TestHTTP_send(t *testing.T) {
 	sp := tracing.StartTrace(nil, "test")
 	defer sp.Finish()
 
+	Convey("Given I have a server returning connection reset by peer due to tcp close", t, func() {
+
+		ts := httptest.Server{
+			Listener: newHangupListerner(),
+			Config:   &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
+		}
+		ts.Start()
+		defer ts.Close()
+
+		m, err := New(
+			context.Background(),
+			ts.URL,
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+
+		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodGet, ts.URL, nil, nil, sp)
+
+		So(err, ShouldNotBeNil)
+		So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
+		So(err.Error(), ShouldEndWith, "connection reset by peer")
+
+		So(resp, ShouldBeNil)
+	})
+
 	Convey("Given I have a m with bad url", t, func() {
 
 		m, _ := New(
@@ -1137,7 +1204,6 @@ func TestHTTP_send(t *testing.T) {
 
 	Convey("Given I have a server and a retry func that returns a error at try 3", t, func() {
 
-		// LALALAL
 		m, _ := New(
 			context.Background(),
 			"toto.com",
