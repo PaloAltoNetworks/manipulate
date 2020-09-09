@@ -1793,6 +1793,33 @@ func TestHTTP_send(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(resp, ShouldNotBeNil)
 	})
+
+	Convey("Given the context cancels during the request", t, func() {
+
+		m, _ := New(
+			context.Background(),
+			"toto.com",
+			OptionBackoffCurve(testingBackoffCurve),
+			OptionStrongBackoffCurve(testingBackoffCurve),
+		)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			cancel()
+			time.Sleep(time.Second)
+		}))
+		defer ts.Close()
+
+		resp, err := m.(*httpManipulator).send(manipulate.NewContext(ctx), http.MethodPost, ts.URL, nil, nil, sp)
+
+		So(err, ShouldNotBeNil)
+		So(err, ShouldHaveSameTypeAs, manipulate.ErrDisconnected{})
+		So(err.Error(), ShouldEqual, `Disconnected: Client left`)
+
+		So(resp, ShouldBeNil)
+	})
 }
 
 func TestHTTP_makeAuthorizationHeaders(t *testing.T) {

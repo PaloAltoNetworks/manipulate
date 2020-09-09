@@ -690,6 +690,9 @@ func (s *httpManipulator) send(
 			// We check for constant errors.
 			switch uerr.Err {
 
+			case context.Canceled:
+				return nil, manipulate.NewErrDisconnected("Client left")
+
 			case context.DeadlineExceeded:
 				if lastError == nil {
 					lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
