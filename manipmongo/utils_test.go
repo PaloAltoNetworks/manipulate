@@ -24,7 +24,7 @@ import (
 	"go.aporeto.io/manipulate"
 )
 
-func Test_handleQueryError(t *testing.T) {
+func Test_HandleQueryError(t *testing.T) {
 	type args struct {
 		err error
 	}
@@ -188,9 +188,9 @@ func Test_handleQueryError(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := handleQueryError(tt.args.err)
+			err := HandleQueryError(tt.args.err)
 			if tt.errString != err.Error() {
-				t.Errorf("handleQueryError() error = %v, wantErr %v", err, tt.errString)
+				t.Errorf("HandleQueryError() error = %v, wantErr %v", err, tt.errString)
 			}
 		})
 	}

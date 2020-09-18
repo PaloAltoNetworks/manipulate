@@ -19,6 +19,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate/internal/objectid"
+	"go.aporeto.io/manipulate/manipmongo/options/compiler"
 )
 
 func massageKey(key string) string {
@@ -70,7 +71,12 @@ func massageValues(key string, values []interface{}) []interface{} {
 }
 
 // CompileFilter compiles the given manipulate Filter into a mongo filter.
-func CompileFilter(f *elemental.Filter) bson.D {
+func CompileFilter(f *elemental.Filter, opts ...compiler.CompilerOption) bson.D {
+
+	config := &compiler.CompilerConfig{}
+	for _, o := range opts {
+		config = o(config)
+	}
 
 	if len(f.Operators()) == 0 {
 		return bson.D{}
@@ -86,6 +92,11 @@ func CompileFilter(f *elemental.Filter) bson.D {
 
 			items := []bson.D{}
 			k := massageKey(f.Keys()[i])
+			if config.TranslateKeysFromSpec {
+				if specs, ok := config.AttrSpecs[k]; ok {
+					k = specs.BSONFieldName
+				}
+			}
 
 			switch f.Comparators()[i] {
 

@@ -23,11 +23,17 @@ import (
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/backoff"
 	"go.aporeto.io/manipulate/manipmongo/internal/compiler"
+	compilerOpts "go.aporeto.io/manipulate/manipmongo/options/compiler"
 )
 
+type compilerConfig struct {
+	TranslateKeysFromSpec bool
+	AttrSpecs             map[string]elemental.AttributeSpecification
+}
+
 // CompileFilter compiles the given manipulate filter into a raw mongo filter.
-func CompileFilter(f *elemental.Filter) bson.D {
-	return compiler.CompileFilter(f)
+func CompileFilter(f *elemental.Filter, opts ...compilerOpts.CompilerOption) bson.D {
+	return compiler.CompileFilter(f, opts...)
 }
 
 // DoesDatabaseExist checks if the database used by the given manipulator exists.
@@ -211,7 +217,7 @@ func RunQuery(mctx manipulate.Context, operationFunc func() (interface{}, error)
 			return out, nil
 		}
 
-		err = handleQueryError(err)
+		err = HandleQueryError(err)
 		if !manipulate.IsCannotCommunicateError(err) {
 			return out, err
 		}
