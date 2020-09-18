@@ -96,6 +96,7 @@ func prepareNextFilter(collection *mgo.Collection, orderingField string, next st
 	}, nil
 }
 
+// HandleQueryError handles the provided upstream error returned by Mongo by returning a corresponding manipulate error type.
 func HandleQueryError(err error) error {
 
 	if _, ok := err.(net.Error); ok {

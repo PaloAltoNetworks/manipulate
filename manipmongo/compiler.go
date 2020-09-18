@@ -26,8 +26,11 @@ type compilerConfig struct {
 	attrSpecs             map[string]elemental.AttributeSpecification
 }
 
+// CompilerOption represents an option that can be passed to CompileFilter.
 type CompilerOption func(*compilerConfig)
 
+// CompilerOptionTranslateKeysFromSpec is an option that can use the provided attribute specs to translate the BSON key
+// to use in the compiled filter.
 func CompilerOptionTranslateKeysFromSpec(attrSpecs map[string]elemental.AttributeSpecification) CompilerOption {
 	return func(config *compilerConfig) {
 		config.attrSpecs = attrSpecs
