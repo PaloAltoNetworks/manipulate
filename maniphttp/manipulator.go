@@ -755,7 +755,17 @@ func (s *httpManipulator) send(
 			goto RETRY
 
 		case http.StatusLocked:
-			lastError = manipulate.NewErrLocked("The api has been locked down by the server.")
+			errs := elemental.NewErrors()
+			msg := "The api has been locked down by the server"
+			// best effort decode any available server payload
+			_ = decodeData(response, &errs)
+			var payload string
+			var colon string
+			for _, v := range errs {
+				payload += v.Error()
+				colon = ": "
+			}
+			lastError = manipulate.NewErrLocked(msg + colon + payload)
 			goto RETRY
 
 		case http.StatusRequestTimeout:
@@ -859,7 +869,7 @@ func (s *httpManipulator) send(
 		// We check is the main context expired.
 		select {
 		case <-mctx.Context().Done():
-			// If so, we return the last error
+			// If so, we return the last error along with any last decoded payload from the server
 			return nil, lastError
 
 		default:

@@ -158,7 +158,7 @@ func IsCannotCommunicateError(err error) bool {
 // ErrLocked represents the error returned when the server api is locked..
 type ErrLocked struct{ message string }
 
-// NewErrLocked returns a new ErrCannotCommunicate.
+// NewErrLocked returns a new ErrLocked.
 func NewErrLocked(message string) ErrLocked {
 	return ErrLocked{message: message}
 }

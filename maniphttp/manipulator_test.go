@@ -1097,8 +1097,7 @@ func TestHTTP_send(t *testing.T) {
 		So(err, ShouldNotBeNil)
 		So(err, ShouldHaveSameTypeAs, manipulate.ErrCannotCommunicate{})
 
-		// On linux, the message is slightly different than on macOS
-		So(err.Error(), ShouldStartWith, `Cannot communicate: Post "https://NANANAN": dial tcp: lookup NANANAN`)
+		So(err.Error(), ShouldStartWith, `Cannot communicate: Post "https://NANANAN":`)
 
 		So(resp, ShouldBeNil)
 
@@ -1675,7 +1674,7 @@ func TestHTTP_send(t *testing.T) {
 
 		So(err, ShouldNotBeNil)
 		So(err, ShouldHaveSameTypeAs, manipulate.ErrLocked{})
-		So(err.Error(), ShouldEqual, "Cannot communicate: The api has been locked down by the server.")
+		So(err.Error(), ShouldContainSubstring, "Cannot communicate: The api has been locked down by the server")
 
 		So(resp, ShouldBeNil)
 
