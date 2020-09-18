@@ -9,7 +9,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package compiler
+package manipmongo
 
 import (
 	"reflect"
@@ -19,63 +19,28 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate/internal/objectid"
-	"go.aporeto.io/manipulate/manipmongo/options/compiler"
 )
 
-func massageKey(key string) string {
-
-	var k string
-	if path := strings.SplitN(key, ".", 2); len(path) > 1 {
-		path[0] = strings.ToLower(path[0])
-		k = strings.Join(path, ".")
-	} else {
-		k = strings.ToLower(key)
-	}
-
-	if k == "id" {
-		k = "_id"
-	}
-
-	return k
+type compilerConfig struct {
+	translateKeysFromSpec bool
+	attrSpecs             map[string]elemental.AttributeSpecification
 }
 
-func massageValue(k string, v interface{}) interface{} {
+type CompilerOption func(*compilerConfig)
 
-	if reflect.TypeOf(v).Name() == "Duration" {
-		return time.Now().Add(v.(time.Duration))
+func CompilerOptionTranslateKeysFromSpec(attrSpecs map[string]elemental.AttributeSpecification) CompilerOption {
+	return func(config *compilerConfig) {
+		config.attrSpecs = attrSpecs
+		config.translateKeysFromSpec = true
 	}
-
-	if k == "_id" {
-		switch sv := v.(type) {
-		case string:
-			oid, ok := objectid.Parse(sv)
-			if ok {
-				return oid
-			}
-		}
-	}
-
-	return v
-}
-
-func massageValues(key string, values []interface{}) []interface{} {
-
-	k := massageKey(key)
-	out := make([]interface{}, len(values))
-
-	for i, v := range values {
-		out[i] = massageValue(k, v)
-	}
-
-	return out
 }
 
 // CompileFilter compiles the given manipulate Filter into a mongo filter.
-func CompileFilter(f *elemental.Filter, opts ...compiler.CompilerOption) bson.D {
+func CompileFilter(f *elemental.Filter, opts ...CompilerOption) bson.D {
 
-	config := &compiler.CompilerConfig{}
+	config := compilerConfig{}
 	for _, o := range opts {
-		config = o(config)
+		o(&config)
 	}
 
 	if len(f.Operators()) == 0 {
@@ -92,8 +57,8 @@ func CompileFilter(f *elemental.Filter, opts ...compiler.CompilerOption) bson.D 
 
 			items := []bson.D{}
 			k := massageKey(f.Keys()[i])
-			if config.TranslateKeysFromSpec {
-				if specs, ok := config.AttrSpecs[k]; ok {
+			if config.translateKeysFromSpec {
+				if specs, ok := config.attrSpecs[k]; ok {
 					k = specs.BSONFieldName
 				}
 			}
@@ -181,4 +146,52 @@ func CompileFilter(f *elemental.Filter, opts ...compiler.CompilerOption) bson.D 
 			Value: ands,
 		},
 	}
+}
+
+func massageKey(key string) string {
+
+	var k string
+	if path := strings.SplitN(key, ".", 2); len(path) > 1 {
+		path[0] = strings.ToLower(path[0])
+		k = strings.Join(path, ".")
+	} else {
+		k = strings.ToLower(key)
+	}
+
+	if k == "id" {
+		k = "_id"
+	}
+
+	return k
+}
+
+func massageValue(k string, v interface{}) interface{} {
+
+	if reflect.TypeOf(v).Name() == "Duration" {
+		return time.Now().Add(v.(time.Duration))
+	}
+
+	if k == "_id" {
+		switch sv := v.(type) {
+		case string:
+			oid, ok := objectid.Parse(sv)
+			if ok {
+				return oid
+			}
+		}
+	}
+
+	return v
+}
+
+func massageValues(key string, values []interface{}) []interface{} {
+
+	k := massageKey(key)
+	out := make([]interface{}, len(values))
+
+	for i, v := range values {
+		out[i] = massageValue(k, v)
+	}
+
+	return out
 }

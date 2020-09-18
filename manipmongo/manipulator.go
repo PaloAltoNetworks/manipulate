@@ -25,7 +25,6 @@ import (
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/objectid"
 	"go.aporeto.io/manipulate/internal/tracing"
-	"go.aporeto.io/manipulate/manipmongo/internal/compiler"
 )
 
 const defaultGlobalContextTimeout = 60 * time.Second
@@ -115,7 +114,7 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	// Filtering
 	filter := bson.D{}
 	if f := mctx.Filter(); f != nil {
-		filter = compiler.CompileFilter(f)
+		filter = CompileFilter(f)
 	}
 
 	var ands []bson.D
@@ -254,7 +253,7 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	filter := bson.D{}
 
 	if f := mctx.Filter(); f != nil {
-		filter = compiler.CompileFilter(f)
+		filter = CompileFilter(f)
 	}
 
 	if oid, ok := objectid.Parse(object.Identifier()); ok {
@@ -400,7 +399,7 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 			}
 		}
 
-		filter := compiler.CompileFilter(mctx.Filter())
+		filter := CompileFilter(mctx.Filter())
 		if m.sharder != nil {
 			sq, err := m.sharder.FilterOne(m, mctx, object)
 			if err != nil {
@@ -620,7 +619,7 @@ func (m *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 	c, close := m.makeSession(identity, mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
-	filter := compiler.CompileFilter(mctx.Filter())
+	filter := CompileFilter(mctx.Filter())
 	if m.sharder != nil {
 		sq, err := m.sharder.FilterMany(m, mctx, identity)
 		if err != nil {
@@ -666,7 +665,7 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	filter := bson.D{}
 
 	if f := mctx.Filter(); f != nil {
-		filter = compiler.CompileFilter(f)
+		filter = CompileFilter(f)
 	}
 
 	if m.sharder != nil {
