@@ -29,8 +29,11 @@ type compilerConfig struct {
 // CompilerOption represents an option that can be passed to CompileFilter.
 type CompilerOption func(*compilerConfig)
 
-// CompilerOptionTranslateKeysFromSpec is an option that can use the provided attribute specs to translate the BSON key
-// to use in the compiled filter.
+// CompilerOptionTranslateKeysFromSpec is an option that will configure the compiler to use the provided attribute specs
+// to lookup the BSON field name corresponding to the filter keys.
+//
+// This option is mostly useful in cases where the exposed attribute name is not the same as the field name that is stored
+// in Mongo as sometimes you need to use a short field name to save space.
 func CompilerOptionTranslateKeysFromSpec(attrSpecs map[string]elemental.AttributeSpecification) CompilerOption {
 	return func(config *compilerConfig) {
 		config.attrSpecs = attrSpecs
@@ -130,14 +133,14 @@ func CompileFilter(f *elemental.Filter, opts ...CompilerOption) bson.D {
 		case elemental.AndFilterOperator:
 			subs := []bson.D{}
 			for _, sub := range f.AndFilters()[i] {
-				subs = append(subs, CompileFilter(sub))
+				subs = append(subs, CompileFilter(sub, opts...))
 			}
 			ands = append(ands, bson.D{{Name: "$and", Value: subs}})
 
 		case elemental.OrFilterOperator:
 			subs := []bson.D{}
 			for _, sub := range f.OrFilters()[i] {
-				subs = append(subs, CompileFilter(sub))
+				subs = append(subs, CompileFilter(sub, opts...))
 			}
 			ands = append(ands, bson.D{{Name: "$or", Value: subs}})
 		}
