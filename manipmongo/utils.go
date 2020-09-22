@@ -80,7 +80,7 @@ func prepareNextFilter(collection *mgo.Collection, orderingField string, next st
 
 	doc := bson.M{}
 	if err := collection.FindId(id).Select(bson.M{orderingField: 1}).One(&doc); err != nil {
-		return nil, handleQueryError(err)
+		return nil, HandleQueryError(err)
 	}
 
 	return bson.D{
@@ -96,7 +96,8 @@ func prepareNextFilter(collection *mgo.Collection, orderingField string, next st
 	}, nil
 }
 
-func handleQueryError(err error) error {
+// HandleQueryError handles the provided upstream error returned by Mongo by returning a corresponding manipulate error type.
+func HandleQueryError(err error) error {
 
 	if _, ok := err.(net.Error); ok {
 		return manipulate.NewErrCannotCommunicate(err.Error())

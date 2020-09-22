@@ -9,9 +9,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package compiler
+package manipmongo
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -20,6 +21,154 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
 )
+
+func TestCompilerOption(t *testing.T) {
+
+	tests := map[string]struct {
+		verify func(*testing.T)
+	}{
+		"CompilerOptionTranslateKeysFromSpec": {
+			verify: func(t *testing.T) {
+				config := &compilerConfig{}
+				specs := map[string]elemental.AttributeSpecification{
+					"field_a": {
+						BSONFieldName: "a",
+					},
+					"field_b": {
+						BSONFieldName: "b",
+					},
+				}
+				CompilerOptionTranslateKeysFromSpec(specs)(config)
+				if !config.translateKeysFromSpec {
+					t.Error("expected 'config.translateKeysFromSpec' to be true, but it wasn't")
+				}
+
+				if config.attrSpecs == nil {
+					t.Fatalf("expected 'config.attrSpecs' to not be nil, but it was")
+				}
+
+				if !reflect.DeepEqual(config.attrSpecs, specs) {
+					t.Errorf("expected 'config.attrSpecs' to deeply equal the specification provided in the option, but it didn't")
+				}
+			},
+		},
+	}
+
+	for summary, tc := range tests {
+		t.Run(summary, func(t *testing.T) {
+			tc.verify(t)
+		})
+	}
+}
+
+func TestCompiler_WithCompilerOption(t *testing.T) {
+
+	tests := map[string]struct {
+		filter *elemental.Filter
+		opts   []CompilerOption
+		want   string
+	}{
+		"CompilerOptionTranslateKeysFromSpec should lookup filter keys from provided spec": {
+			filter: elemental.NewFilterComposer().
+				WithKey("field_a").Equals("test_value").
+				Done(),
+			opts: []CompilerOption{
+				CompilerOptionTranslateKeysFromSpec(map[string]elemental.AttributeSpecification{
+					"field_a": {
+						BSONFieldName: "a",
+					},
+				}),
+			},
+			want: `{"$and":[{"a":{"$eq":"test_value"}}]}`,
+		},
+		"CompilerOptionTranslateKeysFromSpec should default to the the key name if no entry found in the provided spec": {
+			filter: elemental.NewFilterComposer().
+				WithKey("field_a").Equals("test_value").
+				WithKey("field_b").Equals("test_value").
+				Done(),
+			opts: []CompilerOption{
+				CompilerOptionTranslateKeysFromSpec(map[string]elemental.AttributeSpecification{
+					// notice how 'field_b' does not have an entry in the spec
+					"field_a": {
+						BSONFieldName: "a",
+					},
+				}),
+			},
+			want: `{"$and":[{"a":{"$eq":"test_value"}},{"field_b":{"$eq":"test_value"}}]}`,
+		},
+		"CompilerOptionTranslateKeysFromSpec should be able to handle nested filters": {
+			filter: elemental.NewFilterComposer().
+				WithKey("field_a").Equals("test_value").
+				And(
+					elemental.NewFilterComposer().
+						WithKey("field_b").Equals("test_value").
+						WithKey("field_c").Equals("test_value").
+						Done(),
+					elemental.NewFilterComposer().
+						WithKey("field_d").Equals("test_value").
+						Or(
+							elemental.NewFilterComposer().
+								WithKey("field_e").Equals("test_value").
+								Done(),
+							elemental.NewFilterComposer().
+								WithKey("field_f").Equals("test_value").
+								Done(),
+							elemental.NewFilterComposer().
+								WithKey("field_g").NotIn("test_value_a", "test_value_b", "test_value_c").
+								Done(),
+						).
+						Done(),
+				).
+				Done(),
+			opts: []CompilerOption{
+				CompilerOptionTranslateKeysFromSpec(map[string]elemental.AttributeSpecification{
+					"field_a": {
+						BSONFieldName: "a",
+					},
+					"field_b": {
+						BSONFieldName: "b",
+					},
+					"field_c": {
+						BSONFieldName: "c",
+					},
+					"field_d": {
+						BSONFieldName: "d",
+					},
+					"field_e": {
+						BSONFieldName: "e",
+					},
+					"field_f": {
+						BSONFieldName: "f",
+					},
+					"field_g": {
+						BSONFieldName: "g",
+					},
+				}),
+			},
+			want: `{"$and":[{"a":{"$eq":"test_value"}},{"$and":[{"$and":[{"b":{"$eq":"test_value"}},{"c":{"$eq":"test_value"}}]},{"$and":[{"d":{"$eq":"test_value"}},{"$or":[{"$and":[{"e":{"$eq":"test_value"}}]},{"$and":[{"f":{"$eq":"test_value"}}]},{"$and":[{"g":{"$nin":["test_value_a","test_value_b","test_value_c"]}}]}]}]}]}]}`,
+		},
+	}
+
+	for summary, tc := range tests {
+		t.Run(summary, func(t *testing.T) {
+			filter := CompileFilter(tc.filter, tc.opts...)
+			bytes, err := bson.MarshalJSON(toMap(filter))
+			if err != nil {
+				t.Fatalf("failed to marshall compiled BSON to JSON: %s", err)
+			}
+
+			actual := strings.Replace(string(bytes), "\n", "", 1)
+			if actual != tc.want {
+				t.Errorf("\n"+
+					"expected: %s\n"+
+					"got: %s\n",
+					tc.want,
+					actual,
+				)
+			}
+		})
+	}
+}
 
 func toMap(in bson.D) bson.M {
 

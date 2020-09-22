@@ -18,17 +18,10 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/backoff"
-	"go.aporeto.io/manipulate/manipmongo/internal/compiler"
 )
-
-// CompileFilter compiles the given manipulate filter into a raw mongo filter.
-func CompileFilter(f *elemental.Filter) bson.D {
-	return compiler.CompileFilter(f)
-}
 
 // DoesDatabaseExist checks if the database used by the given manipulator exists.
 func DoesDatabaseExist(manipulator manipulate.Manipulator) (bool, error) {
@@ -211,7 +204,7 @@ func RunQuery(mctx manipulate.Context, operationFunc func() (interface{}, error)
 			return out, nil
 		}
 
-		err = handleQueryError(err)
+		err = HandleQueryError(err)
 		if !manipulate.IsCannotCommunicateError(err) {
 			return out, err
 		}
