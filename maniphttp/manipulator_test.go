@@ -491,7 +491,6 @@ func TestHTTP_Retrieve(t *testing.T) {
 
 			Convey("Then error should not be nil", func() {
 				So(err, ShouldNotBeNil)
-				So(err.(elemental.Errors).Code(), ShouldEqual, 422)
 				So(err, ShouldHaveSameTypeAs, manipulate.ErrUnprocessableEntity{})
 			})
 		})
