@@ -141,4 +141,12 @@ func TestThing_Function(t *testing.T) {
 		func(text string) error { return NewErrTLS(text) },
 		IsTLSError,
 	)
+
+	genericErrorTest(
+		t,
+		"Unprocessable Entity: ",
+		func(text string) error { return NewErrUnprocessableEntity(text) },
+		IsUnprocessableEntityError,
+	)
+
 }

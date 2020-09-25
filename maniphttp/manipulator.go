@@ -766,6 +766,10 @@ func (s *httpManipulator) send(
 			lastError = manipulate.NewErrTooManyRequests("Too Many Requests")
 			retryCurve = s.strongBackoffCurve
 			goto RETRY
+
+		case http.StatusUnprocessableEntity:
+			lastError = manipulate.NewErrUnprocessableEntity("Unprocessable Entity")
+			goto RETRY
 		}
 
 		// We backport header info into mctx

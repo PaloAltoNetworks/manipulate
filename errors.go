@@ -149,7 +149,7 @@ func NewErrCannotCommunicate(message string) ErrCannotCommunicate {
 
 func (e ErrCannotCommunicate) Error() string { return "Cannot communicate: " + e.message }
 
-// IsCannotCommunicateError returns true if the given error is am ErrCannotCommunicate.
+// IsCannotCommunicateError returns true if the given error is an ErrCannotCommunicate.
 func IsCannotCommunicateError(err error) bool {
 	_, ok := err.(ErrCannotCommunicate)
 	return ok
@@ -158,7 +158,7 @@ func IsCannotCommunicateError(err error) bool {
 // ErrLocked represents the error returned when the server api is locked..
 type ErrLocked struct{ message string }
 
-// NewErrLocked returns a new ErrCannotCommunicate.
+// NewErrLocked returns a new NewErrLocked.
 func NewErrLocked(message string) ErrLocked {
 	return ErrLocked{message: message}
 }
@@ -248,5 +248,23 @@ func (e ErrTLS) Error() string { return "TLS error: " + e.message }
 // IsTLSError returns true if the given error is am ErrTLS.
 func IsTLSError(err error) bool {
 	_, ok := err.(ErrTLS)
+	return ok
+}
+
+// ErrUnprocessableEntity represents the error returned when the server
+// recognizes the syntax and semantics of the request but for some reason
+// cannot process it.  It may be able to process it at another time.
+type ErrUnprocessableEntity struct{ message string }
+
+// NewErrUnprocessableEntity returns a new ErrUnprocessableEntity.
+func NewErrUnprocessableEntity(message string) ErrUnprocessableEntity {
+	return ErrUnprocessableEntity{message: message}
+}
+
+func (e ErrUnprocessableEntity) Error() string { return "Unprocessable Entity: " + e.message }
+
+// IsUnprocessableEntityError returns true if the given error is am ErrUnprocessableEntity.
+func IsUnprocessableEntityError(err error) bool {
+	_, ok := err.(ErrUnprocessableEntity)
 	return ok
 }
