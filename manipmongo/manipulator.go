@@ -62,11 +62,14 @@ func New(url string, db string, options ...Option) (manipulate.TransactionalMani
 
 	if cfg.tlsConfig != nil {
 		dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
-			return tls.Dial("tcp", addr.String(), cfg.tlsConfig)
+			d := net.Dialer{Timeout: dialInfo.Timeout}
+			return tls.DialWithDialer(&d, "tcp", addr.String(), cfg.tlsConfig)
 		}
 	} else {
 		dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
-			return net.Dial("tcp", addr.String())
+			//return net.Dial("tcp", addr.String())
+			// TODO: 增加超时处理
+			return net.DialTimeout("tcp", addr.String(), dialInfo.Timeout)
 		}
 	}
 
