@@ -68,7 +68,7 @@ func New(url string, db string, options ...Option) (manipulate.TransactionalMani
 	} else {
 		dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
 			//return net.Dial("tcp", addr.String())
-			// TODO: 增加超时处理
+			// TODO: add connect timeout 
 			return net.DialTimeout("tcp", addr.String(), dialInfo.Timeout)
 		}
 	}
