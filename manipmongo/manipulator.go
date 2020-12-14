@@ -38,6 +38,7 @@ type mongoManipulator struct {
 	forcedReadFilter   bson.D
 	attributeEncrypter elemental.AttributeEncrypter
 	explain            map[elemental.Identity]map[elemental.Operation]struct{}
+	specs              map[elemental.Identity]map[string]elemental.AttributeSpecification
 }
 
 // New returns a new manipulator backed by MongoDB.
@@ -69,7 +70,7 @@ func New(url string, db string, options ...Option) (manipulate.TransactionalMani
 				"tcp",
 				addr.String(),
 				cfg.tlsConfig,
-				)
+			)
 		}
 	} else {
 		dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
@@ -94,6 +95,7 @@ func New(url string, db string, options ...Option) (manipulate.TransactionalMani
 		forcedReadFilter:   cfg.forcedReadFilter,
 		attributeEncrypter: cfg.attributeEncrypter,
 		explain:            cfg.explain,
+		specs:              cfg.specs,
 	}, nil
 }
 
@@ -111,17 +113,26 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	c, close := m.makeSession(dest.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
+	var attrSpec map[string]elemental.AttributeSpecification
+	if m.specs != nil {
+		attrSpec = m.specs[dest.Identity()]
+	}
+
 	var order []string
 	if o := mctx.Order(); len(o) > 0 {
-		order = applyOrdering(o)
+		order = applyOrdering(o, attrSpec)
 	} else if orderer, ok := dest.(elemental.DefaultOrderer); ok {
-		order = applyOrdering(orderer.DefaultOrder())
+		order = applyOrdering(orderer.DefaultOrder(), attrSpec)
 	}
 
 	// Filtering
 	filter := bson.D{}
 	if f := mctx.Filter(); f != nil {
-		filter = CompileFilter(f)
+		var opts []CompilerOption
+		if attrSpec != nil {
+			opts = append(opts, CompilerOptionTranslateKeysFromSpec(attrSpec))
+		}
+		filter = CompileFilter(f, opts...)
 	}
 
 	var ands []bson.D
@@ -184,7 +195,7 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	}
 
 	// Fields selection
-	if sels := makeFieldsSelector(mctx.Fields()); sels != nil {
+	if sels := makeFieldsSelector(mctx.Fields(), attrSpec); sels != nil {
 		q = q.Select(sels)
 	}
 
@@ -288,7 +299,7 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	defer sp.Finish()
 
 	q := c.Find(filter)
-	if sels := makeFieldsSelector(mctx.Fields()); sels != nil {
+	if sels := makeFieldsSelector(mctx.Fields(), nil); sels != nil {
 		q = q.Select(sels)
 	}
 

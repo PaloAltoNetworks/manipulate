@@ -199,6 +199,7 @@ func Test_HandleQueryError(t *testing.T) {
 func Test_makeFieldsSelector(t *testing.T) {
 	type args struct {
 		fields []string
+		spec   map[string]elemental.AttributeSpecification
 	}
 	tests := []struct {
 		name string
@@ -209,6 +210,7 @@ func Test_makeFieldsSelector(t *testing.T) {
 			"simple",
 			args{
 				[]string{"MyField1", "myfield2", ""},
+				nil,
 			},
 			bson.M{
 				"myfield1": 1,
@@ -219,6 +221,7 @@ func Test_makeFieldsSelector(t *testing.T) {
 			"ID",
 			args{
 				[]string{"ID"},
+				nil,
 			},
 			bson.M{
 				"_id": 1,
@@ -228,6 +231,7 @@ func Test_makeFieldsSelector(t *testing.T) {
 			"id",
 			args{
 				[]string{"ID"},
+				nil,
 			},
 			bson.M{
 				"_id": 1,
@@ -237,6 +241,7 @@ func Test_makeFieldsSelector(t *testing.T) {
 			"inverted",
 			args{
 				[]string{"-something"},
+				nil,
 			},
 			bson.M{
 				"something": 1,
@@ -246,12 +251,14 @@ func Test_makeFieldsSelector(t *testing.T) {
 			"empty",
 			args{
 				[]string{},
+				nil,
 			},
 			nil,
 		},
 		{
 			"nil",
 			args{
+				nil,
 				nil,
 			},
 			nil,
@@ -260,13 +267,28 @@ func Test_makeFieldsSelector(t *testing.T) {
 			"only empty",
 			args{
 				[]string{"", ""},
+				nil,
 			},
 			nil,
+		},
+		{
+			"translate fields from provided spec",
+			args{
+				fields: []string{"FieldA"},
+				spec: map[string]elemental.AttributeSpecification{
+					"FieldA": {
+						BSONFieldName: "a",
+					},
+				},
+			},
+			bson.M{
+				"a": 1,
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := makeFieldsSelector(tt.args.fields); !reflect.DeepEqual(got, tt.want) {
+			if got := makeFieldsSelector(tt.args.fields, tt.args.spec); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("makeFieldsSelector() = %v, want %v", got, tt.want)
 			}
 		})
@@ -276,6 +298,7 @@ func Test_makeFieldsSelector(t *testing.T) {
 func Test_applyOrdering(t *testing.T) {
 	type args struct {
 		order []string
+		spec  map[string]elemental.AttributeSpecification
 	}
 	tests := []struct {
 		name string
@@ -286,6 +309,7 @@ func Test_applyOrdering(t *testing.T) {
 			"simple",
 			args{
 				[]string{"NAME", "toto", ""},
+				nil,
 			},
 			[]string{"name", "toto"},
 		},
@@ -294,6 +318,7 @@ func Test_applyOrdering(t *testing.T) {
 			"ID",
 			args{
 				[]string{"ID"},
+				nil,
 			},
 			[]string{"_id"},
 		},
@@ -301,6 +326,7 @@ func Test_applyOrdering(t *testing.T) {
 			"-ID",
 			args{
 				[]string{"-ID"},
+				nil,
 			},
 			[]string{"-_id"},
 		},
@@ -309,6 +335,7 @@ func Test_applyOrdering(t *testing.T) {
 			"id",
 			args{
 				[]string{"id"},
+				nil,
 			},
 			[]string{"_id"},
 		},
@@ -316,6 +343,7 @@ func Test_applyOrdering(t *testing.T) {
 			"-id",
 			args{
 				[]string{"-id"},
+				nil,
 			},
 			[]string{"-_id"},
 		},
@@ -324,6 +352,7 @@ func Test_applyOrdering(t *testing.T) {
 			"_id",
 			args{
 				[]string{"_id"},
+				nil,
 			},
 			[]string{"_id"},
 		},
@@ -332,13 +361,89 @@ func Test_applyOrdering(t *testing.T) {
 			"only empty",
 			args{
 				[]string{"", ""},
+				nil,
+			},
+			[]string{},
+		},
+
+		{
+			"only empty",
+			args{
+				[]string{"", ""},
+				nil,
+			},
+			[]string{},
+		},
+
+		{
+			"translate order keys from spec",
+			args{
+				[]string{
+					"FieldA",
+					"FieldB",
+				},
+				map[string]elemental.AttributeSpecification{
+					"FieldA": {
+						BSONFieldName: "a",
+					},
+					"FieldB": {
+						BSONFieldName: "b",
+					},
+				},
+			},
+			[]string{"a", "b"},
+		},
+
+		{
+			"translate order keys from spec w/ order prefix - one field",
+			args{
+				[]string{
+					"-FieldA",
+					"FieldB",
+				},
+				map[string]elemental.AttributeSpecification{
+					"FieldA": {
+						BSONFieldName: "a",
+					},
+					"FieldB": {
+						BSONFieldName: "b",
+					},
+				},
+			},
+			[]string{"-a", "b"},
+		},
+
+		{
+			"translate order keys from spec w/ order prefix - both fields",
+			args{
+				[]string{
+					"-FieldA",
+					"-FieldB",
+				},
+				map[string]elemental.AttributeSpecification{
+					"FieldA": {
+						BSONFieldName: "a",
+					},
+					"FieldB": {
+						BSONFieldName: "b",
+					},
+				},
+			},
+			[]string{"-a", "-b"},
+		},
+
+		{
+			"only empty",
+			args{
+				[]string{"", ""},
+				nil,
 			},
 			[]string{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := applyOrdering(tt.args.order); !reflect.DeepEqual(got, tt.want) {
+			if got := applyOrdering(tt.args.order, tt.args.spec); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("applyOrdering() = %v, want %v", got, tt.want)
 			}
 		})

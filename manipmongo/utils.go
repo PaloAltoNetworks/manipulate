@@ -25,7 +25,9 @@ import (
 	"go.aporeto.io/manipulate/internal/objectid"
 )
 
-func applyOrdering(order []string) []string {
+const descendingOrderPrefix = "-"
+
+func applyOrdering(order []string, spec map[string]elemental.AttributeSpecification) []string {
 
 	o := []string{} // nolint: prealloc
 
@@ -35,12 +37,22 @@ func applyOrdering(order []string) []string {
 			continue
 		}
 
-		if f == "ID" || f == "id" {
-			f = "_id"
-		}
+		if spec != nil {
+			original := f
+			trimmedPrefix := strings.TrimPrefix(f, descendingOrderPrefix)
+			f = spec[trimmedPrefix].BSONFieldName
+			// if we stripped the "-" from the field name, we add it back to the BSON representation of the field name.
+			if trimmedPrefix != original {
+				f = fmt.Sprintf("%s%s", descendingOrderPrefix, f)
+			}
+		} else {
+			if f == "ID" || f == "id" {
+				f = "_id"
+			}
 
-		if f == "-ID" || f == "-id" {
-			f = "-_id"
+			if f == "-ID" || f == "-id" {
+				f = "-_id"
+			}
 		}
 
 		o = append(o, strings.ToLower(f))
@@ -194,7 +206,7 @@ func isConnectionError(err error) bool {
 	return false
 }
 
-func makeFieldsSelector(fields []string) bson.M {
+func makeFieldsSelector(fields []string, attrSpec map[string]elemental.AttributeSpecification) bson.M {
 
 	if len(fields) == 0 {
 		return nil
@@ -207,13 +219,16 @@ func makeFieldsSelector(fields []string) bson.M {
 			continue
 		}
 
-		f = strings.TrimPrefix(f, "-")
-
-		if f == "ID" || f == "id" {
-			f = "_id"
+		f = strings.ToLower(strings.TrimPrefix(f, "-"))
+		if attrSpec != nil {
+			f = attrSpec[f].BSONFieldName
+		} else {
+			if f == "id" {
+				f = "_id"
+			}
 		}
 
-		sels[strings.ToLower(f)] = 1
+		sels[f] = 1
 	}
 
 	if len(sels) == 0 {

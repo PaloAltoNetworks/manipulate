@@ -138,6 +138,30 @@ func Test_Options(t *testing.T) {
 		OptionExplain(m)(c)
 		So(c.explain, ShouldEqual, m)
 	})
+
+	Convey("Calling OptionTranslateKeysFromSpec should work", t, func() {
+		c := newConfig()
+		specs := map[elemental.Identity]map[string]elemental.AttributeSpecification{
+			elemental.MakeIdentity("test", "test"): {
+				"someAttribute": elemental.AttributeSpecification{},
+			},
+		}
+		OptionTranslateKeysFromSpec(specs)(c)
+		So(c.specs, ShouldEqual, specs)
+	})
+
+	Convey("Calling OptionTranslateKeysFromSpec should panic if provided nil specs", t, func() {
+		c := newConfig()
+		So(func() { OptionTranslateKeysFromSpec(nil)(c) }, ShouldPanic)
+	})
+
+	Convey("Calling OptionTranslateKeysFromSpec should panic if provided a nil spec for an identity", t, func() {
+		c := newConfig()
+		specs := map[elemental.Identity]map[string]elemental.AttributeSpecification{
+			elemental.MakeIdentity("test", "test"): nil,
+		}
+		So(func() { OptionTranslateKeysFromSpec(specs)(c) }, ShouldPanic)
+	})
 }
 
 func Test_ContextOptions(t *testing.T) {

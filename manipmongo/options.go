@@ -13,6 +13,7 @@ package manipmongo
 
 import (
 	"crypto/tls"
+	"fmt"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -38,6 +39,7 @@ type config struct {
 	forcedReadFilter   bson.D
 	attributeEncrypter elemental.AttributeEncrypter
 	explain            map[elemental.Identity]map[elemental.Operation]struct{}
+	specs              map[elemental.Identity]map[string]elemental.AttributeSpecification
 }
 
 func newConfig() *config {
@@ -145,6 +147,28 @@ func OptionAttributeEncrypter(enc elemental.AttributeEncrypter) Option {
 func OptionExplain(explain map[elemental.Identity]map[elemental.Operation]struct{}) Option {
 	return func(c *config) {
 		c.explain = explain
+	}
+}
+
+// OptionTranslateKeysFromSpec can be used to configure the manipulator to lookup the BSON field name for the specified
+// identities from their associated attribute specification.
+//
+// This option is mostly useful in cases where the exposed attribute name is not the same as the field name that is stored
+// in Mongo as sometimes you need to use a short field name to save space.
+func OptionTranslateKeysFromSpec(specs map[elemental.Identity]map[string]elemental.AttributeSpecification) Option {
+	return func(c *config) {
+
+		if specs == nil {
+			panic("must provide a non-nil map of specifications")
+		}
+
+		for id, s := range specs {
+			if s == nil {
+				panic(fmt.Errorf("nil spec provided for '%s'", id.Name))
+			}
+		}
+
+		c.specs = specs
 	}
 }
 
