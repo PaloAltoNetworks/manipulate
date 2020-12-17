@@ -3,7 +3,7 @@ module go.aporeto.io/manipulate
 go 1.13
 
 require (
-	go.aporeto.io/elemental v1.100.1-0.20201217051603-c83e49cd5bb0
+	go.aporeto.io/elemental v1.100.1-0.20201110214307-3e4e638fb38b
 	go.aporeto.io/wsc v1.36.1-0.20200731064733-e5c5718dc58f
 )
 
