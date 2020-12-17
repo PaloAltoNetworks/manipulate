@@ -21,7 +21,6 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
-	"go.aporeto.io/manipulate/manipmongo/internal"
 )
 
 type fakeSharder struct{}
@@ -140,26 +139,9 @@ func Test_Options(t *testing.T) {
 		So(c.explain, ShouldEqual, m)
 	})
 
-	Convey("Calling OptionTranslateKeysFromSpecifiers should work", t, func() {
+	Convey("Calling OptionTranslateKeysFromModelManager should panic if provided nil manager", t, func() {
 		c := newConfig()
-		specs := map[elemental.Identity]elemental.AttributeSpecifiable{
-			elemental.MakeIdentity("test", "test"): &internal.MockAttributeSpecifiable{},
-		}
-		OptionTranslateKeysFromSpecifiers(specs)(c)
-		So(c.attributeSpecifiers, ShouldEqual, specs)
-	})
-
-	Convey("Calling OptionTranslateKeysFromSpecifiers should panic if provided nil specs", t, func() {
-		c := newConfig()
-		So(func() { OptionTranslateKeysFromSpecifiers(nil)(c) }, ShouldPanic)
-	})
-
-	Convey("Calling OptionTranslateKeysFromSpecifiers should panic if provided a nil spec for an identity", t, func() {
-		c := newConfig()
-		specs := map[elemental.Identity]elemental.AttributeSpecifiable{
-			elemental.MakeIdentity("test", "test"): nil,
-		}
-		So(func() { OptionTranslateKeysFromSpecifiers(specs)(c) }, ShouldPanic)
+		So(func() { OptionTranslateKeysFromModelManager(nil)(c) }, ShouldPanic)
 	})
 }
 

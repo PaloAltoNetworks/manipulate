@@ -13,7 +13,6 @@ package manipmongo
 
 import (
 	"crypto/tls"
-	"fmt"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -150,25 +149,30 @@ func OptionExplain(explain map[elemental.Identity]map[elemental.Operation]struct
 	}
 }
 
-// OptionTranslateKeysFromSpecifiers can be used to configure the manipulator to lookup the BSON field name for the specified
-// identities from their associated attribute specification.
+// OptionTranslateKeysFromModelManager can be used to configure the manipulator to lookup the BSON field name for identities
+// from the configured elemental.ModelManager. If a key or identity is not found in the manager, the value provided will be used.
 //
 // This option is mostly useful in cases where the exposed attribute name is not the same as the field name that is stored
-// in Mongo as sometimes you need to use a short field name to save space.
-func OptionTranslateKeysFromSpecifiers(specs map[elemental.Identity]elemental.AttributeSpecifiable) Option {
-	return func(c *config) {
+// in Mongo as sometimes you need to use a short field name to optimize storage.
+func OptionTranslateKeysFromModelManager(manager elemental.ModelManager) Option {
 
-		if specs == nil {
-			panic("must provide a non-nil map of 'elemental.AttributeSpecifiable'")
-		}
+	if manager == nil {
+		panic("must provide a non-nil 'elemental.ModelManager'")
+	}
 
-		for id, s := range specs {
-			if s == nil {
-				panic(fmt.Errorf("nil specifier provided for '%s'", id.Name))
+	identities := manager.AllIdentities()
+	specifiers := make(map[elemental.Identity]elemental.AttributeSpecifiable, len(identities))
+
+	for _, identity := range identities {
+		if identifiable := manager.Identifiable(identity); identifiable != nil {
+			if as, ok := identifiable.(elemental.AttributeSpecifiable); ok {
+				specifiers[identity] = as
 			}
 		}
+	}
 
-		c.attributeSpecifiers = specs
+	return func(c *config) {
+		c.attributeSpecifiers = specifiers
 	}
 }
 
