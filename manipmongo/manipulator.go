@@ -31,13 +31,14 @@ const defaultGlobalContextTimeout = 60 * time.Second
 
 // MongoStore represents a MongoDB session.
 type mongoManipulator struct {
-	rootSession        *mgo.Session
-	dbName             string
-	sharder            Sharder
-	defaultRetryFunc   manipulate.RetryFunc
-	forcedReadFilter   bson.D
-	attributeEncrypter elemental.AttributeEncrypter
-	explain            map[elemental.Identity]map[elemental.Operation]struct{}
+	rootSession         *mgo.Session
+	dbName              string
+	sharder             Sharder
+	defaultRetryFunc    manipulate.RetryFunc
+	forcedReadFilter    bson.D
+	attributeEncrypter  elemental.AttributeEncrypter
+	explain             map[elemental.Identity]map[elemental.Operation]struct{}
+	attributeSpecifiers map[elemental.Identity]elemental.AttributeSpecifiable
 }
 
 // New returns a new manipulator backed by MongoDB.
@@ -69,7 +70,7 @@ func New(url string, db string, options ...Option) (manipulate.TransactionalMani
 				"tcp",
 				addr.String(),
 				cfg.tlsConfig,
-				)
+			)
 		}
 	} else {
 		dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
@@ -87,13 +88,14 @@ func New(url string, db string, options ...Option) (manipulate.TransactionalMani
 	session.SetSafe(convertWriteConsistency(cfg.writeConsistency))
 
 	return &mongoManipulator{
-		dbName:             db,
-		rootSession:        session,
-		sharder:            cfg.sharder,
-		defaultRetryFunc:   cfg.defaultRetryFunc,
-		forcedReadFilter:   cfg.forcedReadFilter,
-		attributeEncrypter: cfg.attributeEncrypter,
-		explain:            cfg.explain,
+		dbName:              db,
+		rootSession:         session,
+		sharder:             cfg.sharder,
+		defaultRetryFunc:    cfg.defaultRetryFunc,
+		forcedReadFilter:    cfg.forcedReadFilter,
+		attributeEncrypter:  cfg.attributeEncrypter,
+		explain:             cfg.explain,
+		attributeSpecifiers: cfg.attributeSpecifiers,
 	}, nil
 }
 
@@ -111,17 +113,26 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	c, close := m.makeSession(dest.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
+	var attrSpec elemental.AttributeSpecifiable
+	if m.attributeSpecifiers != nil {
+		attrSpec = m.attributeSpecifiers[dest.Identity()]
+	}
+
 	var order []string
 	if o := mctx.Order(); len(o) > 0 {
-		order = applyOrdering(o)
+		order = applyOrdering(o, attrSpec)
 	} else if orderer, ok := dest.(elemental.DefaultOrderer); ok {
-		order = applyOrdering(orderer.DefaultOrder())
+		order = applyOrdering(orderer.DefaultOrder(), attrSpec)
 	}
 
 	// Filtering
 	filter := bson.D{}
 	if f := mctx.Filter(); f != nil {
-		filter = CompileFilter(f)
+		var opts []CompilerOption
+		if attrSpec != nil {
+			opts = append(opts, CompilerOptionTranslateKeysFromSpec(attrSpec))
+		}
+		filter = CompileFilter(f, opts...)
 	}
 
 	var ands []bson.D
@@ -184,7 +195,7 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	}
 
 	// Fields selection
-	if sels := makeFieldsSelector(mctx.Fields()); sels != nil {
+	if sels := makeFieldsSelector(mctx.Fields(), attrSpec); sels != nil {
 		q = q.Select(sels)
 	}
 
@@ -257,10 +268,19 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	c, close := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
+	var attrSpec elemental.AttributeSpecifiable
+	if m.attributeSpecifiers != nil {
+		attrSpec = m.attributeSpecifiers[object.Identity()]
+	}
+
 	filter := bson.D{}
 
 	if f := mctx.Filter(); f != nil {
-		filter = CompileFilter(f)
+		var opts []CompilerOption
+		if attrSpec != nil {
+			opts = append(opts, CompilerOptionTranslateKeysFromSpec(attrSpec))
+		}
+		filter = CompileFilter(f, opts...)
 	}
 
 	if oid, ok := objectid.Parse(object.Identifier()); ok {
@@ -288,7 +308,7 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	defer sp.Finish()
 
 	q := c.Find(filter)
-	if sels := makeFieldsSelector(mctx.Fields()); sels != nil {
+	if sels := makeFieldsSelector(mctx.Fields(), attrSpec); sels != nil {
 		q = q.Select(sels)
 	}
 

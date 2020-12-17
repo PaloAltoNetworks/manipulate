@@ -25,7 +25,9 @@ import (
 	"go.aporeto.io/manipulate/internal/objectid"
 )
 
-func applyOrdering(order []string) []string {
+const descendingOrderPrefix = "-"
+
+func applyOrdering(order []string, spec elemental.AttributeSpecifiable) []string {
 
 	o := []string{} // nolint: prealloc
 
@@ -35,12 +37,24 @@ func applyOrdering(order []string) []string {
 			continue
 		}
 
-		if f == "ID" || f == "id" {
-			f = "_id"
-		}
+		if spec != nil {
+			trimmed := strings.TrimPrefix(f, descendingOrderPrefix)
+			if attrSpec := spec.SpecificationForAttribute(trimmed); attrSpec.BSONFieldName != "" {
+				original := f
+				f = attrSpec.BSONFieldName
+				// if we stripped the "-" from the field name, we add it back to the BSON representation of the field name.
+				if trimmed != original {
+					f = fmt.Sprintf("%s%s", descendingOrderPrefix, f)
+				}
+			}
+		} else {
+			if f == "ID" || f == "id" {
+				f = "_id"
+			}
 
-		if f == "-ID" || f == "-id" {
-			f = "-_id"
+			if f == "-ID" || f == "-id" {
+				f = "-_id"
+			}
 		}
 
 		o = append(o, strings.ToLower(f))
@@ -194,7 +208,7 @@ func isConnectionError(err error) bool {
 	return false
 }
 
-func makeFieldsSelector(fields []string) bson.M {
+func makeFieldsSelector(fields []string, spec elemental.AttributeSpecifiable) bson.M {
 
 	if len(fields) == 0 {
 		return nil
@@ -207,13 +221,21 @@ func makeFieldsSelector(fields []string) bson.M {
 			continue
 		}
 
-		f = strings.TrimPrefix(f, "-")
-
-		if f == "ID" || f == "id" {
-			f = "_id"
+		f = strings.ToLower(strings.TrimPrefix(f, descendingOrderPrefix))
+		if spec != nil {
+			// if a spec has been provided, use it to look up the BSON field name if there is an entry for the attribute.
+			// if no entry was found for the attribute in the provided spec default to whatever value was provided for
+			// the attribute.
+			if as := spec.SpecificationForAttribute(f); as.BSONFieldName != "" {
+				f = as.BSONFieldName
+			}
+		} else {
+			if f == "id" {
+				f = "_id"
+			}
 		}
 
-		sels[strings.ToLower(f)] = 1
+		sels[f] = 1
 	}
 
 	if len(sels) == 0 {
@@ -233,6 +255,8 @@ func convertReadConsistency(c manipulate.ReadConsistency) mgo.Mode {
 		return mgo.Nearest
 	case manipulate.ReadConsistencyStrong:
 		return mgo.Strong
+	case manipulate.ReadConsistencyWeakest:
+		return mgo.SecondaryPreferred
 	default:
 		return -1
 	}

@@ -138,6 +138,11 @@ func Test_Options(t *testing.T) {
 		OptionExplain(m)(c)
 		So(c.explain, ShouldEqual, m)
 	})
+
+	Convey("Calling OptionTranslateKeysFromModelManager should panic if provided nil manager", t, func() {
+		c := newConfig()
+		So(func() { OptionTranslateKeysFromModelManager(nil)(c) }, ShouldPanic)
+	})
 }
 
 func Test_ContextOptions(t *testing.T) {

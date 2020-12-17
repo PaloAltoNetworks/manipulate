@@ -30,6 +30,7 @@ const (
 	ReadConsistencyEventual  ReadConsistency = "eventual"
 	ReadConsistencyMonotonic ReadConsistency = "monotonic"
 	ReadConsistencyStrong    ReadConsistency = "strong"
+	ReadConsistencyWeakest   ReadConsistency = "weakest"
 )
 
 // WriteConsistency represents the desired consistency of the request.

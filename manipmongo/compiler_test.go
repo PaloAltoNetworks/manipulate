@@ -12,50 +12,57 @@
 package manipmongo
 
 import (
-	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/golang/mock/gomock"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
+	"go.aporeto.io/manipulate/manipmongo/internal"
 )
 
 func TestCompilerOption(t *testing.T) {
 
 	tests := map[string]struct {
-		verify func(*testing.T)
+		shouldPanic bool
+		verify      func(t *testing.T)
 	}{
-		"CompilerOptionTranslateKeysFromSpec": {
+		"CompilerOptionTranslateKeysFromSpec: basic": {
+			shouldPanic: false,
 			verify: func(t *testing.T) {
+
 				config := &compilerConfig{}
-				specs := map[string]elemental.AttributeSpecification{
-					"field_a": {
-						BSONFieldName: "a",
-					},
-					"field_b": {
-						BSONFieldName: "b",
-					},
-				}
-				CompilerOptionTranslateKeysFromSpec(specs)(config)
+				CompilerOptionTranslateKeysFromSpec(&internal.MockAttributeSpecifiable{})(config)
+
 				if !config.translateKeysFromSpec {
 					t.Error("expected 'config.translateKeysFromSpec' to be true, but it wasn't")
 				}
 
-				if config.attrSpecs == nil {
+				if config.attrSpec == nil {
 					t.Fatalf("expected 'config.attrSpecs' to not be nil, but it was")
 				}
+			},
+		},
+		"CompilerOptionTranslateKeysFromSpec: nil spec should panic": {
+			shouldPanic: true,
+			verify: func(t *testing.T) {
 
-				if !reflect.DeepEqual(config.attrSpecs, specs) {
-					t.Errorf("expected 'config.attrSpecs' to deeply equal the specification provided in the option, but it didn't")
-				}
+				config := &compilerConfig{}
+				CompilerOptionTranslateKeysFromSpec(nil)(config)
 			},
 		},
 	}
 
 	for summary, tc := range tests {
 		t.Run(summary, func(t *testing.T) {
+			defer func() {
+				if err := recover(); err != nil && !tc.shouldPanic {
+					t.Errorf("did not expect a panic, but one occurred: %s", err)
+				}
+			}()
+
 			tc.verify(t)
 		})
 	}
@@ -65,6 +72,7 @@ func TestCompiler_WithCompilerOption(t *testing.T) {
 
 	tests := map[string]struct {
 		filter *elemental.Filter
+		setup  func(t *testing.T, ctrl *gomock.Controller) []CompilerOption
 		opts   []CompilerOption
 		want   string
 	}{
@@ -72,12 +80,21 @@ func TestCompiler_WithCompilerOption(t *testing.T) {
 			filter: elemental.NewFilterComposer().
 				WithKey("field_a").Equals("test_value").
 				Done(),
-			opts: []CompilerOption{
-				CompilerOptionTranslateKeysFromSpec(map[string]elemental.AttributeSpecification{
-					"field_a": {
-						BSONFieldName: "a",
-					},
-				}),
+			setup: func(t *testing.T, ctrl *gomock.Controller) []CompilerOption {
+
+				spec := internal.NewMockAttributeSpecifiable(ctrl)
+				spec.
+					EXPECT().
+					SpecificationForAttribute("field_a").
+					Return(
+						elemental.AttributeSpecification{
+							BSONFieldName: "a",
+						},
+					)
+
+				return []CompilerOption{
+					CompilerOptionTranslateKeysFromSpec(spec),
+				}
 			},
 			want: `{"$and":[{"a":{"$eq":"test_value"}}]}`,
 		},
@@ -86,13 +103,33 @@ func TestCompiler_WithCompilerOption(t *testing.T) {
 				WithKey("field_a").Equals("test_value").
 				WithKey("field_b").Equals("test_value").
 				Done(),
-			opts: []CompilerOption{
-				CompilerOptionTranslateKeysFromSpec(map[string]elemental.AttributeSpecification{
-					// notice how 'field_b' does not have an entry in the spec
-					"field_a": {
-						BSONFieldName: "a",
-					},
-				}),
+			setup: func(t *testing.T, ctrl *gomock.Controller) []CompilerOption {
+
+				spec := internal.NewMockAttributeSpecifiable(ctrl)
+				spec.
+					EXPECT().
+					SpecificationForAttribute("field_a").
+					Return(
+						elemental.AttributeSpecification{
+							BSONFieldName: "a",
+						},
+					)
+
+				spec.
+					EXPECT().
+					SpecificationForAttribute("field_b").
+					Return(
+						elemental.AttributeSpecification{
+
+							// notice how this is returning an empty value since there was no spec entry for "field_b"
+
+							BSONFieldName: "",
+						},
+					)
+
+				return []CompilerOption{
+					CompilerOptionTranslateKeysFromSpec(spec),
+				}
 			},
 			want: `{"$and":[{"a":{"$eq":"test_value"}},{"field_b":{"$eq":"test_value"}}]}`,
 		},
@@ -120,38 +157,107 @@ func TestCompiler_WithCompilerOption(t *testing.T) {
 						Done(),
 				).
 				Done(),
-			opts: []CompilerOption{
-				CompilerOptionTranslateKeysFromSpec(map[string]elemental.AttributeSpecification{
-					"field_a": {
-						BSONFieldName: "a",
-					},
-					"field_b": {
-						BSONFieldName: "b",
-					},
-					"field_c": {
-						BSONFieldName: "c",
-					},
-					"field_d": {
-						BSONFieldName: "d",
-					},
-					"field_e": {
-						BSONFieldName: "e",
-					},
-					"field_f": {
-						BSONFieldName: "f",
-					},
-					"field_g": {
-						BSONFieldName: "g",
-					},
-				}),
+			setup: func(t *testing.T, ctrl *gomock.Controller) []CompilerOption {
+
+				spec := internal.NewMockAttributeSpecifiable(ctrl)
+				spec.
+					EXPECT().
+					SpecificationForAttribute("field_a").
+					Return(
+						elemental.AttributeSpecification{
+							BSONFieldName: "a",
+						},
+					)
+
+				spec.
+					EXPECT().
+					SpecificationForAttribute("field_b").
+					Return(
+						elemental.AttributeSpecification{
+							BSONFieldName: "b",
+						},
+					)
+
+				spec.
+					EXPECT().
+					SpecificationForAttribute("field_c").
+					Return(
+						elemental.AttributeSpecification{
+							BSONFieldName: "c",
+						},
+					)
+
+				spec.
+					EXPECT().
+					SpecificationForAttribute("field_d").
+					Return(
+						elemental.AttributeSpecification{
+							BSONFieldName: "d",
+						},
+					)
+
+				spec.
+					EXPECT().
+					SpecificationForAttribute("field_e").
+					Return(
+						elemental.AttributeSpecification{
+							BSONFieldName: "e",
+						},
+					)
+
+				spec.
+					EXPECT().
+					SpecificationForAttribute("field_f").
+					Return(
+						elemental.AttributeSpecification{
+							BSONFieldName: "f",
+						},
+					)
+
+				spec.
+					EXPECT().
+					SpecificationForAttribute("field_g").
+					Return(
+						elemental.AttributeSpecification{
+							BSONFieldName: "g",
+						},
+					)
+
+				return []CompilerOption{
+					CompilerOptionTranslateKeysFromSpec(spec),
+				}
 			},
 			want: `{"$and":[{"a":{"$eq":"test_value"}},{"$and":[{"$and":[{"b":{"$eq":"test_value"}},{"c":{"$eq":"test_value"}}]},{"$and":[{"d":{"$eq":"test_value"}},{"$or":[{"$and":[{"e":{"$eq":"test_value"}}]},{"$and":[{"f":{"$eq":"test_value"}}]},{"$and":[{"g":{"$nin":["test_value_a","test_value_b","test_value_c"]}}]}]}]}]}]}`,
+		},
+		"CompilerOptionTranslateKeysFromSpec should be able to handle filter with different casing": {
+			filter: elemental.NewFilterComposer().
+				WithKey("FiElD_A").Equals("test_value").
+				Done(),
+			setup: func(t *testing.T, ctrl *gomock.Controller) []CompilerOption {
+
+				spec := internal.NewMockAttributeSpecifiable(ctrl)
+				spec.
+					EXPECT().
+					SpecificationForAttribute("field_a").
+					Return(
+						elemental.AttributeSpecification{
+							BSONFieldName: "a",
+						},
+					)
+
+				return []CompilerOption{
+					CompilerOptionTranslateKeysFromSpec(spec),
+				}
+			},
+			want: `{"$and":[{"a":{"$eq":"test_value"}}]}`,
 		},
 	}
 
 	for summary, tc := range tests {
 		t.Run(summary, func(t *testing.T) {
-			filter := CompileFilter(tc.filter, tc.opts...)
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			filter := CompileFilter(tc.filter, tc.setup(t, ctrl)...)
 			bytes, err := bson.MarshalJSON(toMap(filter))
 			if err != nil {
 				t.Fatalf("failed to marshall compiled BSON to JSON: %s", err)

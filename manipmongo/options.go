@@ -24,20 +24,21 @@ import (
 type Option func(*config)
 
 type config struct {
-	username           string
-	password           string
-	authsource         string
-	tlsConfig          *tls.Config
-	poolLimit          int
-	connectTimeout     time.Duration
-	socketTimeout      time.Duration
-	readConsistency    manipulate.ReadConsistency
-	writeConsistency   manipulate.WriteConsistency
-	sharder            Sharder
-	defaultRetryFunc   manipulate.RetryFunc
-	forcedReadFilter   bson.D
-	attributeEncrypter elemental.AttributeEncrypter
-	explain            map[elemental.Identity]map[elemental.Operation]struct{}
+	username            string
+	password            string
+	authsource          string
+	tlsConfig           *tls.Config
+	poolLimit           int
+	connectTimeout      time.Duration
+	socketTimeout       time.Duration
+	readConsistency     manipulate.ReadConsistency
+	writeConsistency    manipulate.WriteConsistency
+	sharder             Sharder
+	defaultRetryFunc    manipulate.RetryFunc
+	forcedReadFilter    bson.D
+	attributeEncrypter  elemental.AttributeEncrypter
+	explain             map[elemental.Identity]map[elemental.Operation]struct{}
+	attributeSpecifiers map[elemental.Identity]elemental.AttributeSpecifiable
 }
 
 func newConfig() *config {
@@ -145,6 +146,33 @@ func OptionAttributeEncrypter(enc elemental.AttributeEncrypter) Option {
 func OptionExplain(explain map[elemental.Identity]map[elemental.Operation]struct{}) Option {
 	return func(c *config) {
 		c.explain = explain
+	}
+}
+
+// OptionTranslateKeysFromModelManager can be used to configure the manipulator to lookup the BSON field name for identities
+// from the configured elemental.ModelManager. If a key or identity is not found in the manager, the value provided will be used.
+//
+// This option is mostly useful in cases where the exposed attribute name is not the same as the field name that is stored
+// in Mongo as sometimes you need to use a short field name to optimize storage.
+func OptionTranslateKeysFromModelManager(manager elemental.ModelManager) Option {
+
+	if manager == nil {
+		panic("must provide a non-nil 'elemental.ModelManager'")
+	}
+
+	identities := manager.AllIdentities()
+	specifiers := make(map[elemental.Identity]elemental.AttributeSpecifiable, len(identities))
+
+	for _, identity := range identities {
+		if identifiable := manager.Identifiable(identity); identifiable != nil {
+			if as, ok := identifiable.(elemental.AttributeSpecifiable); ok {
+				specifiers[identity] = as
+			}
+		}
+	}
+
+	return func(c *config) {
+		c.attributeSpecifiers = specifiers
 	}
 }
 
