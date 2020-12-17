@@ -25,21 +25,21 @@ import (
 type Option func(*config)
 
 type config struct {
-	username           string
-	password           string
-	authsource         string
-	tlsConfig          *tls.Config
-	poolLimit          int
-	connectTimeout     time.Duration
-	socketTimeout      time.Duration
-	readConsistency    manipulate.ReadConsistency
-	writeConsistency   manipulate.WriteConsistency
-	sharder            Sharder
-	defaultRetryFunc   manipulate.RetryFunc
-	forcedReadFilter   bson.D
-	attributeEncrypter elemental.AttributeEncrypter
-	explain            map[elemental.Identity]map[elemental.Operation]struct{}
-	specs              map[elemental.Identity]map[string]elemental.AttributeSpecification
+	username            string
+	password            string
+	authsource          string
+	tlsConfig           *tls.Config
+	poolLimit           int
+	connectTimeout      time.Duration
+	socketTimeout       time.Duration
+	readConsistency     manipulate.ReadConsistency
+	writeConsistency    manipulate.WriteConsistency
+	sharder             Sharder
+	defaultRetryFunc    manipulate.RetryFunc
+	forcedReadFilter    bson.D
+	attributeEncrypter  elemental.AttributeEncrypter
+	explain             map[elemental.Identity]map[elemental.Operation]struct{}
+	attributeSpecifiers map[elemental.Identity]elemental.AttributeSpecifiable
 }
 
 func newConfig() *config {
@@ -150,25 +150,25 @@ func OptionExplain(explain map[elemental.Identity]map[elemental.Operation]struct
 	}
 }
 
-// OptionTranslateKeysFromSpec can be used to configure the manipulator to lookup the BSON field name for the specified
+// OptionTranslateKeysFromSpecifiers can be used to configure the manipulator to lookup the BSON field name for the specified
 // identities from their associated attribute specification.
 //
 // This option is mostly useful in cases where the exposed attribute name is not the same as the field name that is stored
 // in Mongo as sometimes you need to use a short field name to save space.
-func OptionTranslateKeysFromSpec(specs map[elemental.Identity]map[string]elemental.AttributeSpecification) Option {
+func OptionTranslateKeysFromSpecifiers(specs map[elemental.Identity]elemental.AttributeSpecifiable) Option {
 	return func(c *config) {
 
 		if specs == nil {
-			panic("must provide a non-nil map of specifications")
+			panic("must provide a non-nil map of 'elemental.AttributeSpecifiable'")
 		}
 
 		for id, s := range specs {
 			if s == nil {
-				panic(fmt.Errorf("nil spec provided for '%s'", id.Name))
+				panic(fmt.Errorf("nil specifier provided for '%s'", id.Name))
 			}
 		}
 
-		c.specs = specs
+		c.attributeSpecifiers = specs
 	}
 }
 

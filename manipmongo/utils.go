@@ -27,7 +27,7 @@ import (
 
 const descendingOrderPrefix = "-"
 
-func applyOrdering(order []string, spec map[string]elemental.AttributeSpecification) []string {
+func applyOrdering(order []string, spec elemental.AttributeSpecifiable) []string {
 
 	o := []string{} // nolint: prealloc
 
@@ -38,12 +38,14 @@ func applyOrdering(order []string, spec map[string]elemental.AttributeSpecificat
 		}
 
 		if spec != nil {
-			original := f
-			trimmedPrefix := strings.TrimPrefix(f, descendingOrderPrefix)
-			f = spec[trimmedPrefix].BSONFieldName
-			// if we stripped the "-" from the field name, we add it back to the BSON representation of the field name.
-			if trimmedPrefix != original {
-				f = fmt.Sprintf("%s%s", descendingOrderPrefix, f)
+			trimmed := strings.TrimPrefix(f, descendingOrderPrefix)
+			if attrSpec := spec.SpecificationForAttribute(trimmed); attrSpec.BSONFieldName != "" {
+				original := f
+				f = attrSpec.BSONFieldName
+				// if we stripped the "-" from the field name, we add it back to the BSON representation of the field name.
+				if trimmed != original {
+					f = fmt.Sprintf("%s%s", descendingOrderPrefix, f)
+				}
 			}
 		} else {
 			if f == "ID" || f == "id" {
@@ -206,7 +208,7 @@ func isConnectionError(err error) bool {
 	return false
 }
 
-func makeFieldsSelector(fields []string, attrSpec map[string]elemental.AttributeSpecification) bson.M {
+func makeFieldsSelector(fields []string, spec elemental.AttributeSpecifiable) bson.M {
 
 	if len(fields) == 0 {
 		return nil
@@ -219,9 +221,14 @@ func makeFieldsSelector(fields []string, attrSpec map[string]elemental.Attribute
 			continue
 		}
 
-		f = strings.ToLower(strings.TrimPrefix(f, "-"))
-		if attrSpec != nil {
-			f = attrSpec[f].BSONFieldName
+		f = strings.ToLower(strings.TrimPrefix(f, descendingOrderPrefix))
+		if spec != nil {
+			// if a spec has been provided, use it to look up the BSON field name if there is an entry for the attribute.
+			// if no entry was found for the attribute in the provided spec default to whatever value was provided for
+			// the attribute.
+			if as := spec.SpecificationForAttribute(f); as.BSONFieldName != "" {
+				f = as.BSONFieldName
+			}
 		} else {
 			if f == "id" {
 				f = "_id"

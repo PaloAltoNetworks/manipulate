@@ -10,6 +10,7 @@ require (
 require (
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/gofrs/uuid v3.3.0+incompatible
+	github.com/golang/mock v1.4.4
 	github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00 // indirect
 	github.com/gorilla/websocket v1.4.2
 	github.com/hashicorp/go-memdb v1.2.1

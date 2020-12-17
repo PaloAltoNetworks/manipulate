@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"go.aporeto.io/manipulate/manipmongo/internal"
+
 	"github.com/globalsign/mgo/bson"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
@@ -139,28 +141,26 @@ func Test_Options(t *testing.T) {
 		So(c.explain, ShouldEqual, m)
 	})
 
-	Convey("Calling OptionTranslateKeysFromSpec should work", t, func() {
+	Convey("Calling OptionTranslateKeysFromSpecifiers should work", t, func() {
 		c := newConfig()
-		specs := map[elemental.Identity]map[string]elemental.AttributeSpecification{
-			elemental.MakeIdentity("test", "test"): {
-				"someAttribute": elemental.AttributeSpecification{},
-			},
+		specs := map[elemental.Identity]elemental.AttributeSpecifiable{
+			elemental.MakeIdentity("test", "test"): &internal.MockAttributeSpecifiable{},
 		}
-		OptionTranslateKeysFromSpec(specs)(c)
-		So(c.specs, ShouldEqual, specs)
+		OptionTranslateKeysFromSpecifiers(specs)(c)
+		So(c.attributeSpecifiers, ShouldEqual, specs)
 	})
 
-	Convey("Calling OptionTranslateKeysFromSpec should panic if provided nil specs", t, func() {
+	Convey("Calling OptionTranslateKeysFromSpecifiers should panic if provided nil specs", t, func() {
 		c := newConfig()
-		So(func() { OptionTranslateKeysFromSpec(nil)(c) }, ShouldPanic)
+		So(func() { OptionTranslateKeysFromSpecifiers(nil)(c) }, ShouldPanic)
 	})
 
-	Convey("Calling OptionTranslateKeysFromSpec should panic if provided a nil spec for an identity", t, func() {
+	Convey("Calling OptionTranslateKeysFromSpecifiers should panic if provided a nil spec for an identity", t, func() {
 		c := newConfig()
-		specs := map[elemental.Identity]map[string]elemental.AttributeSpecification{
+		specs := map[elemental.Identity]elemental.AttributeSpecifiable{
 			elemental.MakeIdentity("test", "test"): nil,
 		}
-		So(func() { OptionTranslateKeysFromSpec(specs)(c) }, ShouldPanic)
+		So(func() { OptionTranslateKeysFromSpecifiers(specs)(c) }, ShouldPanic)
 	})
 }
 

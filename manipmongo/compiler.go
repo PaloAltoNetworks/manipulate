@@ -23,20 +23,25 @@ import (
 
 type compilerConfig struct {
 	translateKeysFromSpec bool
-	attrSpecs             map[string]elemental.AttributeSpecification
+	attrSpec              elemental.AttributeSpecifiable
 }
 
 // CompilerOption represents an option that can be passed to CompileFilter.
 type CompilerOption func(*compilerConfig)
 
-// CompilerOptionTranslateKeysFromSpec is an option that will configure the compiler to use the provided attribute specs
+// CompilerOptionTranslateKeysFromSpec is an option that will configure the compiler to use the provided elemental.AttributeSpecifiable
 // to lookup the BSON field name corresponding to the filter keys.
 //
 // This option is mostly useful in cases where the exposed attribute name is not the same as the field name that is stored
 // in Mongo as sometimes you need to use a short field name to save space.
-func CompilerOptionTranslateKeysFromSpec(attrSpecs map[string]elemental.AttributeSpecification) CompilerOption {
+func CompilerOptionTranslateKeysFromSpec(spec elemental.AttributeSpecifiable) CompilerOption {
+
+	if spec == nil {
+		panic("invalid argument: must provide a non-nil elemental.AttributeSpecifiable")
+	}
+
 	return func(config *compilerConfig) {
-		config.attrSpecs = attrSpecs
+		config.attrSpec = spec
 		config.translateKeysFromSpec = true
 	}
 }
@@ -64,8 +69,9 @@ func CompileFilter(f *elemental.Filter, opts ...CompilerOption) bson.D {
 			items := []bson.D{}
 			k := massageKey(f.Keys()[i])
 			if config.translateKeysFromSpec {
-				if specs, ok := config.attrSpecs[k]; ok {
-					k = specs.BSONFieldName
+				attrSpec := config.attrSpec.SpecificationForAttribute(k)
+				if attrSpec.BSONFieldName != "" {
+					k = attrSpec.BSONFieldName
 				}
 			}
 

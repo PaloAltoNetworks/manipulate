@@ -20,8 +20,10 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	"github.com/golang/mock/gomock"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/manipulate/manipmongo/internal"
 )
 
 func Test_HandleQueryError(t *testing.T) {
@@ -198,8 +200,8 @@ func Test_HandleQueryError(t *testing.T) {
 
 func Test_makeFieldsSelector(t *testing.T) {
 	type args struct {
-		fields []string
-		spec   map[string]elemental.AttributeSpecification
+		fields    []string
+		setupSpec func(t *testing.T, ctrl *gomock.Controller) elemental.AttributeSpecifiable
 	}
 	tests := []struct {
 		name string
@@ -272,23 +274,66 @@ func Test_makeFieldsSelector(t *testing.T) {
 			nil,
 		},
 		{
-			"translate fields from provided spec",
+			"translate fields from provided spec - entry found",
 			args{
 				fields: []string{"FieldA"},
-				spec: map[string]elemental.AttributeSpecification{
-					"FieldA": {
-						BSONFieldName: "a",
-					},
+				setupSpec: func(t *testing.T, ctrl *gomock.Controller) elemental.AttributeSpecifiable {
+
+					spec := internal.NewMockAttributeSpecifiable(ctrl)
+					spec.
+						EXPECT().
+						SpecificationForAttribute("fielda").
+						Return(
+							elemental.AttributeSpecification{
+								BSONFieldName: "a",
+							},
+						)
+
+					return spec
 				},
 			},
 			bson.M{
 				"a": 1,
 			},
 		},
+		{
+			"translate fields from provided spec - no entry found - should default to whatever was provided",
+			args{
+				fields: []string{"FieldA"},
+				setupSpec: func(t *testing.T, ctrl *gomock.Controller) elemental.AttributeSpecifiable {
+
+					spec := internal.NewMockAttributeSpecifiable(ctrl)
+					spec.
+						EXPECT().
+						SpecificationForAttribute("fielda").
+						Return(
+							elemental.AttributeSpecification{
+
+								// notice how no entry was found for 'fielda' therefore the value in the filter will be used.
+
+								BSONFieldName: "",
+							},
+						)
+
+					return spec
+				},
+			},
+			bson.M{
+				"fielda": 1,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := makeFieldsSelector(tt.args.fields, tt.args.spec); !reflect.DeepEqual(got, tt.want) {
+
+			var spec elemental.AttributeSpecifiable
+			if tt.args.setupSpec != nil {
+				ctrl := gomock.NewController(t)
+				defer ctrl.Finish()
+				spec = tt.args.setupSpec(t, ctrl)
+			}
+
+			if got := makeFieldsSelector(tt.args.fields, spec); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("makeFieldsSelector() = %v, want %v", got, tt.want)
 			}
 		})
@@ -297,8 +342,8 @@ func Test_makeFieldsSelector(t *testing.T) {
 
 func Test_applyOrdering(t *testing.T) {
 	type args struct {
-		order []string
-		spec  map[string]elemental.AttributeSpecification
+		order     []string
+		setupSpec func(t *testing.T, ctrl *gomock.Controller) elemental.AttributeSpecifiable
 	}
 	tests := []struct {
 		name string
@@ -306,144 +351,310 @@ func Test_applyOrdering(t *testing.T) {
 		want []string
 	}{
 		{
-			"simple",
-			args{
-				[]string{"NAME", "toto", ""},
-				nil,
+			name: "simple",
+			args: args{
+				order:     []string{"NAME", "toto", ""},
+				setupSpec: nil,
 			},
-			[]string{"name", "toto"},
+			want: []string{"name", "toto"},
 		},
 
 		{
-			"ID",
-			args{
-				[]string{"ID"},
-				nil,
+			name: "ID",
+			args: args{
+				order:     []string{"ID"},
+				setupSpec: nil,
 			},
-			[]string{"_id"},
+			want: []string{"_id"},
 		},
 		{
-			"-ID",
-			args{
-				[]string{"-ID"},
-				nil,
+			name: "-ID",
+			args: args{
+				order:     []string{"-ID"},
+				setupSpec: nil,
 			},
-			[]string{"-_id"},
-		},
-
-		{
-			"id",
-			args{
-				[]string{"id"},
-				nil,
-			},
-			[]string{"_id"},
-		},
-		{
-			"-id",
-			args{
-				[]string{"-id"},
-				nil,
-			},
-			[]string{"-_id"},
+			want: []string{"-_id"},
 		},
 
 		{
-			"_id",
-			args{
-				[]string{"_id"},
-				nil,
+			name: "id",
+			args: args{
+				order:     []string{"id"},
+				setupSpec: nil,
 			},
-			[]string{"_id"},
+			want: []string{"_id"},
+		},
+		{
+			name: "-id",
+			args: args{
+				order:     []string{"-id"},
+				setupSpec: nil,
+			},
+			want: []string{"-_id"},
 		},
 
 		{
-			"only empty",
-			args{
-				[]string{"", ""},
-				nil,
+			name: "_id",
+			args: args{
+				order:     []string{"_id"},
+				setupSpec: nil,
 			},
-			[]string{},
+			want: []string{"_id"},
 		},
 
 		{
-			"only empty",
-			args{
-				[]string{"", ""},
-				nil,
+			name: "only empty",
+			args: args{
+				order:     []string{"", ""},
+				setupSpec: nil,
 			},
-			[]string{},
+			want: []string{},
 		},
 
 		{
-			"translate order keys from spec",
-			args{
-				[]string{
+			name: "only empty",
+			args: args{
+				order:     []string{"", ""},
+				setupSpec: nil,
+			},
+			want: []string{},
+		},
+
+		{
+			name: "translate order keys from spec",
+			args: args{
+				order: []string{
 					"FieldA",
 					"FieldB",
 				},
-				map[string]elemental.AttributeSpecification{
-					"FieldA": {
-						BSONFieldName: "a",
-					},
-					"FieldB": {
-						BSONFieldName: "b",
-					},
+				setupSpec: func(t *testing.T, ctrl *gomock.Controller) elemental.AttributeSpecifiable {
+
+					spec := internal.NewMockAttributeSpecifiable(ctrl)
+					spec.
+						EXPECT().
+						SpecificationForAttribute("FieldA").
+						Return(
+							elemental.AttributeSpecification{
+								BSONFieldName: "a",
+							},
+						)
+					spec.
+						EXPECT().
+						SpecificationForAttribute("FieldB").
+						Return(
+							elemental.AttributeSpecification{
+								BSONFieldName: "b",
+							},
+						)
+
+					return spec
 				},
 			},
-			[]string{"a", "b"},
+			want: []string{"a", "b"},
 		},
 
 		{
-			"translate order keys from spec w/ order prefix - one field",
-			args{
-				[]string{
+			name: "translate order keys from spec w/ order prefix - one field",
+			args: args{
+				order: []string{
 					"-FieldA",
 					"FieldB",
 				},
-				map[string]elemental.AttributeSpecification{
-					"FieldA": {
-						BSONFieldName: "a",
-					},
-					"FieldB": {
-						BSONFieldName: "b",
-					},
+				setupSpec: func(t *testing.T, ctrl *gomock.Controller) elemental.AttributeSpecifiable {
+
+					spec := internal.NewMockAttributeSpecifiable(ctrl)
+					spec.
+						EXPECT().
+						SpecificationForAttribute("FieldA").
+						Return(
+							elemental.AttributeSpecification{
+								BSONFieldName: "a",
+							},
+						)
+					spec.
+						EXPECT().
+						SpecificationForAttribute("FieldB").
+						Return(
+							elemental.AttributeSpecification{
+								BSONFieldName: "b",
+							},
+						)
+
+					return spec
 				},
 			},
-			[]string{"-a", "b"},
+			want: []string{"-a", "b"},
 		},
 
 		{
-			"translate order keys from spec w/ order prefix - both fields",
-			args{
-				[]string{
+			name: "translate order keys from spec - ID field - upper case",
+			args: args{
+				order: []string{
+					"ID",
+				},
+				setupSpec: func(t *testing.T, ctrl *gomock.Controller) elemental.AttributeSpecifiable {
+
+					spec := internal.NewMockAttributeSpecifiable(ctrl)
+					spec.
+						EXPECT().
+						SpecificationForAttribute("ID").
+						Return(
+							elemental.AttributeSpecification{
+								BSONFieldName: "_id",
+							},
+						)
+					return spec
+				},
+			},
+			want: []string{"_id"},
+		},
+
+		{
+			name: "translate order keys from spec - ID field - lower case",
+			args: args{
+				order: []string{
+					"id",
+				},
+				setupSpec: func(t *testing.T, ctrl *gomock.Controller) elemental.AttributeSpecifiable {
+
+					spec := internal.NewMockAttributeSpecifiable(ctrl)
+					spec.
+						EXPECT().
+						SpecificationForAttribute("id").
+						Return(
+							elemental.AttributeSpecification{
+								BSONFieldName: "_id",
+							},
+						)
+					return spec
+				},
+			},
+			want: []string{"_id"},
+		},
+
+		{
+			name: "translate order keys from spec - ID field - upper case - desc",
+			args: args{
+				order: []string{
+					"-ID",
+				},
+				setupSpec: func(t *testing.T, ctrl *gomock.Controller) elemental.AttributeSpecifiable {
+
+					spec := internal.NewMockAttributeSpecifiable(ctrl)
+					spec.
+						EXPECT().
+						SpecificationForAttribute("ID").
+						Return(
+							elemental.AttributeSpecification{
+								BSONFieldName: "_id",
+							},
+						)
+					return spec
+				},
+			},
+			want: []string{"-_id"},
+		},
+
+		{
+			name: "translate order keys from spec - ID field - lower case - desc",
+			args: args{
+				order: []string{
+					"-id",
+				},
+				setupSpec: func(t *testing.T, ctrl *gomock.Controller) elemental.AttributeSpecifiable {
+
+					spec := internal.NewMockAttributeSpecifiable(ctrl)
+					spec.
+						EXPECT().
+						SpecificationForAttribute("id").
+						Return(
+							elemental.AttributeSpecification{
+								BSONFieldName: "_id",
+							},
+						)
+					return spec
+				},
+			},
+			want: []string{"-_id"},
+		},
+
+		{
+			name: "translate order keys from spec w/ order prefix - both fields",
+			args: args{
+				order: []string{
 					"-FieldA",
 					"-FieldB",
 				},
-				map[string]elemental.AttributeSpecification{
-					"FieldA": {
-						BSONFieldName: "a",
-					},
-					"FieldB": {
-						BSONFieldName: "b",
-					},
+				setupSpec: func(t *testing.T, ctrl *gomock.Controller) elemental.AttributeSpecifiable {
+
+					spec := internal.NewMockAttributeSpecifiable(ctrl)
+					spec.
+						EXPECT().
+						SpecificationForAttribute("FieldA").
+						Return(
+							elemental.AttributeSpecification{
+								BSONFieldName: "a",
+							},
+						)
+					spec.
+						EXPECT().
+						SpecificationForAttribute("FieldB").
+						Return(
+							elemental.AttributeSpecification{
+								BSONFieldName: "b",
+							},
+						)
+
+					return spec
 				},
 			},
-			[]string{"-a", "-b"},
+			want: []string{"-a", "-b"},
 		},
 
 		{
-			"only empty",
-			args{
-				[]string{"", ""},
-				nil,
+			name: "translate order keys from spec - default to provided value if nothing found in spec",
+			args: args{
+				order: []string{
+					"YOLO",
+				},
+				setupSpec: func(t *testing.T, ctrl *gomock.Controller) elemental.AttributeSpecifiable {
+
+					spec := internal.NewMockAttributeSpecifiable(ctrl)
+					spec.
+						EXPECT().
+						SpecificationForAttribute("YOLO").
+						Return(
+							elemental.AttributeSpecification{
+								BSONFieldName: "",
+							},
+						)
+
+					return spec
+				},
 			},
-			[]string{},
+			want: []string{"yolo"},
+		},
+
+		{
+			name: "only empty",
+			args: args{
+				order:     []string{"", ""},
+				setupSpec: nil,
+			},
+			want: []string{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := applyOrdering(tt.args.order, tt.args.spec); !reflect.DeepEqual(got, tt.want) {
+
+			var spec elemental.AttributeSpecifiable
+			if tt.args.setupSpec != nil {
+				ctrl := gomock.NewController(t)
+				defer ctrl.Finish()
+				spec = tt.args.setupSpec(t, ctrl)
+			}
+
+			if got := applyOrdering(tt.args.order, spec); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("applyOrdering() = %v, want %v", got, tt.want)
 			}
 		})
