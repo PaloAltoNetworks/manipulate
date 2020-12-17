@@ -255,6 +255,8 @@ func convertReadConsistency(c manipulate.ReadConsistency) mgo.Mode {
 		return mgo.Nearest
 	case manipulate.ReadConsistencyStrong:
 		return mgo.Strong
+	case manipulate.ReadConsistencyWeakest:
+		return mgo.SecondaryPreferred
 	default:
 		return -1
 	}

@@ -691,6 +691,11 @@ func Test_convertReadConsistency(t *testing.T) {
 			mgo.Strong,
 		},
 		{
+			"weakest",
+			args{manipulate.ReadConsistencyWeakest},
+			mgo.SecondaryPreferred,
+		},
+		{
 			"default",
 			args{manipulate.ReadConsistencyDefault},
 			-1,
