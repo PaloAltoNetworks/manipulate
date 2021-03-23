@@ -146,7 +146,7 @@ func doIterFunc(
 		smctx := mctx.Derive(ContextOptionAfter(after, blockSize))
 
 		if err := manipulator.RetrieveMany(smctx, objects); err != nil {
-			return fmt.Errorf("unable to retrieve objects for iteration %d: %s", iter, err.Error())
+			return fmt.Errorf("unable to retrieve objects for iteration %d: %w", iter, err)
 		}
 
 		if len(objects.List()) == 0 {
@@ -154,7 +154,7 @@ func doIterFunc(
 		}
 
 		if err := iteratorFunc(objects); err != nil {
-			return fmt.Errorf("iter function returned an error on iteration %d: %s", iter, err)
+			return fmt.Errorf("iter function returned an error on iteration %d: %w", iter, err)
 		}
 
 		if smctx.Next() == "" {
