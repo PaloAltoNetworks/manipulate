@@ -1675,7 +1675,7 @@ func TestHTTP_send(t *testing.T) {
 
 		So(err, ShouldNotBeNil)
 		So(err, ShouldHaveSameTypeAs, manipulate.ErrLocked{})
-		So(err.Error(), ShouldEqual, "Cannot communicate: The api has been locked down by the server.")
+		So(err.Error(), ShouldEqual, "Cannot communicate: The api has been locked down by the server")
 
 		So(resp, ShouldBeNil)
 

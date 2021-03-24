@@ -122,7 +122,7 @@ func HandleQueryError(err error) error {
 	}
 
 	if mgo.IsDup(err) {
-		return manipulate.ErrConstraintViolation{Err: fmt.Errorf("duplicate key.")}
+		return manipulate.ErrConstraintViolation{Err: fmt.Errorf("duplicate key")}
 	}
 
 	if isConnectionError(err) {

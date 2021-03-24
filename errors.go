@@ -23,7 +23,9 @@ func NewErrCannotUnmarshal(message string) ErrCannotUnmarshal {
 	return ErrCannotUnmarshal{Err: fmt.Errorf("%s", message)}
 }
 
+// Unwrap unwraps the internal error.
 func (e ErrCannotUnmarshal) Unwrap() error { return e.Err }
+
 func (e ErrCannotUnmarshal) Error() string { return "Unable to unmarshal data: " + e.Err.Error() }
 
 // IsCannotUnmarshalError returns true if the given error is am ErrCannotUnmarshal.
@@ -42,7 +44,9 @@ func NewErrCannotMarshal(message string) ErrCannotMarshal {
 	return ErrCannotMarshal{Err: fmt.Errorf("%s", message)}
 }
 
+// Unwrap unwraps the internal error.
 func (e ErrCannotMarshal) Unwrap() error { return e.Err }
+
 func (e ErrCannotMarshal) Error() string { return "Unable to marshal data: " + e.Err.Error() }
 
 // IsCannotMarshalError returns true if the given error is am ErrCannotMarshal.
@@ -61,7 +65,9 @@ func NewErrObjectNotFound(message string) ErrObjectNotFound {
 	return ErrObjectNotFound{Err: fmt.Errorf("%s", message)}
 }
 
+// Unwrap unwraps the internal error.
 func (e ErrObjectNotFound) Unwrap() error { return e.Err }
+
 func (e ErrObjectNotFound) Error() string { return "Object not found: " + e.Err.Error() }
 
 // IsObjectNotFoundError returns true if the given error is am ErrObjectNotFound.
@@ -80,7 +86,9 @@ func NewErrMultipleObjectsFound(message string) ErrMultipleObjectsFound {
 	return ErrMultipleObjectsFound{Err: fmt.Errorf("%s", message)}
 }
 
+// Unwrap unwraps the internal error.
 func (e ErrMultipleObjectsFound) Unwrap() error { return e.Err }
+
 func (e ErrMultipleObjectsFound) Error() string { return "Multiple objects found: " + e.Err.Error() }
 
 // IsMultipleObjectsFoundError returns true if the given error is am ErrMultipleObjectsFound.
@@ -99,7 +107,9 @@ func NewErrCannotBuildQuery(message string) ErrCannotBuildQuery {
 	return ErrCannotBuildQuery{Err: fmt.Errorf("%s", message)}
 }
 
+// Unwrap unwraps the internal error.
 func (e ErrCannotBuildQuery) Unwrap() error { return e.Err }
+
 func (e ErrCannotBuildQuery) Error() string { return "Unable to build query: " + e.Err.Error() }
 
 // IsCannotBuildQueryError returns true if the given error is am ErrCannotBuildQuery.
@@ -118,7 +128,9 @@ func NewErrCannotExecuteQuery(message string) ErrCannotExecuteQuery {
 	return ErrCannotExecuteQuery{Err: fmt.Errorf("%s", message)}
 }
 
+// Unwrap unwraps the internal error.
 func (e ErrCannotExecuteQuery) Unwrap() error { return e.Err }
+
 func (e ErrCannotExecuteQuery) Error() string { return "Unable to execute query: " + e.Err.Error() }
 
 // IsCannotExecuteQueryError returns true if the given error is am ErrCannotExecuteQuery.
@@ -137,7 +149,9 @@ func NewErrCannotCommit(message string) ErrCannotCommit {
 	return ErrCannotCommit{Err: fmt.Errorf("%s", message)}
 }
 
+// Unwrap unwraps the internal error.
 func (e ErrCannotCommit) Unwrap() error { return e.Err }
+
 func (e ErrCannotCommit) Error() string { return "Unable to commit transaction: " + e.Err.Error() }
 
 // IsCannotCommitError returns true if the given error is am ErrCannotCommit.
@@ -156,7 +170,9 @@ func NewErrNotImplemented(message string) ErrNotImplemented {
 	return ErrNotImplemented{Err: fmt.Errorf("%s", message)}
 }
 
+// Unwrap unwraps the internal error.
 func (e ErrNotImplemented) Unwrap() error { return e.Err }
+
 func (e ErrNotImplemented) Error() string { return "Not implemented: " + e.Err.Error() }
 
 // IsNotImplementedError returns true if the given error is am ErrNotImplemented.
@@ -175,7 +191,9 @@ func NewErrCannotCommunicate(message string) ErrCannotCommunicate {
 	return ErrCannotCommunicate{Err: fmt.Errorf("%s", message)}
 }
 
+// Unwrap unwraps the internal error.
 func (e ErrCannotCommunicate) Unwrap() error { return e.Err }
+
 func (e ErrCannotCommunicate) Error() string { return "Cannot communicate: " + e.Err.Error() }
 
 // IsCannotCommunicateError returns true if the given error is am ErrCannotCommunicate.
@@ -194,7 +212,9 @@ func NewErrLocked(message string) ErrLocked {
 	return ErrLocked{Err: fmt.Errorf("%s", message)}
 }
 
+// Unwrap unwraps the internal error.
 func (e ErrLocked) Unwrap() error { return e.Err }
+
 func (e ErrLocked) Error() string { return "Cannot communicate: " + e.Err.Error() }
 
 // IsLockedError returns true if the given error is am ErrLocked.
@@ -213,7 +233,9 @@ func NewErrTransactionNotFound(message string) ErrTransactionNotFound {
 	return ErrTransactionNotFound{Err: fmt.Errorf("%s", message)}
 }
 
+// Unwrap unwraps the internal error.
 func (e ErrTransactionNotFound) Unwrap() error { return e.Err }
+
 func (e ErrTransactionNotFound) Error() string { return "Transaction not found: " + e.Err.Error() }
 
 // IsTransactionNotFoundError returns true if the given error is am ErrTransactionNotFound.
@@ -232,7 +254,9 @@ func NewErrConstraintViolation(message string) ErrConstraintViolation {
 	return ErrConstraintViolation{Err: fmt.Errorf("%s", message)}
 }
 
+// Unwrap unwraps the internal error.
 func (e ErrConstraintViolation) Unwrap() error { return e.Err }
+
 func (e ErrConstraintViolation) Error() string { return "Constraint violation: " + e.Err.Error() }
 
 // IsConstraintViolationError returns true if the given error is am ErrConstraintViolation.
@@ -251,7 +275,9 @@ func NewErrDisconnected(message string) ErrDisconnected {
 	return ErrDisconnected{Err: fmt.Errorf("%s", message)}
 }
 
+// Unwrap unwraps the internal error.
 func (e ErrDisconnected) Unwrap() error { return e.Err }
+
 func (e ErrDisconnected) Error() string { return "Disconnected: " + e.Err.Error() }
 
 // IsDisconnectedError returns true if the given error is am ErrDisconnected.
@@ -270,7 +296,9 @@ func NewErrTooManyRequests(message string) ErrTooManyRequests {
 	return ErrTooManyRequests{Err: fmt.Errorf("%s", message)}
 }
 
+// Unwrap unwraps the internal error.
 func (e ErrTooManyRequests) Unwrap() error { return e.Err }
+
 func (e ErrTooManyRequests) Error() string { return "Too many requests: " + e.Err.Error() }
 
 // IsTooManyRequestsError returns true if the given error is am ErrTooManyRequests.
@@ -289,7 +317,9 @@ func NewErrTLS(message string) ErrTLS {
 	return ErrTLS{Err: fmt.Errorf("%s", message)}
 }
 
+// Unwrap unwraps the internal error.
 func (e ErrTLS) Unwrap() error { return e.Err }
+
 func (e ErrTLS) Error() string { return "TLS error: " + e.Err.Error() }
 
 // IsTLSError returns true if the given error is am ErrTLS.

@@ -755,7 +755,7 @@ func (s *httpManipulator) send(
 			goto RETRY
 
 		case http.StatusLocked:
-			lastError = manipulate.ErrLocked{Err: fmt.Errorf("The api has been locked down by the server.")}
+			lastError = manipulate.ErrLocked{Err: fmt.Errorf("The api has been locked down by the server")}
 			goto RETRY
 
 		case http.StatusRequestTimeout:
