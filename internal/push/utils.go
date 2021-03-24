@@ -30,11 +30,11 @@ func decodeErrors(r io.Reader, encoding elemental.EncodingType) error {
 
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
-		return manipulate.ErrCannotUnmarshal{Err: fmt.Errorf("%s: %s", err.Error(), string(data))}
+		return manipulate.ErrCannotUnmarshal{Err: fmt.Errorf("%w: %s", err, string(data))}
 	}
 
 	if err := elemental.Decode(encoding, data, &es); err != nil {
-		return manipulate.ErrCannotUnmarshal{Err: fmt.Errorf("%s: %s", err.Error(), string(data))}
+		return manipulate.ErrCannotUnmarshal{Err: fmt.Errorf("%w: %s", err, string(data))}
 	}
 
 	errs := elemental.NewErrors()
