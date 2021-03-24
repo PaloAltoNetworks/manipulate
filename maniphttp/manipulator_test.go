@@ -1816,7 +1816,7 @@ func TestHTTP_send(t *testing.T) {
 
 		So(err, ShouldNotBeNil)
 		So(err, ShouldHaveSameTypeAs, manipulate.ErrDisconnected{})
-		So(err.Error(), ShouldEqual, `Disconnected: Client left`)
+		So(err.Error(), ShouldEqual, `Disconnected: context canceled`)
 
 		So(resp, ShouldBeNil)
 	})

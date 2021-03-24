@@ -114,19 +114,19 @@ func prepareNextFilter(collection *mgo.Collection, orderingField string, next st
 func HandleQueryError(err error) error {
 
 	if _, ok := err.(net.Error); ok {
-		return manipulate.NewErrCannotCommunicate(err.Error())
+		return manipulate.ErrCannotCommunicate{Err: err}
 	}
 
 	if err == mgo.ErrNotFound {
-		return manipulate.NewErrObjectNotFound("cannot find the object for the given ID")
+		return manipulate.ErrObjectNotFound{Err: fmt.Errorf("cannot find the object for the given ID")}
 	}
 
 	if mgo.IsDup(err) {
-		return manipulate.NewErrConstraintViolation("duplicate key.")
+		return manipulate.ErrConstraintViolation{Err: fmt.Errorf("duplicate key.")}
 	}
 
 	if isConnectionError(err) {
-		return manipulate.NewErrCannotCommunicate(err.Error())
+		return manipulate.ErrCannotCommunicate{Err: err}
 	}
 
 	// see https://github.com/mongodb/mongo/blob/master/src/mongo/base/error_codes.err
@@ -147,9 +147,9 @@ func HandleQueryError(err error) error {
 		// NotMasterNoSlaveOk
 		// InterruptedAtShutdown
 		// InterruptedDueToStepDown
-		return manipulate.NewErrCannotCommunicate(err.Error())
+		return manipulate.ErrCannotCommunicate{Err: err}
 	default:
-		return manipulate.NewErrCannotExecuteQuery(err.Error())
+		return manipulate.ErrCannotExecuteQuery{Err: err}
 	}
 }
 

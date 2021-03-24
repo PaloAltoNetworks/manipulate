@@ -225,7 +225,7 @@ func RunQuery(mctx manipulate.Context, operationFunc func() (interface{}, error)
 
 		select {
 		case <-mctx.Context().Done():
-			return nil, manipulate.NewErrCannotExecuteQuery(mctx.Context().Err().Error())
+			return nil, manipulate.ErrCannotExecuteQuery{Err: mctx.Context().Err()}
 		default:
 		}
 
