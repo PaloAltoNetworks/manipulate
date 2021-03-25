@@ -164,7 +164,7 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.Identifiables) error {
 
 	if dest == nil {
-		return manipulate.NewErrCannotBuildQuery("nil dest")
+		return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("nil dest")}
 	}
 
 	if mctx == nil {
@@ -180,7 +180,7 @@ func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.I
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
-		return manipulate.NewErrCannotBuildQuery(err.Error())
+		return manipulate.ErrCannotBuildQuery{Err: err}
 	}
 
 	response, err := s.send(mctx, http.MethodGet, url, nil, dest, sp)
@@ -207,7 +207,7 @@ func (s *httpManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.I
 func (s *httpManipulator) Retrieve(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if object == nil {
-		return manipulate.NewErrCannotBuildQuery("nil object")
+		return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("nil object")}
 	}
 
 	if mctx == nil {
@@ -223,7 +223,7 @@ func (s *httpManipulator) Retrieve(mctx manipulate.Context, object elemental.Ide
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
-		return manipulate.NewErrCannotBuildQuery(err.Error())
+		return manipulate.ErrCannotBuildQuery{Err: err}
 	}
 
 	response, err := s.send(mctx, http.MethodGet, url, nil, object, sp)
@@ -248,7 +248,7 @@ func (s *httpManipulator) Retrieve(mctx manipulate.Context, object elemental.Ide
 func (s *httpManipulator) Create(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if object == nil {
-		return manipulate.NewErrCannotBuildQuery("nil object")
+		return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("nil object")}
 	}
 
 	if mctx == nil {
@@ -270,14 +270,14 @@ func (s *httpManipulator) Create(mctx manipulate.Context, object elemental.Ident
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
-		return manipulate.NewErrCannotBuildQuery(err.Error())
+		return manipulate.ErrCannotBuildQuery{Err: err}
 	}
 
 	data, err := elemental.Encode(s.encoding, object)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
-		return manipulate.NewErrCannotMarshal(err.Error())
+		return manipulate.ErrCannotMarshal{Err: err}
 	}
 
 	response, err := s.send(mctx, http.MethodPost, url, bytes.NewReader(data), object, sp)
@@ -306,7 +306,7 @@ func (s *httpManipulator) Create(mctx manipulate.Context, object elemental.Ident
 func (s *httpManipulator) Update(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if object == nil {
-		return manipulate.NewErrCannotBuildQuery("nil object")
+		return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("nil object")}
 	}
 
 	if mctx == nil {
@@ -333,14 +333,14 @@ func (s *httpManipulator) Update(mctx manipulate.Context, object elemental.Ident
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
-		return manipulate.NewErrCannotBuildQuery(err.Error())
+		return manipulate.ErrCannotBuildQuery{Err: err}
 	}
 
 	data, err := elemental.Encode(s.encoding, object)
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
-		return manipulate.NewErrCannotMarshal(err.Error())
+		return manipulate.ErrCannotMarshal{Err: err}
 	}
 
 	response, err := s.send(mctx, method, url, bytes.NewReader(data), object, sp)
@@ -369,7 +369,7 @@ func (s *httpManipulator) Update(mctx manipulate.Context, object elemental.Ident
 func (s *httpManipulator) Delete(mctx manipulate.Context, object elemental.Identifiable) error {
 
 	if object == nil {
-		return manipulate.NewErrCannotBuildQuery("nil object")
+		return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("nil object")}
 	}
 
 	if mctx == nil {
@@ -386,7 +386,7 @@ func (s *httpManipulator) Delete(mctx manipulate.Context, object elemental.Ident
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
-		return manipulate.NewErrCannotBuildQuery(err.Error())
+		return manipulate.ErrCannotBuildQuery{Err: err}
 	}
 
 	response, err := s.send(mctx, http.MethodDelete, url, nil, object, sp)
@@ -409,7 +409,7 @@ func (s *httpManipulator) Delete(mctx manipulate.Context, object elemental.Ident
 }
 
 func (s *httpManipulator) DeleteMany(mctx manipulate.Context, identity elemental.Identity) error {
-	return manipulate.NewErrNotImplemented("DeleteMany not implemented in maniphttp")
+	return manipulate.ErrNotImplemented{Err: fmt.Errorf("DeleteMany not implemented in maniphttp")}
 }
 
 func (s *httpManipulator) Count(mctx manipulate.Context, identity elemental.Identity) (int, error) {
@@ -427,7 +427,7 @@ func (s *httpManipulator) Count(mctx manipulate.Context, identity elemental.Iden
 	if err != nil {
 		sp.SetTag("error", true)
 		sp.LogFields(log.Error(err))
-		return 0, manipulate.NewErrCannotBuildQuery(err.Error())
+		return 0, manipulate.ErrCannotBuildQuery{Err: err}
 	}
 
 	if _, err = s.send(mctx, http.MethodHead, url, nil, nil, sp); err != nil {
@@ -643,14 +643,14 @@ func (s *httpManipulator) send(
 		var currentRequestBody io.Reader
 		if body != nil {
 			if _, err := body.Seek(0, 0); err != nil {
-				return nil, manipulate.NewErrCannotBuildQuery(err.Error())
+				return nil, manipulate.ErrCannotBuildQuery{Err: err}
 			}
 			currentRequestBody = body
 		}
 
 		req, err := http.NewRequest(method, requrl, currentRequestBody)
 		if err != nil {
-			return nil, manipulate.NewErrCannotBuildQuery(err.Error())
+			return nil, manipulate.ErrCannotBuildQuery{Err: err}
 		}
 
 		if err = addQueryParameters(req, mctx); err != nil {
@@ -691,17 +691,17 @@ func (s *httpManipulator) send(
 			switch uerr.Err {
 
 			case context.Canceled:
-				return nil, manipulate.NewErrDisconnected("Client left")
+				return nil, manipulate.ErrDisconnected{Err: context.Canceled}
 
 			case context.DeadlineExceeded:
 				if lastError == nil {
-					lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
+					lastError = manipulate.ErrCannotCommunicate{Err: fmt.Errorf(snip.Snip(err, s.currentPassword()).Error())}
 				}
 				goto RETRY
 
 			case io.ErrUnexpectedEOF, io.EOF:
 				if lastError == nil {
-					lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
+					lastError = manipulate.ErrCannotCommunicate{Err: fmt.Errorf(snip.Snip(err, s.currentPassword()).Error())}
 				}
 				goto RETRY
 			}
@@ -712,7 +712,7 @@ func (s *httpManipulator) send(
 			case net.Error:
 
 				if lastError == nil {
-					lastError = manipulate.NewErrCannotCommunicate(snip.Snip(err, s.currentPassword()).Error())
+					lastError = manipulate.ErrCannotCommunicate{Err: fmt.Errorf(snip.Snip(err, s.currentPassword()).Error())}
 				}
 
 				// check if the connection has been reset by the gateway
@@ -728,10 +728,10 @@ func (s *httpManipulator) send(
 				goto RETRY
 
 			case x509.UnknownAuthorityError, x509.CertificateInvalidError, x509.HostnameError:
-				return nil, manipulate.NewErrTLS(err.Error())
+				return nil, manipulate.ErrTLS{Err: err}
 
 			default:
-				return nil, manipulate.NewErrCannotExecuteQuery(err.Error())
+				return nil, manipulate.ErrCannotExecuteQuery{Err: err}
 			}
 		}
 
@@ -743,27 +743,27 @@ func (s *httpManipulator) send(
 		switch response.StatusCode {
 
 		case http.StatusBadGateway:
-			lastError = manipulate.NewErrCannotCommunicate("Bad gateway")
+			lastError = manipulate.ErrCannotCommunicate{Err: fmt.Errorf("Bad gateway")}
 			goto RETRY
 
 		case http.StatusServiceUnavailable:
-			lastError = manipulate.NewErrCannotCommunicate("Service unavailable")
+			lastError = manipulate.ErrCannotCommunicate{Err: fmt.Errorf("Service unavailable")}
 			goto RETRY
 
 		case http.StatusGatewayTimeout:
-			lastError = manipulate.NewErrCannotCommunicate("Gateway timeout")
+			lastError = manipulate.ErrCannotCommunicate{Err: fmt.Errorf("Gateway timeout")}
 			goto RETRY
 
 		case http.StatusLocked:
-			lastError = manipulate.NewErrLocked("The api has been locked down by the server.")
+			lastError = manipulate.ErrLocked{Err: fmt.Errorf("The api has been locked down by the server")}
 			goto RETRY
 
 		case http.StatusRequestTimeout:
-			lastError = manipulate.NewErrCannotCommunicate("Request Timeout")
+			lastError = manipulate.ErrCannotCommunicate{Err: fmt.Errorf("Request Timeout")}
 			goto RETRY
 
 		case http.StatusTooManyRequests:
-			lastError = manipulate.NewErrTooManyRequests("Too Many Requests")
+			lastError = manipulate.ErrTooManyRequests{Err: fmt.Errorf("Too Many Requests")}
 			retryCurve = s.strongBackoffCurve
 			goto RETRY
 		}

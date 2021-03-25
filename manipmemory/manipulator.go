@@ -112,11 +112,11 @@ func (m *memdbManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 
 	raw, err := txn.First(object.Identity().Category, "id", object.Identifier())
 	if err != nil {
-		return manipulate.NewErrCannotExecuteQuery(err.Error())
+		return manipulate.ErrCannotExecuteQuery{Err: err}
 	}
 
 	if raw == nil {
-		return manipulate.NewErrObjectNotFound("cannot find the object for the given ID")
+		return manipulate.ErrObjectNotFound{Err: fmt.Errorf("cannot find the object for the given ID")}
 	}
 
 	var cp interface{}
@@ -125,7 +125,7 @@ func (m *memdbManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	} else {
 		cp, err = copystructure.Copy(raw)
 		if err != nil {
-			return manipulate.NewErrCannotExecuteQuery(err.Error())
+			return manipulate.ErrCannotExecuteQuery{Err: err}
 		}
 	}
 
@@ -158,12 +158,12 @@ func (m *memdbManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		var err error
 		cp, err = copystructure.Copy(object)
 		if err != nil {
-			return manipulate.NewErrCannotExecuteQuery(err.Error())
+			return manipulate.ErrCannotExecuteQuery{Err: err}
 		}
 	}
 
 	if err := txn.Insert(object.Identity().Category, cp); err != nil {
-		return manipulate.NewErrCannotExecuteQuery(err.Error())
+		return manipulate.ErrCannotExecuteQuery{Err: err}
 	}
 
 	if tid == "" {
@@ -186,7 +186,7 @@ func (m *memdbManipulator) Update(mctx manipulate.Context, object elemental.Iden
 
 	o, err := txn.Get(object.Identity().Category, "id", object.Identifier())
 	if err != nil || o.Next() == nil {
-		return manipulate.NewErrObjectNotFound("Cannot find object with given ID")
+		return manipulate.ErrObjectNotFound{Err: fmt.Errorf("Cannot find object with given ID")}
 	}
 
 	var cp interface{}
@@ -195,12 +195,12 @@ func (m *memdbManipulator) Update(mctx manipulate.Context, object elemental.Iden
 	} else {
 		cp, err = copystructure.Copy(object)
 		if err != nil {
-			return manipulate.NewErrCannotExecuteQuery(err.Error())
+			return manipulate.ErrCannotExecuteQuery{Err: err}
 		}
 	}
 
 	if err := txn.Insert(object.Identity().Category, cp); err != nil {
-		return manipulate.NewErrCannotExecuteQuery(err.Error())
+		return manipulate.ErrCannotExecuteQuery{Err: err}
 	}
 
 	if tid == "" {
@@ -223,9 +223,9 @@ func (m *memdbManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 
 	if err := txn.Delete(object.Identity().Category, object); err != nil {
 		if err == memdb.ErrNotFound {
-			return manipulate.NewErrObjectNotFound(err.Error())
+			return manipulate.ErrObjectNotFound{Err: err}
 		}
-		return manipulate.NewErrCannotExecuteQuery(err.Error())
+		return manipulate.ErrCannotExecuteQuery{Err: err}
 	}
 
 	if tid == "" {
@@ -237,7 +237,7 @@ func (m *memdbManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 
 // DeleteMany is part of the implementation of the Manipulator interface.
 func (m *memdbManipulator) DeleteMany(mctx manipulate.Context, identity elemental.Identity) error {
-	return manipulate.NewErrNotImplemented("DeleteMany not implemented in manipmemory")
+	return manipulate.ErrNotImplemented{Err: fmt.Errorf("DeleteMany not implemented in manipmemory")}
 }
 
 // Count is part of the implementation of the Manipulator interface. Count is very expensive.
@@ -258,7 +258,7 @@ func (m *memdbManipulator) Commit(id manipulate.TransactionID) error {
 	txn := m.registeredTxnWithID(id)
 
 	if txn == nil {
-		return manipulate.NewErrCannotCommit("Cannot find transaction " + string(id))
+		return manipulate.ErrCannotCommit{Err: fmt.Errorf("Cannot find transaction: %s ", id)}
 	}
 
 	txn.Commit()
@@ -354,7 +354,7 @@ func (m *memdbManipulator) retrieveFromFilter(identity string, f *elemental.Filt
 				for _, v := range values {
 
 					if !strings.HasPrefix(v.(string), "^") {
-						return manipulate.NewErrCannotExecuteQuery("Matches filter only works for prefix matching and must always start with a '^'")
+						return manipulate.ErrCannotExecuteQuery{Err: fmt.Errorf("Matches filter only works for prefix matching and must always start with a '^'")}
 					}
 
 					fv := strings.TrimPrefix(v.(string), "^")
@@ -384,7 +384,7 @@ func (m *memdbManipulator) retrieveFromFilter(identity string, f *elemental.Filt
 				intersection(items, &containItems, fullQuery)
 
 			default:
-				return manipulate.NewErrCannotExecuteQuery(fmt.Sprintf("invalid comparator for memdb: %d", f.Comparators()[i]))
+				return manipulate.ErrCannotExecuteQuery{Err: fmt.Errorf("invalid comparator for memdb: %d", f.Comparators()[i])}
 			}
 
 		case elemental.AndFilterOperator:
@@ -413,7 +413,7 @@ func (m *memdbManipulator) retrieveFromFilter(identity string, f *elemental.Filt
 			intersection(items, &orItems, fullQuery)
 
 		default:
-			return manipulate.NewErrCannotExecuteQuery(fmt.Sprintf("invalid operator for memdb: %d", operator))
+			return manipulate.ErrCannotExecuteQuery{Err: fmt.Errorf("invalid operator for memdb: %d", operator)}
 		}
 
 		fullQuery = false
@@ -437,7 +437,7 @@ func (m *memdbManipulator) retrieveIntersection(identity string, k string, value
 		iterator, err = txn.Get(identity, k, value)
 	}
 	if err != nil {
-		return manipulate.NewErrCannotExecuteQuery(err.Error())
+		return manipulate.ErrCannotExecuteQuery{Err: err}
 	}
 
 	combinedItems := map[string]elemental.Identifiable{}
@@ -452,13 +452,13 @@ func (m *memdbManipulator) retrieveIntersection(identity string, k string, value
 		} else {
 			o, err = copystructure.Copy(raw)
 			if err != nil {
-				return manipulate.NewErrCannotExecuteQuery(err.Error())
+				return manipulate.ErrCannotExecuteQuery{Err: err}
 			}
 		}
 
 		obj, ok := o.(elemental.Identifiable)
 		if !ok {
-			return manipulate.NewErrCannotExecuteQuery("stored object is not an identifiable")
+			return manipulate.ErrCannotExecuteQuery{Err: fmt.Errorf("stored object is not an identifiable")}
 		}
 		if _, ok := existingItems[obj.Identifier()]; ok || fullquery {
 			combinedItems[obj.Identifier()] = obj

@@ -11,15 +11,22 @@
 
 package manipulate
 
+import "fmt"
+
 // ErrCannotUnmarshal represents unmarshaling error.
-type ErrCannotUnmarshal struct{ message string }
+type ErrCannotUnmarshal struct{ Err error }
 
 // NewErrCannotUnmarshal returns a new ErrCannotUnmarshal.
+// Deprecated: this method is deprecated and should not be used anymore.
 func NewErrCannotUnmarshal(message string) ErrCannotUnmarshal {
-	return ErrCannotUnmarshal{message: message}
+	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
+	return ErrCannotUnmarshal{Err: fmt.Errorf("%s", message)}
 }
 
-func (e ErrCannotUnmarshal) Error() string { return "Unable to unmarshal data: " + e.message }
+// Unwrap unwraps the internal error.
+func (e ErrCannotUnmarshal) Unwrap() error { return e.Err }
+
+func (e ErrCannotUnmarshal) Error() string { return "Unable to unmarshal data: " + e.Err.Error() }
 
 // IsCannotUnmarshalError returns true if the given error is am ErrCannotUnmarshal.
 func IsCannotUnmarshalError(err error) bool {
@@ -28,14 +35,19 @@ func IsCannotUnmarshalError(err error) bool {
 }
 
 // ErrCannotMarshal represents marshaling error.
-type ErrCannotMarshal struct{ message string }
+type ErrCannotMarshal struct{ Err error }
 
 // NewErrCannotMarshal returns a new ErrCannotMarshal.
+// Deprecated: this method is deprecated and should not be used anymore.
 func NewErrCannotMarshal(message string) ErrCannotMarshal {
-	return ErrCannotMarshal{message: message}
+	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
+	return ErrCannotMarshal{Err: fmt.Errorf("%s", message)}
 }
 
-func (e ErrCannotMarshal) Error() string { return "Unable to marshal data: " + e.message }
+// Unwrap unwraps the internal error.
+func (e ErrCannotMarshal) Unwrap() error { return e.Err }
+
+func (e ErrCannotMarshal) Error() string { return "Unable to marshal data: " + e.Err.Error() }
 
 // IsCannotMarshalError returns true if the given error is am ErrCannotMarshal.
 func IsCannotMarshalError(err error) bool {
@@ -44,14 +56,19 @@ func IsCannotMarshalError(err error) bool {
 }
 
 // ErrObjectNotFound represents object not found error.
-type ErrObjectNotFound struct{ message string }
+type ErrObjectNotFound struct{ Err error }
 
 // NewErrObjectNotFound returns a new ErrObjectNotFound.
+// Deprecated: this method is deprecated and should not be used anymore.
 func NewErrObjectNotFound(message string) ErrObjectNotFound {
-	return ErrObjectNotFound{message: message}
+	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
+	return ErrObjectNotFound{Err: fmt.Errorf("%s", message)}
 }
 
-func (e ErrObjectNotFound) Error() string { return "Object not found: " + e.message }
+// Unwrap unwraps the internal error.
+func (e ErrObjectNotFound) Unwrap() error { return e.Err }
+
+func (e ErrObjectNotFound) Error() string { return "Object not found: " + e.Err.Error() }
 
 // IsObjectNotFoundError returns true if the given error is am ErrObjectNotFound.
 func IsObjectNotFoundError(err error) bool {
@@ -60,14 +77,19 @@ func IsObjectNotFoundError(err error) bool {
 }
 
 // ErrMultipleObjectsFound represents too many object found error.
-type ErrMultipleObjectsFound struct{ message string }
+type ErrMultipleObjectsFound struct{ Err error }
 
 // NewErrMultipleObjectsFound returns a new ErrMultipleObjectsFound.
+// Deprecated: this method is deprecated and should not be used anymore.
 func NewErrMultipleObjectsFound(message string) ErrMultipleObjectsFound {
-	return ErrMultipleObjectsFound{message: message}
+	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
+	return ErrMultipleObjectsFound{Err: fmt.Errorf("%s", message)}
 }
 
-func (e ErrMultipleObjectsFound) Error() string { return "Multiple objects found: " + e.message }
+// Unwrap unwraps the internal error.
+func (e ErrMultipleObjectsFound) Unwrap() error { return e.Err }
+
+func (e ErrMultipleObjectsFound) Error() string { return "Multiple objects found: " + e.Err.Error() }
 
 // IsMultipleObjectsFoundError returns true if the given error is am ErrMultipleObjectsFound.
 func IsMultipleObjectsFoundError(err error) bool {
@@ -76,14 +98,19 @@ func IsMultipleObjectsFoundError(err error) bool {
 }
 
 // ErrCannotBuildQuery represents query building error.
-type ErrCannotBuildQuery struct{ message string }
+type ErrCannotBuildQuery struct{ Err error }
 
 // NewErrCannotBuildQuery returns a new ErrCannotBuildQuery.
+// Deprecated: this method is deprecated and should not be used anymore.
 func NewErrCannotBuildQuery(message string) ErrCannotBuildQuery {
-	return ErrCannotBuildQuery{message: message}
+	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
+	return ErrCannotBuildQuery{Err: fmt.Errorf("%s", message)}
 }
 
-func (e ErrCannotBuildQuery) Error() string { return "Unable to build query: " + e.message }
+// Unwrap unwraps the internal error.
+func (e ErrCannotBuildQuery) Unwrap() error { return e.Err }
+
+func (e ErrCannotBuildQuery) Error() string { return "Unable to build query: " + e.Err.Error() }
 
 // IsCannotBuildQueryError returns true if the given error is am ErrCannotBuildQuery.
 func IsCannotBuildQueryError(err error) bool {
@@ -92,14 +119,19 @@ func IsCannotBuildQueryError(err error) bool {
 }
 
 // ErrCannotExecuteQuery represents query execution error.
-type ErrCannotExecuteQuery struct{ message string }
+type ErrCannotExecuteQuery struct{ Err error }
 
 // NewErrCannotExecuteQuery returns a new ErrCannotExecuteQuery.
+// Deprecated: this method is deprecated and should not be used anymore.
 func NewErrCannotExecuteQuery(message string) ErrCannotExecuteQuery {
-	return ErrCannotExecuteQuery{message: message}
+	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
+	return ErrCannotExecuteQuery{Err: fmt.Errorf("%s", message)}
 }
 
-func (e ErrCannotExecuteQuery) Error() string { return "Unable to execute query: " + e.message }
+// Unwrap unwraps the internal error.
+func (e ErrCannotExecuteQuery) Unwrap() error { return e.Err }
+
+func (e ErrCannotExecuteQuery) Error() string { return "Unable to execute query: " + e.Err.Error() }
 
 // IsCannotExecuteQueryError returns true if the given error is am ErrCannotExecuteQuery.
 func IsCannotExecuteQueryError(err error) bool {
@@ -108,14 +140,19 @@ func IsCannotExecuteQueryError(err error) bool {
 }
 
 // ErrCannotCommit represents commit execution error.
-type ErrCannotCommit struct{ message string }
+type ErrCannotCommit struct{ Err error }
 
 // NewErrCannotCommit returns a new ErrCannotCommit.
+// Deprecated: this method is deprecated and should not be used anymore.
 func NewErrCannotCommit(message string) ErrCannotCommit {
-	return ErrCannotCommit{message: message}
+	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
+	return ErrCannotCommit{Err: fmt.Errorf("%s", message)}
 }
 
-func (e ErrCannotCommit) Error() string { return "Unable to commit transaction: " + e.message }
+// Unwrap unwraps the internal error.
+func (e ErrCannotCommit) Unwrap() error { return e.Err }
+
+func (e ErrCannotCommit) Error() string { return "Unable to commit transaction: " + e.Err.Error() }
 
 // IsCannotCommitError returns true if the given error is am ErrCannotCommit.
 func IsCannotCommitError(err error) bool {
@@ -124,14 +161,19 @@ func IsCannotCommitError(err error) bool {
 }
 
 // ErrNotImplemented represents a non implemented function.
-type ErrNotImplemented struct{ message string }
+type ErrNotImplemented struct{ Err error }
 
 // NewErrNotImplemented returns a new ErrNotImplemented.
+// Deprecated: this method is deprecated and should not be used anymore.
 func NewErrNotImplemented(message string) ErrNotImplemented {
-	return ErrNotImplemented{message: message}
+	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
+	return ErrNotImplemented{Err: fmt.Errorf("%s", message)}
 }
 
-func (e ErrNotImplemented) Error() string { return "Not implemented: " + e.message }
+// Unwrap unwraps the internal error.
+func (e ErrNotImplemented) Unwrap() error { return e.Err }
+
+func (e ErrNotImplemented) Error() string { return "Not implemented: " + e.Err.Error() }
 
 // IsNotImplementedError returns true if the given error is am ErrNotImplemented.
 func IsNotImplementedError(err error) bool {
@@ -140,14 +182,19 @@ func IsNotImplementedError(err error) bool {
 }
 
 // ErrCannotCommunicate represents a failure in backend communication.
-type ErrCannotCommunicate struct{ message string }
+type ErrCannotCommunicate struct{ Err error }
 
 // NewErrCannotCommunicate returns a new ErrCannotCommunicate.
+// Deprecated: this method is deprecated and should not be used anymore.
 func NewErrCannotCommunicate(message string) ErrCannotCommunicate {
-	return ErrCannotCommunicate{message: message}
+	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
+	return ErrCannotCommunicate{Err: fmt.Errorf("%s", message)}
 }
 
-func (e ErrCannotCommunicate) Error() string { return "Cannot communicate: " + e.message }
+// Unwrap unwraps the internal error.
+func (e ErrCannotCommunicate) Unwrap() error { return e.Err }
+
+func (e ErrCannotCommunicate) Error() string { return "Cannot communicate: " + e.Err.Error() }
 
 // IsCannotCommunicateError returns true if the given error is am ErrCannotCommunicate.
 func IsCannotCommunicateError(err error) bool {
@@ -156,14 +203,19 @@ func IsCannotCommunicateError(err error) bool {
 }
 
 // ErrLocked represents the error returned when the server api is locked..
-type ErrLocked struct{ message string }
+type ErrLocked struct{ Err error }
 
 // NewErrLocked returns a new ErrCannotCommunicate.
+// Deprecated: this method is deprecated and should not be used anymore.
 func NewErrLocked(message string) ErrLocked {
-	return ErrLocked{message: message}
+	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
+	return ErrLocked{Err: fmt.Errorf("%s", message)}
 }
 
-func (e ErrLocked) Error() string { return "Cannot communicate: " + e.message }
+// Unwrap unwraps the internal error.
+func (e ErrLocked) Unwrap() error { return e.Err }
+
+func (e ErrLocked) Error() string { return "Cannot communicate: " + e.Err.Error() }
 
 // IsLockedError returns true if the given error is am ErrLocked.
 func IsLockedError(err error) bool {
@@ -172,14 +224,19 @@ func IsLockedError(err error) bool {
 }
 
 // ErrTransactionNotFound represents a failure to find a transaction.
-type ErrTransactionNotFound struct{ message string }
+type ErrTransactionNotFound struct{ Err error }
 
 // NewErrTransactionNotFound returns a new ErrTransactionNotFound.
+// Deprecated: this method is deprecated and should not be used anymore.
 func NewErrTransactionNotFound(message string) ErrTransactionNotFound {
-	return ErrTransactionNotFound{message: message}
+	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
+	return ErrTransactionNotFound{Err: fmt.Errorf("%s", message)}
 }
 
-func (e ErrTransactionNotFound) Error() string { return "Transaction not found: " + e.message }
+// Unwrap unwraps the internal error.
+func (e ErrTransactionNotFound) Unwrap() error { return e.Err }
+
+func (e ErrTransactionNotFound) Error() string { return "Transaction not found: " + e.Err.Error() }
 
 // IsTransactionNotFoundError returns true if the given error is am ErrTransactionNotFound.
 func IsTransactionNotFoundError(err error) bool {
@@ -188,14 +245,19 @@ func IsTransactionNotFoundError(err error) bool {
 }
 
 // ErrConstraintViolation represents a failure to find a transaction.
-type ErrConstraintViolation struct{ message string }
+type ErrConstraintViolation struct{ Err error }
 
 // NewErrConstraintViolation returns a new ErrConstraintViolation.
+// Deprecated: this method is deprecated and should not be used anymore.
 func NewErrConstraintViolation(message string) ErrConstraintViolation {
-	return ErrConstraintViolation{message: message}
+	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
+	return ErrConstraintViolation{Err: fmt.Errorf("%s", message)}
 }
 
-func (e ErrConstraintViolation) Error() string { return "Constraint violation: " + e.message }
+// Unwrap unwraps the internal error.
+func (e ErrConstraintViolation) Unwrap() error { return e.Err }
+
+func (e ErrConstraintViolation) Error() string { return "Constraint violation: " + e.Err.Error() }
 
 // IsConstraintViolationError returns true if the given error is am ErrConstraintViolation.
 func IsConstraintViolationError(err error) bool {
@@ -204,14 +266,19 @@ func IsConstraintViolationError(err error) bool {
 }
 
 // ErrDisconnected represents an error due user disconnection.
-type ErrDisconnected struct{ message string }
+type ErrDisconnected struct{ Err error }
 
 // NewErrDisconnected returns a new ErrDisconnected.
+// Deprecated: this method is deprecated and should not be used anymore.
 func NewErrDisconnected(message string) ErrDisconnected {
-	return ErrDisconnected{message: message}
+	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
+	return ErrDisconnected{Err: fmt.Errorf("%s", message)}
 }
 
-func (e ErrDisconnected) Error() string { return "Disconnected: " + e.message }
+// Unwrap unwraps the internal error.
+func (e ErrDisconnected) Unwrap() error { return e.Err }
+
+func (e ErrDisconnected) Error() string { return "Disconnected: " + e.Err.Error() }
 
 // IsDisconnectedError returns true if the given error is am ErrDisconnected.
 func IsDisconnectedError(err error) bool {
@@ -220,14 +287,19 @@ func IsDisconnectedError(err error) bool {
 }
 
 // ErrTooManyRequests represents the error returned when the server api is locked.
-type ErrTooManyRequests struct{ message string }
+type ErrTooManyRequests struct{ Err error }
 
 // NewErrTooManyRequests returns a new ErrTooManyRequests.
+// Deprecated: this method is deprecated and should not be used anymore.
 func NewErrTooManyRequests(message string) ErrTooManyRequests {
-	return ErrTooManyRequests{message: message}
+	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
+	return ErrTooManyRequests{Err: fmt.Errorf("%s", message)}
 }
 
-func (e ErrTooManyRequests) Error() string { return "Too many requests: " + e.message }
+// Unwrap unwraps the internal error.
+func (e ErrTooManyRequests) Unwrap() error { return e.Err }
+
+func (e ErrTooManyRequests) Error() string { return "Too many requests: " + e.Err.Error() }
 
 // IsTooManyRequestsError returns true if the given error is am ErrTooManyRequests.
 func IsTooManyRequestsError(err error) bool {
@@ -236,14 +308,19 @@ func IsTooManyRequestsError(err error) bool {
 }
 
 // ErrTLS represents the error returned when there is a TLS error.
-type ErrTLS struct{ message string }
+type ErrTLS struct{ Err error }
 
 // NewErrTLS returns a new ErrTLS.
+// Deprecated: this method is deprecated and should not be used anymore.
 func NewErrTLS(message string) ErrTLS {
-	return ErrTLS{message: message}
+	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
+	return ErrTLS{Err: fmt.Errorf("%s", message)}
 }
 
-func (e ErrTLS) Error() string { return "TLS error: " + e.message }
+// Unwrap unwraps the internal error.
+func (e ErrTLS) Unwrap() error { return e.Err }
+
+func (e ErrTLS) Error() string { return "TLS error: " + e.Err.Error() }
 
 // IsTLSError returns true if the given error is am ErrTLS.
 func IsTLSError(err error) bool {

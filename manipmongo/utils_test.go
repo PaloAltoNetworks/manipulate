@@ -57,7 +57,7 @@ func Test_HandleQueryError(t *testing.T) {
 			args{
 				&mgo.LastError{Code: 11000},
 			},
-			"Constraint violation: duplicate key.",
+			"Constraint violation: duplicate key",
 		},
 		{
 			"isConnectionError says yes",
