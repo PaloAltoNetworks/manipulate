@@ -11,9 +11,7 @@
 
 package manipulate
 
-import (
-	"fmt"
-)
+import "fmt"
 
 // ErrInvalidQuery represents an error due to an invalid query.
 type ErrInvalidQuery struct {
