@@ -13,6 +13,22 @@ package manipulate
 
 import "fmt"
 
+// ErrInvalidQuery represents an error due to an invalid query.
+type ErrInvalidQuery struct {
+	// DueToFilter represents whether the query was invalid likely due to the filter supplied by the client.
+	DueToFilter bool
+	Err         error
+}
+
+// Unwrap unwraps the internal error.
+func (err ErrInvalidQuery) Unwrap() error {
+	return err.Err
+}
+
+func (err ErrInvalidQuery) Error() string {
+	return fmt.Sprintf("Query invalid: %s", err.Err)
+}
+
 // ErrCannotUnmarshal represents unmarshaling error.
 type ErrCannotUnmarshal struct{ Err error }
 
