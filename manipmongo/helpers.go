@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/backoff"
@@ -105,12 +106,30 @@ func EnsureIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 		if err := collection.EnsureIndex(index); err != nil {
 
 			if strings.Contains(err.Error(), "already exists with different options") {
-				if err := collection.DropIndexName(index.Name); err != nil {
-					return fmt.Errorf("cannot delete previous index: %s", err)
-				}
 
-				if err := collection.EnsureIndex(index); err != nil {
-					return fmt.Errorf("unable to ensure index after dropping old one '%s': %s", index.Name, err)
+				// In case we are changing a TTL we are using colMod instead
+				// as per https://docs.mongodb.com/manual/core/index-ttl/#restrictions
+				if index.ExpireAfter > 0 {
+
+					resp := bson.M{}
+					if err := session.DB(m.dbName).Run(bson.D{
+						{Name: "collMod", Value: collection.Name},
+						{Name: "index", Value: bson.M{"name": index.Name, "expireAfterSeconds": int(index.ExpireAfter.Seconds())}},
+					},
+						&resp); err != nil {
+						return fmt.Errorf("cannot update TTL index: %s", err)
+					}
+
+				} else {
+
+					if err := collection.DropIndexName(index.Name); err != nil {
+						return fmt.Errorf("cannot delete previous index: %s", err)
+					}
+
+					if err := collection.EnsureIndex(index); err != nil {
+						return fmt.Errorf("unable to ensure index after dropping old one '%s': %s", index.Name, err)
+					}
+
 				}
 
 				continue
