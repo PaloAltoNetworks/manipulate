@@ -95,6 +95,9 @@ func EnsureIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 	}
 
 	session := m.rootSession.Copy()
+	session.SetMode(mgo.Strong, false)
+	session.EnsureSafe(&mgo.Safe{})
+
 	defer session.Close()
 
 	collection := session.DB(m.dbName).C(identity.Name)
@@ -111,12 +114,10 @@ func EnsureIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 				// as per https://docs.mongodb.com/manual/core/index-ttl/#restrictions
 				if index.ExpireAfter > 0 {
 
-					resp := bson.M{}
-					if err := session.DB(m.dbName).Run(bson.D{
+					if err := collection.Database.Run(bson.D{
 						{Name: "collMod", Value: collection.Name},
 						{Name: "index", Value: bson.M{"name": index.Name, "expireAfterSeconds": int(index.ExpireAfter.Seconds())}},
-					},
-						&resp); err != nil {
+					}, nil); err != nil {
 						return fmt.Errorf("cannot update TTL index: %s", err)
 					}
 
