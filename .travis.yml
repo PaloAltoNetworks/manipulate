@@ -15,4 +15,5 @@ script:
 - make
 
 after_success:
+- env | awk -F= '{print $1}'
 - bash <(curl -s https://codecov.io/bash)
