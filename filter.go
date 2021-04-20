@@ -30,24 +30,32 @@ type FilterKeyComposer = elemental.FilterKeyComposer
 type FilterParser = elemental.FilterParser
 
 // NewFilter returns a new Filter using the aliased type.
+//
+// Deprecated: manipulate.NewFilter is deprecated and aliased to elemental.NewFilter.
 func NewFilter() *Filter {
 	fmt.Println("DEPRECATED: manipulate.NewFilter is deprecated and aliased to elemental.NewFilter")
 	return elemental.NewFilter()
 }
 
 // NewFilterComposer returns a new FilterKeyComposer using the aliased type.
+//
+// Deprecated: manipulate.NewFilterComposer is deprecated and aliased to elemental.NewFilterComposer.
 func NewFilterComposer() FilterKeyComposer {
 	fmt.Println("DEPRECATED: manipulate.NewFilterComposer is deprecated and aliased to elemental.NewFilterComposer")
 	return elemental.NewFilter()
 }
 
 // NewFilterFromString returns a new NewFilterFromString using the aliased type.
+//
+// Deprecated: manipulate.NewFilterFromString is deprecated and aliased to elemental.NewFilterFromString.
 func NewFilterFromString(filter string) (*Filter, error) {
 	fmt.Println("DEPRECATED: manipulate.NewFilterFromString is deprecated and aliased to elemental.NewFilterFromString")
 	return elemental.NewFilterFromString(filter)
 }
 
 // NewFilterParser returns a new NewFilterParser using the aliased type.
+//
+// Deprecated: manipulate.NewFilterParser is deprecated and aliased to elemental.NewFilterParser.
 func NewFilterParser(input string) *FilterParser {
 	fmt.Println("DEPRECATED: manipulate.NewFilterParser is deprecated and aliased to elemental.NewFilterParser")
 	return elemental.NewFilterParser(input)
