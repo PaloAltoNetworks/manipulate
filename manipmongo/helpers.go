@@ -277,3 +277,9 @@ func GetAttributeEncrypter(manipulator manipulate.Manipulator) elemental.Attribu
 
 	return m.attributeEncrypter
 }
+
+// IsUpsert returns True if the mongo request is an Upsert operation, false otherwise.
+func IsUpsert(mctx manipulate.Context) bool {
+	_, upsert := mctx.(opaquer).Opaque()[opaqueKeyUpsert]
+	return upsert
+}
