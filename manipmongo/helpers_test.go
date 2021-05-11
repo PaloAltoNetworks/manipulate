@@ -535,3 +535,25 @@ func TestGetAttributeEncrypter(t *testing.T) {
 		})
 	})
 }
+
+func TestIsUpsert(t *testing.T) {
+
+	Convey("Given I a manipulate context with upsert set", t, func() {
+		mctx := manipulate.NewContext(context.Background(), ContextOptionUpsert(nil))
+		Convey("When I call IsUpsert", func() {
+			Convey("Then it should return true", func() {
+				So(IsUpsert(mctx), ShouldEqual, true)
+			})
+		})
+	})
+
+
+	Convey("Given I a plain vanilla manipulate context with upsert NOT set", t, func() {
+		mctx := manipulate.NewContext(context.Background())
+		Convey("When I call IsUpsert", func() {
+			Convey("Then it should return false", func() {
+				So(IsUpsert(mctx), ShouldEqual, false)
+			})
+		})
+	})
+}
