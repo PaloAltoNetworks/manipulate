@@ -258,7 +258,7 @@ func Test_run(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		m.MockRetrieveMany(t, func(mctx manipulate.Context, dest elemental.Identifiables) error {
-			return manipulate.NewErrObjectNotFound("testing")
+			return manipulate.ErrObjectNotFound{Err: fmt.Errorf("testing")}
 		})
 
 		_, err = New(
@@ -430,7 +430,7 @@ func Test_Retrieve(t *testing.T) {
 
 			mctx := manipulate.NewContext(ctx, manipulate.ContextOptionReadConsistency(manipulate.ReadConsistencyStrong))
 			m.MockRetrieve(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
-				return manipulate.NewErrCannotCommunicate("test")
+				return manipulate.ErrCannotCommunicate{Err: fmt.Errorf("test")}
 			})
 			err := v.Retrieve(mctx, o)
 			So(err, ShouldNotBeNil)
@@ -554,7 +554,7 @@ func Test_Create(t *testing.T) {
 
 			Convey("When the backend fails, the object must be not be stored in the DB", func() {
 				m.MockCreate(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
-					return manipulate.NewErrConstraintViolation("test")
+					return manipulate.ErrConstraintViolation{Err: fmt.Errorf("test")}
 				})
 
 				obj := newObject("obj1", []string{"label"})
@@ -573,7 +573,7 @@ func Test_Create(t *testing.T) {
 			Convey("When the has a hook function that prevents execution, it should not commit to the DB", func() {
 
 				m.MockCreate(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
-					return manipulate.NewErrConstraintViolation("test")
+					return manipulate.ErrConstraintViolation{Err: fmt.Errorf("test")}
 				})
 
 				obj := newObject("obj1", []string{"label"})
@@ -685,7 +685,7 @@ func Test_Update(t *testing.T) {
 
 			Convey("When the backend fails, the object must not be updated", func() {
 				m.MockUpdate(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
-					return manipulate.NewErrCannotBuildQuery("test")
+					return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("test")}
 				})
 
 				updatedObject := newObject("", []string{"a=b"})
@@ -704,7 +704,7 @@ func Test_Update(t *testing.T) {
 
 			Convey("When the vortex has a hook function that prevents updates, the object must not be updated", func() {
 				m.MockUpdate(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
-					return manipulate.NewErrCannotBuildQuery("test")
+					return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("test")}
 				})
 
 				updatedObject := newObject("", []string{"a=b"})
@@ -815,7 +815,7 @@ func Test_Delete(t *testing.T) {
 
 			Convey("When the backend fail, the object must not be deleted", func() {
 				m.MockDelete(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
-					return manipulate.NewErrCannotBuildQuery("test")
+					return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("test")}
 				})
 
 				updatedObject := newObject("", []string{"a=b"})
@@ -832,7 +832,7 @@ func Test_Delete(t *testing.T) {
 
 			Convey("When the vortex has a hook function that prevents deletes, the object must not be deleted", func() {
 				m.MockDelete(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
-					return manipulate.NewErrCannotBuildQuery("test")
+					return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("test")}
 				})
 
 				updatedObject := newObject("", []string{"a=b"})
@@ -1080,7 +1080,7 @@ func Test_WriteThroughBackend(t *testing.T) {
 					}
 
 					m.MockDelete(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
-						return manipulate.NewErrCannotCommit("failed")
+						return manipulate.ErrCannotCommit{Err: fmt.Errorf("failed")}
 					})
 					err = v.Delete(nil, newObject)
 					So(err, ShouldNotBeNil)
@@ -1357,7 +1357,7 @@ func Test_WriteBackBackend(t *testing.T) {
 				obj3.ID = "ID3"
 
 				m.MockCreate(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
-					return manipulate.NewErrCannotCommunicate("testing")
+					return manipulate.ErrCannotCommunicate{Err: fmt.Errorf("testing")}
 				})
 
 				err := v.Create(nil, obj3)
@@ -1426,7 +1426,7 @@ func Test_WriteBackBackend(t *testing.T) {
 				})
 
 				m.MockUpdate(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
-					return manipulate.NewErrCannotCommunicate("test")
+					return manipulate.ErrCannotCommunicate{Err: fmt.Errorf("test")}
 				})
 
 				err := v.Create(nil, obj3)

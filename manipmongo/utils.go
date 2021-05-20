@@ -25,7 +25,11 @@ import (
 	"go.aporeto.io/manipulate/internal/objectid"
 )
 
-const descendingOrderPrefix = "-"
+const (
+	descendingOrderPrefix       = "-"
+	errInvalidQueryInvalidRegex = "regular expression is invalid"
+	errInvalidQueryBadRegex     = "$regex has to be a string"
+)
 
 func applyOrdering(order []string, spec elemental.AttributeSpecifiable) []string {
 
@@ -114,19 +118,23 @@ func prepareNextFilter(collection *mgo.Collection, orderingField string, next st
 func HandleQueryError(err error) error {
 
 	if _, ok := err.(net.Error); ok {
-		return manipulate.NewErrCannotCommunicate(err.Error())
+		return manipulate.ErrCannotCommunicate{Err: err}
 	}
 
 	if err == mgo.ErrNotFound {
-		return manipulate.NewErrObjectNotFound("cannot find the object for the given ID")
+		return manipulate.ErrObjectNotFound{Err: fmt.Errorf("cannot find the object for the given ID")}
 	}
 
 	if mgo.IsDup(err) {
-		return manipulate.NewErrConstraintViolation("duplicate key.")
+		return manipulate.ErrConstraintViolation{Err: fmt.Errorf("duplicate key")}
 	}
 
 	if isConnectionError(err) {
-		return manipulate.NewErrCannotCommunicate(err.Error())
+		return manipulate.ErrCannotCommunicate{Err: err}
+	}
+
+	if ok, err := invalidQuery(err); ok {
+		return err
 	}
 
 	// see https://github.com/mongodb/mongo/blob/master/src/mongo/base/error_codes.err
@@ -147,9 +155,9 @@ func HandleQueryError(err error) error {
 		// NotMasterNoSlaveOk
 		// InterruptedAtShutdown
 		// InterruptedDueToStepDown
-		return manipulate.NewErrCannotCommunicate(err.Error())
+		return manipulate.ErrCannotCommunicate{Err: err}
 	default:
-		return manipulate.NewErrCannotExecuteQuery(err.Error())
+		return manipulate.ErrCannotExecuteQuery{Err: err}
 	}
 }
 
@@ -171,6 +179,48 @@ func getErrorCode(err error) int {
 	}
 
 	return 0
+}
+
+func invalidQuery(err error) (bool, error) {
+
+	qErr, ok := queryError(err)
+	if !ok {
+		return false, nil
+	}
+
+	errCopyLower := strings.ToLower(qErr.Message)
+	switch {
+	case qErr.Code == 2 && strings.Contains(errCopyLower, errInvalidQueryBadRegex):
+		return true, manipulate.ErrInvalidQuery{
+			DueToFilter: true,
+			Err:         qErr,
+		}
+	case qErr.Code == 51091 && strings.Contains(errCopyLower, errInvalidQueryInvalidRegex):
+		return true, manipulate.ErrInvalidQuery{
+			DueToFilter: true,
+			Err:         qErr,
+		}
+	default:
+		return false, nil
+	}
+}
+
+func queryError(err error) (*mgo.QueryError, bool) {
+
+	if err == nil {
+		return nil, false
+	}
+
+	switch e := err.(type) {
+	case *mgo.QueryError:
+		return e, true
+	case *mgo.BulkError:
+		for _, c := range e.Cases() {
+			return queryError(c.Err)
+		}
+	}
+
+	return nil, false
 }
 
 func isConnectionError(err error) bool {

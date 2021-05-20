@@ -12,6 +12,7 @@
 package manipmongo
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -36,6 +37,26 @@ func Test_HandleQueryError(t *testing.T) {
 		errString string
 	}{
 		{
+			"error 2",
+			args{
+				&mgo.QueryError{
+					Code:    2,
+					Message: errInvalidQueryBadRegex,
+				},
+			},
+			"Query invalid: $regex has to be a string",
+		},
+		{
+			"error 51091",
+			args{
+				&mgo.QueryError{
+					Code:    51091,
+					Message: errInvalidQueryInvalidRegex,
+				},
+			},
+			"Query invalid: regular expression is invalid",
+		},
+		{
 			"net error",
 			args{
 				&net.OpError{
@@ -57,7 +78,7 @@ func Test_HandleQueryError(t *testing.T) {
 			args{
 				&mgo.LastError{Code: 11000},
 			},
-			"Constraint violation: duplicate key.",
+			"Constraint violation: duplicate key",
 		},
 		{
 			"isConnectionError says yes",
@@ -898,6 +919,92 @@ func Test_getErrorCode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := getErrorCode(tt.args.err); got != tt.want {
 				t.Errorf("getErrorCode() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_invalidQuery(t *testing.T) {
+
+	type args struct {
+		err error
+	}
+
+	testCases := map[string]struct {
+		input   args
+		wantOk  bool
+		wantErr error
+	}{
+		"code 2 - bad regex": {
+			input: args{
+				err: &mgo.QueryError{
+					Code:    2,
+					Message: errInvalidQueryBadRegex,
+				},
+			},
+			wantOk: true,
+			wantErr: manipulate.ErrInvalidQuery{
+				DueToFilter: true,
+				Err: &mgo.QueryError{
+					Code:    2,
+					Message: errInvalidQueryBadRegex,
+				},
+			},
+		},
+		"code 51091 - invalid regex": {
+			input: args{
+				err: &mgo.QueryError{
+					Code:    51091,
+					Message: errInvalidQueryInvalidRegex,
+				},
+			},
+			wantOk: true,
+			wantErr: manipulate.ErrInvalidQuery{
+				DueToFilter: true,
+				Err: &mgo.QueryError{
+					Code:    51091,
+					Message: errInvalidQueryInvalidRegex,
+				},
+			},
+		},
+		"nil": {
+			input: args{
+				err: nil,
+			},
+			wantOk:  false,
+			wantErr: nil,
+		},
+		"not an invalid query error": {
+			input: args{
+				err: errors.New("some other error"),
+			},
+			wantOk:  false,
+			wantErr: nil,
+		},
+	}
+
+	for scenario, tc := range testCases {
+		t.Run(scenario, func(t *testing.T) {
+			ok, err := invalidQuery(tc.input.err)
+
+			if ok != tc.wantOk {
+				t.Errorf("wanted '%t', got '%t'", tc.wantOk, ok)
+			}
+
+			if ok && err == nil {
+				t.Error("no error was returned when one was expected")
+			}
+
+			if !reflect.DeepEqual(err, tc.wantErr) {
+				t.Log("Error types did not match")
+				t.Errorf("\n"+
+					"EXPECTED:\n"+
+					"%+v\n"+
+					"ACTUAL:\n"+
+					"%+v",
+					tc.wantErr,
+					err,
+				)
 			}
 		})
 	}

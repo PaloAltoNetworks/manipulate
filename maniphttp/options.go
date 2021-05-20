@@ -143,12 +143,12 @@ func OptionSendCredentialsAsCookie(key string) Option {
 //
 // For instance, take the following map:
 //      map[float64]error{
-//          0.10: manipulate.NewErrCannotBuildQuery("oh no"),
-//          0.25: manipulate.NewErrCannotCommunicate("service is gone"),
+//          0.10: manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("Oh no!")},
+//          0.25: manipulate.ErrCannotCommunicate{Err: fmt.Errorf("Service is gone")},
 //      }
 //
-// It will return manipulate.NewErrCannotBuildQuery around 10% of the requests,
-// manipulate.NewErrCannotCommunicate around 25% of the requests.
+// It will return manipulate.ErrCannotBuildQuery around 10% of the requests,
+// manipulate.ErrCannotCommunicate around 25% of the requests.
 // This is obviously designed for simulating backend failures and should
 // not be used in production, obviously.
 func OptionSimulateFailures(failureSimulations map[float64]error) Option {
