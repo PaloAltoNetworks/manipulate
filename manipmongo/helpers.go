@@ -245,7 +245,7 @@ func RunQuery(mctx manipulate.Context, operationFunc func() (interface{}, error)
 
 		select {
 		case <-mctx.Context().Done():
-			return nil, manipulate.NewErrCannotExecuteQuery(mctx.Context().Err().Error())
+			return nil, manipulate.ErrCannotExecuteQuery{Err: mctx.Context().Err()}
 		default:
 		}
 
@@ -276,4 +276,10 @@ func GetAttributeEncrypter(manipulator manipulate.Manipulator) elemental.Attribu
 	}
 
 	return m.attributeEncrypter
+}
+
+// IsUpsert returns True if the mongo request is an Upsert operation, false otherwise.
+func IsUpsert(mctx manipulate.Context) bool {
+	_, upsert := mctx.(opaquer).Opaque()[opaqueKeyUpsert]
+	return upsert
 }
