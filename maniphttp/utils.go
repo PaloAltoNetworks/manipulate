@@ -86,12 +86,12 @@ func addQueryParameters(req *http.Request, ctx manipulate.Context) error {
 func decodeData(r *http.Response, dest interface{}) (err error) {
 
 	if r.Body == nil {
-		return manipulate.NewErrCannotUnmarshal("nil reader")
+		return manipulate.ErrCannotUnmarshal{Err: fmt.Errorf("nil reader")}
 	}
 
 	var data []byte
 	if data, err = ioutil.ReadAll(r.Body); err != nil {
-		return manipulate.NewErrCannotUnmarshal(fmt.Sprintf("unable to read data: %s", err.Error()))
+		return manipulate.ErrCannotUnmarshal{Err: fmt.Errorf("unable to read data: %w", err)}
 	}
 
 	encoding := elemental.EncodingTypeJSON
@@ -103,7 +103,7 @@ func decodeData(r *http.Response, dest interface{}) (err error) {
 	}
 
 	if err = elemental.Decode(encoding, data, dest); err != nil {
-		return manipulate.NewErrCannotUnmarshal(fmt.Sprintf("%s. original data:\n%s", err.Error(), string(data)))
+		return manipulate.ErrCannotUnmarshal{Err: fmt.Errorf("%w. original data:\n%s", err, string(data))}
 	}
 
 	return nil

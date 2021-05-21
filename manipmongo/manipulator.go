@@ -140,7 +140,7 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	if m.sharder != nil {
 		sq, err := m.sharder.FilterMany(m, mctx, dest.Identity())
 		if err != nil {
-			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
+			return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("cannot compute sharding filter: %w", err)}
 		}
 		if sq != nil {
 			ands = append(ands, sq)
@@ -154,7 +154,7 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	if after := mctx.After(); after != "" {
 
 		if len(order) > 1 {
-			return manipulate.NewErrCannotBuildQuery("cannot use multiple ordering fields when using 'after'")
+			return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("cannot use multiple ordering fields when using 'after'")}
 		}
 
 		var o string
@@ -210,7 +210,7 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 		func() (interface{}, error) {
 			if exp := explainIfNeeded(q, filter, dest.Identity(), elemental.OperationRetrieveMany, m.explain); exp != nil {
 				if err := exp(); err != nil {
-					return nil, manipulate.NewErrCannotBuildQuery(fmt.Sprintf("retrievemany: unable to explain: %s", err))
+					return nil, manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("retrievemany: unable to explain: %w", err)}
 				}
 			}
 			return nil, q.All(dest)
@@ -240,7 +240,7 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 		if m.attributeEncrypter != nil {
 			if a, ok := o.(elemental.AttributeEncryptable); ok {
 				if err := a.DecryptAttributes(m.attributeEncrypter); err != nil {
-					return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("retrievemany: unable to decrypt attributes: %s", err))
+					return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("retrievemany: unable to decrypt attributes: %w", err)}
 				}
 			}
 		}
@@ -292,7 +292,7 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	if m.sharder != nil {
 		sq, err := m.sharder.FilterOne(m, mctx, object)
 		if err != nil {
-			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
+			return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("cannot compute sharding filter: %w", err)}
 		}
 		if sq != nil {
 			filter = bson.D{{Name: "$and", Value: []bson.D{sq, filter}}}
@@ -322,7 +322,7 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 		func() (interface{}, error) {
 			if exp := explainIfNeeded(q, filter, object.Identity(), elemental.OperationRetrieve, m.explain); exp != nil {
 				if err := exp(); err != nil {
-					return nil, manipulate.NewErrCannotBuildQuery(fmt.Sprintf("retrieve: unable to explain: %s", err))
+					return nil, manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("retrieve: unable to explain: %w", err)}
 				}
 			}
 			return nil, q.One(object)
@@ -346,7 +346,7 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	if m.attributeEncrypter != nil {
 		if a, ok := object.(elemental.AttributeEncryptable); ok {
 			if err := a.DecryptAttributes(m.attributeEncrypter); err != nil {
-				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("retrieve: unable to decrypt attributes: %s", err))
+				return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("retrieve: unable to decrypt attributes: %w", err)}
 			}
 		}
 	}
@@ -382,7 +382,7 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 
 	if m.sharder != nil {
 		if err := m.sharder.Shard(m, mctx, object); err != nil {
-			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to execute sharder.Shard: %s", err))
+			return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("unable to execute sharder.Shard: %w", err)}
 		}
 	}
 
@@ -391,7 +391,7 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		if a, ok := object.(elemental.AttributeEncryptable); ok {
 			encryptable = a
 			if err := a.EncryptAttributes(m.attributeEncrypter); err != nil {
-				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("create: unable to encrypt attributes: %s", err))
+				return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("create: unable to encrypt attributes: %w", err)}
 			}
 		}
 	}
@@ -402,7 +402,7 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 
 		ops, ok := operations.(bson.M)
 		if !ok {
-			return manipulate.NewErrCannotBuildQuery("Upsert operations must be of type bson.M")
+			return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("upsert operations must be of type bson.M")}
 		}
 
 		baseOps := bson.M{
@@ -430,7 +430,7 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		if m.sharder != nil {
 			sq, err := m.sharder.FilterOne(m, mctx, object)
 			if err != nil {
-				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
+				return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("cannot compute sharding filter: %w", err)}
 			}
 			if sq != nil {
 				filter = bson.D{{Name: "$and", Value: []bson.D{sq, filter}}}
@@ -479,13 +479,13 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 
 	if encryptable != nil {
 		if err := encryptable.DecryptAttributes(m.attributeEncrypter); err != nil {
-			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("create: unable to decrypt attributes: %s", err))
+			return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("create: unable to decrypt attributes: %w", err)}
 		}
 	}
 
 	if m.sharder != nil {
 		if err := m.sharder.OnShardedWrite(m, mctx, elemental.OperationCreate, object); err != nil {
-			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to execute sharder.OnShardedWrite on create: %s", err))
+			return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("unable to execute sharder.OnShardedWrite on create: %w", err)}
 		}
 	}
 
@@ -505,7 +505,7 @@ func (m *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 		if a, ok := object.(elemental.AttributeEncryptable); ok {
 			encryptable = a
 			if err := a.EncryptAttributes(m.attributeEncrypter); err != nil {
-				return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("update: unable to encrypt attributes: %s", err))
+				return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("update: unable to encrypt attributes: %w", err)}
 			}
 		}
 	}
@@ -528,7 +528,7 @@ func (m *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 	if m.sharder != nil {
 		sq, err := m.sharder.FilterOne(m, mctx, object)
 		if err != nil {
-			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
+			return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("cannot compute sharding filter: %w", err)}
 		}
 		if sq != nil {
 			filter = bson.D{{Name: "$and", Value: []bson.D{sq, filter}}}
@@ -560,7 +560,7 @@ func (m *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 
 	if encryptable != nil {
 		if err := encryptable.DecryptAttributes(m.attributeEncrypter); err != nil {
-			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("update: unable to decrypt attributes: %s", err))
+			return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("update: unable to decrypt attributes: %w", err)}
 		}
 	}
 
@@ -593,7 +593,7 @@ func (m *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 	if m.sharder != nil {
 		sq, err := m.sharder.FilterOne(m, mctx, object)
 		if err != nil {
-			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
+			return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("cannot compute sharding filter: %w", err)}
 		}
 		if sq != nil {
 			filter = bson.D{{Name: "$and", Value: []bson.D{sq, filter}}}
@@ -620,7 +620,7 @@ func (m *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 
 	if m.sharder != nil {
 		if err := m.sharder.OnShardedWrite(m, mctx, elemental.OperationDelete, object); err != nil {
-			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("unable to execute sharder.OnShardedWrite for delete: %s", err))
+			return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("unable to execute sharder.OnShardedWrite for delete: %w", err)}
 		}
 	}
 
@@ -650,7 +650,7 @@ func (m *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 	if m.sharder != nil {
 		sq, err := m.sharder.FilterMany(m, mctx, identity)
 		if err != nil {
-			return manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
+			return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("cannot compute sharding filter: %w", err)}
 		}
 		if sq != nil {
 			filter = bson.D{{Name: "$and", Value: []bson.D{sq, filter}}}
@@ -698,7 +698,7 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	if m.sharder != nil {
 		sq, err := m.sharder.FilterMany(m, mctx, identity)
 		if err != nil {
-			return 0, manipulate.NewErrCannotBuildQuery(fmt.Sprintf("cannot compute sharding filter: %s", err))
+			return 0, manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("cannot compute sharding filter: %w", err)}
 		}
 		if sq != nil {
 			filter = bson.D{{Name: "$and", Value: []bson.D{sq, filter}}}
@@ -723,7 +723,7 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 		func() (interface{}, error) {
 			if exp := explainIfNeeded(q, filter, identity, elemental.OperationInfo, m.explain); exp != nil {
 				if err := exp(); err != nil {
-					return nil, manipulate.NewErrCannotBuildQuery(fmt.Sprintf("count: unable to explain: %s", err))
+					return nil, manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("count: unable to explain: %w", err)}
 				}
 			}
 			return q.Count()
