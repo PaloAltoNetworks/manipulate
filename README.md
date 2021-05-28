@@ -1,6 +1,6 @@
 # Manipulate
 
-[![codecov](https://codecov.io/gh/aporeto-inc/manipulate/branch/master/graph/badge.svg?token=2dEWoQKRO0)](https://codecov.io/gh/aporeto-inc/manipulate)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/b5011051258243de99974313f4e4a8b6)](https://www.codacy.com/gh/PaloAltoNetworks/manipulate/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=PaloAltoNetworks/manipulate&amp;utm_campaign=Badge_Grade) [![Codacy Badge](https://app.codacy.com/project/badge/Coverage/b5011051258243de99974313f4e4a8b6)](https://www.codacy.com/gh/PaloAltoNetworks/manipulate/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=PaloAltoNetworks/manipulate&amp;utm_campaign=Badge_Coverage)
 
 > README IS A WORK IN PROGRESS AS WE ARE WRITTING MORE DOCUMENTATION ABOUT THIS PACKAGE.
 
