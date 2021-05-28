@@ -23,3 +23,5 @@ require (
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	golang.org/x/sys v0.0.0-20200728102440-3e129f6d46b1
 )
+
+replace go.aporeto.io/manipulate => ./
