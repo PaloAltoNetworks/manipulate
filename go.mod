@@ -1,6 +1,6 @@
 module go.aporeto.io/manipulate
 
-go 1.13
+go 1.16
 
 require (
 	go.aporeto.io/elemental v1.100.1-0.20210428215439-6059ff91f9f7
@@ -20,6 +20,6 @@ require (
 	github.com/smartystreets/assertions v1.0.0 // indirect
 	github.com/smartystreets/goconvey v1.6.4
 	go.uber.org/zap v1.15.0
-	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20200728102440-3e129f6d46b1
 )
