@@ -547,7 +547,6 @@ func TestIsUpsert(t *testing.T) {
 		})
 	})
 
-
 	Convey("Given I a plain vanilla manipulate context with upsert NOT set", t, func() {
 		mctx := manipulate.NewContext(context.Background())
 		Convey("When I call IsUpsert", func() {

@@ -23,13 +23,14 @@ import (
 	"time"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"golang.org/x/sync/errgroup"
+
 	"go.aporeto.io/elemental"
 	testmodel "go.aporeto.io/elemental/test/model"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/idempotency"
 	"go.aporeto.io/manipulate/internal/tracing"
 	"go.aporeto.io/manipulate/maniptest"
-	"golang.org/x/sync/errgroup"
 )
 
 // hangupListerner is a tcp listener that will close upon accept
