@@ -33,6 +33,7 @@ func (err ErrInvalidQuery) Error() string {
 type ErrCannotUnmarshal struct{ Err error }
 
 // NewErrCannotUnmarshal returns a new ErrCannotUnmarshal.
+//
 // Deprecated: this method is deprecated and should not be used anymore.
 func NewErrCannotUnmarshal(message string) ErrCannotUnmarshal {
 	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
@@ -54,6 +55,7 @@ func IsCannotUnmarshalError(err error) bool {
 type ErrCannotMarshal struct{ Err error }
 
 // NewErrCannotMarshal returns a new ErrCannotMarshal.
+//
 // Deprecated: this method is deprecated and should not be used anymore.
 func NewErrCannotMarshal(message string) ErrCannotMarshal {
 	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
@@ -75,6 +77,7 @@ func IsCannotMarshalError(err error) bool {
 type ErrObjectNotFound struct{ Err error }
 
 // NewErrObjectNotFound returns a new ErrObjectNotFound.
+//
 // Deprecated: this method is deprecated and should not be used anymore.
 func NewErrObjectNotFound(message string) ErrObjectNotFound {
 	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
@@ -96,6 +99,7 @@ func IsObjectNotFoundError(err error) bool {
 type ErrMultipleObjectsFound struct{ Err error }
 
 // NewErrMultipleObjectsFound returns a new ErrMultipleObjectsFound.
+//
 // Deprecated: this method is deprecated and should not be used anymore.
 func NewErrMultipleObjectsFound(message string) ErrMultipleObjectsFound {
 	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
@@ -117,6 +121,7 @@ func IsMultipleObjectsFoundError(err error) bool {
 type ErrCannotBuildQuery struct{ Err error }
 
 // NewErrCannotBuildQuery returns a new ErrCannotBuildQuery.
+//
 // Deprecated: this method is deprecated and should not be used anymore.
 func NewErrCannotBuildQuery(message string) ErrCannotBuildQuery {
 	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
@@ -138,6 +143,7 @@ func IsCannotBuildQueryError(err error) bool {
 type ErrCannotExecuteQuery struct{ Err error }
 
 // NewErrCannotExecuteQuery returns a new ErrCannotExecuteQuery.
+//
 // Deprecated: this method is deprecated and should not be used anymore.
 func NewErrCannotExecuteQuery(message string) ErrCannotExecuteQuery {
 	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
@@ -159,6 +165,7 @@ func IsCannotExecuteQueryError(err error) bool {
 type ErrCannotCommit struct{ Err error }
 
 // NewErrCannotCommit returns a new ErrCannotCommit.
+//
 // Deprecated: this method is deprecated and should not be used anymore.
 func NewErrCannotCommit(message string) ErrCannotCommit {
 	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
@@ -180,6 +187,7 @@ func IsCannotCommitError(err error) bool {
 type ErrNotImplemented struct{ Err error }
 
 // NewErrNotImplemented returns a new ErrNotImplemented.
+//
 // Deprecated: this method is deprecated and should not be used anymore.
 func NewErrNotImplemented(message string) ErrNotImplemented {
 	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
@@ -201,6 +209,7 @@ func IsNotImplementedError(err error) bool {
 type ErrCannotCommunicate struct{ Err error }
 
 // NewErrCannotCommunicate returns a new ErrCannotCommunicate.
+//
 // Deprecated: this method is deprecated and should not be used anymore.
 func NewErrCannotCommunicate(message string) ErrCannotCommunicate {
 	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
@@ -222,6 +231,7 @@ func IsCannotCommunicateError(err error) bool {
 type ErrLocked struct{ Err error }
 
 // NewErrLocked returns a new ErrCannotCommunicate.
+//
 // Deprecated: this method is deprecated and should not be used anymore.
 func NewErrLocked(message string) ErrLocked {
 	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
@@ -243,6 +253,7 @@ func IsLockedError(err error) bool {
 type ErrTransactionNotFound struct{ Err error }
 
 // NewErrTransactionNotFound returns a new ErrTransactionNotFound.
+//
 // Deprecated: this method is deprecated and should not be used anymore.
 func NewErrTransactionNotFound(message string) ErrTransactionNotFound {
 	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
@@ -264,6 +275,7 @@ func IsTransactionNotFoundError(err error) bool {
 type ErrConstraintViolation struct{ Err error }
 
 // NewErrConstraintViolation returns a new ErrConstraintViolation.
+//
 // Deprecated: this method is deprecated and should not be used anymore.
 func NewErrConstraintViolation(message string) ErrConstraintViolation {
 	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
@@ -285,6 +297,7 @@ func IsConstraintViolationError(err error) bool {
 type ErrDisconnected struct{ Err error }
 
 // NewErrDisconnected returns a new ErrDisconnected.
+//
 // Deprecated: this method is deprecated and should not be used anymore.
 func NewErrDisconnected(message string) ErrDisconnected {
 	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
@@ -306,6 +319,7 @@ func IsDisconnectedError(err error) bool {
 type ErrTooManyRequests struct{ Err error }
 
 // NewErrTooManyRequests returns a new ErrTooManyRequests.
+//
 // Deprecated: this method is deprecated and should not be used anymore.
 func NewErrTooManyRequests(message string) ErrTooManyRequests {
 	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
@@ -327,6 +341,7 @@ func IsTooManyRequestsError(err error) bool {
 type ErrTLS struct{ Err error }
 
 // NewErrTLS returns a new ErrTLS.
+//
 // Deprecated: this method is deprecated and should not be used anymore.
 func NewErrTLS(message string) ErrTLS {
 	fmt.Println("DEPRECATED: This function is deprecated. Please use simple constructor")
