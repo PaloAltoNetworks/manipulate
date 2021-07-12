@@ -283,3 +283,10 @@ func IsUpsert(mctx manipulate.Context) bool {
 	_, upsert := mctx.(opaquer).Opaque()[opaqueKeyUpsert]
 	return upsert
 }
+
+// IsMongoManipulator returns true if this is a mongo manipulator
+func IsMongoManipulator(manipulator manipulate.Manipulator) bool {
+	_, ok := manipulator.(*mongoManipulator)
+
+	return ok
+}
