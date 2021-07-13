@@ -16,7 +16,9 @@ import (
 	"fmt"
 )
 
-// Retry is deprecated and only calls manipulateFunc for backward compatibility.
+// Retry only calls manipulateFunc for backward compatibility.
+//
+// Deprecated: manipulate.Retry is deprecated. Retry mechanism is now part of Manipulator implementations. You can safely remove this wrapper.
 func Retry(ctx context.Context, manipulateFunc func() error, onRetryFunc func(int, error) error) error {
 	fmt.Println("DEPRECATED: manipulate.Retry is deprecated. Retry mechanism is now part of Manipulator implementations. You can safely remove this wrapper.")
 	return manipulateFunc()
