@@ -480,3 +480,35 @@ func TestManiphttp_BatchCreate(t *testing.T) {
 	})
 
 }
+
+func TestExtractTransport(t *testing.T) {
+
+	Convey("Given I have an httpmanipulator with namespace", t, func() {
+
+		transport := &http.Transport{}
+		m := &httpManipulator{
+			transport: transport,
+		}
+
+		Convey("When I call ExtractTransport", func() {
+
+			t := ExtractTransport(m)
+
+			Convey("Then I should get the correct transport", func() {
+				So(t, ShouldEqual, transport)
+			})
+		})
+	})
+
+	Convey("Given I have a non http manipulator", t, func() {
+
+		m := maniptest.NewTestManipulator()
+
+		Convey("When I call ExtractTransport", func() {
+
+			Convey("Then it should panic", func() {
+				So(func() { ExtractTransport(m) }, ShouldPanicWith, "You can only pass a HTTP Manipulator to ExtractTransport")
+			})
+		})
+	})
+}

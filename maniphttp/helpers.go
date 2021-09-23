@@ -132,6 +132,18 @@ func DirectSend(manipulator manipulate.Manipulator, mctx manipulate.Context, end
 	return m.send(mctx, method, url, bytes.NewReader(body), nil, sp)
 }
 
+// ExtractTransport returns the transport used by the given manipulator.
+// This is an advanced feature and the returned transport should not be modified
+func ExtractTransport(manipulator manipulate.Manipulator) *http.Transport {
+
+	m, ok := manipulator.(*httpManipulator)
+	if !ok {
+		panic("You can only pass a HTTP Manipulator to ExtractTransport")
+	}
+
+	return m.transport
+}
+
 // BatchCreate is an experimental feature that may eventually be incorporated in the standard interface.
 //
 // But for now it is not recommended to use it unless you know exactly how
