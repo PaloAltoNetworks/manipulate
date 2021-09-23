@@ -512,3 +512,35 @@ func TestExtractTransport(t *testing.T) {
 		})
 	})
 }
+
+func TestExtractClient(t *testing.T) {
+
+	Convey("Given I have an httpmanipulator with namespace", t, func() {
+
+		client := &http.Client{}
+		m := &httpManipulator{
+			client: client,
+		}
+
+		Convey("When I call ExtractClient", func() {
+
+			t := ExtractClient(m)
+
+			Convey("Then I should get the correct client", func() {
+				So(t, ShouldEqual, client)
+			})
+		})
+	})
+
+	Convey("Given I have a non http manipulator", t, func() {
+
+		m := maniptest.NewTestManipulator()
+
+		Convey("When I call ExtractClient", func() {
+
+			Convey("Then it should panic", func() {
+				So(func() { ExtractClient(m) }, ShouldPanicWith, "You can only pass a HTTP Manipulator to ExtractClient")
+			})
+		})
+	})
+}

@@ -133,7 +133,7 @@ func DirectSend(manipulator manipulate.Manipulator, mctx manipulate.Context, end
 }
 
 // ExtractTransport returns the transport used by the given manipulator.
-// This is an advanced feature and the returned transport should not be modified
+// This is an advanced feature and the returned transport should not be modified.
 func ExtractTransport(manipulator manipulate.Manipulator) *http.Transport {
 
 	m, ok := manipulator.(*httpManipulator)
@@ -142,6 +142,18 @@ func ExtractTransport(manipulator manipulate.Manipulator) *http.Transport {
 	}
 
 	return m.transport
+}
+
+// ExtractClient returns the http.Client used by the given manipulator.
+// This is an advanced feature and the returned client should not be modified.
+func ExtractClient(manipulator manipulate.Manipulator) *http.Client {
+
+	m, ok := manipulator.(*httpManipulator)
+	if !ok {
+		panic("You can only pass a HTTP Manipulator to ExtractClient")
+	}
+
+	return m.client
 }
 
 // BatchCreate is an experimental feature that may eventually be incorporated in the standard interface.
