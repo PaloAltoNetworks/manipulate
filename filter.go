@@ -17,46 +17,52 @@ import (
 	"go.aporeto.io/elemental"
 )
 
-// This package provides type mapping for backward compatilility
-// as manipulate.Filter moved to elemental.
+// NewFiltersFromQueryParameters returns the filters matching any `q` parameters.
+func NewFiltersFromQueryParameters(parameters elemental.Parameters) ([]*elemental.Filter, error) {
 
-// Filter is an alias of elemental.Filter
-type Filter = elemental.Filter
+	filters := []*elemental.Filter{}
 
-// FilterKeyComposer is an alias of elemental.FilterKeyComposer
-type FilterKeyComposer = elemental.FilterKeyComposer
+	for _, query := range parameters.Get("q").StringValues() {
 
-// FilterParser is an alias of elemental.FilterParser
-type FilterParser = elemental.FilterParser
+		f, err := elemental.NewFilterFromString(query)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse filter in query parameter: %w", err)
+		}
 
-// NewFilter returns a new Filter using the aliased type.
-//
-// Deprecated: manipulate.NewFilter is deprecated and aliased to elemental.NewFilter.
-func NewFilter() *Filter {
-	fmt.Println("DEPRECATED: manipulate.NewFilter is deprecated and aliased to elemental.NewFilter")
-	return elemental.NewFilter()
+		filters = append(filters, f.Done())
+	}
+
+	return filters, nil
 }
 
-// NewFilterComposer returns a new FilterKeyComposer using the aliased type.
-//
-// Deprecated: manipulate.NewFilterComposer is deprecated and aliased to elemental.NewFilterComposer.
-func NewFilterComposer() FilterKeyComposer {
-	fmt.Println("DEPRECATED: manipulate.NewFilterComposer is deprecated and aliased to elemental.NewFilterComposer")
-	return elemental.NewFilter()
+// NewNamespaceFilter returns a manipulate filter used to create the namespace filter.
+func NewNamespaceFilter(namespace string, recursive bool) *elemental.Filter {
+
+	return NewNamespaceFilterWithCustomProperty("namespace", namespace, recursive)
 }
 
-// NewFilterFromString returns a new NewFilterFromString using the aliased type.
-//
-// Deprecated: manipulate.NewFilterFromString is deprecated and aliased to elemental.NewFilterFromString.
-func NewFilterFromString(filter string) (*Filter, error) {
-	fmt.Println("DEPRECATED: manipulate.NewFilterFromString is deprecated and aliased to elemental.NewFilterFromString")
-	return elemental.NewFilterFromString(filter)
-}
+// NewNamespaceFilterWithCustomProperty allows to create a namespace filter based on a property that
+// is different from `namespace`.
+func NewNamespaceFilterWithCustomProperty(propertyName string, namespace string, recursive bool) *elemental.Filter {
 
-// NewFilterParser returns a new NewFilterParser using the aliased type.
-//
-// Deprecated: manipulate.NewFilterParser is deprecated and aliased to elemental.NewFilterParser.
-func NewFilterParser(input string) *FilterParser {
-	fmt.Println("DEPRECATED: manipulate.NewFilterParser is deprecated and aliased to elemental.NewFilterParser")
-	return elemental.NewFilterParser(input)
+	if namespace == "" {
+		namespace = "/"
+	}
+
+	if !recursive {
+		return elemental.NewFilterComposer().WithKey(propertyName).Equals(namespace).Done()
+	}
+
+	if namespace == "/" {
+		return elemental.NewFilterComposer().WithKey(propertyName).Matches("^/").Done()
+	}
+
+	return elemental.NewFilterComposer().Or(
+		elemental.NewFilterComposer().
+			WithKey(propertyName).Equals(namespace).
+			Done(),
+		elemental.NewFilterComposer().
+			WithKey(propertyName).Matches("^"+namespace+"/").
+			Done(),
+	).Done()
 }
