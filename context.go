@@ -86,6 +86,7 @@ type Context interface {
 	Override() bool
 	Recursive() bool
 	Namespace() string
+	Propagate() bool
 	Credentials() (string, string)
 	Parameters() url.Values
 	Parent() elemental.Identifiable
@@ -118,6 +119,7 @@ type mcontext struct {
 	idempotencyKey       string
 	messages             []string
 	namespace            string
+	propagate            bool
 	order                []string
 	overrideProtection   bool
 	page                 int
@@ -191,6 +193,7 @@ func (c *mcontext) Derive(options ...ContextOption) Context {
 		fields:               append([]string{}, c.fields...),
 		filter:               c.filter,
 		namespace:            c.namespace,
+		propagate:            c.propagate,
 		order:                append([]string{}, c.order...),
 		overrideProtection:   c.overrideProtection,
 		page:                 c.page,
@@ -262,6 +265,9 @@ func (c *mcontext) Recursive() bool { return c.recursive }
 
 // Namespace returns the namespace value.
 func (c *mcontext) Namespace() string { return c.namespace }
+
+// Propagate returns the propagate value
+func (c *mcontext) Propagate() bool { return c.propagate }
 
 // Parameters returns the parameters.
 func (c *mcontext) Parameters() url.Values { return c.parameters }

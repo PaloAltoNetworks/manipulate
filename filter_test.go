@@ -213,3 +213,121 @@ func TestNewFiltersFromQueryParameters(t *testing.T) {
 		})
 	}
 }
+
+func TestNewPropagationFilterWithCustomProperty(t *testing.T) {
+	type args struct {
+		propagationPropName string
+		namespacePropName   string
+		namespace           string
+		additionalFiltering *elemental.Filter
+	}
+	tests := []struct {
+		name string
+		args func(t *testing.T) args
+
+		want1 *elemental.Filter
+	}{
+		{
+			"root namespace",
+			func(t *testing.T) args {
+				return args{
+					"propagate",
+					"namespace",
+					"/",
+					nil,
+				}
+			},
+			nil,
+		},
+		{
+			"empty namespace",
+			func(t *testing.T) args {
+				return args{
+					"propagate",
+					"namespace",
+					"",
+					nil,
+				}
+			},
+			nil,
+		},
+		{
+			"first level namespace",
+			func(t *testing.T) args {
+				return args{
+					"propagate",
+					"namespace",
+					"/level1",
+					nil,
+				}
+			},
+			elemental.NewFilterComposer().WithKey("namespace").Equals("/").WithKey("propagate").Equals(true).Done(),
+		},
+		{
+			"second level namespace",
+			func(t *testing.T) args {
+				return args{
+					"propagate",
+					"namespace",
+					"/level1/level2",
+					nil,
+				}
+			},
+			elemental.NewFilterComposer().Or(
+				elemental.NewFilterComposer().WithKey("namespace").Equals("/level1").WithKey("propagate").Equals(true).Done(),
+				elemental.NewFilterComposer().WithKey("namespace").Equals("/").WithKey("propagate").Equals(true).Done(),
+			).Done(),
+		},
+		{
+			"custom properties",
+			func(t *testing.T) args {
+				return args{
+					"p1",
+					"p2",
+					"/level1",
+					nil,
+				}
+			},
+			elemental.NewFilterComposer().WithKey("p2").Equals("/").WithKey("p1").Equals(true).Done(),
+		},
+		{
+			"additional filters",
+			func(t *testing.T) args {
+				return args{
+					"propagate",
+					"namespace",
+					"/level1/level2",
+					elemental.NewFilterComposer().WithKey("x").Equals(true).Done(),
+				}
+			},
+			elemental.NewFilterComposer().Or(
+				elemental.NewFilterComposer().
+					WithKey("namespace").Equals("/level1").
+					WithKey("propagate").Equals(true).
+					And(
+						elemental.NewFilterComposer().WithKey("x").Equals(true).Done(),
+					).
+					Done(),
+				elemental.NewFilterComposer().
+					WithKey("namespace").Equals("/").
+					WithKey("propagate").Equals(true).
+					And(
+						elemental.NewFilterComposer().WithKey("x").Equals(true).Done(),
+					).
+					Done(),
+			).Done(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tArgs := tt.args(t)
+
+			got1 := NewPropagationFilterWithCustomProperty(tArgs.propagationPropName, tArgs.namespacePropName, tArgs.namespace, tArgs.additionalFiltering)
+
+			if !reflect.DeepEqual(got1, tt.want1) {
+				t.Errorf("NewPropagationFilter got1 = %v, want1: %v", got1, tt.want1)
+			}
+		})
+	}
+}

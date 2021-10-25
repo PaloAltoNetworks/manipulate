@@ -34,6 +34,13 @@ func ContextOptionNamespace(n string) ContextOption {
 	}
 }
 
+// ContextOptionPropagate sets the propagate option of the context.
+func ContextOptionPropagate(p bool) ContextOption {
+	return func(c Context) {
+		c.(*mcontext).propagate = p
+	}
+}
+
 // ContextOptionRecursive sets the recursive option of the context.
 func ContextOptionRecursive(r bool) ContextOption {
 	return func(c Context) {

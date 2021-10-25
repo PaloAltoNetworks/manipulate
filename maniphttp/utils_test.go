@@ -111,6 +111,24 @@ func Test_addQueryParameters(t *testing.T) {
 			})
 		})
 
+		Convey("When I call the method addQueryParameters with the propagate option", func() {
+
+			ctx := manipulate.NewContext(
+				context.Background(),
+				manipulate.ContextOptionPropagate(true),
+			)
+
+			err := addQueryParameters(request, ctx)
+
+			Convey("Then err should be nil", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Then the query string should be correct ", func() {
+				So(request.URL.RawQuery, ShouldEqual, "propagate=true")
+			})
+		})
+
 		Convey("When I call the method addQueryParameters with a pagination", func() {
 
 			ctx := manipulate.NewContext(
