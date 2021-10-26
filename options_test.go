@@ -36,8 +36,8 @@ func TestManipulate_ContextOption(t *testing.T) {
 	})
 
 	Convey("Calling ContextOptionPropagate should work", t, func() {
-		ContextOptionPropagate(true)(mctx.(*mcontext))
-		So(mctx.Propagate(), ShouldEqual, true)
+		ContextOptionPropagated(true)(mctx.(*mcontext))
+		So(mctx.Propagated(), ShouldEqual, true)
 	})
 
 	Convey("Calling ContextOptionRecursive should work", t, func() {

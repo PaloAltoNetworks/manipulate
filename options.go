@@ -34,10 +34,10 @@ func ContextOptionNamespace(n string) ContextOption {
 	}
 }
 
-// ContextOptionPropagate sets the propagate option of the context.
-func ContextOptionPropagate(p bool) ContextOption {
+// ContextOptionPropagated sets the propagated option of the context.
+func ContextOptionPropagated(p bool) ContextOption {
 	return func(c Context) {
-		c.(*mcontext).propagate = p
+		c.(*mcontext).propagated = p
 	}
 }
 

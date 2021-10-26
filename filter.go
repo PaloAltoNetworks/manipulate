@@ -18,9 +18,9 @@ import (
 )
 
 // NewFiltersFromQueryParameters returns the filters matching any `q` parameters.
-func NewFiltersFromQueryParameters(parameters elemental.Parameters) ([]*elemental.Filter, error) {
+func NewFiltersFromQueryParameters(parameters elemental.Parameters) (*elemental.Filter, error) {
 
-	filters := []*elemental.Filter{}
+	var filters []*elemental.Filter
 
 	for _, query := range parameters.Get("q").StringValues() {
 
@@ -32,7 +32,14 @@ func NewFiltersFromQueryParameters(parameters elemental.Parameters) ([]*elementa
 		filters = append(filters, f.Done())
 	}
 
-	return filters, nil
+	switch len(filters) {
+	case 0:
+		return nil, nil
+	case 1:
+		return filters[0], nil
+	default:
+		return elemental.NewFilterComposer().Or(filters...).Done(), nil
+	}
 }
 
 // NewNamespaceFilter returns a manipulate filter used to create the namespace filter.

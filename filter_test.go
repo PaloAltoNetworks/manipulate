@@ -91,7 +91,7 @@ func TestNewFiltersFromQueryParameters(t *testing.T) {
 		name string
 		args func(t *testing.T) args
 
-		want1      []*elemental.Filter
+		want1      *elemental.Filter
 		wantErr    bool
 		inspectErr func(err error, t *testing.T) //use for more precise error evaluation after test
 	}{
@@ -102,7 +102,7 @@ func TestNewFiltersFromQueryParameters(t *testing.T) {
 					parameters: nil,
 				}
 			},
-			[]*elemental.Filter{},
+			nil,
 			false,
 			nil,
 		},
@@ -113,7 +113,7 @@ func TestNewFiltersFromQueryParameters(t *testing.T) {
 					parameters: elemental.Parameters{},
 				}
 			},
-			[]*elemental.Filter{},
+			nil,
 			false,
 			nil,
 		},
@@ -126,7 +126,7 @@ func TestNewFiltersFromQueryParameters(t *testing.T) {
 					},
 				}
 			},
-			[]*elemental.Filter{},
+			nil,
 			false,
 			nil,
 		},
@@ -139,7 +139,7 @@ func TestNewFiltersFromQueryParameters(t *testing.T) {
 					},
 				}
 			},
-			[]*elemental.Filter{},
+			nil,
 			false,
 			nil,
 		},
@@ -152,9 +152,7 @@ func TestNewFiltersFromQueryParameters(t *testing.T) {
 					},
 				}
 			},
-			[]*elemental.Filter{
-				elemental.NewFilterComposer().WithKey("prop").Equals("value").Done(),
-			},
+			elemental.NewFilterComposer().WithKey("prop").Equals("value").Done(),
 			false,
 			nil,
 		},
@@ -167,10 +165,10 @@ func TestNewFiltersFromQueryParameters(t *testing.T) {
 					},
 				}
 			},
-			[]*elemental.Filter{
+			elemental.NewFilterComposer().Or(
 				elemental.NewFilterComposer().WithKey("prop").Equals("value").Done(),
 				elemental.NewFilterComposer().WithKey("prop2").Equals("value2").Done(),
-			},
+			).Done(),
 			false,
 			nil,
 		},
