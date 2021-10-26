@@ -20,16 +20,17 @@ import (
 // NewFiltersFromQueryParameters returns the filters matching any `q` parameters.
 func NewFiltersFromQueryParameters(parameters elemental.Parameters) (*elemental.Filter, error) {
 
-	var filters []*elemental.Filter
+	values := parameters.Get("q").StringValues()
+	filters := make([]*elemental.Filter, len(values))
 
-	for _, query := range parameters.Get("q").StringValues() {
+	for i, query := range values {
 
 		f, err := elemental.NewFilterFromString(query)
 		if err != nil {
 			return nil, fmt.Errorf("unable to parse filter in query parameter: %w", err)
 		}
 
-		filters = append(filters, f.Done())
+		filters[i] = f.Done()
 	}
 
 	switch len(filters) {
@@ -81,7 +82,7 @@ func NewPropagationFilter(namespace string) *elemental.Filter {
 	return NewPropagationFilterWithCustomProperty("propagate", "namespace", namespace, nil)
 }
 
-// NewPropagationFilter returns additional namespace filter matching objects that are in
+// NewPropagationFilterWithCustomProperty returns additional namespace filter matching objects that are in
 // the namespace ancestors chain and propagate down. The two first properties allows to
 // define the property name to use for propation and namespace.
 // You can also set an additional filter that will be be AND'ed to each subfilters, allowing

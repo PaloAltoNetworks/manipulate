@@ -115,7 +115,7 @@ func Test_addQueryParameters(t *testing.T) {
 
 			ctx := manipulate.NewContext(
 				context.Background(),
-				manipulate.ContextOptionPropagate(true),
+				manipulate.ContextOptionPropagated(true),
 			)
 
 			err := addQueryParameters(request, ctx)
@@ -125,7 +125,7 @@ func Test_addQueryParameters(t *testing.T) {
 			})
 
 			Convey("Then the query string should be correct ", func() {
-				So(request.URL.RawQuery, ShouldEqual, "propagate=true")
+				So(request.URL.RawQuery, ShouldEqual, "propagated=true")
 			})
 		})
 

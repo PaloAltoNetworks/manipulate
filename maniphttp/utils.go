@@ -78,8 +78,8 @@ func addQueryParameters(req *http.Request, ctx manipulate.Context) error {
 		q.Add("override", "true")
 	}
 
-	if ctx.Propagate() {
-		q.Add("propagate", "true")
+	if ctx.Propagated() {
+		q.Add("propagated", "true")
 	}
 
 	req.URL.RawQuery = q.Encode()
