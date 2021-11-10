@@ -10,7 +10,6 @@ import (
 	prettyjson "github.com/hokaccha/go-prettyjson"
 	"github.com/olekukonko/tablewriter"
 	"go.aporeto.io/elemental"
-	"go.uber.org/zap"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -120,17 +119,6 @@ func FormatObjectsStripped(outputFormat OutputFormat, stripReadOnly bool, stripC
 	}
 
 	return output, nil
-}
-
-// FormatRandomMap prints all maps object
-func FormatRandomMap(outputFormat OutputFormat, forceList bool, objects ...map[string]interface{}) string {
-	output, err := formatMaps(outputFormat, forceList, objects)
-
-	if err != nil {
-		zap.L().Error(err.Error())
-	}
-
-	return output
 }
 
 func formatMaps(outputFormat OutputFormat, forceList bool, objects []map[string]interface{}) (string, error) {

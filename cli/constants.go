@@ -70,4 +70,6 @@ const (
 const (
 	// FlagForce represents the value "force"
 	FlagForce = "force"
+	// FlagConfirm represents the value "confirm"
+	FlagConfirm = "confirm"
 )

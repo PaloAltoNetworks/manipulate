@@ -67,6 +67,21 @@ func GenerateCobraCommand(modelManager elemental.ModelManager) *cobra.Command {
 		},
 	}
 
+	// DeleteMany command
+	deleteManyCommands := &cobra.Command{
+		Use:   "delete-many",
+		Short: "Allows to delete multiple objects",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := cmd.Root().PersistentPreRunE(cmd, args); err != nil {
+				return err
+			}
+			return viper.BindPFlags(cmd.PersistentFlags())
+		},
+	}
+
+	deleteManyCommands.PersistentFlags().StringP(FlagFilter, "f", "", "Query filter.")
+	deleteManyCommands.PersistentFlags().BoolP(FlagConfirm, "", false, "Confirm deletion of multiple objects")
+
 	// Get command
 	getCommands := &cobra.Command{
 		Use:   "get",
@@ -97,6 +112,21 @@ func GenerateCobraCommand(modelManager elemental.ModelManager) *cobra.Command {
 	listCommands.PersistentFlags().StringP(FlagFilter, "f", "", "Query filter.")
 	listCommands.PersistentFlags().StringSliceP(FlagOrder, "O", nil, "Ordering of the result.")
 
+	// Count command
+	countCommands := &cobra.Command{
+		Use:   "count",
+		Short: "Allows to count objects",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := cmd.Root().PersistentPreRunE(cmd, args); err != nil {
+				return err
+			}
+			return viper.BindPFlags(cmd.PersistentFlags())
+		},
+	}
+
+	countCommands.PersistentFlags().BoolP(FlagRecursive, "r", false, "List all objects from the current namespace and all child namespaces.")
+	countCommands.PersistentFlags().StringP(FlagFilter, "f", "", "Query filter.")
+
 	now := time.Now()
 
 	// Generate subcommands for each identity
@@ -118,6 +148,10 @@ func GenerateCobraCommand(modelManager elemental.ModelManager) *cobra.Command {
 			deleteCommands.AddCommand(cmd)
 		}
 
+		if cmd, err := generateDeleteManyCommandForIdentity(identity, modelManager); err == nil {
+			deleteManyCommands.AddCommand(cmd)
+		}
+
 		if cmd, err := generateGetCommandForIdentity(identity, modelManager); err == nil {
 			getCommands.AddCommand(cmd)
 		}
@@ -125,13 +159,19 @@ func GenerateCobraCommand(modelManager elemental.ModelManager) *cobra.Command {
 		if cmd, err := generateListCommandForIdentity(identity, modelManager); err == nil {
 			listCommands.AddCommand(cmd)
 		}
+
+		if cmd, err := generateCountCommandForIdentity(identity, modelManager); err == nil {
+			countCommands.AddCommand(cmd)
+		}
 	}
 
 	APICommand.AddCommand(createCommands)
 	APICommand.AddCommand(updateCommands)
 	APICommand.AddCommand(deleteCommands)
+	APICommand.AddCommand(deleteManyCommands)
 	APICommand.AddCommand(getCommands)
 	APICommand.AddCommand(listCommands)
+	APICommand.AddCommand(countCommands)
 
 	fmt.Println("time elasped", time.Since(now))
 
