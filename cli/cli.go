@@ -23,6 +23,8 @@ func GenerateCobraCommand(modelManager elemental.ModelManager) *cobra.Command {
 		},
 	}
 
+	APICommand.PersistentFlags().StringP(FlagAPI, "A", "", "API to use.")
+	APICommand.PersistentFlags().Bool(FlagAPISkipVerify, false, "Skip certificates validation. This is unsecure.")
 	APICommand.PersistentFlags().StringP(FlagNamespace, "n", "", "Namespace to use.")
 	APICommand.PersistentFlags().StringP(FlagOutput, "o", "default", "Format to used print output. Options are 'table', 'json', 'yaml', 'none', 'template' or 'default'.")
 	// TODO: Manage output template
@@ -30,6 +32,7 @@ func GenerateCobraCommand(modelManager elemental.ModelManager) *cobra.Command {
 	APICommand.PersistentFlags().StringP(FlagToken, "t", "", "Token to use.")
 	APICommand.PersistentFlags().StringSliceP(FormatTypeColumn, "c", nil, "Only show the given columns. Only valid when '--output=table'.")
 	APICommand.PersistentFlags().StringSliceP(FlagParameters, "p", nil, "Additional parameter to the request, in the form of key=value.")
+	APICommand.PersistentFlags().String(FlagEncoding, "msgpack", "Encoding to use.")
 
 	// Create command
 	createCommands := &cobra.Command{
