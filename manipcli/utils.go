@@ -23,6 +23,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// ManipulatorMaker returs a function which can create a manipulator based on pflags.
 type ManipulatorMaker = func() (manipulate.Manipulator, error)
 
 // ManipulatorMakerFromFlags returns a func that creates a manipulator based on command flags. Command flags are read using viper.

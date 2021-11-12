@@ -25,7 +25,7 @@ func generateGetCommandForIdentity(identity elemental.Identity, modelManager ele
 
 			manipulator, err := manipulatorMaker()
 			if err != nil {
-				return fmt.Errorf("unable to prepare manipulator: %w", err)
+				return fmt.Errorf("unable to make manipulator: %w", err)
 			}
 
 			parameters, err := parametersToURLValues(viper.GetStringSlice(FlagParameters))
