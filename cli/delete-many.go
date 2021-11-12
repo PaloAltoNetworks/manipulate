@@ -12,12 +12,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// A Namespaceable is an entity that has a namespace.
-type Namespaceable interface {
-	SetNamespace(string)
-	GetNamespace() string
-}
-
 // generateDeleteManyCommandForIdentity generates the command to delete many objects based on its identity.
 func generateDeleteManyCommandForIdentity(identity elemental.Identity, modelManager elemental.ModelManager) (*cobra.Command, error) {
 
@@ -87,7 +81,7 @@ func generateDeleteManyCommandForIdentity(identity elemental.Identity, modelMana
 
 			errs := elemental.NewErrors()
 			for _, o := range objects {
-				mctx = mctx.Derive(manipulate.ContextOptionNamespace(o.(Namespaceable).GetNamespace()))
+				mctx = mctx.Derive(manipulate.ContextOptionNamespace(o.(elemental.Namespaceable).GetNamespace()))
 				if err := manipulator.Delete(mctx, o); err != nil {
 					errs = errs.Append(err)
 					continue
@@ -97,7 +91,7 @@ func generateDeleteManyCommandForIdentity(identity elemental.Identity, modelMana
 			}
 
 			if len(errs) > 0 {
-				return fmt.Errorf("some %s were not deleted: %w", identity.Category, errs.Error())
+				return fmt.Errorf("some %s were not deleted: %w", identity.Category, errs)
 			}
 
 			output := viper.GetString(FlagOutput)
