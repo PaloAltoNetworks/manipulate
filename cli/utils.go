@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/araddon/dateparse"
+	"github.com/globalsign/mgo/bson"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -20,7 +21,6 @@ import (
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/maniphttp"
 	"go.uber.org/zap"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // PrepareManipulator creates the manipulator used to process commands. Currently
