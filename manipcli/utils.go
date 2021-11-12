@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -142,10 +143,6 @@ func shouldManageSpecification(spec elemental.AttributeSpecification) bool {
 	}
 
 	if spec.ReadOnly {
-		return false
-	}
-
-	if spec.Type == "external" {
 		return false
 	}
 
@@ -346,8 +343,12 @@ func readViperFlags(identifiable elemental.Identifiable) error {
 			fv.Set(reflect.ValueOf(viper.GetStringSlice(spec.Name)))
 
 		default:
-			fmt.Println("use default value for ", spec.Name, spec.Type)
-			fv.Set(reflect.ValueOf(viper.GetString(spec.Name)))
+			t := reflect.TypeOf(specifiable.ValueForAttribute(spec.Name))
+			v := reflect.New(t)
+			if err := json.Unmarshal([]byte(viper.GetString(spec.Name)), v.Interface()); err != nil {
+				return err
+			}
+			fv.Set(v.Elem())
 		}
 	}
 
