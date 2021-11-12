@@ -97,7 +97,6 @@ func ManipulatorFlagSet() *pflag.FlagSet {
 	set.BoolP(FlagAPISkipVerify, "", false, "If set, skip api endpoint verification. This is insecure.")
 	set.String(FlagCACertPath, "", "Path to the CA to use for validating api endpoint.")
 	set.String(FlagTrackingID, "", "ID to trace the request. Use this when asked to help debug the system.")
-	set.String(FlagAppCredentials, "", "Path to an app credential.")
 	set.String(FlagEncoding, "msgpack", "encoding to use to communicate with the platform. Can be 'msgpack' or 'json'")
 	set.StringP(FlagNamespace, "n", "", "Namespace to use.")
 
