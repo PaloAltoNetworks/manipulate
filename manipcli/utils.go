@@ -1,9 +1,10 @@
-package cli
+package manipcli
 
 import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/url"
@@ -13,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/araddon/dateparse"
-	"github.com/globalsign/mgo/bson"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -23,47 +23,76 @@ import (
 	"go.uber.org/zap"
 )
 
-// PrepareManipulator creates the manipulator used to process commands. Currently
-// only HTTP manipulator is supported, and a constants.OptionTokenKey field is therefore required.
-func prepareManipulator(api string, token string, credsPath string, namespace string, capath string, skip bool, encoding string) (manipulate.Manipulator, error) {
+type ManipulatorMaker = func() (manipulate.Manipulator, error)
 
-	var tlsConfig *tls.Config
+// ManipulatorMakerFromFlags returns a func that creates a manipulator based on command flags. Command flags are read using viper.
+// It needs the following flags: FlagAPI, FlagToken, FlagAppCredentials, FlagNamespace, FlagCACertPath, FlagAPISkipVerify, FlagEncoding
+// Use SetCLIFlags to add these flags to your command.
+func ManipulatorMakerFromFlags() ManipulatorMaker {
 
-	var enc elemental.EncodingType
-	switch encoding {
-	case "json":
-		enc = elemental.EncodingTypeJSON
-	case "msgpack":
-		enc = elemental.EncodingTypeMSGPACK
-	default:
-		return nil, fmt.Errorf("unsuported encoding '%s'. Must be 'json' or 'msgpack'", encoding)
-	}
+	return func() (manipulate.Manipulator, error) {
+		api := viper.GetString(FlagAPI)
+		token := viper.GetString(FlagToken)
+		// credsPath := viper.GetString(FlagAppCredentials)
+		namespace := viper.GetString(FlagNamespace)
+		capath := viper.GetString(FlagCACertPath)
+		skip := viper.GetBool(FlagAPISkipVerify)
+		encoding := viper.GetString(FlagEncoding)
 
-	if tlsConfig == nil {
-		rootCAPool, err := prepareAPICACertPool(capath)
-		if err != nil {
-			return nil, fmt.Errorf("unable to load root ca pool: %s", err)
+		var tlsConfig *tls.Config
+
+		var enc elemental.EncodingType
+		switch encoding {
+		case "json":
+			enc = elemental.EncodingTypeJSON
+		case "msgpack":
+			enc = elemental.EncodingTypeMSGPACK
+		default:
+			return nil, fmt.Errorf("unsuported encoding '%s'. Must be 'json' or 'msgpack'", encoding)
 		}
-		tlsConfig = &tls.Config{
-			InsecureSkipVerify: skip,
-			RootCAs:            rootCAPool,
+
+		if tlsConfig == nil {
+			rootCAPool, err := prepareAPICACertPool(capath)
+			if err != nil {
+				return nil, fmt.Errorf("unable to load root ca pool: %s", err)
+			}
+			tlsConfig = &tls.Config{
+				InsecureSkipVerify: skip,
+				RootCAs:            rootCAPool,
+			}
 		}
-	}
 
-	// If by then we still don't have an api, we set it to console.
-	if api == "" {
-		api = "https://api.console.aporeto.com" // TODO: Try to put that in the default values...
-	}
+		// If by then we still don't have an api, we set it to console.
+		if api == "" {
+			api = "https://api.console.aporeto.com" // TODO: Try to put that in the default values...
+		}
 
-	return maniphttp.New(
-		context.Background(),
-		api,
-		maniphttp.OptionNamespace(namespace),
-		maniphttp.OptionTLSConfig(tlsConfig),
-		maniphttp.OptionEncoding(enc),
-		maniphttp.OptionToken(token),
-		// maniphttp.OptionSendCredentialsAsCookie("x-aporeto-token"), // TODO: Check why this is necessary
-	)
+		return maniphttp.New(
+			context.Background(),
+			api,
+			maniphttp.OptionNamespace(namespace),
+			maniphttp.OptionTLSConfig(tlsConfig),
+			maniphttp.OptionEncoding(enc),
+			maniphttp.OptionToken(token),
+			// maniphttp.OptionSendCredentialsAsCookie("x-aporeto-token"), // TODO: Check why this is necessary
+		)
+	}
+}
+
+// ManipulatorFlagSet returns the flagSet required to call ManipulatorFromFlags.
+func ManipulatorFlagSet() *pflag.FlagSet {
+
+	set := pflag.NewFlagSet("", pflag.ExitOnError)
+
+	set.StringP(FlagAPI, "A", "", "Server API URL.") // default is managed inline.
+	set.BoolP(FlagAPISkipVerify, "", false, "If set, skip api endpoint verification. This is insecure.")
+	set.String(FlagCACertPath, "", "Path to the CA to use for validating api endpoint.")
+	set.String(FlagTrackingID, "", "ID to trace the request. Use this when asked to help debug the system.")
+	set.String(FlagAppCredentials, "", "Path to an app credential.")
+	set.String(FlagEncoding, "msgpack", "encoding to use to communicate with the platform. Can be 'msgpack' or 'json'")
+	set.StringP(FlagNamespace, "n", "", "Namespace to use.")
+
+	return set
 }
 
 // prepareAPICACertPool prepares the API cert pool if not empty.
@@ -136,8 +165,10 @@ func parametersToURLValues(params []string) (url.Values, error) {
 // persistentPreRunE ensure all bindings are done and validate required flags.
 func persistentPreRunE(cmd *cobra.Command, args []string) error {
 
-	if err := cmd.Root().PersistentPreRunE(cmd, args); err != nil {
-		return err
+	if cmd.Root().PersistentPreRunE != nil {
+		if err := cmd.Root().PersistentPreRunE(cmd, args); err != nil {
+			return err
+		}
 	}
 
 	if err := viper.BindPFlags(cmd.PersistentFlags()); err != nil {
@@ -173,7 +204,7 @@ func validateOutputParameters(output string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("invalid output %s.", output)
+	return fmt.Errorf("invalid output %s", output)
 }
 
 // checkRequiredFlags checks if all required flags are set
@@ -214,7 +245,7 @@ func retrieveObjectByIDOrByName(
 	identifiable := modelManager.IdentifiableFromString(identity.Name)
 	identifiable.SetIdentifier(idOrName)
 
-	if bson.IsObjectIdHex(identifiable.Identifier()) {
+	if _, err := hex.DecodeString(identifiable.Identifier()); err == nil {
 		if err := manipulator.Retrieve(ctx, identifiable); err != nil {
 			return nil, err
 		}

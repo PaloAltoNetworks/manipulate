@@ -1,4 +1,4 @@
-package cli
+package manipcli
 
 import (
 	"context"
@@ -11,26 +11,30 @@ import (
 	"go.aporeto.io/manipulate"
 )
 
-// generateCountCommandForIdentity generates the command to count all objects based on its identity.
-func generateCountCommandForIdentity(identity elemental.Identity, modelManager elemental.ModelManager) (*cobra.Command, error) {
+// generateListCommandForIdentity generates the command to list all objects based on its identity.
+func generateListCommandForIdentity(identity elemental.Identity, modelManager elemental.ModelManager, manipulatorMaker ManipulatorMaker) (*cobra.Command, error) {
 
 	cmd := &cobra.Command{
 		Use:     identity.Name,
 		Aliases: []string{identity.Category},
-		Short:   "Allows to count " + identity.Category,
+		Short:   "Allows to list all " + identity.Category,
 		// Aliases: TODO: Missing alias from the spec file -> To be stored in the identity ?,
 		PersistentPreRunE: persistentPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			manipulator, err := prepareManipulator(
-				viper.GetString(FlagAPI),
-				viper.GetString(FlagToken),
-				viper.GetString(FlagAppCredentials),
-				viper.GetString(FlagNamespace),
-				viper.GetString(FlagCACertPath),
-				viper.GetBool(FlagAPISkipVerify),
-				viper.GetString(FlagEncoding),
-			)
+			fields := viper.GetStringSlice(FormatTypeColumn)
+
+			var dest elemental.Identifiables
+			if len(fields) == 0 {
+				dest = modelManager.Identifiables(identity)
+			} else {
+				dest = modelManager.SparseIdentifiables(identity)
+			}
+			if dest == nil {
+				return fmt.Errorf("unable to list %s. unknown identity", identity.Category)
+			}
+
+			manipulator, err := manipulatorMaker()
 			if err != nil {
 				return fmt.Errorf("unable to prepare manipulator: %w", err)
 			}
@@ -43,8 +47,10 @@ func generateCountCommandForIdentity(identity elemental.Identity, modelManager e
 			options := []manipulate.ContextOption{
 				manipulate.ContextOptionTracking(viper.GetString(FlagTrackingID), "cli"),
 				manipulate.ContextOptionParameters(parameters),
+				manipulate.ContextOptionFields(fields),
 				manipulate.ContextOptionRecursive(viper.GetBool(FlagRecursive)),
-				manipulate.ContextOptionReadConsistency(manipulate.ReadConsistencyStrong),
+				manipulate.ContextOptionPage(viper.GetInt(FlagPage), viper.GetInt(FlagPageSize)),
+				manipulate.ContextOptionOrder(viper.GetStringSlice(FlagOrder)...),
 			}
 
 			if viper.IsSet(FlagFilter) {
@@ -61,21 +67,20 @@ func generateCountCommandForIdentity(identity elemental.Identity, modelManager e
 			defer cancel()
 
 			mctx := manipulate.NewContext(ctx, options...)
-			num, err := manipulator.Count(mctx, identity)
-			if err != nil {
-				return fmt.Errorf("unable to count %s: %w", identity.Category, err)
+			if err := manipulator.RetrieveMany(mctx, dest); err != nil {
+				return fmt.Errorf("unable to retrieve all %s: %w", identity.Category, err)
 			}
 
 			output := viper.GetString(FlagOutput)
 			outputType := output
 			if output == FlagOutputDefault {
-				outputType = FlagOutputNone
+				outputType = FlagOutputJSON
 			}
 
-			result, err := formatMaps(
-				prepareOutputFormat(outputType, FormatTypeCount, viper.GetStringSlice(FormatTypeColumn), viper.GetString(FlagOutputTemplate)),
-				false,
-				[]map[string]interface{}{{FormatTypeCount: num}},
+			result, err := FormatObjects(
+				prepareOutputFormat(outputType, FormatTypeArray, viper.GetStringSlice(FormatTypeColumn), viper.GetString(FlagOutputTemplate)),
+				true,
+				dest.List()...,
 			)
 
 			if err != nil {
@@ -83,9 +88,7 @@ func generateCountCommandForIdentity(identity elemental.Identity, modelManager e
 			}
 
 			fmt.Println(result)
-
 			return nil
-
 		},
 	}
 

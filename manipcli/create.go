@@ -1,4 +1,4 @@
-package cli
+package manipcli
 
 import (
 	"context"
@@ -11,27 +11,18 @@ import (
 	"go.aporeto.io/manipulate"
 )
 
-// generateUpdateCommandForIdentity generates the command to update an object based on its identity.
-func generateUpdateCommandForIdentity(identity elemental.Identity, modelManager elemental.ModelManager) (*cobra.Command, error) {
+// generateCreateCommandForIdentity generates the command to create an object based on its identity.
+func generateCreateCommandForIdentity(identity elemental.Identity, modelManager elemental.ModelManager, manipulatorMaker ManipulatorMaker) (*cobra.Command, error) {
 
 	cmd := &cobra.Command{
-		Use:     fmt.Sprintf("%s <id-or-name>", identity.Name),
+		Use:     identity.Name,
 		Aliases: []string{identity.Category},
-		Short:   "Allows to update an existing " + identity.Name,
-		Args:    cobra.ExactArgs(1),
+		Short:   "Allows to create a new " + identity.Name,
 		// Aliases: TODO: Missing alias from the spec file -> To be stored in the identity ?,
 		PersistentPreRunE: persistentPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			manipulator, err := prepareManipulator(
-				viper.GetString(FlagAPI),
-				viper.GetString(FlagToken),
-				viper.GetString(FlagAppCredentials),
-				viper.GetString(FlagNamespace),
-				viper.GetString(FlagCACertPath),
-				viper.GetBool(FlagAPISkipVerify),
-				viper.GetString(FlagEncoding),
-			)
+			manipulator, err := manipulatorMaker()
 			if err != nil {
 				return fmt.Errorf("unable to prepare manipulator: %w", err)
 			}
@@ -47,21 +38,16 @@ func generateUpdateCommandForIdentity(identity elemental.Identity, modelManager 
 				manipulate.ContextOptionFields(viper.GetStringSlice(FormatTypeColumn)),
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-			defer cancel()
-
-			mctx := manipulate.NewContext(ctx, options...)
-
-			identifiable, err := retrieveObjectByIDOrByName(mctx, manipulator, identity, args[0], modelManager)
-			if err != nil {
-				return fmt.Errorf("unable to retrieve %s: %w", identity.Name, err)
-			}
-
+			identifiable := modelManager.IdentifiableFromString(identity.Name)
 			if err := readViperFlags(identifiable); err != nil {
 				return fmt.Errorf("unable to read flags: %w", err)
 			}
 
-			if err := manipulator.Update(mctx, identifiable); err != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
+
+			mctx := manipulate.NewContext(ctx, options...)
+			if err := manipulator.Create(mctx, identifiable); err != nil {
 				return fmt.Errorf("unable to create %s: %w", identity.Name, err)
 			}
 
@@ -87,7 +73,7 @@ func generateUpdateCommandForIdentity(identity elemental.Identity, modelManager 
 	}
 
 	identifiable := modelManager.IdentifiableFromString(identity.Name)
-	if err := setViperFlags(cmd, identifiable, false); err != nil {
+	if err := setViperFlags(cmd, identifiable, true); err != nil {
 		return nil, fmt.Errorf("unable to set flags for %s: %w", identity.Name, err)
 	}
 

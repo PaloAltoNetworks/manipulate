@@ -1,4 +1,4 @@
-package cli
+package manipcli
 
 // Format Types
 const (

@@ -1,4 +1,4 @@
-package cli
+package manipcli
 
 import (
 	"context"
@@ -11,27 +11,19 @@ import (
 	"go.aporeto.io/manipulate"
 )
 
-// generateDeleteCommandForIdentity generates the command to delete an object based on its identity.
-func generateDeleteCommandForIdentity(identity elemental.Identity, modelManager elemental.ModelManager) (*cobra.Command, error) {
+// generateGetCommandForIdentity generates the command to get an object based on its identity.
+func generateGetCommandForIdentity(identity elemental.Identity, modelManager elemental.ModelManager, manipulatorMaker ManipulatorMaker) (*cobra.Command, error) {
 
 	cmd := &cobra.Command{
 		Use:     fmt.Sprintf("%s <id-or-name>", identity.Name),
 		Aliases: []string{identity.Category},
-		Short:   "Allows to delete an existing " + identity.Name,
+		Short:   "Allows to get an existing " + identity.Name,
 		Args:    cobra.ExactArgs(1),
 		// Aliases: TODO: Missing alias from the spec file -> To be stored in the identity ?,
 		PersistentPreRunE: persistentPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			manipulator, err := prepareManipulator(
-				viper.GetString(FlagAPI),
-				viper.GetString(FlagToken),
-				viper.GetString(FlagAppCredentials),
-				viper.GetString(FlagNamespace),
-				viper.GetString(FlagCACertPath),
-				viper.GetBool(FlagAPISkipVerify),
-				viper.GetString(FlagEncoding),
-			)
+			manipulator, err := manipulatorMaker()
 			if err != nil {
 				return fmt.Errorf("unable to prepare manipulator: %w", err)
 			}
@@ -45,6 +37,7 @@ func generateDeleteCommandForIdentity(identity elemental.Identity, modelManager 
 				manipulate.ContextOptionTracking(viper.GetString(FlagTrackingID), "cli"),
 				manipulate.ContextOptionParameters(parameters),
 				manipulate.ContextOptionFields(viper.GetStringSlice(FormatTypeColumn)),
+				manipulate.ContextOptionRecursive(viper.GetBool(FlagRecursive)),
 			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -57,14 +50,10 @@ func generateDeleteCommandForIdentity(identity elemental.Identity, modelManager 
 				return fmt.Errorf("unable to retrieve %s: %w", identity.Name, err)
 			}
 
-			if err := manipulator.Delete(mctx, identifiable); err != nil {
-				return fmt.Errorf("unable to delete %s: %w", identity.Name, err)
-			}
-
 			output := viper.GetString(FlagOutput)
 			outputType := output
 			if output == FlagOutputDefault {
-				outputType = FlagOutputNone
+				outputType = FlagOutputJSON
 			}
 
 			result, err := FormatObjects(
