@@ -339,9 +339,6 @@ func readViperFlags(identifiable elemental.Identifiable) error {
 			}
 			fv.Set(reflect.ValueOf(t))
 
-		case "list":
-			fv.Set(reflect.ValueOf(viper.GetStringSlice(spec.Name)))
-
 		default:
 			t := reflect.TypeOf(specifiable.ValueForAttribute(spec.Name))
 			v := reflect.New(t)
@@ -398,9 +395,6 @@ func setViperFlags(cmd *cobra.Command, identifiable elemental.Identifiable, forc
 
 		case "time":
 			cmd.Flags().StringP(spec.Name, "", "", spec.Description)
-
-		case "list":
-			cmd.Flags().StringSliceP(spec.Name, "", nil, spec.Description)
 
 		default:
 			zap.L().Debug("use default type string for attribute", zap.String("attribute", spec.Name), zap.String("identity", identifiable.Identity().Name))
