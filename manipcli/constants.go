@@ -44,8 +44,6 @@ const (
 	FlagToken = "token"
 	// FlagCACertPath represents the key "api-cacert"
 	FlagCACertPath = "api-cacert"
-	// FlagAppCredentials represents the key "creds"
-	FlagAppCredentials = "creds"
 	// FlagEncoding represents the key "encoding"
 	FlagEncoding = "encoding"
 	// FlagRecursive represents the key "recursive"
