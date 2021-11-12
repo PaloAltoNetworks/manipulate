@@ -92,6 +92,18 @@ func OptionTLSConfig(tlsConfig *tls.Config) Option {
 	}
 }
 
+// OptionTLSClientCertificates sets the Certificate to existing tls.Config. If the
+// is not set, a default one will be used. If you call OptionTLSConfig after,
+// using this option, the tls.Config will be overwritten.
+func OptionTLSClientCertificates(cert ...tls.Certificate) Option {
+	return func(m *httpManipulator) {
+		if m.tlsConfig == nil {
+			m.tlsConfig = &tls.Config{}
+		}
+		m.tlsConfig.Certificates = cert
+	}
+}
+
 // OptionDisableBuiltInRetry disables the auto retry mechanism
 // built in maniphttp Manipulator.
 // By default, the manipulator will silently retry on communication
