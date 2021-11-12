@@ -1,9 +1,6 @@
 package cli
 
 import (
-	"fmt"
-	"time"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.aporeto.io/elemental"
@@ -130,8 +127,6 @@ func GenerateCobraCommand(modelManager elemental.ModelManager) *cobra.Command {
 	countCommands.PersistentFlags().BoolP(FlagRecursive, "r", false, "List all objects from the current namespace and all child namespaces.")
 	countCommands.PersistentFlags().StringP(FlagFilter, "f", "", "Query filter.")
 
-	now := time.Now()
-
 	// Generate subcommands for each identity
 	for _, identity := range modelManager.AllIdentities() {
 
@@ -175,8 +170,6 @@ func GenerateCobraCommand(modelManager elemental.ModelManager) *cobra.Command {
 	APICommand.AddCommand(getCommands)
 	APICommand.AddCommand(listCommands)
 	APICommand.AddCommand(countCommands)
-
-	fmt.Println("time elasped", time.Since(now))
 
 	return APICommand
 }
