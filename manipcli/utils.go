@@ -29,7 +29,7 @@ type ManipulatorMaker = func() (manipulate.Manipulator, error)
 // ManipulatorMakerFromFlags returns a func that creates a manipulator based on command flags. Command flags are read using viper.
 // It needs the following flags: FlagAPI, FlagToken, FlagAppCredentials, FlagNamespace, FlagCACertPath, FlagAPISkipVerify, FlagEncoding
 // Use SetCLIFlags to add these flags to your command.
-func ManipulatorMakerFromFlags() ManipulatorMaker {
+func ManipulatorMakerFromFlags(options ...maniphttp.Option) ManipulatorMaker {
 
 	return func() (manipulate.Manipulator, error) {
 		api := viper.GetString(FlagAPI)
@@ -68,14 +68,22 @@ func ManipulatorMakerFromFlags() ManipulatorMaker {
 			api = "https://api.console.aporeto.com" // TODO: Try to put that in the default values...
 		}
 
-		return maniphttp.New(
-			context.Background(),
-			api,
+		opts := []maniphttp.Option{
 			maniphttp.OptionNamespace(namespace),
 			maniphttp.OptionTLSConfig(tlsConfig),
 			maniphttp.OptionEncoding(enc),
 			maniphttp.OptionToken(token),
 			// maniphttp.OptionSendCredentialsAsCookie("x-aporeto-token"), // TODO: Check why this is necessary
+		}
+
+		if len(options) > 0 {
+			opts = append(opts, options...)
+		}
+
+		return maniphttp.New(
+			context.Background(),
+			api,
+			opts...,
 		)
 	}
 }
