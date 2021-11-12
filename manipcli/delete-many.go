@@ -1,4 +1,4 @@
-package cli
+package manipcli
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 )
 
 // generateDeleteManyCommandForIdentity generates the command to delete many objects based on its identity.
-func generateDeleteManyCommandForIdentity(identity elemental.Identity, modelManager elemental.ModelManager) (*cobra.Command, error) {
+func generateDeleteManyCommandForIdentity(identity elemental.Identity, modelManager elemental.ModelManager, manipulatorMaker ManipulatorMaker) (*cobra.Command, error) {
 
 	cmd := &cobra.Command{
 		Use:     fmt.Sprintf("%s", identity.Name),
@@ -23,15 +23,7 @@ func generateDeleteManyCommandForIdentity(identity elemental.Identity, modelMana
 		PersistentPreRunE: persistentPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			manipulator, err := prepareManipulator(
-				viper.GetString(FlagAPI),
-				viper.GetString(FlagToken),
-				viper.GetString(FlagAppCredentials),
-				viper.GetString(FlagNamespace),
-				viper.GetString(FlagCACertPath),
-				viper.GetBool(FlagAPISkipVerify),
-				viper.GetString(FlagEncoding),
-			)
+			manipulator, err := manipulatorMaker()
 			if err != nil {
 				return fmt.Errorf("unable to prepare manipulator: %w", err)
 			}
@@ -74,7 +66,7 @@ func generateDeleteManyCommandForIdentity(identity elemental.Identity, modelMana
 				for _, item := range objects {
 					zap.L().Debug(fmt.Sprintf("- %s with ID=%s will be removed", identity.Name, item.Identifier()))
 				}
-				return fmt.Errorf("You are about to delete %d %s. If you are sure, please use --%s option to delete.", len(objects), identity.Category, FlagConfirm)
+				return fmt.Errorf("you are about to delete %d %s. If you are sure, please use --%s option to delete", len(objects), identity.Category, FlagConfirm)
 			}
 
 			var deleted elemental.IdentifiablesList
