@@ -17,7 +17,7 @@ func generateDeleteCommandForIdentity(identity elemental.Identity, modelManager 
 	cmd := &cobra.Command{
 		Use:     fmt.Sprintf("%s <id-or-name>", identity.Name),
 		Aliases: []string{identity.Category},
-		Short:   "Allows to delete an existing " + identity.Name,
+		Short:   "Delete an existing " + identity.Name,
 		Args:    cobra.ExactArgs(1),
 		// Aliases: TODO: Missing alias from the spec file -> To be stored in the identity ?,
 		PersistentPreRunE: persistentPreRunE,

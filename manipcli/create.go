@@ -17,7 +17,7 @@ func generateCreateCommandForIdentity(identity elemental.Identity, modelManager 
 	cmd := &cobra.Command{
 		Use:     identity.Name,
 		Aliases: []string{identity.Category},
-		Short:   "Allows to create a new " + identity.Name,
+		Short:   "Create a new " + identity.Name,
 		// Aliases: TODO: Missing alias from the spec file -> To be stored in the identity ?,
 		PersistentPreRunE: persistentPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {

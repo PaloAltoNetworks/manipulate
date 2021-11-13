@@ -621,7 +621,7 @@ func Test_shouldManageSpecification(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if resp := shouldManageSpecification(tt.args.spec); resp != tt.want {
+			if resp := shouldManageAttribute(tt.args.spec); resp != tt.want {
 				t.Errorf("validateOutputParameters() bool = %v, want %v", resp, tt.want)
 			}
 		})

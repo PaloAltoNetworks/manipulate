@@ -40,7 +40,7 @@ func GenerateCobraCommand(modelManager elemental.ModelManager, manipulatorMaker 
 	// API Command
 	APICommand := &cobra.Command{
 		Use:   "api [command] [flags]",
-		Short: "Allows to make api calls",
+		Short: "Interact with resources and APIs",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := cmd.Root().PersistentPreRunE(cmd, args); err != nil {
 				return err
@@ -158,7 +158,7 @@ func GenerateCobraCommand(modelManager elemental.ModelManager, manipulatorMaker 
 			continue
 		}
 
-		if identity.Private {
+		if identity.Private || identity.Name == "root" {
 			continue
 		}
 

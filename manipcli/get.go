@@ -17,7 +17,7 @@ func generateGetCommandForIdentity(identity elemental.Identity, modelManager ele
 	cmd := &cobra.Command{
 		Use:     fmt.Sprintf("%s <id-or-name>", identity.Name),
 		Aliases: []string{identity.Category},
-		Short:   "Allows to get an existing " + identity.Name,
+		Short:   "Get an existing " + identity.Name,
 		Args:    cobra.ExactArgs(1),
 		// Aliases: TODO: Missing alias from the spec file -> To be stored in the identity ?,
 		PersistentPreRunE: persistentPreRunE,

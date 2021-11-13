@@ -122,8 +122,8 @@ func prepareAPICACertPool(capath string) (*x509.CertPool, error) {
 	return capool, nil
 }
 
-// shouldManageSpecification indicates if the attribute should be managed or not.
-func shouldManageSpecification(spec elemental.AttributeSpecification) bool {
+// shouldManageAttribute indicates if the attribute should be managed or not.
+func shouldManageAttribute(spec elemental.AttributeSpecification) bool {
 
 	if !spec.Exposed {
 		return false
@@ -302,7 +302,7 @@ func readViperFlags(identifiable elemental.Identifiable) error {
 
 	for _, spec := range specifiable.AttributeSpecifications() {
 
-		if !shouldManageSpecification(spec) {
+		if !shouldManageAttribute(spec) {
 			continue
 		}
 
@@ -369,7 +369,7 @@ func setViperFlags(cmd *cobra.Command, identifiable elemental.Identifiable, forc
 
 	for _, spec := range specifiable.AttributeSpecifications() {
 
-		if !shouldManageSpecification(spec) {
+		if !shouldManageAttribute(spec) {
 			continue
 		}
 
