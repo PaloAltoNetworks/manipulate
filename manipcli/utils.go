@@ -49,10 +49,10 @@ func ManipulatorMakerFromFlags(options ...maniphttp.Option) ManipulatorMaker {
 		case "msgpack":
 			enc = elemental.EncodingTypeMSGPACK
 		default:
-			return nil, fmt.Errorf("unsuported encoding '%s'. Must be 'json' or 'msgpack'", encoding)
+			return nil, fmt.Errorf("unsupported encoding '%s'. Must be 'json' or 'msgpack'", encoding)
 		}
 
-		if tlsConfig == nil {
+		if tlsConfig == nil && capath != "" {
 			rootCAPool, err := prepareAPICACertPool(capath)
 			if err != nil {
 				return nil, fmt.Errorf("unable to load root ca pool: %s", err)
@@ -63,17 +63,11 @@ func ManipulatorMakerFromFlags(options ...maniphttp.Option) ManipulatorMaker {
 			}
 		}
 
-		// If by then we still don't have an api, we set it to console.
-		if api == "" {
-			api = "https://api.console.aporeto.com" // TODO: Try to put that in the default values...
-		}
-
 		opts := []maniphttp.Option{
 			maniphttp.OptionNamespace(namespace),
 			maniphttp.OptionTLSConfig(tlsConfig),
 			maniphttp.OptionEncoding(enc),
 			maniphttp.OptionToken(token),
-			// maniphttp.OptionSendCredentialsAsCookie("x-aporeto-token"), // TODO: Check why this is necessary
 		}
 
 		if len(options) > 0 {
@@ -217,6 +211,7 @@ func validateOutputParameters(output string) error {
 
 // checkRequiredFlags checks if all required flags are set
 func checkRequiredFlags(flags *pflag.FlagSet) error {
+
 	requiredError := false
 	flagName := ""
 
