@@ -17,7 +17,7 @@ func generateCountCommandForIdentity(identity elemental.Identity, modelManager e
 	cmd := &cobra.Command{
 		Use:     identity.Name,
 		Aliases: []string{identity.Category},
-		Short:   "Allows to count " + identity.Category,
+		Short:   "Count " + identity.Category,
 		// Aliases: TODO: Missing alias from the spec file -> To be stored in the identity ?,
 		PersistentPreRunE: persistentPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {

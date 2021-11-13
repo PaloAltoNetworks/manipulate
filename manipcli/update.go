@@ -17,7 +17,7 @@ func generateUpdateCommandForIdentity(identity elemental.Identity, modelManager 
 	cmd := &cobra.Command{
 		Use:     fmt.Sprintf("%s <id-or-name>", identity.Name),
 		Aliases: []string{identity.Category},
-		Short:   "Allows to update an existing " + identity.Name,
+		Short:   "Update an existing " + identity.Name,
 		Args:    cobra.ExactArgs(1),
 		// Aliases: TODO: Missing alias from the spec file -> To be stored in the identity ?,
 		PersistentPreRunE: persistentPreRunE,

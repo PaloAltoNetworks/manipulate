@@ -17,7 +17,7 @@ func generateListCommandForIdentity(identity elemental.Identity, modelManager el
 	cmd := &cobra.Command{
 		Use:     identity.Name,
 		Aliases: []string{identity.Category},
-		Short:   "Allows to list all " + identity.Category,
+		Short:   "List all " + identity.Category,
 		// Aliases: TODO: Missing alias from the spec file -> To be stored in the identity ?,
 		PersistentPreRunE: persistentPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
