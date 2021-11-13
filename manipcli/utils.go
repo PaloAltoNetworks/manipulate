@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"regexp"
 	"runtime"
 	"strings"
 
@@ -305,7 +306,9 @@ func readViperFlags(identifiable elemental.Identifiable) error {
 			continue
 		}
 
-		if !viper.IsSet(spec.Name) {
+		flagName := nameToFlag(spec.Name)
+
+		if !viper.IsSet(flagName) {
 			continue
 		}
 
@@ -313,31 +316,31 @@ func readViperFlags(identifiable elemental.Identifiable) error {
 
 		switch spec.Type {
 		case "string":
-			fv.SetString(viper.GetString(spec.Name))
+			fv.SetString(viper.GetString(flagName))
 
 		case "enum":
-			fv.SetString(viper.GetString(spec.Name))
+			fv.SetString(viper.GetString(flagName))
 
 		case "float64":
-			fv.SetFloat(viper.GetFloat64(spec.Name))
+			fv.SetFloat(viper.GetFloat64(flagName))
 
 		case "boolean":
-			fv.SetBool(viper.GetBool(spec.Name))
+			fv.SetBool(viper.GetBool(flagName))
 
 		case "integer":
-			fv.SetInt(int64(viper.GetInt(spec.Name)))
+			fv.SetInt(int64(viper.GetInt(flagName)))
 
 		case "time":
-			t, err := dateparse.ParseAny(viper.GetString(spec.Name))
+			t, err := dateparse.ParseAny(viper.GetString(flagName))
 			if err != nil {
 				return err
 			}
 			fv.Set(reflect.ValueOf(t))
 
 		default:
-			t := reflect.TypeOf(specifiable.ValueForAttribute(spec.Name))
+			t := reflect.TypeOf(specifiable.ValueForAttribute(flagName))
 			v := reflect.New(t)
-			if err := json.Unmarshal([]byte(viper.GetString(spec.Name)), v.Interface()); err != nil {
+			if err := json.Unmarshal([]byte(viper.GetString(flagName)), v.Interface()); err != nil {
 				return err
 			}
 			fv.Set(v.Elem())
@@ -370,38 +373,49 @@ func setViperFlags(cmd *cobra.Command, identifiable elemental.Identifiable, forc
 			continue
 		}
 
+		flagName := nameToFlag(spec.Name)
+
 		// Register flag based on type
 		switch spec.Type {
 
 		case "string":
-			cmd.Flags().StringP(spec.Name, "", "", spec.Description)
+			cmd.Flags().StringP(flagName, "", "", spec.Description)
 
 		case "enum":
-			cmd.Flags().StringP(spec.Name, "", "", spec.Description)
+			cmd.Flags().StringP(flagName, "", "", spec.Description)
 
 		case "float64":
-			cmd.Flags().Float64P(spec.Name, "", 0, spec.Description)
+			cmd.Flags().Float64P(flagName, "", 0, spec.Description)
 
 		case "boolean":
-			cmd.Flags().BoolP(spec.Name, "", false, spec.Description)
+			cmd.Flags().BoolP(flagName, "", false, spec.Description)
 
 		case "integer":
-			cmd.Flags().IntP(spec.Name, "", 0, spec.Description)
+			cmd.Flags().IntP(flagName, "", 0, spec.Description)
 
 		case "time":
-			cmd.Flags().StringP(spec.Name, "", "", spec.Description)
+			cmd.Flags().StringP(flagName, "", "", spec.Description)
 
 		default:
 			zap.L().Debug("use default type string for attribute", zap.String("attribute", spec.Name), zap.String("identity", identifiable.Identity().Name))
-			cmd.Flags().StringP(spec.Name, "", "", spec.Description)
+			cmd.Flags().StringP(flagName, "", "", spec.Description)
 		}
 
 		if forceRequired && spec.Required {
-			if err := cmd.MarkFlagRequired(spec.Name); err != nil {
-				return fmt.Errorf("unable to mark flag %s as required", spec.Name)
+			if err := cmd.MarkFlagRequired(flagName); err != nil {
+				return fmt.Errorf("unable to mark flag %s as required", flagName)
 			}
 		}
 	}
 
 	return nil
+}
+
+var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
+var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
+
+func nameToFlag(name string) string {
+	flag := matchFirstCap.ReplaceAllString(name, "${1}-${2}")
+	flag = matchAllCap.ReplaceAllString(flag, "${1}-${2}")
+	return strings.ToLower(flag)
 }
