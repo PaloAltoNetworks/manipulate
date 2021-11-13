@@ -34,13 +34,13 @@ type ManipulatorMaker = func() (manipulate.Manipulator, error)
 func ManipulatorMakerFromFlags(options ...maniphttp.Option) ManipulatorMaker {
 
 	return func() (manipulate.Manipulator, error) {
-		api := viper.GetString(FlagAPI)
-		token := viper.GetString(FlagToken)
-		// credsPath := viper.GetString(FlagAppCredentials)
-		namespace := viper.GetString(FlagNamespace)
-		capath := viper.GetString(FlagCACertPath)
-		skip := viper.GetBool(FlagAPISkipVerify)
-		encoding := viper.GetString(FlagEncoding)
+		api := viper.GetString(flagAPI)
+		token := viper.GetString(flagToken)
+		// credsPath := viper.GetString(flagAppCredentials)
+		namespace := viper.GetString(flagNamespace)
+		capath := viper.GetString(flagCACertPath)
+		skip := viper.GetBool(flagAPISkipVerify)
+		encoding := viper.GetString(flagEncoding)
 
 		var tlsConfig *tls.Config
 
@@ -89,12 +89,12 @@ func ManipulatorFlagSet() *pflag.FlagSet {
 
 	set := pflag.NewFlagSet("", pflag.ExitOnError)
 
-	set.StringP(FlagAPI, "A", "", "Server API URL.") // default is managed inline.
-	set.BoolP(FlagAPISkipVerify, "", false, "If set, skip api endpoint verification. This is insecure.")
-	set.String(FlagCACertPath, "", "Path to the CA to use for validating api endpoint.")
-	set.String(FlagTrackingID, "", "ID to trace the request. Use this when asked to help debug the system.")
-	set.String(FlagEncoding, "msgpack", "encoding to use to communicate with the platform. Can be 'msgpack' or 'json'")
-	set.StringP(FlagNamespace, "n", "", "Namespace to use.")
+	set.StringP(flagAPI, "A", "", "Server API URL.") // default is managed inline.
+	set.BoolP(flagAPISkipVerify, "", false, "If set, skip api endpoint verification. This is insecure.")
+	set.String(flagCACertPath, "", "Path to the CA to use for validating api endpoint.")
+	set.String(flagTrackingID, "", "ID to trace the request. Use this when asked to help debug the system.")
+	set.String(flagEncoding, "msgpack", "encoding to use to communicate with the platform. Can be 'msgpack' or 'json'")
+	set.StringP(flagNamespace, "n", "", "Namespace to use.")
 
 	return set
 }
@@ -179,7 +179,7 @@ func persistentPreRunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := validateOutputParameters(viper.GetString(FlagOutput)); err != nil {
+	if err := validateOutputParameters(viper.GetString(flagOutput)); err != nil {
 		return err
 	}
 
@@ -191,12 +191,12 @@ func validateOutputParameters(output string) error {
 
 	// Check output constraints
 	allOutputOptions := []string{
-		FlagOutputTable,
-		FlagOutputJSON,
-		FlagOutputNone,
-		FlagOutputDefault,
-		FlagOutputYAML,
-		FlagOutputTemplate,
+		flagOutputTable,
+		flagOutputJSON,
+		flagOutputNone,
+		flagOutputDefault,
+		flagOutputYAML,
+		flagOutputTemplate,
 	}
 
 	for _, opt := range allOutputOptions {

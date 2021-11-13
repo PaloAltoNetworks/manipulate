@@ -34,11 +34,11 @@ func Test_ManipulatorMakerFromFlags(t *testing.T) {
 		So(err, ShouldEqual, nil)
 
 		Convey("When I set all flags and call ManipulatorMakerFromFlags", func() {
-			cmd.Flags().Set(FlagAPI, "https://test.com")
-			cmd.Flags().Set(FlagNamespace, "/test")
-			cmd.Flags().Set(FlagEncoding, "msgpack")
-			cmd.Flags().Set(FlagToken, "token1234")
-			cmd.Flags().Set(FlagAPISkipVerify, "true")
+			cmd.Flags().Set(flagAPI, "https://test.com")
+			cmd.Flags().Set(flagNamespace, "/test")
+			cmd.Flags().Set(flagEncoding, "msgpack")
+			cmd.Flags().Set(flagToken, "token1234")
+			cmd.Flags().Set(flagAPISkipVerify, "true")
 
 			m, err := ManipulatorMakerFromFlags()()
 
@@ -56,7 +56,7 @@ func Test_ManipulatorMakerFromFlags(t *testing.T) {
 		})
 
 		Convey("When I pass an unsupported encoding", func() {
-			cmd.Flags().Set(FlagEncoding, "unsupported")
+			cmd.Flags().Set(flagEncoding, "unsupported")
 
 			_, err := ManipulatorMakerFromFlags()()
 
@@ -67,8 +67,8 @@ func Test_ManipulatorMakerFromFlags(t *testing.T) {
 		})
 
 		Convey("When I pass an invalid capath", func() {
-			cmd.Flags().Set(FlagEncoding, "msgpack")
-			cmd.Flags().Set(FlagCACertPath, "boom")
+			cmd.Flags().Set(flagEncoding, "msgpack")
+			cmd.Flags().Set(flagCACertPath, "boom")
 
 			_, err := ManipulatorMakerFromFlags()()
 
@@ -149,8 +149,8 @@ func Test_persistentPreRuneE(t *testing.T) {
 
 		Convey("When I pass an output value", func() {
 
-			cmd.Flags().StringP(FlagOutput, "", "json", "a valid output")
-			cmd.Flags().Set(FlagOutput, FlagOutputJSON)
+			cmd.Flags().StringP(flagOutput, "", "json", "a valid output")
+			cmd.Flags().Set(flagOutput, flagOutputJSON)
 
 			err := persistentPreRunE(cmd, []string{})
 
@@ -172,8 +172,8 @@ func Test_persistentPreRuneE(t *testing.T) {
 
 		Convey("When I pass an output value", func() {
 
-			cmd.Flags().StringP(FlagOutput, "", "json", "a valid output")
-			cmd.Flags().Set(FlagOutput, FlagOutputJSON)
+			cmd.Flags().StringP(flagOutput, "", "json", "a valid output")
+			cmd.Flags().Set(flagOutput, flagOutputJSON)
 
 			err := persistentPreRunE(cmd, []string{})
 
@@ -540,7 +540,7 @@ func Test_validateOutputParameters(t *testing.T) {
 		{
 			"valid output",
 			args{
-				output: FlagOutputTable,
+				output: flagOutputTable,
 			},
 			false,
 		},
