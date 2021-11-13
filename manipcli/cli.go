@@ -49,16 +49,16 @@ func GenerateCobraCommand(modelManager elemental.ModelManager, manipulatorMaker 
 		},
 	}
 
-	APICommand.PersistentFlags().StringP(FlagOutput, "o", "default", "Format to used print output. Options are 'table', 'json', 'yaml', 'none', 'template' or 'default'.")
+	APICommand.PersistentFlags().StringP(flagOutput, "o", "default", "Format to used print output. Options are 'table', 'json', 'yaml', 'none', 'template' or 'default'.")
 	// TODO: Manage output template
 	// APICommand.PersistentFlags().String(FlagOutputTemplate, "", "When output is set to 'template', this defines the template to use using Go format.")
-	APICommand.PersistentFlags().StringSliceP(FormatTypeColumn, "c", nil, "Only show the given columns. Only valid when '--output=table'.")
-	APICommand.PersistentFlags().StringSliceP(FlagParameters, "p", nil, "Additional parameter to the request, in the form of key=value.")
+	APICommand.PersistentFlags().StringSliceP(formatTypeColumn, "c", nil, "Only show the given columns. Only valid when '--output=table'.")
+	APICommand.PersistentFlags().StringSliceP(flagParameters, "p", nil, "Additional parameter to the request, in the form of key=value.")
 
 	// Create command
 	createCommands := &cobra.Command{
 		Use:   "create",
-		Short: "Allows to create a new object",
+		Short: "Create a new object",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := cmd.Root().PersistentPreRunE(cmd, args); err != nil {
 				return err
@@ -70,7 +70,7 @@ func GenerateCobraCommand(modelManager elemental.ModelManager, manipulatorMaker 
 	// Update command
 	updateCommands := &cobra.Command{
 		Use:   "update",
-		Short: "Allows to update an object",
+		Short: "Update an object",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := cmd.Root().PersistentPreRunE(cmd, args); err != nil {
 				return err
@@ -82,7 +82,7 @@ func GenerateCobraCommand(modelManager elemental.ModelManager, manipulatorMaker 
 	// Delete command
 	deleteCommands := &cobra.Command{
 		Use:   "delete",
-		Short: "Allows to delete an object",
+		Short: "Delete an object",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := cmd.Root().PersistentPreRunE(cmd, args); err != nil {
 				return err
@@ -94,7 +94,7 @@ func GenerateCobraCommand(modelManager elemental.ModelManager, manipulatorMaker 
 	// DeleteMany command
 	deleteManyCommands := &cobra.Command{
 		Use:   "delete-many",
-		Short: "Allows to delete multiple objects",
+		Short: "Delete multiple objects",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := cmd.Root().PersistentPreRunE(cmd, args); err != nil {
 				return err
@@ -103,13 +103,13 @@ func GenerateCobraCommand(modelManager elemental.ModelManager, manipulatorMaker 
 		},
 	}
 
-	deleteManyCommands.PersistentFlags().StringP(FlagFilter, "f", "", "Query filter.")
-	deleteManyCommands.PersistentFlags().BoolP(FlagConfirm, "", false, "Confirm deletion of multiple objects")
+	deleteManyCommands.PersistentFlags().StringP(flagFilter, "f", "", "Query filter.")
+	deleteManyCommands.PersistentFlags().BoolP(flagConfirm, "", false, "Confirm deletion of multiple objects")
 
 	// Get command
 	getCommands := &cobra.Command{
 		Use:   "get",
-		Short: "Allows to get an object",
+		Short: "Get a single object",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := cmd.Root().PersistentPreRunE(cmd, args); err != nil {
 				return err
@@ -121,7 +121,7 @@ func GenerateCobraCommand(modelManager elemental.ModelManager, manipulatorMaker 
 	// List command
 	listCommands := &cobra.Command{
 		Use:   "list",
-		Short: "Allows to list all objects",
+		Short: "List objects",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := cmd.Root().PersistentPreRunE(cmd, args); err != nil {
 				return err
@@ -130,16 +130,16 @@ func GenerateCobraCommand(modelManager elemental.ModelManager, manipulatorMaker 
 		},
 	}
 
-	listCommands.PersistentFlags().BoolP(FlagRecursive, "r", false, "List all objects from the current namespace and all child namespaces.")
-	listCommands.PersistentFlags().IntP(FlagPageSize, "S", 0, "Page size to retrieve.")
-	listCommands.PersistentFlags().IntP(FlagPage, "P", 0, "Page number to retrieve.")
-	listCommands.PersistentFlags().StringP(FlagFilter, "f", "", "Query filter.")
-	listCommands.PersistentFlags().StringSliceP(FlagOrder, "O", nil, "Ordering of the result.")
+	listCommands.PersistentFlags().BoolP(flagRecursive, "r", false, "List all objects from the current namespace and all child namespaces.")
+	listCommands.PersistentFlags().IntP(flagPageSize, "S", 0, "Page size to retrieve.")
+	listCommands.PersistentFlags().IntP(flagPage, "P", 0, "Page number to retrieve.")
+	listCommands.PersistentFlags().StringP(flagFilter, "f", "", "Query filter.")
+	listCommands.PersistentFlags().StringSliceP(flagOrder, "O", nil, "Ordering of the result.")
 
 	// Count command
 	countCommands := &cobra.Command{
 		Use:   "count",
-		Short: "Allows to count objects",
+		Short: "Count objects",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := cmd.Root().PersistentPreRunE(cmd, args); err != nil {
 				return err
@@ -148,8 +148,8 @@ func GenerateCobraCommand(modelManager elemental.ModelManager, manipulatorMaker 
 		},
 	}
 
-	countCommands.PersistentFlags().BoolP(FlagRecursive, "r", false, "List all objects from the current namespace and all child namespaces.")
-	countCommands.PersistentFlags().StringP(FlagFilter, "f", "", "Query filter.")
+	countCommands.PersistentFlags().BoolP(flagRecursive, "r", false, "List all objects from the current namespace and all child namespaces.")
+	countCommands.PersistentFlags().StringP(flagFilter, "f", "", "Query filter.")
 
 	// Generate subcommands for each identity
 	for _, identity := range modelManager.AllIdentities() {
@@ -205,13 +205,15 @@ func GenerateCobraCommand(modelManager elemental.ModelManager, manipulatorMaker 
 		}
 	}
 
-	APICommand.AddCommand(createCommands)
-	APICommand.AddCommand(updateCommands)
-	APICommand.AddCommand(deleteCommands)
-	APICommand.AddCommand(deleteManyCommands)
-	APICommand.AddCommand(getCommands)
-	APICommand.AddCommand(listCommands)
-	APICommand.AddCommand(countCommands)
+	APICommand.AddCommand(
+		createCommands,
+		updateCommands,
+		deleteCommands,
+		deleteManyCommands,
+		getCommands,
+		listCommands,
+		countCommands,
+	)
 
 	return APICommand
 }

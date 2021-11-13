@@ -22,7 +22,7 @@ func generateListCommandForIdentity(identity elemental.Identity, modelManager el
 		PersistentPreRunE: persistentPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			fields := viper.GetStringSlice(FormatTypeColumn)
+			fields := viper.GetStringSlice(formatTypeColumn)
 
 			var dest elemental.Identifiables
 			if len(fields) == 0 {
@@ -45,16 +45,16 @@ func generateListCommandForIdentity(identity elemental.Identity, modelManager el
 			}
 
 			options := []manipulate.ContextOption{
-				manipulate.ContextOptionTracking(viper.GetString(FlagTrackingID), "cli"),
+				manipulate.ContextOptionTracking(viper.GetString(flagTrackingID), "cli"),
 				manipulate.ContextOptionParameters(parameters),
 				manipulate.ContextOptionFields(fields),
-				manipulate.ContextOptionRecursive(viper.GetBool(FlagRecursive)),
-				manipulate.ContextOptionPage(viper.GetInt(FlagPage), viper.GetInt(FlagPageSize)),
-				manipulate.ContextOptionOrder(viper.GetStringSlice(FlagOrder)...),
+				manipulate.ContextOptionRecursive(viper.GetBool(flagRecursive)),
+				manipulate.ContextOptionPage(viper.GetInt(flagPage), viper.GetInt(flagPageSize)),
+				manipulate.ContextOptionOrder(viper.GetStringSlice(flagOrder)...),
 			}
 
-			if viper.IsSet(FlagFilter) {
-				filter := viper.GetString(FlagFilter)
+			if viper.IsSet(flagFilter) {
+				filter := viper.GetString(flagFilter)
 				f, err := elemental.NewFilterFromString(filter)
 				if err != nil {
 					return fmt.Errorf("unable to parse filter %s: %s", filter, err)
@@ -71,14 +71,14 @@ func generateListCommandForIdentity(identity elemental.Identity, modelManager el
 				return fmt.Errorf("unable to retrieve all %s: %w", identity.Category, err)
 			}
 
-			output := viper.GetString(FlagOutput)
+			output := viper.GetString(flagOutput)
 			outputType := output
-			if output == FlagOutputDefault {
-				outputType = FlagOutputJSON
+			if output == flagOutputDefault {
+				outputType = flagOutputJSON
 			}
 
-			result, err := FormatObjects(
-				prepareOutputFormat(outputType, FormatTypeArray, viper.GetStringSlice(FormatTypeColumn), viper.GetString(FlagOutputTemplate)),
+			result, err := formatObjects(
+				prepareOutputFormat(outputType, formatTypeArray, viper.GetStringSlice(formatTypeColumn), viper.GetString(flagOutputTemplate)),
 				true,
 				dest.List()...,
 			)

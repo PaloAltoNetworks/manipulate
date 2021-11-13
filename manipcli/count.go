@@ -33,14 +33,14 @@ func generateCountCommandForIdentity(identity elemental.Identity, modelManager e
 			}
 
 			options := []manipulate.ContextOption{
-				manipulate.ContextOptionTracking(viper.GetString(FlagTrackingID), "cli"),
+				manipulate.ContextOptionTracking(viper.GetString(flagTrackingID), "cli"),
 				manipulate.ContextOptionParameters(parameters),
-				manipulate.ContextOptionRecursive(viper.GetBool(FlagRecursive)),
+				manipulate.ContextOptionRecursive(viper.GetBool(flagRecursive)),
 				manipulate.ContextOptionReadConsistency(manipulate.ReadConsistencyStrong),
 			}
 
-			if viper.IsSet(FlagFilter) {
-				filter := viper.GetString(FlagFilter)
+			if viper.IsSet(flagFilter) {
+				filter := viper.GetString(flagFilter)
 				f, err := elemental.NewFilterFromString(filter)
 				if err != nil {
 					return fmt.Errorf("unable to parse filter %s: %s", filter, err)
@@ -58,16 +58,16 @@ func generateCountCommandForIdentity(identity elemental.Identity, modelManager e
 				return fmt.Errorf("unable to count %s: %w", identity.Category, err)
 			}
 
-			output := viper.GetString(FlagOutput)
+			output := viper.GetString(flagOutput)
 			outputType := output
-			if output == FlagOutputDefault {
-				outputType = FlagOutputNone
+			if output == flagOutputDefault {
+				outputType = flagOutputNone
 			}
 
 			result, err := formatMaps(
-				prepareOutputFormat(outputType, FormatTypeCount, viper.GetStringSlice(FormatTypeColumn), viper.GetString(FlagOutputTemplate)),
+				prepareOutputFormat(outputType, formatTypeCount, viper.GetStringSlice(formatTypeColumn), viper.GetString(flagOutputTemplate)),
 				false,
-				[]map[string]interface{}{{FormatTypeCount: num}},
+				[]map[string]interface{}{{formatTypeCount: num}},
 			)
 
 			if err != nil {

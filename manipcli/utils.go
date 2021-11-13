@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"regexp"
 	"runtime"
 	"strings"
 
@@ -33,13 +34,13 @@ type ManipulatorMaker = func() (manipulate.Manipulator, error)
 func ManipulatorMakerFromFlags(options ...maniphttp.Option) ManipulatorMaker {
 
 	return func() (manipulate.Manipulator, error) {
-		api := viper.GetString(FlagAPI)
-		token := viper.GetString(FlagToken)
-		// credsPath := viper.GetString(FlagAppCredentials)
-		namespace := viper.GetString(FlagNamespace)
-		capath := viper.GetString(FlagCACertPath)
-		skip := viper.GetBool(FlagAPISkipVerify)
-		encoding := viper.GetString(FlagEncoding)
+		api := viper.GetString(flagAPI)
+		token := viper.GetString(flagToken)
+		// credsPath := viper.GetString(flagAppCredentials)
+		namespace := viper.GetString(flagNamespace)
+		capath := viper.GetString(flagCACertPath)
+		skip := viper.GetBool(flagAPISkipVerify)
+		encoding := viper.GetString(flagEncoding)
 
 		var tlsConfig *tls.Config
 
@@ -50,10 +51,10 @@ func ManipulatorMakerFromFlags(options ...maniphttp.Option) ManipulatorMaker {
 		case "msgpack":
 			enc = elemental.EncodingTypeMSGPACK
 		default:
-			return nil, fmt.Errorf("unsuported encoding '%s'. Must be 'json' or 'msgpack'", encoding)
+			return nil, fmt.Errorf("unsupported encoding '%s'. Must be 'json' or 'msgpack'", encoding)
 		}
 
-		if tlsConfig == nil {
+		if tlsConfig == nil && capath != "" {
 			rootCAPool, err := prepareAPICACertPool(capath)
 			if err != nil {
 				return nil, fmt.Errorf("unable to load root ca pool: %s", err)
@@ -64,17 +65,11 @@ func ManipulatorMakerFromFlags(options ...maniphttp.Option) ManipulatorMaker {
 			}
 		}
 
-		// If by then we still don't have an api, we set it to console.
-		if api == "" {
-			api = "https://api.console.aporeto.com" // TODO: Try to put that in the default values...
-		}
-
 		opts := []maniphttp.Option{
 			maniphttp.OptionNamespace(namespace),
 			maniphttp.OptionTLSConfig(tlsConfig),
 			maniphttp.OptionEncoding(enc),
 			maniphttp.OptionToken(token),
-			// maniphttp.OptionSendCredentialsAsCookie("x-aporeto-token"), // TODO: Check why this is necessary
 		}
 
 		if len(options) > 0 {
@@ -94,12 +89,12 @@ func ManipulatorFlagSet() *pflag.FlagSet {
 
 	set := pflag.NewFlagSet("", pflag.ExitOnError)
 
-	set.StringP(FlagAPI, "A", "", "Server API URL.") // default is managed inline.
-	set.BoolP(FlagAPISkipVerify, "", false, "If set, skip api endpoint verification. This is insecure.")
-	set.String(FlagCACertPath, "", "Path to the CA to use for validating api endpoint.")
-	set.String(FlagTrackingID, "", "ID to trace the request. Use this when asked to help debug the system.")
-	set.String(FlagEncoding, "msgpack", "encoding to use to communicate with the platform. Can be 'msgpack' or 'json'")
-	set.StringP(FlagNamespace, "n", "", "Namespace to use.")
+	set.StringP(flagAPI, "A", "", "Server API URL.") // default is managed inline.
+	set.BoolP(flagAPISkipVerify, "", false, "If set, skip api endpoint verification. This is insecure.")
+	set.String(flagCACertPath, "", "Path to the CA to use for validating api endpoint.")
+	set.String(flagTrackingID, "", "ID to trace the request. Use this when asked to help debug the system.")
+	set.String(flagEncoding, "msgpack", "encoding to use to communicate with the platform. Can be 'msgpack' or 'json'")
+	set.StringP(flagNamespace, "n", "", "Namespace to use.")
 
 	return set
 }
@@ -184,7 +179,7 @@ func persistentPreRunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := validateOutputParameters(viper.GetString(FlagOutput)); err != nil {
+	if err := validateOutputParameters(viper.GetString(flagOutput)); err != nil {
 		return err
 	}
 
@@ -196,12 +191,12 @@ func validateOutputParameters(output string) error {
 
 	// Check output constraints
 	allOutputOptions := []string{
-		FlagOutputTable,
-		FlagOutputJSON,
-		FlagOutputNone,
-		FlagOutputDefault,
-		FlagOutputYAML,
-		FlagOutputTemplate,
+		flagOutputTable,
+		flagOutputJSON,
+		flagOutputNone,
+		flagOutputDefault,
+		flagOutputYAML,
+		flagOutputTemplate,
 	}
 
 	for _, opt := range allOutputOptions {
@@ -214,6 +209,7 @@ func validateOutputParameters(output string) error {
 
 // checkRequiredFlags checks if all required flags are set
 func checkRequiredFlags(flags *pflag.FlagSet) error {
+
 	requiredError := false
 	flagName := ""
 
@@ -310,7 +306,9 @@ func readViperFlags(identifiable elemental.Identifiable) error {
 			continue
 		}
 
-		if !viper.IsSet(spec.Name) {
+		flagName := nameToFlag(spec.Name)
+
+		if !viper.IsSet(flagName) {
 			continue
 		}
 
@@ -318,31 +316,31 @@ func readViperFlags(identifiable elemental.Identifiable) error {
 
 		switch spec.Type {
 		case "string":
-			fv.SetString(viper.GetString(spec.Name))
+			fv.SetString(viper.GetString(flagName))
 
 		case "enum":
-			fv.SetString(viper.GetString(spec.Name))
+			fv.SetString(viper.GetString(flagName))
 
 		case "float64":
-			fv.SetFloat(viper.GetFloat64(spec.Name))
+			fv.SetFloat(viper.GetFloat64(flagName))
 
 		case "boolean":
-			fv.SetBool(viper.GetBool(spec.Name))
+			fv.SetBool(viper.GetBool(flagName))
 
 		case "integer":
-			fv.SetInt(int64(viper.GetInt(spec.Name)))
+			fv.SetInt(int64(viper.GetInt(flagName)))
 
 		case "time":
-			t, err := dateparse.ParseAny(viper.GetString(spec.Name))
+			t, err := dateparse.ParseAny(viper.GetString(flagName))
 			if err != nil {
 				return err
 			}
 			fv.Set(reflect.ValueOf(t))
 
 		default:
-			t := reflect.TypeOf(specifiable.ValueForAttribute(spec.Name))
+			t := reflect.TypeOf(specifiable.ValueForAttribute(flagName))
 			v := reflect.New(t)
-			if err := json.Unmarshal([]byte(viper.GetString(spec.Name)), v.Interface()); err != nil {
+			if err := json.Unmarshal([]byte(viper.GetString(flagName)), v.Interface()); err != nil {
 				return err
 			}
 			fv.Set(v.Elem())
@@ -375,38 +373,49 @@ func setViperFlags(cmd *cobra.Command, identifiable elemental.Identifiable, forc
 			continue
 		}
 
+		flagName := nameToFlag(spec.Name)
+
 		// Register flag based on type
 		switch spec.Type {
 
 		case "string":
-			cmd.Flags().StringP(spec.Name, "", "", spec.Description)
+			cmd.Flags().StringP(flagName, "", "", spec.Description)
 
 		case "enum":
-			cmd.Flags().StringP(spec.Name, "", "", spec.Description)
+			cmd.Flags().StringP(flagName, "", "", spec.Description)
 
 		case "float64":
-			cmd.Flags().Float64P(spec.Name, "", 0, spec.Description)
+			cmd.Flags().Float64P(flagName, "", 0, spec.Description)
 
 		case "boolean":
-			cmd.Flags().BoolP(spec.Name, "", false, spec.Description)
+			cmd.Flags().BoolP(flagName, "", false, spec.Description)
 
 		case "integer":
-			cmd.Flags().IntP(spec.Name, "", 0, spec.Description)
+			cmd.Flags().IntP(flagName, "", 0, spec.Description)
 
 		case "time":
-			cmd.Flags().StringP(spec.Name, "", "", spec.Description)
+			cmd.Flags().StringP(flagName, "", "", spec.Description)
 
 		default:
 			zap.L().Debug("use default type string for attribute", zap.String("attribute", spec.Name), zap.String("identity", identifiable.Identity().Name))
-			cmd.Flags().StringP(spec.Name, "", "", spec.Description)
+			cmd.Flags().StringP(flagName, "", "", spec.Description)
 		}
 
 		if forceRequired && spec.Required {
-			if err := cmd.MarkFlagRequired(spec.Name); err != nil {
-				return fmt.Errorf("unable to mark flag %s as required", spec.Name)
+			if err := cmd.MarkFlagRequired(flagName); err != nil {
+				return fmt.Errorf("unable to mark flag %s as required", flagName)
 			}
 		}
 	}
 
 	return nil
+}
+
+var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
+var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
+
+func nameToFlag(name string) string {
+	flag := matchFirstCap.ReplaceAllString(name, "${1}-${2}")
+	flag = matchAllCap.ReplaceAllString(flag, "${1}-${2}")
+	return strings.ToLower(flag)
 }

@@ -28,15 +28,15 @@ func generateUpdateCommandForIdentity(identity elemental.Identity, modelManager 
 				return fmt.Errorf("unable to make manipulator: %w", err)
 			}
 
-			parameters, err := parametersToURLValues(viper.GetStringSlice(FlagParameters))
+			parameters, err := parametersToURLValues(viper.GetStringSlice(flagParameters))
 			if err != nil {
 				return fmt.Errorf("unable to convert parameters to url values: %w", err)
 			}
 
 			options := []manipulate.ContextOption{
-				manipulate.ContextOptionTracking(viper.GetString(FlagTrackingID), "cli"),
+				manipulate.ContextOptionTracking(viper.GetString(flagTrackingID), "cli"),
 				manipulate.ContextOptionParameters(parameters),
-				manipulate.ContextOptionFields(viper.GetStringSlice(FormatTypeColumn)),
+				manipulate.ContextOptionFields(viper.GetStringSlice(formatTypeColumn)),
 			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -57,14 +57,14 @@ func generateUpdateCommandForIdentity(identity elemental.Identity, modelManager 
 				return fmt.Errorf("unable to create %s: %w", identity.Name, err)
 			}
 
-			output := viper.GetString(FlagOutput)
+			output := viper.GetString(flagOutput)
 			outputType := output
-			if output == FlagOutputDefault {
-				outputType = FlagOutputNone
+			if output == flagOutputDefault {
+				outputType = flagOutputNone
 			}
 
-			result, err := FormatObjects(
-				prepareOutputFormat(outputType, FormatTypeHash, viper.GetStringSlice(FormatTypeColumn), viper.GetString(FlagOutputTemplate)),
+			result, err := formatObjects(
+				prepareOutputFormat(outputType, formatTypeHash, viper.GetStringSlice(formatTypeColumn), viper.GetString(flagOutputTemplate)),
 				false,
 				identifiable,
 			)

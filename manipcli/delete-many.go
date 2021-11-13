@@ -28,20 +28,20 @@ func generateDeleteManyCommandForIdentity(identity elemental.Identity, modelMana
 				return fmt.Errorf("unable to make manipulator: %w", err)
 			}
 
-			parameters, err := parametersToURLValues(viper.GetStringSlice(FlagParameters))
+			parameters, err := parametersToURLValues(viper.GetStringSlice(flagParameters))
 			if err != nil {
 				return fmt.Errorf("unable to convert parameters to url values: %w", err)
 			}
 
 			options := []manipulate.ContextOption{
-				manipulate.ContextOptionTracking(viper.GetString(FlagTrackingID), "cli"),
+				manipulate.ContextOptionTracking(viper.GetString(flagTrackingID), "cli"),
 				manipulate.ContextOptionParameters(parameters),
-				manipulate.ContextOptionFields(viper.GetStringSlice(FormatTypeColumn)),
-				manipulate.ContextOptionOverride(viper.GetBool(FlagConfirm)),
+				manipulate.ContextOptionFields(viper.GetStringSlice(formatTypeColumn)),
+				manipulate.ContextOptionOverride(viper.GetBool(flagConfirm)),
 			}
 
-			if viper.IsSet(FlagFilter) {
-				filter := viper.GetString(FlagFilter)
+			if viper.IsSet(flagFilter) {
+				filter := viper.GetString(flagFilter)
 				f, err := elemental.NewFilterFromString(filter)
 				if err != nil {
 					return fmt.Errorf("unable to parse filter %s: %s", filter, err)
@@ -62,11 +62,11 @@ func generateDeleteManyCommandForIdentity(identity elemental.Identity, modelMana
 
 			objects := identifiables.List()
 
-			if !viper.IsSet(FlagConfirm) {
+			if !viper.IsSet(flagConfirm) {
 				for _, item := range objects {
 					zap.L().Debug(fmt.Sprintf("- %s with ID=%s will be removed", identity.Name, item.Identifier()))
 				}
-				return fmt.Errorf("you are about to delete %d %s. If you are sure, please use --%s option to delete", len(objects), identity.Category, FlagConfirm)
+				return fmt.Errorf("you are about to delete %d %s. If you are sure, please use --%s option to delete", len(objects), identity.Category, flagConfirm)
 			}
 
 			var deleted elemental.IdentifiablesList
@@ -86,14 +86,14 @@ func generateDeleteManyCommandForIdentity(identity elemental.Identity, modelMana
 				return fmt.Errorf("some %s were not deleted: %w", identity.Category, errs)
 			}
 
-			output := viper.GetString(FlagOutput)
+			output := viper.GetString(flagOutput)
 			outputType := output
-			if output == FlagOutputDefault {
-				outputType = FlagOutputNone
+			if output == flagOutputDefault {
+				outputType = flagOutputNone
 			}
 
-			result, err := FormatObjects(
-				prepareOutputFormat(outputType, FormatTypeArray, viper.GetStringSlice(FormatTypeColumn), viper.GetString(FlagOutputTemplate)),
+			result, err := formatObjects(
+				prepareOutputFormat(outputType, formatTypeArray, viper.GetStringSlice(formatTypeColumn), viper.GetString(flagOutputTemplate)),
 				true,
 				deleted...,
 			)

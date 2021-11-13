@@ -28,16 +28,16 @@ func generateGetCommandForIdentity(identity elemental.Identity, modelManager ele
 				return fmt.Errorf("unable to make manipulator: %w", err)
 			}
 
-			parameters, err := parametersToURLValues(viper.GetStringSlice(FlagParameters))
+			parameters, err := parametersToURLValues(viper.GetStringSlice(flagParameters))
 			if err != nil {
 				return fmt.Errorf("unable to convert parameters to url values: %w", err)
 			}
 
 			options := []manipulate.ContextOption{
-				manipulate.ContextOptionTracking(viper.GetString(FlagTrackingID), "cli"),
+				manipulate.ContextOptionTracking(viper.GetString(flagTrackingID), "cli"),
 				manipulate.ContextOptionParameters(parameters),
-				manipulate.ContextOptionFields(viper.GetStringSlice(FormatTypeColumn)),
-				manipulate.ContextOptionRecursive(viper.GetBool(FlagRecursive)),
+				manipulate.ContextOptionFields(viper.GetStringSlice(formatTypeColumn)),
+				manipulate.ContextOptionRecursive(viper.GetBool(flagRecursive)),
 			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -50,14 +50,14 @@ func generateGetCommandForIdentity(identity elemental.Identity, modelManager ele
 				return fmt.Errorf("unable to retrieve %s: %w", identity.Name, err)
 			}
 
-			output := viper.GetString(FlagOutput)
+			output := viper.GetString(flagOutput)
 			outputType := output
-			if output == FlagOutputDefault {
-				outputType = FlagOutputJSON
+			if output == flagOutputDefault {
+				outputType = flagOutputJSON
 			}
 
-			result, err := FormatObjects(
-				prepareOutputFormat(outputType, FormatTypeHash, viper.GetStringSlice(FormatTypeColumn), viper.GetString(FlagOutputTemplate)),
+			result, err := formatObjects(
+				prepareOutputFormat(outputType, formatTypeHash, viper.GetStringSlice(formatTypeColumn), viper.GetString(flagOutputTemplate)),
 				false,
 				identifiable,
 			)

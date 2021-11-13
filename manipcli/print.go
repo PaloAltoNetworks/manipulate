@@ -17,18 +17,18 @@ type prepareOutputConfig struct {
 	tableCaption string
 }
 
-// PrepareOutputOption represents an option that can be passed to PrepareOutputFormat.
-type PrepareOutputOption func(*prepareOutputConfig)
+// prepareOutputOption represents an option that can be passed to PrepareOutputFormat.
+type prepareOutputOption func(*prepareOutputConfig)
 
-// PrepareOutputOptionTableCaption can be used to add a caption to a table output.
-func PrepareOutputOptionTableCaption(caption string) PrepareOutputOption {
+// prepareOutputOptionTableCaption can be used to add a caption to a table output.
+func prepareOutputOptionTableCaption(caption string) prepareOutputOption {
 	return func(config *prepareOutputConfig) {
 		config.tableCaption = caption
 	}
 }
 
-// OutputFormat retains all output information
-type OutputFormat struct {
+// outputFormat retains all output information
+type outputFormat struct {
 	columns      []string
 	formatType   string
 	output       string
@@ -37,14 +37,14 @@ type OutputFormat struct {
 }
 
 // prepareOutputFormat returns an OutputFormat structure that contains output information
-func prepareOutputFormat(output string, formatType string, columns []string, template string, opts ...PrepareOutputOption) OutputFormat {
+func prepareOutputFormat(output string, formatType string, columns []string, template string, opts ...prepareOutputOption) outputFormat {
 
 	cfg := prepareOutputConfig{}
 	for _, o := range opts {
 		o(&cfg)
 	}
 
-	return OutputFormat{
+	return outputFormat{
 		columns:      columns,
 		formatType:   formatType,
 		output:       output,
@@ -53,8 +53,8 @@ func prepareOutputFormat(output string, formatType string, columns []string, tem
 	}
 }
 
-// FormatEvents prints all events given an output format
-func FormatEvents(outputFormat OutputFormat, forceList bool, events ...*elemental.Event) (string, error) {
+// formatEvents prints all events given an output format
+func formatEvents(format outputFormat, forceList bool, events ...*elemental.Event) (string, error) {
 
 	objectMaps := make([]map[string]interface{}, 0, len(events))
 
@@ -66,12 +66,12 @@ func FormatEvents(outputFormat OutputFormat, forceList bool, events ...*elementa
 		}
 
 		var objectMap map[string]interface{}
-		if err := Remarshal(event, &objectMap); err == nil {
+		if err := remarshal(event, &objectMap); err == nil {
 			objectMaps = append(objectMaps, objectMap)
 		}
 	}
 
-	output, err := formatMaps(outputFormat, forceList, objectMaps)
+	output, err := formatMaps(format, forceList, objectMaps)
 	if err != nil {
 		return "", err
 	}
@@ -79,20 +79,20 @@ func FormatEvents(outputFormat OutputFormat, forceList bool, events ...*elementa
 	return output, nil
 }
 
-// FormatObjects prints all identifiable objects given an output format
-func FormatObjects(outputFormat OutputFormat, forceList bool, objects ...elemental.Identifiable) (string, error) {
+// formatObjects prints all identifiable objects given an output format
+func formatObjects(format outputFormat, forceList bool, objects ...elemental.Identifiable) (string, error) {
 
-	return FormatObjectsStripped(outputFormat, false, false, forceList, objects...)
+	return formatObjectsStripped(format, false, false, forceList, objects...)
 }
 
-// FormatObjectsStripped prints all identifiable objects given an output format and eventually strip out some data.
-func FormatObjectsStripped(outputFormat OutputFormat, stripReadOnly bool, stripCreationOnly bool, forceList bool, objects ...elemental.Identifiable) (string, error) {
+// formatObjectsStripped prints all identifiable objects given an output format and eventually strip out some data.
+func formatObjectsStripped(format outputFormat, stripReadOnly bool, stripCreationOnly bool, forceList bool, objects ...elemental.Identifiable) (string, error) {
 
 	objectMaps := make([]map[string]interface{}, 0, len(objects))
 
 	for _, object := range objects {
 		var objectMap map[string]interface{}
-		if err := Remarshal(object, &objectMap); err == nil {
+		if err := remarshal(object, &objectMap); err == nil {
 			objectMaps = append(objectMaps, objectMap)
 		}
 
@@ -113,7 +113,7 @@ func FormatObjectsStripped(outputFormat OutputFormat, stripReadOnly bool, stripC
 		}
 	}
 
-	output, err := formatMaps(outputFormat, forceList, objectMaps)
+	output, err := formatMaps(format, forceList, objectMaps)
 	if err != nil {
 		return "", err
 	}
@@ -121,42 +121,42 @@ func FormatObjectsStripped(outputFormat OutputFormat, stripReadOnly bool, stripC
 	return output, nil
 }
 
-func formatMaps(outputFormat OutputFormat, forceList bool, objects []map[string]interface{}) (string, error) {
+func formatMaps(format outputFormat, forceList bool, objects []map[string]interface{}) (string, error) {
 
-	switch outputFormat.output {
-	case FlagOutputNone:
-		return formatObjectsInNone(outputFormat, objects...)
+	switch format.output {
+	case flagOutputNone:
+		return formatObjectsInNone(format, objects...)
 
-	case FlagOutputTable:
+	case flagOutputTable:
 		if len(objects) == 1 && !forceList {
-			return formatSingleObjectInTable(outputFormat, objects[0])
+			return formatSingleObjectInTable(format, objects[0])
 		}
-		return formatObjectsInTable(outputFormat, objects)
+		return formatObjectsInTable(format, objects)
 
-	case FlagOutputJSON:
-		return formatObjectsWithMarshaler(outputFormat, objects, prettyjson.Marshal)
+	case flagOutputJSON:
+		return formatObjectsWithMarshaler(format, objects, prettyjson.Marshal)
 
-	case FlagOutputYAML:
-		return formatObjectsWithMarshaler(outputFormat, objects, yaml.Marshal)
+	case flagOutputYAML:
+		return formatObjectsWithMarshaler(format, objects, yaml.Marshal)
 
-	case FlagOutputTemplate:
+	case flagOutputTemplate:
 		if len(objects) == 1 && !forceList {
-			return FormatSingleObjectWithTemplate(objects[0], outputFormat.template)
+			return formatSingleObjectWithTemplate(objects[0], format.template)
 		}
-		return FormatObjectsWithTemplate(objects, outputFormat.template)
+		return formatObjectsWithTemplate(objects, format.template)
 
 	default:
-		panic(fmt.Sprintf("invalid output format '%s'", outputFormat))
+		panic(fmt.Sprintf("invalid output format '%s'", format))
 	}
 }
 
-func formatObjectsInNone(outputFormat OutputFormat, objects ...map[string]interface{}) (string, error) {
+func formatObjectsInNone(format outputFormat, objects ...map[string]interface{}) (string, error) {
 
 	var ids []string // nolint: prealloc
 
 	for _, object := range objects {
-		if outputFormat.formatType == FormatTypeCount {
-			return fmt.Sprintf("%d", object[FormatTypeCount]), nil
+		if format.formatType == formatTypeCount {
+			return fmt.Sprintf("%d", object[formatTypeCount]), nil
 		}
 
 		id, ok := object["ID"].(string)
@@ -170,11 +170,11 @@ func formatObjectsInNone(outputFormat OutputFormat, objects ...map[string]interf
 	return strings.Join(ids, "\n"), nil
 }
 
-func formatObjectsWithMarshaler(outputFormat OutputFormat, objects []map[string]interface{}, marshal func(interface{}) ([]byte, error)) (string, error) {
+func formatObjectsWithMarshaler(format outputFormat, objects []map[string]interface{}, marshal func(interface{}) ([]byte, error)) (string, error) {
 
 	if len(objects) == 0 {
-		if outputFormat.output == FlagOutputJSON {
-			if outputFormat.formatType == FormatTypeHash || outputFormat.formatType == "" {
+		if format.output == flagOutputJSON {
+			if format.formatType == formatTypeHash || format.formatType == "" {
 				return "{}", nil
 			}
 			return "[]", nil
@@ -184,7 +184,7 @@ func formatObjectsWithMarshaler(outputFormat OutputFormat, objects []map[string]
 
 	var target interface{}
 	// Print objects as an array only when multiple objects are to be printed
-	if len(objects) == 1 && (outputFormat.formatType == FormatTypeHash || outputFormat.formatType == FormatTypeCount || outputFormat.formatType == "") {
+	if len(objects) == 1 && (format.formatType == formatTypeHash || format.formatType == formatTypeCount || format.formatType == "") {
 		target = objects[0]
 	} else {
 		target = objects
@@ -198,8 +198,8 @@ func formatObjectsWithMarshaler(outputFormat OutputFormat, objects []map[string]
 	return string(output), nil
 }
 
-// FormatObjectsWithTemplate formats the given []map[string]interface{} using given template.
-func FormatObjectsWithTemplate(obj []map[string]interface{}, tpl string) (string, error) {
+// formatObjectsWithTemplate formats the given []map[string]interface{} using given template.
+func formatObjectsWithTemplate(obj []map[string]interface{}, tpl string) (string, error) {
 
 	t, err := template.New("tpl").Parse(tpl)
 	if err != nil {
@@ -214,8 +214,8 @@ func FormatObjectsWithTemplate(obj []map[string]interface{}, tpl string) (string
 	return buffer.String(), nil
 }
 
-// FormatSingleObjectWithTemplate formats the given map[string]interface{} using given template.
-func FormatSingleObjectWithTemplate(obj map[string]interface{}, tpl string) (string, error) {
+// formatSingleObjectWithTemplate formats the given map[string]interface{} using given template.
+func formatSingleObjectWithTemplate(obj map[string]interface{}, tpl string) (string, error) {
 
 	t, err := template.New("tpl").Parse(tpl)
 	if err != nil {
@@ -299,25 +299,25 @@ func tabulate(header []string, rows [][]string, single bool, caption string) str
 	return "\n" + out.String()
 }
 
-func formatSingleObjectInTable(outputFormat OutputFormat, object map[string]interface{}) (string, error) {
+func formatSingleObjectInTable(fromat outputFormat, object map[string]interface{}) (string, error) {
 
-	fields := listFields(object, outputFormat.columns)
+	fields := listFields(object, fromat.columns)
 	data := make([][]string, len(fields))
 
 	for fieldIdx, field := range fields {
 		data[fieldIdx] = []string{field, fmt.Sprintf("%v", object[field])}
 	}
 
-	return tabulate([]string{"property", "value"}, data, true, outputFormat.tableCaption), nil
+	return tabulate([]string{"property", "value"}, data, true, fromat.tableCaption), nil
 }
 
-func formatObjectsInTable(outputFormat OutputFormat, objects []map[string]interface{}) (string, error) {
+func formatObjectsInTable(format outputFormat, objects []map[string]interface{}) (string, error) {
 
 	if len(objects) == 0 {
 		return "", nil
 	}
 
-	fields := listFields(objects[0], outputFormat.columns)
+	fields := listFields(objects[0], format.columns)
 	data := make([][]string, len(objects))
 
 	for objectIdx, object := range objects {
@@ -329,13 +329,13 @@ func formatObjectsInTable(outputFormat OutputFormat, objects []map[string]interf
 		data[objectIdx] = objectData
 	}
 
-	return tabulate(fields, data, false, outputFormat.tableCaption), nil
+	return tabulate(fields, data, false, format.tableCaption), nil
 }
 
-// Remarshal marshals an object into a JSON string, and unmarshal it back to the
+// remarshal marshals an object into a JSON string, and unmarshal it back to the
 // given object. If object is not given, a new map[string]interface{} is used.
 // The object is returned if no error occurs; otherwise nil with the error.
-func Remarshal(object interface{}, target interface{}) error {
+func remarshal(object interface{}, target interface{}) error {
 
 	if target == nil {
 		return fmt.Errorf("Unable to call remarshall on a nil target")
