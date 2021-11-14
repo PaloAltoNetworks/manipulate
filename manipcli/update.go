@@ -19,24 +19,28 @@ func generateUpdateCommandForIdentity(identity elemental.Identity, modelManager 
 		Aliases: []string{identity.Category},
 		Short:   "Update an existing " + identity.Name,
 		Args:    cobra.ExactArgs(1),
-		// Aliases: TODO: Missing alias from the spec file -> To be stored in the identity ?,
-		PersistentPreRunE: persistentPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
+
+			fParam := viper.GetStringSlice("param")
+			fTrackingID := viper.GetString(flagTrackingID)
+			fOutput := viper.GetString(flagOutput)
+			fFormatTypeColumn := viper.GetStringSlice(formatTypeColumn)
+			fOutputTemplate := viper.GetString(flagOutputTemplate)
 
 			manipulator, err := manipulatorMaker()
 			if err != nil {
 				return fmt.Errorf("unable to make manipulator: %w", err)
 			}
 
-			parameters, err := parametersToURLValues(viper.GetStringSlice(flagParameters))
+			parameters, err := parametersToURLValues(fParam)
 			if err != nil {
 				return fmt.Errorf("unable to convert parameters to url values: %w", err)
 			}
 
 			options := []manipulate.ContextOption{
-				manipulate.ContextOptionTracking(viper.GetString(flagTrackingID), "cli"),
+				manipulate.ContextOptionTracking(fTrackingID, "cli"),
 				manipulate.ContextOptionParameters(parameters),
-				manipulate.ContextOptionFields(viper.GetStringSlice(formatTypeColumn)),
+				manipulate.ContextOptionFields(fFormatTypeColumn),
 			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -57,14 +61,13 @@ func generateUpdateCommandForIdentity(identity elemental.Identity, modelManager 
 				return fmt.Errorf("unable to create %s: %w", identity.Name, err)
 			}
 
-			output := viper.GetString(flagOutput)
-			outputType := output
-			if output == flagOutputDefault {
+			outputType := fOutput
+			if fOutput == flagOutputDefault {
 				outputType = flagOutputNone
 			}
 
 			result, err := formatObjects(
-				prepareOutputFormat(outputType, formatTypeHash, viper.GetStringSlice(formatTypeColumn), viper.GetString(flagOutputTemplate)),
+				prepareOutputFormat(outputType, formatTypeHash, fFormatTypeColumn, fOutputTemplate),
 				false,
 				identifiable,
 			)

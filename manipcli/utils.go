@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -26,23 +25,20 @@ import (
 )
 
 // ManipulatorMaker returs a function which can create a manipulator based on pflags.
-type ManipulatorMaker = func() (manipulate.Manipulator, error)
+type ManipulatorMaker = func(opts ...maniphttp.Option) (manipulate.Manipulator, error)
 
 // ManipulatorMakerFromFlags returns a func that creates a manipulator based on command flags. Command flags are read using viper.
 // It needs the following flags: FlagAPI, FlagToken, FlagAppCredentials, FlagNamespace, FlagCACertPath, FlagAPISkipVerify, FlagEncoding
 // Use SetCLIFlags to add these flags to your command.
 func ManipulatorMakerFromFlags(options ...maniphttp.Option) ManipulatorMaker {
 
-	return func() (manipulate.Manipulator, error) {
+	return func(innerOptions ...maniphttp.Option) (manipulate.Manipulator, error) {
 		api := viper.GetString(flagAPI)
 		token := viper.GetString(flagToken)
-		// credsPath := viper.GetString(flagAppCredentials)
 		namespace := viper.GetString(flagNamespace)
 		capath := viper.GetString(flagCACertPath)
 		skip := viper.GetBool(flagAPISkipVerify)
 		encoding := viper.GetString(flagEncoding)
-
-		var tlsConfig *tls.Config
 
 		var enc elemental.EncodingType
 		switch encoding {
@@ -54,15 +50,14 @@ func ManipulatorMakerFromFlags(options ...maniphttp.Option) ManipulatorMaker {
 			return nil, fmt.Errorf("unsupported encoding '%s'. Must be 'json' or 'msgpack'", encoding)
 		}
 
-		if tlsConfig == nil && capath != "" {
-			rootCAPool, err := prepareAPICACertPool(capath)
-			if err != nil {
-				return nil, fmt.Errorf("unable to load root ca pool: %s", err)
-			}
-			tlsConfig = &tls.Config{
-				InsecureSkipVerify: skip,
-				RootCAs:            rootCAPool,
-			}
+		rootCAPool, err := prepareAPICACertPool(capath)
+		if err != nil {
+			return nil, fmt.Errorf("unable to load root ca pool: %s", err)
+		}
+
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: skip,
+			RootCAs:            rootCAPool,
 		}
 
 		opts := []maniphttp.Option{
@@ -72,9 +67,8 @@ func ManipulatorMakerFromFlags(options ...maniphttp.Option) ManipulatorMaker {
 			maniphttp.OptionToken(token),
 		}
 
-		if len(options) > 0 {
-			opts = append(opts, options...)
-		}
+		opts = append(opts, options...)
+		opts = append(opts, innerOptions...)
 
 		return maniphttp.New(
 			context.Background(),
@@ -162,30 +156,6 @@ func parametersToURLValues(params []string) (url.Values, error) {
 	return values, nil
 }
 
-// persistentPreRunE ensure all bindings are done and validate required flags.
-func persistentPreRunE(cmd *cobra.Command, args []string) error {
-
-	if cmd.Root().PersistentPreRunE != nil {
-		if err := cmd.Root().PersistentPreRunE(cmd, args); err != nil {
-			return err
-		}
-	}
-
-	if err := viper.BindPFlags(cmd.PersistentFlags()); err != nil {
-		return err
-	}
-
-	if err := viper.BindPFlags(cmd.Flags()); err != nil {
-		return err
-	}
-
-	if err := validateOutputParameters(viper.GetString(flagOutput)); err != nil {
-		return err
-	}
-
-	return checkRequiredFlags(cmd.Flags())
-}
-
 // validateOutputParameters validates output parameters are correct
 func validateOutputParameters(output string) error {
 
@@ -204,34 +174,8 @@ func validateOutputParameters(output string) error {
 			return nil
 		}
 	}
+
 	return fmt.Errorf("invalid output %s", output)
-}
-
-// checkRequiredFlags checks if all required flags are set
-func checkRequiredFlags(flags *pflag.FlagSet) error {
-
-	requiredError := false
-	flagName := ""
-
-	flags.VisitAll(func(flag *pflag.Flag) {
-		requiredAnnotation := flag.Annotations[cobra.BashCompOneRequiredFlag]
-		if len(requiredAnnotation) == 0 {
-			return
-		}
-
-		flagRequired := requiredAnnotation[0] == "true"
-
-		if flagRequired && !flag.Changed {
-			requiredError = true
-			flagName = flag.Name
-		}
-	})
-
-	if requiredError {
-		return errors.New("Required argument `--" + flagName + "` must be passed")
-	}
-
-	return nil
 }
 
 // retrieveByIDOrByName retrieves an object from its id or name
@@ -307,7 +251,6 @@ func readViperFlags(identifiable elemental.Identifiable) error {
 		}
 
 		flagName := nameToFlag(spec.Name)
-
 		if !viper.IsSet(flagName) {
 			continue
 		}
@@ -315,10 +258,7 @@ func readViperFlags(identifiable elemental.Identifiable) error {
 		fv := rv.FieldByName(spec.ConvertedName)
 
 		switch spec.Type {
-		case "string":
-			fv.SetString(viper.GetString(flagName))
-
-		case "enum":
+		case "string", "enum":
 			fv.SetString(viper.GetString(flagName))
 
 		case "float64":
@@ -328,7 +268,7 @@ func readViperFlags(identifiable elemental.Identifiable) error {
 			fv.SetBool(viper.GetBool(flagName))
 
 		case "integer":
-			fv.SetInt(int64(viper.GetInt(flagName)))
+			fv.SetInt(viper.GetInt64(flagName))
 
 		case "time":
 			t, err := dateparse.ParseAny(viper.GetString(flagName))
@@ -338,12 +278,12 @@ func readViperFlags(identifiable elemental.Identifiable) error {
 			fv.Set(reflect.ValueOf(t))
 
 		default:
-			t := reflect.TypeOf(specifiable.ValueForAttribute(flagName))
-			v := reflect.New(t)
-			if err := json.Unmarshal([]byte(viper.GetString(flagName)), v.Interface()); err != nil {
+			rt := reflect.TypeOf(specifiable.ValueForAttribute(flagName))
+			rv := reflect.New(rt)
+			if err := json.Unmarshal([]byte(viper.GetString(flagName)), rv.Interface()); err != nil {
 				return err
 			}
-			fv.Set(v.Elem())
+			fv.Set(rv.Elem())
 		}
 	}
 

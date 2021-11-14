@@ -20,33 +20,38 @@ func generateDeleteManyCommandForIdentity(identity elemental.Identity, modelMana
 		Aliases: []string{identity.Category},
 		Short:   "Delete multiple " + identity.Name,
 		// Aliases: TODO: Missing alias from the spec file -> To be stored in the identity ?,
-		PersistentPreRunE: persistentPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
+
+			fParam := viper.GetStringSlice("param")
+			fTrackingID := viper.GetString(flagTrackingID)
+			fConfirm := viper.GetBool(flagConfirm)
+			fFilter := viper.GetString(flagFilter)
+			fOutput := viper.GetString(flagOutput)
+			fFormatTypeColumn := viper.GetStringSlice(formatTypeColumn)
+			fOutputTemplate := viper.GetString(flagOutputTemplate)
 
 			manipulator, err := manipulatorMaker()
 			if err != nil {
 				return fmt.Errorf("unable to make manipulator: %w", err)
 			}
 
-			parameters, err := parametersToURLValues(viper.GetStringSlice(flagParameters))
+			parameters, err := parametersToURLValues(fParam)
 			if err != nil {
 				return fmt.Errorf("unable to convert parameters to url values: %w", err)
 			}
 
 			options := []manipulate.ContextOption{
-				manipulate.ContextOptionTracking(viper.GetString(flagTrackingID), "cli"),
+				manipulate.ContextOptionTracking(fTrackingID, "cli"),
 				manipulate.ContextOptionParameters(parameters),
-				manipulate.ContextOptionFields(viper.GetStringSlice(formatTypeColumn)),
-				manipulate.ContextOptionOverride(viper.GetBool(flagConfirm)),
+				manipulate.ContextOptionFields(fFormatTypeColumn),
+				manipulate.ContextOptionOverride(fConfirm),
 			}
 
-			if viper.IsSet(flagFilter) {
-				filter := viper.GetString(flagFilter)
-				f, err := elemental.NewFilterFromString(filter)
+			if fFilter != "" {
+				f, err := elemental.NewFilterFromString(fFilter)
 				if err != nil {
-					return fmt.Errorf("unable to parse filter %s: %s", filter, err)
+					return fmt.Errorf("unable to parse filter %s: %s", fFilter, err)
 				}
-
 				options = append(options, manipulate.ContextOptionFilter(f))
 			}
 
@@ -62,7 +67,7 @@ func generateDeleteManyCommandForIdentity(identity elemental.Identity, modelMana
 
 			objects := identifiables.List()
 
-			if !viper.IsSet(flagConfirm) {
+			if !fConfirm {
 				for _, item := range objects {
 					zap.L().Debug(fmt.Sprintf("- %s with ID=%s will be removed", identity.Name, item.Identifier()))
 				}
@@ -86,14 +91,13 @@ func generateDeleteManyCommandForIdentity(identity elemental.Identity, modelMana
 				return fmt.Errorf("some %s were not deleted: %w", identity.Category, errs)
 			}
 
-			output := viper.GetString(flagOutput)
-			outputType := output
-			if output == flagOutputDefault {
+			outputType := fOutput
+			if fOutput == flagOutputDefault {
 				outputType = flagOutputNone
 			}
 
 			result, err := formatObjects(
-				prepareOutputFormat(outputType, formatTypeArray, viper.GetStringSlice(formatTypeColumn), viper.GetString(flagOutputTemplate)),
+				prepareOutputFormat(outputType, formatTypeArray, fFormatTypeColumn, fOutputTemplate),
 				true,
 				deleted...,
 			)

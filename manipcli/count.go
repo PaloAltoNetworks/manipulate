@@ -18,34 +18,38 @@ func generateCountCommandForIdentity(identity elemental.Identity, modelManager e
 		Use:     identity.Name,
 		Aliases: []string{identity.Category},
 		Short:   "Count " + identity.Category,
-		// Aliases: TODO: Missing alias from the spec file -> To be stored in the identity ?,
-		PersistentPreRunE: persistentPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
+
+			fParam := viper.GetStringSlice("param")
+			fTrackingID := viper.GetString(flagTrackingID)
+			fRecursive := viper.GetBool(flagRecursive)
+			fFilter := viper.GetString(flagFilter)
+			fOutput := viper.GetString(flagOutput)
+			fFormatTypeColumn := viper.GetStringSlice(formatTypeColumn)
+			fOutputTemplate := viper.GetString(flagOutputTemplate)
 
 			manipulator, err := manipulatorMaker()
 			if err != nil {
 				return fmt.Errorf("unable to make manipulator: %w", err)
 			}
 
-			parameters, err := parametersToURLValues(viper.GetStringSlice("param"))
+			parameters, err := parametersToURLValues(fParam)
 			if err != nil {
 				return fmt.Errorf("unable to convert parameters to url values: %w", err)
 			}
 
 			options := []manipulate.ContextOption{
-				manipulate.ContextOptionTracking(viper.GetString(flagTrackingID), "cli"),
+				manipulate.ContextOptionTracking(fTrackingID, "cli"),
 				manipulate.ContextOptionParameters(parameters),
-				manipulate.ContextOptionRecursive(viper.GetBool(flagRecursive)),
+				manipulate.ContextOptionRecursive(fRecursive),
 				manipulate.ContextOptionReadConsistency(manipulate.ReadConsistencyStrong),
 			}
 
-			if viper.IsSet(flagFilter) {
-				filter := viper.GetString(flagFilter)
-				f, err := elemental.NewFilterFromString(filter)
+			if fFilter != "" {
+				f, err := elemental.NewFilterFromString(fFilter)
 				if err != nil {
-					return fmt.Errorf("unable to parse filter %s: %s", filter, err)
+					return fmt.Errorf("unable to parse filter %s: %s", fFilter, err)
 				}
-
 				options = append(options, manipulate.ContextOptionFilter(f))
 			}
 
@@ -58,14 +62,13 @@ func generateCountCommandForIdentity(identity elemental.Identity, modelManager e
 				return fmt.Errorf("unable to count %s: %w", identity.Category, err)
 			}
 
-			output := viper.GetString(flagOutput)
-			outputType := output
-			if output == flagOutputDefault {
+			outputType := fOutput
+			if fOutput == flagOutputDefault {
 				outputType = flagOutputNone
 			}
 
 			result, err := formatMaps(
-				prepareOutputFormat(outputType, formatTypeCount, viper.GetStringSlice(formatTypeColumn), viper.GetString(flagOutputTemplate)),
+				prepareOutputFormat(outputType, formatTypeCount, fFormatTypeColumn, fOutputTemplate),
 				false,
 				[]map[string]interface{}{{formatTypeCount: num}},
 			)
