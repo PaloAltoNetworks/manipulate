@@ -126,102 +126,6 @@ func Test_readViperFlags(t *testing.T) {
 	})
 }
 
-func Test_persistentPreRuneE(t *testing.T) {
-
-	Convey("Given I have a command with PersistentPreRunE", t, func() {
-
-		cmd := &cobra.Command{
-			Use:   "another command",
-			Short: "this is a test",
-			PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-				return nil
-			},
-		}
-
-		Convey("When I don't pass an output value", func() {
-			err := persistentPreRunE(cmd, nil)
-
-			Convey("Then I should get an error", func() {
-				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldContainSubstring, "invalid output")
-			})
-		})
-
-		Convey("When I pass an output value", func() {
-
-			cmd.Flags().StringP(flagOutput, "", "json", "a valid output")
-			cmd.Flags().Set(flagOutput, flagOutputJSON)
-
-			err := persistentPreRunE(cmd, []string{})
-
-			Convey("Then I should not get an error", func() {
-				So(err, ShouldEqual, nil)
-			})
-		})
-	})
-
-	Convey("Given I have a command which return an eror", t, func() {
-
-		cmd := &cobra.Command{
-			Use:   "another command",
-			Short: "this is a test",
-			PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-				return fmt.Errorf("boom")
-			},
-		}
-
-		Convey("When I pass an output value", func() {
-
-			cmd.Flags().StringP(flagOutput, "", "json", "a valid output")
-			cmd.Flags().Set(flagOutput, flagOutputJSON)
-
-			err := persistentPreRunE(cmd, []string{})
-
-			Convey("Then I should get an error", func() {
-				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldContainSubstring, "boom")
-			})
-		})
-	})
-}
-
-func Test_checkRequiredFlags(t *testing.T) {
-
-	Convey("Given I have a command with required flag", t, func() {
-
-		cmd := &cobra.Command{
-			Use:   "a command",
-			Short: "this is a test",
-			PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-				return nil
-			},
-		}
-
-		cmd.Flags().StringP("mandatory", "", "", "a mandatory flag")
-		cmd.MarkFlagRequired("mandatory")
-
-		Convey("When I pass don't pass the flag", func() {
-
-			err := checkRequiredFlags(cmd.Flags())
-
-			Convey("Then I should get an error", func() {
-				So(err, ShouldNotEqual, nil)
-				So(err.Error(), ShouldContainSubstring, "Required argument `--mandatory` must be passed")
-			})
-		})
-
-		Convey("When I pass pass the flag", func() {
-
-			cmd.Flags().Set("mandatory", "ok")
-			err := checkRequiredFlags(cmd.Flags())
-
-			Convey("Then I should not get an error", func() {
-				So(err, ShouldEqual, nil)
-			})
-		})
-	})
-}
-
 func Test_retrieveObjectByIDOrByName(t *testing.T) {
 
 	Convey("Given a fake manipulator that works fine", t, func() {
@@ -249,6 +153,7 @@ func Test_retrieveObjectByIDOrByName(t *testing.T) {
 		Convey("When I call retrieveObjectByIDOrByName with an ID", func() {
 
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+
 			defer cancel()
 			mctx := manipulate.NewContext(ctx)
 
