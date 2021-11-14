@@ -1,8 +1,6 @@
 package manipcli
 
 import (
-	"context"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
@@ -16,82 +14,11 @@ import (
 
 	"github.com/araddon/dateparse"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
-	"go.aporeto.io/manipulate/maniphttp"
 	"go.uber.org/zap"
 )
-
-// ManipulatorMaker returs a function which can create a manipulator based on pflags.
-type ManipulatorMaker = func(opts ...maniphttp.Option) (manipulate.Manipulator, error)
-
-// ManipulatorMakerFromFlags returns a func that creates a manipulator based on command flags. Command flags are read using viper.
-// It needs the following flags: FlagAPI, FlagToken, FlagAppCredentials, FlagNamespace, FlagCACertPath, FlagAPISkipVerify, FlagEncoding
-// Use SetCLIFlags to add these flags to your command.
-func ManipulatorMakerFromFlags(options ...maniphttp.Option) ManipulatorMaker {
-
-	return func(innerOptions ...maniphttp.Option) (manipulate.Manipulator, error) {
-		api := viper.GetString(flagAPI)
-		token := viper.GetString(flagToken)
-		namespace := viper.GetString(flagNamespace)
-		capath := viper.GetString(flagCACertPath)
-		skip := viper.GetBool(flagAPISkipVerify)
-		encoding := viper.GetString(flagEncoding)
-
-		var enc elemental.EncodingType
-		switch encoding {
-		case "json":
-			enc = elemental.EncodingTypeJSON
-		case "msgpack":
-			enc = elemental.EncodingTypeMSGPACK
-		default:
-			return nil, fmt.Errorf("unsupported encoding '%s'. Must be 'json' or 'msgpack'", encoding)
-		}
-
-		rootCAPool, err := prepareAPICACertPool(capath)
-		if err != nil {
-			return nil, fmt.Errorf("unable to load root ca pool: %s", err)
-		}
-
-		tlsConfig := &tls.Config{
-			InsecureSkipVerify: skip,
-			RootCAs:            rootCAPool,
-		}
-
-		opts := []maniphttp.Option{
-			maniphttp.OptionNamespace(namespace),
-			maniphttp.OptionTLSConfig(tlsConfig),
-			maniphttp.OptionEncoding(enc),
-			maniphttp.OptionToken(token),
-		}
-
-		opts = append(opts, options...)
-		opts = append(opts, innerOptions...)
-
-		return maniphttp.New(
-			context.Background(),
-			api,
-			opts...,
-		)
-	}
-}
-
-// ManipulatorFlagSet returns the flagSet required to call ManipulatorFromFlags.
-func ManipulatorFlagSet() *pflag.FlagSet {
-
-	set := pflag.NewFlagSet("", pflag.ExitOnError)
-
-	set.StringP(flagAPI, "A", "", "Server API URL.") // default is managed inline.
-	set.BoolP(flagAPISkipVerify, "", false, "If set, skip api endpoint verification. This is insecure.")
-	set.String(flagCACertPath, "", "Path to the CA to use for validating api endpoint.")
-	set.String(flagTrackingID, "", "ID to trace the request. Use this when asked to help debug the system.")
-	set.String(flagEncoding, "msgpack", "encoding to use to communicate with the platform. Can be 'msgpack' or 'json'")
-	set.StringP(flagNamespace, "n", "", "Namespace to use.")
-
-	return set
-}
 
 // prepareAPICACertPool prepares the API cert pool if not empty.
 func prepareAPICACertPool(capath string) (*x509.CertPool, error) {
