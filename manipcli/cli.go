@@ -227,7 +227,6 @@ func New(modelManager elemental.ModelManager, manipulatorMaker ManipulatorMaker,
 
 	listenCmd.PersistentFlags().BoolP(flagRecursive, "r", false, "Listen to all events in the current namespace and all child namespaces.")
 	listenCmd.Flags().StringSliceP("identity", "i", []string{}, "Only display events for the given identities.")
-	listenCmd.MarkFlagRequired("identity")
 
 	rootCmd.AddCommand(
 		createCmd,
