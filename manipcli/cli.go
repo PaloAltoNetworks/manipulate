@@ -100,6 +100,7 @@ func ManipulatorFlagSet() *pflag.FlagSet {
 	set.String(flagTrackingID, "", "ID to trace the request. Use this when asked to help debug the system.")
 	set.String(flagEncoding, "msgpack", "encoding to use to communicate with the platform. Can be 'msgpack' or 'json'")
 	set.StringP(flagNamespace, "n", "", "Namespace to use.")
+	set.StringP(flagToken, "t", "", "JWT Token to use")
 
 	return set
 }
@@ -219,6 +220,15 @@ func New(modelManager elemental.ModelManager, manipulatorMaker ManipulatorMaker,
 		}
 	}
 
+	listenCmd, err := generateListenCommand(modelManager, manipulatorMaker)
+	if err != nil {
+		zap.L().Debug("unable to generate listen command for identity", zap.Error(err))
+	}
+
+	listenCmd.PersistentFlags().BoolP(flagRecursive, "r", false, "Listen to all events in the current namespace and all child namespaces.")
+	listenCmd.Flags().StringSliceP("identity", "i", []string{}, "Only display events for the given identities.")
+	listenCmd.MarkFlagRequired("identity")
+
 	rootCmd.AddCommand(
 		createCmd,
 		updateCmd,
@@ -227,6 +237,7 @@ func New(modelManager elemental.ModelManager, manipulatorMaker ManipulatorMaker,
 		getCmd,
 		listCmd,
 		countCmd,
+		listenCmd,
 	)
 
 	return rootCmd
