@@ -27,6 +27,7 @@ func generateDeleteCommandForIdentity(identity elemental.Identity, modelManager 
 			fOutput := viper.GetString(flagOutput)
 			fFormatTypeColumn := viper.GetStringSlice(formatTypeColumn)
 			fOutputTemplate := viper.GetString(flagOutputTemplate)
+			fForce := viper.GetBool(flagForce)
 
 			manipulator, err := manipulatorMaker()
 			if err != nil {
@@ -42,6 +43,7 @@ func generateDeleteCommandForIdentity(identity elemental.Identity, modelManager 
 				manipulate.ContextOptionTracking(fTrackingID, "cli"),
 				manipulate.ContextOptionParameters(parameters),
 				manipulate.ContextOptionFields(fFormatTypeColumn),
+				manipulate.ContextOptionOverride(fForce),
 			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)

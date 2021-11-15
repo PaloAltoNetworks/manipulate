@@ -3,18 +3,18 @@ package manipcli
 // Format Types
 const (
 	formatTypeColumn = "column"
-	formatTypeHash = "hash"
-	formatTypeCount = "count"
-	formatTypeArray = "array"
+	formatTypeHash   = "hash"
+	formatTypeCount  = "count"
+	formatTypeArray  = "array"
 )
 
 // Output Flags
 const (
-	flagOutputTable = "table"
-	flagOutputJSON = "json"
-	flagOutputNone = "none"
-	flagOutputDefault = "default"
-	flagOutputYAML = "yaml"
+	flagOutputTable    = "table"
+	flagOutputJSON     = "json"
+	flagOutputNone     = "none"
+	flagOutputDefault  = "default"
+	flagOutputYAML     = "yaml"
 	flagOutputTemplate = "template"
 )
 
@@ -35,13 +35,13 @@ const (
 // List Flags
 const (
 	flagPageSize = "page-size"
-	flagPage = "page"
-	flagFilter = "filter"
-	flagOrder = "order"
+	flagPage     = "page"
+	flagFilter   = "filter"
+	flagOrder    = "order"
 )
 
 // Delete Flags
 const (
-	flagForce = "force"
+	flagForce   = "force"
 	flagConfirm = "confirm"
 )

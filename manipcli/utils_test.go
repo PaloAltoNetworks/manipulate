@@ -34,11 +34,11 @@ func Test_ManipulatorMakerFromFlags(t *testing.T) {
 		So(err, ShouldEqual, nil)
 
 		Convey("When I set all flags and call ManipulatorMakerFromFlags", func() {
-			cmd.Flags().Set(flagAPI, "https://test.com")
-			cmd.Flags().Set(flagNamespace, "/test")
-			cmd.Flags().Set(flagEncoding, "msgpack")
-			cmd.Flags().Set(flagToken, "token1234")
-			cmd.Flags().Set(flagAPISkipVerify, "true")
+			cmd.Flags().Set(flagAPI, "https://test.com") // nolint
+			cmd.Flags().Set(flagNamespace, "/test")      // nolint
+			cmd.Flags().Set(flagEncoding, "msgpack")     // nolint
+			cmd.Flags().Set(flagToken, "token1234")      // nolint
+			cmd.Flags().Set(flagAPISkipVerify, "true")   // nolint
 
 			m, err := ManipulatorMakerFromFlags()()
 
@@ -56,7 +56,7 @@ func Test_ManipulatorMakerFromFlags(t *testing.T) {
 		})
 
 		Convey("When I pass an unsupported encoding", func() {
-			cmd.Flags().Set(flagEncoding, "unsupported")
+			cmd.Flags().Set(flagEncoding, "unsupported") // nolint
 
 			_, err := ManipulatorMakerFromFlags()()
 
@@ -67,8 +67,8 @@ func Test_ManipulatorMakerFromFlags(t *testing.T) {
 		})
 
 		Convey("When I pass an invalid capath", func() {
-			cmd.Flags().Set(flagEncoding, "msgpack")
-			cmd.Flags().Set(flagCACertPath, "boom")
+			cmd.Flags().Set(flagEncoding, "msgpack") // nolint
+			cmd.Flags().Set(flagCACertPath, "boom")  // nolint
 
 			_, err := ManipulatorMakerFromFlags()()
 
@@ -97,9 +97,9 @@ func Test_readViperFlags(t *testing.T) {
 		err = viper.BindPFlags(cmd.Flags())
 		So(err, ShouldEqual, nil)
 
-		cmd.Flags().Set("name", "test")
-		cmd.Flags().Set("description", "a description")
-		cmd.Flags().Set("status", string(testmodel.TaskStatusDONE))
+		cmd.Flags().Set("name", "test")                             // nolint
+		cmd.Flags().Set("description", "a description")             // nolint
+		cmd.Flags().Set("status", string(testmodel.TaskStatusDONE)) // nolint
 
 		Convey("When I call readViperFlags with force=false", func() {
 
