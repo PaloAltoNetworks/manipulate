@@ -20,13 +20,6 @@ type prepareOutputConfig struct {
 // prepareOutputOption represents an option that can be passed to PrepareOutputFormat.
 type prepareOutputOption func(*prepareOutputConfig)
 
-// prepareOutputOptionTableCaption can be used to add a caption to a table output.
-func prepareOutputOptionTableCaption(caption string) prepareOutputOption {
-	return func(config *prepareOutputConfig) {
-		config.tableCaption = caption
-	}
-}
-
 // outputFormat retains all output information
 type outputFormat struct {
 	columns      []string

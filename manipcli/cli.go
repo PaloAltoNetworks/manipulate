@@ -131,11 +131,13 @@ func New(modelManager elemental.ModelManager, manipulatorMaker ManipulatorMaker,
 		Use:   "update",
 		Short: "Update an object",
 	}
+	updateCmd.PersistentFlags().StringP(flagForce, "", "", "Force modification of protected object")
 
 	deleteCmd := &cobra.Command{
 		Use:   "delete",
 		Short: "Delete an object",
 	}
+	deleteCmd.PersistentFlags().StringP(flagForce, "", "", "Force deletion of protected object")
 
 	deleteManyCmd := &cobra.Command{
 		Use:   "delete-many",
