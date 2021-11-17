@@ -78,10 +78,12 @@ func generateUpdateCommandForIdentity(identity elemental.Identity, modelManager 
 				return fmt.Errorf("unable to format output: %w", err)
 			}
 
-			fmt.Println(result)
+			fmt.Fprintf(cmd.OutOrStdout(), result)
 			return nil
 		},
 	}
+
+	cmd.Flags().StringP(flagForce, "", "", "Force modification of protected object")
 
 	identifiable := modelManager.IdentifiableFromString(identity.Name)
 	if err := setViperFlags(cmd, identifiable, false); err != nil {

@@ -77,12 +77,15 @@ func generateCountCommandForIdentity(identity elemental.Identity, modelManager e
 				return fmt.Errorf("unable to format output: %w", err)
 			}
 
-			fmt.Println(result)
+			fmt.Fprintf(cmd.OutOrStdout(), result)
 
 			return nil
 
 		},
 	}
+
+	cmd.Flags().BoolP(flagRecursive, "r", false, "List all objects from the current namespace and all child namespaces.")
+	cmd.Flags().StringP(flagFilter, "f", "", "Query filter.")
 
 	return cmd, nil
 }

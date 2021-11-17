@@ -92,10 +92,16 @@ func generateListCommandForIdentity(identity elemental.Identity, modelManager el
 				return fmt.Errorf("unable to format output: %w", err)
 			}
 
-			fmt.Println(result)
+			fmt.Fprintf(cmd.OutOrStdout(), result)
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolP(flagRecursive, "r", false, "List all objects from the current namespace and all child namespaces.")
+	cmd.Flags().IntP(flagPageSize, "S", 0, "Page size to retrieve.")
+	cmd.Flags().IntP(flagPage, "P", 0, "Page number to retrieve.")
+	cmd.Flags().StringP(flagFilter, "f", "", "Query filter.")
+	cmd.Flags().StringSliceP(flagOrder, "O", nil, "Ordering of the result.")
 
 	return cmd, nil
 }

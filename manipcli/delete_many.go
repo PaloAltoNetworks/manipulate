@@ -18,7 +18,7 @@ func generateDeleteManyCommandForIdentity(identity elemental.Identity, modelMana
 	cmd := &cobra.Command{
 		Use:     fmt.Sprintf("%s", identity.Name),
 		Aliases: []string{identity.Category},
-		Short:   "Delete multiple " + identity.Name,
+		Short:   "Delete multiple " + identity.Category,
 		// Aliases: TODO: Missing alias from the spec file -> To be stored in the identity ?,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
@@ -29,6 +29,7 @@ func generateDeleteManyCommandForIdentity(identity elemental.Identity, modelMana
 			fOutput := viper.GetString(flagOutput)
 			fFormatTypeColumn := viper.GetStringSlice(formatTypeColumn)
 			fOutputTemplate := viper.GetString(flagOutputTemplate)
+			fNamespace := viper.GetString(flagNamespace)
 
 			manipulator, err := manipulatorMaker()
 			if err != nil {
@@ -71,14 +72,21 @@ func generateDeleteManyCommandForIdentity(identity elemental.Identity, modelMana
 				for _, item := range objects {
 					zap.L().Debug(fmt.Sprintf("- %s with ID=%s will be removed", identity.Name, item.Identifier()))
 				}
-				return fmt.Errorf("you are about to delete %d %s. If you are sure, please use --%s option to delete", len(objects), identity.Category, flagConfirm)
+				return fmt.Errorf("you are about to delete %d %s. If you are sure, please use --%s option to delete %v", len(objects), identity.Category, flagConfirm, fConfirm)
 			}
 
 			var deleted elemental.IdentifiablesList
 
 			errs := elemental.NewErrors()
 			for _, o := range objects {
-				mctx = mctx.Derive(manipulate.ContextOptionNamespace(o.(elemental.Namespaceable).GetNamespace()))
+
+				nsable, ok := o.(elemental.Namespaceable)
+				if ok {
+					mctx = mctx.Derive(manipulate.ContextOptionNamespace(nsable.GetNamespace()))
+				} else {
+					mctx = mctx.Derive(manipulate.ContextOptionNamespace(fNamespace))
+				}
+
 				if err := manipulator.Delete(mctx, o); err != nil {
 					errs = errs.Append(err)
 					continue
@@ -106,10 +114,13 @@ func generateDeleteManyCommandForIdentity(identity elemental.Identity, modelMana
 				return fmt.Errorf("unable to format output: %w", err)
 			}
 
-			fmt.Println(result)
+			fmt.Fprintf(cmd.OutOrStdout(), result)
 			return nil
 		},
 	}
+
+	cmd.Flags().StringP(flagFilter, "f", "", "Query filter.")
+	cmd.Flags().BoolP(flagConfirm, "", false, "Confirm deletion of multiple objects")
 
 	return cmd, nil
 }

@@ -50,7 +50,7 @@ func Test_ManipulatorMakerFromFlags(t *testing.T) {
 
 				user, pass := maniphttp.ExtractCredentials(m)
 				So(user, ShouldEqual, "Bearer")
-				So(pass, ShouldEqual, "") // Note: not sure why it is empty here! I was expecting token1234
+				So(pass, ShouldEqual, "token1234")
 
 			})
 		})

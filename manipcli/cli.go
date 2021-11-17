@@ -20,11 +20,11 @@ type cliConfig struct {
 }
 
 // Option represents an option can for the generate command.
-type Option func(cliConfig)
+type Option func(*cliConfig)
 
 // OptionIgnoreIdentities sets which non-private identities should be ignored.
 func OptionIgnoreIdentities(identities ...elemental.Identity) Option {
-	return func(g cliConfig) {
+	return func(g *cliConfig) {
 
 		var m = make(map[string]struct{}, len(identities))
 		for _, i := range identities {
@@ -108,7 +108,7 @@ func ManipulatorFlagSet() *pflag.FlagSet {
 // New generates the API commands and subcommands based on the model manager.
 func New(modelManager elemental.ModelManager, manipulatorMaker ManipulatorMaker, options ...Option) *cobra.Command {
 
-	cfg := cliConfig{}
+	cfg := &cliConfig{}
 
 	for _, opt := range options {
 		opt(cfg)
@@ -131,20 +131,16 @@ func New(modelManager elemental.ModelManager, manipulatorMaker ManipulatorMaker,
 		Use:   "update",
 		Short: "Update an object",
 	}
-	updateCmd.PersistentFlags().StringP(flagForce, "", "", "Force modification of protected object")
 
 	deleteCmd := &cobra.Command{
 		Use:   "delete",
 		Short: "Delete an object",
 	}
-	deleteCmd.PersistentFlags().StringP(flagForce, "", "", "Force deletion of protected object")
 
 	deleteManyCmd := &cobra.Command{
 		Use:   "delete-many",
 		Short: "Delete multiple objects",
 	}
-	deleteManyCmd.PersistentFlags().StringP(flagFilter, "f", "", "Query filter.")
-	deleteManyCmd.PersistentFlags().BoolP(flagConfirm, "", false, "Confirm deletion of multiple objects")
 
 	getCmd := &cobra.Command{
 		Use:   "get",
@@ -155,18 +151,11 @@ func New(modelManager elemental.ModelManager, manipulatorMaker ManipulatorMaker,
 		Use:   "list",
 		Short: "List objects",
 	}
-	listCmd.PersistentFlags().BoolP(flagRecursive, "r", false, "List all objects from the current namespace and all child namespaces.")
-	listCmd.PersistentFlags().IntP(flagPageSize, "S", 0, "Page size to retrieve.")
-	listCmd.PersistentFlags().IntP(flagPage, "P", 0, "Page number to retrieve.")
-	listCmd.PersistentFlags().StringP(flagFilter, "f", "", "Query filter.")
-	listCmd.PersistentFlags().StringSliceP(flagOrder, "O", nil, "Ordering of the result.")
 
 	countCmd := &cobra.Command{
 		Use:   "count",
 		Short: "Count objects",
 	}
-	countCmd.PersistentFlags().BoolP(flagRecursive, "r", false, "List all objects from the current namespace and all child namespaces.")
-	countCmd.PersistentFlags().StringP(flagFilter, "f", "", "Query filter.")
 
 	// Generate subcommands for each identity
 	for _, identity := range modelManager.AllIdentities() {
@@ -226,9 +215,6 @@ func New(modelManager elemental.ModelManager, manipulatorMaker ManipulatorMaker,
 	if err != nil {
 		zap.L().Debug("unable to generate listen command for identity", zap.Error(err))
 	}
-
-	listenCmd.PersistentFlags().BoolP(flagRecursive, "r", false, "Listen to all events in the current namespace and all child namespaces.")
-	listenCmd.Flags().StringSliceP("identity", "i", []string{}, "Only display events for the given identities.")
 
 	rootCmd.AddCommand(
 		createCmd,

@@ -79,12 +79,12 @@ func generateListenCommand(modelManager elemental.ModelManager, manipulatorMaker
 					select {
 
 					case evt := <-subscriber.Events():
-						output, err := formatEvents(outputFormat, false, evt)
+						result, err := formatEvents(outputFormat, false, evt)
 						if err != nil {
 							zap.L().Error("unable to format event", zap.Error(err))
 						}
 
-						fmt.Println(output)
+						fmt.Fprintf(cmd.OutOrStdout(), result)
 
 					case st := <-subscriber.Status():
 						switch st {
@@ -125,6 +125,9 @@ func generateListenCommand(modelManager elemental.ModelManager, manipulatorMaker
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolP(flagRecursive, "r", false, "Listen to all events in the current namespace and all child namespaces.")
+	cmd.Flags().StringSliceP("identity", "i", []string{}, "Only display events for the given identities.")
 
 	return cmd, nil
 }
