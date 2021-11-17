@@ -147,6 +147,16 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 		}
 	}
 
+	if mctx.Namespace() != "" {
+		f := manipulate.NewNamespaceFilter(mctx.Namespace(), mctx.Recursive())
+		if mctx.Propagated() {
+			if fp := manipulate.NewPropagationFilter(mctx.Namespace()); fp != nil {
+				f = elemental.NewFilterComposer().Or(f, fp).Done()
+			}
+		}
+		ands = append(ands, CompileFilter(f))
+	}
+
 	if m.forcedReadFilter != nil {
 		ands = append(ands, m.forcedReadFilter)
 	}
@@ -274,7 +284,6 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	}
 
 	filter := bson.D{}
-
 	if f := mctx.Filter(); f != nil {
 		var opts []CompilerOption
 		if attrSpec != nil {
@@ -289,18 +298,34 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 		filter = append(filter, bson.DocElem{Name: "_id", Value: object.Identifier()})
 	}
 
+	var ands []bson.D
+
 	if m.sharder != nil {
 		sq, err := m.sharder.FilterOne(m, mctx, object)
 		if err != nil {
 			return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("cannot compute sharding filter: %w", err)}
 		}
 		if sq != nil {
-			filter = bson.D{{Name: "$and", Value: []bson.D{sq, filter}}}
+			ands = append(ands, sq)
 		}
 	}
 
+	if mctx.Namespace() != "" {
+		f := manipulate.NewNamespaceFilter(mctx.Namespace(), mctx.Recursive())
+		if mctx.Propagated() {
+			if fp := manipulate.NewPropagationFilter(mctx.Namespace()); fp != nil {
+				f = elemental.NewFilterComposer().Or(f, fp).Done()
+			}
+		}
+		ands = append(ands, CompileFilter(f))
+	}
+
 	if m.forcedReadFilter != nil {
-		filter = bson.D{{Name: "$and", Value: []bson.D{m.forcedReadFilter, filter}}}
+		ands = append(ands, m.forcedReadFilter)
+	}
+
+	if len(ands) > 0 {
+		filter = bson.D{{Name: "$and", Value: append(ands, filter)}}
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve.object.%s", object.Identity().Name))
@@ -426,15 +451,49 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 			}
 		}
 
-		filter := CompileFilter(mctx.Filter())
+		var attrSpec elemental.AttributeSpecifiable
+		if m.attributeSpecifiers != nil {
+			attrSpec = m.attributeSpecifiers[object.Identity()]
+		}
+
+		// Filtering
+		filter := bson.D{}
+		if f := mctx.Filter(); f != nil {
+			var opts []CompilerOption
+			if attrSpec != nil {
+				opts = append(opts, CompilerOptionTranslateKeysFromSpec(attrSpec))
+			}
+			filter = CompileFilter(f, opts...)
+		}
+
+		var ands []bson.D
+
 		if m.sharder != nil {
 			sq, err := m.sharder.FilterOne(m, mctx, object)
 			if err != nil {
 				return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("cannot compute sharding filter: %w", err)}
 			}
 			if sq != nil {
-				filter = bson.D{{Name: "$and", Value: []bson.D{sq, filter}}}
+				ands = append(ands, sq)
 			}
+		}
+
+		if mctx.Namespace() != "" {
+			f := manipulate.NewNamespaceFilter(mctx.Namespace(), mctx.Recursive())
+			if mctx.Propagated() {
+				if fp := manipulate.NewPropagationFilter(mctx.Namespace()); fp != nil {
+					f = elemental.NewFilterComposer().Or(f, fp).Done()
+				}
+			}
+			ands = append(ands, CompileFilter(f))
+		}
+
+		if m.forcedReadFilter != nil {
+			ands = append(ands, m.forcedReadFilter)
+		}
+
+		if len(ands) > 0 {
+			filter = bson.D{{Name: "$and", Value: append(ands, filter)}}
 		}
 
 		info, err := RunQuery(
@@ -513,17 +572,18 @@ func (m *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 	c, close := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
-	var filter bson.D
-
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.update.object.%s", object.Identity().Name))
 	sp.LogFields(log.String("object_id", object.Identifier()))
 	defer sp.Finish()
 
+	var filter bson.D
 	if oid, ok := objectid.Parse(object.Identifier()); ok {
 		filter = append(filter, bson.DocElem{Name: "_id", Value: oid})
 	} else {
 		filter = append(filter, bson.DocElem{Name: "_id", Value: object.Identifier()})
 	}
+
+	var ands []bson.D
 
 	if m.sharder != nil {
 		sq, err := m.sharder.FilterOne(m, mctx, object)
@@ -531,17 +591,26 @@ func (m *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 			return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("cannot compute sharding filter: %w", err)}
 		}
 		if sq != nil {
-			filter = bson.D{{Name: "$and", Value: []bson.D{sq, filter}}}
+			ands = append(ands, sq)
 		}
 	}
 
-	if m.forcedReadFilter != nil {
-		filter = bson.D{
-			{
-				Name:  "$and",
-				Value: []bson.D{m.forcedReadFilter, filter},
-			},
+	if mctx.Namespace() != "" {
+		f := manipulate.NewNamespaceFilter(mctx.Namespace(), mctx.Recursive())
+		if mctx.Propagated() {
+			if fp := manipulate.NewPropagationFilter(mctx.Namespace()); fp != nil {
+				f = elemental.NewFilterComposer().Or(f, fp).Done()
+			}
 		}
+		ands = append(ands, CompileFilter(f))
+	}
+
+	if m.forcedReadFilter != nil {
+		ands = append(ands, m.forcedReadFilter)
+	}
+
+	if len(ands) > 0 {
+		filter = bson.D{{Name: "$and", Value: append(ands, filter)}}
 	}
 
 	if _, err := RunQuery(
@@ -578,17 +647,18 @@ func (m *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 	c, close := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
-	var filter bson.D
-
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongobject.delete.object.%s", object.Identity().Name))
 	sp.LogFields(log.String("object_id", object.Identifier()))
 	defer sp.Finish()
 
+	var filter bson.D
 	if oid, ok := objectid.Parse(object.Identifier()); ok {
 		filter = append(filter, bson.DocElem{Name: "_id", Value: oid})
 	} else {
 		filter = append(filter, bson.DocElem{Name: "_id", Value: object.Identifier()})
 	}
+
+	var ands []bson.D
 
 	if m.sharder != nil {
 		sq, err := m.sharder.FilterOne(m, mctx, object)
@@ -596,12 +666,26 @@ func (m *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 			return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("cannot compute sharding filter: %w", err)}
 		}
 		if sq != nil {
-			filter = bson.D{{Name: "$and", Value: []bson.D{sq, filter}}}
+			ands = append(ands, sq)
 		}
 	}
 
+	if mctx.Namespace() != "" {
+		f := manipulate.NewNamespaceFilter(mctx.Namespace(), mctx.Recursive())
+		if mctx.Propagated() {
+			if fp := manipulate.NewPropagationFilter(mctx.Namespace()); fp != nil {
+				f = elemental.NewFilterComposer().Or(f, fp).Done()
+			}
+		}
+		ands = append(ands, CompileFilter(f))
+	}
+
 	if m.forcedReadFilter != nil {
-		filter = bson.D{{Name: "$and", Value: []bson.D{m.forcedReadFilter, filter}}}
+		ands = append(ands, m.forcedReadFilter)
+	}
+
+	if len(ands) > 0 {
+		filter = bson.D{{Name: "$and", Value: append(ands, filter)}}
 	}
 
 	if _, err := RunQuery(
@@ -646,19 +730,49 @@ func (m *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 	c, close := m.makeSession(identity, mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
-	filter := CompileFilter(mctx.Filter())
+	var attrSpec elemental.AttributeSpecifiable
+	if m.attributeSpecifiers != nil {
+		attrSpec = m.attributeSpecifiers[identity]
+	}
+
+	// Filtering
+	filter := bson.D{}
+	if f := mctx.Filter(); f != nil {
+		var opts []CompilerOption
+		if attrSpec != nil {
+			opts = append(opts, CompilerOptionTranslateKeysFromSpec(attrSpec))
+		}
+		filter = CompileFilter(f, opts...)
+	}
+
+	var ands []bson.D
+
 	if m.sharder != nil {
 		sq, err := m.sharder.FilterMany(m, mctx, identity)
 		if err != nil {
 			return manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("cannot compute sharding filter: %w", err)}
 		}
 		if sq != nil {
-			filter = bson.D{{Name: "$and", Value: []bson.D{sq, filter}}}
+			ands = append(ands, sq)
 		}
 	}
 
+	if mctx.Namespace() != "" {
+		f := manipulate.NewNamespaceFilter(mctx.Namespace(), mctx.Recursive())
+		if mctx.Propagated() {
+			if fp := manipulate.NewPropagationFilter(mctx.Namespace()); fp != nil {
+				f = elemental.NewFilterComposer().Or(f, fp).Done()
+			}
+		}
+		ands = append(ands, CompileFilter(f))
+	}
+
 	if m.forcedReadFilter != nil {
-		filter = bson.D{{Name: "$and", Value: []bson.D{m.forcedReadFilter, filter}}}
+		ands = append(ands, m.forcedReadFilter)
+	}
+
+	if len(ands) > 0 {
+		filter = bson.D{{Name: "$and", Value: append(ands, filter)}}
 	}
 
 	if _, err := RunQuery(
@@ -689,11 +803,22 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	c, close := m.makeSession(identity, mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer close()
 
-	filter := bson.D{}
-
-	if f := mctx.Filter(); f != nil {
-		filter = CompileFilter(f)
+	var attrSpec elemental.AttributeSpecifiable
+	if m.attributeSpecifiers != nil {
+		attrSpec = m.attributeSpecifiers[identity]
 	}
+
+	// Filtering
+	filter := bson.D{}
+	if f := mctx.Filter(); f != nil {
+		var opts []CompilerOption
+		if attrSpec != nil {
+			opts = append(opts, CompilerOptionTranslateKeysFromSpec(attrSpec))
+		}
+		filter = CompileFilter(f, opts...)
+	}
+
+	var ands []bson.D
 
 	if m.sharder != nil {
 		sq, err := m.sharder.FilterMany(m, mctx, identity)
@@ -701,12 +826,26 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 			return 0, manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("cannot compute sharding filter: %w", err)}
 		}
 		if sq != nil {
-			filter = bson.D{{Name: "$and", Value: []bson.D{sq, filter}}}
+			ands = append(ands, sq)
 		}
 	}
 
+	if mctx.Namespace() != "" {
+		f := manipulate.NewNamespaceFilter(mctx.Namespace(), mctx.Recursive())
+		if mctx.Propagated() {
+			if fp := manipulate.NewPropagationFilter(mctx.Namespace()); fp != nil {
+				f = elemental.NewFilterComposer().Or(f, fp).Done()
+			}
+		}
+		ands = append(ands, CompileFilter(f))
+	}
+
 	if m.forcedReadFilter != nil {
-		filter = bson.D{{Name: "$and", Value: []bson.D{m.forcedReadFilter, filter}}}
+		ands = append(ands, m.forcedReadFilter)
+	}
+
+	if len(ands) > 0 {
+		filter = bson.D{{Name: "$and", Value: append(ands, filter)}}
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.count.%s", identity.Category))

@@ -78,6 +78,23 @@ func Test_Options(t *testing.T) {
 		So(m.tlsConfig, ShouldEqual, cfg)
 	})
 
+	Convey("Calling OptionTLSClientCertificates should work", t, func() {
+		m := &httpManipulator{}
+		cert := tls.Certificate{}
+		OptionTLSClientCertificates(cert)(m)
+		So(m.tlsConfig.Certificates, ShouldResemble, []tls.Certificate{cert})
+	})
+
+	Convey("Calling OptionTLSClientCertificates with existing tlsConfig should work", t, func() {
+		m := &httpManipulator{}
+		cert := tls.Certificate{}
+		cfg := &tls.Config{}
+		OptionTLSConfig(cfg)(m)
+		OptionTLSClientCertificates(cert)(m)
+		So(m.tlsConfig.Certificates, ShouldResemble, []tls.Certificate{cert})
+		So(m.tlsConfig, ShouldEqual, cfg)
+	})
+
 	Convey("Calling OptionAdditonalHeaders should work", t, func() {
 		m := &httpManipulator{}
 		h := http.Header{}
