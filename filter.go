@@ -17,46 +17,104 @@ import (
 	"go.aporeto.io/elemental"
 )
 
-// This package provides type mapping for backward compatilility
-// as manipulate.Filter moved to elemental.
+// NewFiltersFromQueryParameters returns the filters matching any `q` parameters.
+func NewFiltersFromQueryParameters(parameters elemental.Parameters) (*elemental.Filter, error) {
 
-// Filter is an alias of elemental.Filter
-type Filter = elemental.Filter
+	values := parameters.Get("q").StringValues()
+	filters := make([]*elemental.Filter, len(values))
 
-// FilterKeyComposer is an alias of elemental.FilterKeyComposer
-type FilterKeyComposer = elemental.FilterKeyComposer
+	for i, query := range values {
 
-// FilterParser is an alias of elemental.FilterParser
-type FilterParser = elemental.FilterParser
+		f, err := elemental.NewFilterFromString(query)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse filter in query parameter: %w", err)
+		}
 
-// NewFilter returns a new Filter using the aliased type.
-//
-// Deprecated: manipulate.NewFilter is deprecated and aliased to elemental.NewFilter.
-func NewFilter() *Filter {
-	fmt.Println("DEPRECATED: manipulate.NewFilter is deprecated and aliased to elemental.NewFilter")
-	return elemental.NewFilter()
+		filters[i] = f.Done()
+	}
+
+	switch len(filters) {
+	case 0:
+		return nil, nil
+	case 1:
+		return filters[0], nil
+	default:
+		return elemental.NewFilterComposer().Or(filters...).Done(), nil
+	}
 }
 
-// NewFilterComposer returns a new FilterKeyComposer using the aliased type.
-//
-// Deprecated: manipulate.NewFilterComposer is deprecated and aliased to elemental.NewFilterComposer.
-func NewFilterComposer() FilterKeyComposer {
-	fmt.Println("DEPRECATED: manipulate.NewFilterComposer is deprecated and aliased to elemental.NewFilterComposer")
-	return elemental.NewFilter()
+// NewNamespaceFilter returns a manipulate filter used to create the namespace filter.
+func NewNamespaceFilter(namespace string, recursive bool) *elemental.Filter {
+
+	return NewNamespaceFilterWithCustomProperty("namespace", namespace, recursive)
 }
 
-// NewFilterFromString returns a new NewFilterFromString using the aliased type.
-//
-// Deprecated: manipulate.NewFilterFromString is deprecated and aliased to elemental.NewFilterFromString.
-func NewFilterFromString(filter string) (*Filter, error) {
-	fmt.Println("DEPRECATED: manipulate.NewFilterFromString is deprecated and aliased to elemental.NewFilterFromString")
-	return elemental.NewFilterFromString(filter)
+// NewNamespaceFilterWithCustomProperty allows to create a namespace filter based on a property that
+// is different from `namespace`.
+func NewNamespaceFilterWithCustomProperty(propertyName string, namespace string, recursive bool) *elemental.Filter {
+
+	if namespace == "" {
+		namespace = "/"
+	}
+
+	if !recursive {
+		return elemental.NewFilterComposer().WithKey(propertyName).Equals(namespace).Done()
+	}
+
+	if namespace == "/" {
+		return elemental.NewFilterComposer().WithKey(propertyName).Matches("^/").Done()
+	}
+
+	return elemental.NewFilterComposer().Or(
+		elemental.NewFilterComposer().
+			WithKey(propertyName).Equals(namespace).
+			Done(),
+		elemental.NewFilterComposer().
+			WithKey(propertyName).Matches("^"+namespace+"/").
+			Done(),
+	).Done()
 }
 
-// NewFilterParser returns a new NewFilterParser using the aliased type.
-//
-// Deprecated: manipulate.NewFilterParser is deprecated and aliased to elemental.NewFilterParser.
-func NewFilterParser(input string) *FilterParser {
-	fmt.Println("DEPRECATED: manipulate.NewFilterParser is deprecated and aliased to elemental.NewFilterParser")
-	return elemental.NewFilterParser(input)
+// NewPropagationFilter returns additional namespace filter matching objects that are in
+// the namespace ancestors chain and propagate down.
+func NewPropagationFilter(namespace string) *elemental.Filter {
+
+	return NewPropagationFilterWithCustomProperty("propagate", "namespace", namespace, nil)
+}
+
+// NewPropagationFilterWithCustomProperty returns additional namespace filter matching objects that are in
+// the namespace ancestors chain and propagate down. The two first properties allows to
+// define the property name to use for propation and namespace.
+// You can also set an additional filter that will be be AND'ed to each subfilters, allowing
+// to create filters like `(namespace == '/parent' and propagate == true and customProp == 'x')`
+func NewPropagationFilterWithCustomProperty(
+	propagationPropName string,
+	namespacePropName string,
+	namespace string,
+	addititionalFiltering *elemental.Filter,
+) *elemental.Filter {
+
+	filters := []*elemental.Filter{}
+
+	for _, pns := range elemental.NamespaceAncestorsNames(namespace) {
+		f := NewNamespaceFilterWithCustomProperty(namespacePropName, pns, false).
+			WithKey(propagationPropName).Equals(true).
+			Done()
+
+		if addititionalFiltering != nil {
+			f.And(addititionalFiltering)
+		}
+
+		filters = append(filters, f)
+	}
+
+	switch len(filters) {
+
+	case 0:
+		return nil
+	case 1:
+		return filters[0]
+	default:
+		return elemental.NewFilterComposer().Or(filters...).Done()
+	}
 }
