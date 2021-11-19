@@ -33,8 +33,8 @@ func Test_generateCreateCommandForIdentity(t *testing.T) {
 
 		Convey("When I call execute with a json output", func() {
 
-			cmd.Flags().Set("name", "my task")
-			cmd.Flags().Set("output", "json")
+			cmd.Flags().Set("name", "my task") // nolint
+			cmd.Flags().Set("output", "json")  // nolint
 			output := bytes.NewBufferString("")
 			cmd.SetOut(output)
 			err := cmd.Execute()
@@ -64,7 +64,7 @@ func Test_generateCreateCommandForIdentity(t *testing.T) {
 
 		Convey("When I call execute", func() {
 
-			cmd.Flags().Set("name", "my task")
+			cmd.Flags().Set("name", "my task") // nolint
 			err := cmd.Execute()
 
 			Convey("Then I should get an error", func() {
@@ -90,8 +90,8 @@ func Test_generateCreateCommandForIdentity(t *testing.T) {
 
 		Convey("When I call execute with a json output", func() {
 
-			cmd.Flags().Set("name", "my task")
-			cmd.Flags().Set("output", "json")
+			cmd.Flags().Set("name", "my task") // nolint
+			cmd.Flags().Set("output", "json")  // nolint
 			output := bytes.NewBufferString("")
 			cmd.SetOut(output)
 			err := cmd.Execute()

@@ -82,7 +82,7 @@ func Test_generateDeleteManyCommandForIdentity(t *testing.T) {
 		})
 
 		Convey("When I call execute with confirm flag", func() {
-			cmd.Flags().Set("confirm", "true")
+			cmd.Flags().Set("confirm", "true") // nolint
 
 			output := bytes.NewBufferString("")
 			cmd.SetOut(output)
@@ -178,7 +178,7 @@ func Test_generateDeleteManyCommandForIdentity(t *testing.T) {
 		assertCommandAndSetFlags(cmd)
 
 		Convey("When I call the function", func() {
-			cmd.Flags().Set("confirm", "true")
+			cmd.Flags().Set("confirm", "true") // nolint
 			output := bytes.NewBufferString("")
 			cmd.SetOut(output)
 			err := cmd.Execute()

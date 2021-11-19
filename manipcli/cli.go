@@ -99,7 +99,7 @@ func ManipulatorFlagSet() *pflag.FlagSet {
 	set.String(flagCACertPath, "", "Path to the CA to use for validating api endpoint.")
 	set.String(flagTrackingID, "", "ID to trace the request. Use this when asked to help debug the system.")
 	set.String(flagEncoding, "msgpack", "encoding to use to communicate with the platform. Can be 'msgpack' or 'json'")
-	set.StringP(flagNamespace, "n", "", "Namespace to use.")
+	set.StringP(flagNamespace, "n", "/", "Namespace to use.")
 	set.StringP(flagToken, "t", "", "JWT Token to use")
 
 	return set
