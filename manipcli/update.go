@@ -45,7 +45,7 @@ func generateUpdateCommandForIdentity(identity elemental.Identity, modelManager 
 				manipulate.ContextOptionOverride(fForce),
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			ctx, cancel := context.WithTimeout(cmd.Context(), 20*time.Second)
 			defer cancel()
 
 			mctx := manipulate.NewContext(ctx, options...)
@@ -60,7 +60,7 @@ func generateUpdateCommandForIdentity(identity elemental.Identity, modelManager 
 			}
 
 			if err := manipulator.Update(mctx, identifiable); err != nil {
-				return fmt.Errorf("unable to create %s: %w", identity.Name, err)
+				return fmt.Errorf("unable to update %s: %w", identity.Name, err)
 			}
 
 			outputType := fOutput

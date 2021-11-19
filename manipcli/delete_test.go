@@ -75,4 +75,73 @@ func Test_generateDeleteCommandForIdentity(t *testing.T) {
 		})
 	})
 
+	Convey("Given I generate a delete command and a manipulator that fails on retrieve", t, func() {
+
+		task1 := testmodel.NewTask()
+		task1.ID = "617aec75a829de0001da2032"
+		task1.Name = "task1"
+
+		m := maniptest.NewTestManipulator()
+		m.MockRetrieve(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
+			return fmt.Errorf("retrieve boom")
+		})
+
+		m.MockDelete(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
+			return nil
+		})
+
+		cmd, err := generateDeleteCommandForIdentity(testmodel.TaskIdentity, testmodel.Manager(), func(opts ...maniphttp.Option) (manipulate.Manipulator, error) {
+			return m, nil
+		})
+
+		So(err, ShouldEqual, nil)
+		assertCommandAndSetFlags(cmd)
+
+		Convey("When I call execute", func() {
+			cmd.SetArgs([]string{"617aec75a829de0001da2032"})
+
+			output := bytes.NewBufferString("")
+			cmd.SetOut(output)
+			err := cmd.Execute()
+
+			Convey("Then I should get a generated command", func() {
+				So(err, ShouldNotEqual, nil)
+				So(err.Error(), ShouldEqual, "unable to retrieve task: retrieve boom")
+			})
+		})
+	})
+
+	Convey("Given I generate a delete command and a manipulator that fails on delete", t, func() {
+
+		task1 := testmodel.NewTask()
+		task1.ID = "617aec75a829de0001da2032"
+		task1.Name = "task1"
+
+		m := maniptest.NewTestManipulator()
+
+		m.MockDelete(t, func(ctx manipulate.Context, object elemental.Identifiable) error {
+			return fmt.Errorf("boom")
+		})
+
+		cmd, err := generateDeleteCommandForIdentity(testmodel.TaskIdentity, testmodel.Manager(), func(opts ...maniphttp.Option) (manipulate.Manipulator, error) {
+			return m, nil
+		})
+
+		So(err, ShouldEqual, nil)
+		assertCommandAndSetFlags(cmd)
+
+		Convey("When I call execute", func() {
+			cmd.SetArgs([]string{"617aec75a829de0001da2032"})
+
+			output := bytes.NewBufferString("")
+			cmd.SetOut(output)
+			err := cmd.Execute()
+
+			Convey("Then I should get a generated command", func() {
+				So(err, ShouldNotEqual, nil)
+				So(err.Error(), ShouldEqual, "unable to delete task: boom")
+			})
+		})
+	})
+
 }

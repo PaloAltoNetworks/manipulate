@@ -56,7 +56,7 @@ func generateDeleteManyCommandForIdentity(identity elemental.Identity, modelMana
 				options = append(options, manipulate.ContextOptionFilter(f))
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+			ctx, cancel := context.WithTimeout(cmd.Context(), 60*time.Second)
 			defer cancel()
 
 			mctx := manipulate.NewContext(ctx, options...)

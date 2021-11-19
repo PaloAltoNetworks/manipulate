@@ -19,7 +19,6 @@ func assertIdentityCommand(cmd *cobra.Command, expectedSubCommands []string) {
 	})
 	So(subCmd[0].Name(), ShouldEqual, expectedSubCommands[0])
 	So(subCmd[1].Name(), ShouldEqual, expectedSubCommands[1])
-	So(subCmd[2].Name(), ShouldEqual, expectedSubCommands[2])
 }
 
 func assertCommandAndSetFlags(cmd *cobra.Command) {
@@ -73,9 +72,9 @@ func Test_New(t *testing.T) {
 		mmanager := testmodel.Manager()
 		mmaker := ManipulatorMakerFromFlags()
 
-		Convey("When I call OptionIgnoreIdentities", func() {
+		Convey("When I call New", func() {
 
-			genCmd := New(mmanager, mmaker)
+			genCmd := New(mmanager, mmaker, OptionIgnoreIdentities(testmodel.UserIdentity))
 
 			Convey("Then I should get a generated command", func() {
 				So(genCmd, ShouldNotEqual, nil)
@@ -93,7 +92,7 @@ func Test_New(t *testing.T) {
 				So(subCommands[6].Name(), ShouldEqual, "listen")
 				So(subCommands[7].Name(), ShouldEqual, "update")
 
-				expectedSubCommands := []string{"list", "task", "user"}
+				expectedSubCommands := []string{"list", "task"}
 
 				assertIdentityCommand(subCommands[0], expectedSubCommands)
 				assertIdentityCommand(subCommands[1], expectedSubCommands)

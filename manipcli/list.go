@@ -69,7 +69,7 @@ func generateListCommandForIdentity(identity elemental.Identity, modelManager el
 				options = append(options, manipulate.ContextOptionFilter(f))
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			ctx, cancel := context.WithTimeout(cmd.Context(), 20*time.Second)
 			defer cancel()
 
 			mctx := manipulate.NewContext(ctx, options...)

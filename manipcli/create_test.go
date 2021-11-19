@@ -74,4 +74,33 @@ func Test_generateCreateCommandForIdentity(t *testing.T) {
 		})
 	})
 
+	Convey("Given a manipulator that fails", t, func() {
+
+		m := maniptest.NewTestManipulator()
+		m.MockCreate(t, func(mctx manipulate.Context, object elemental.Identifiable) error {
+			return fmt.Errorf("boom")
+		})
+
+		cmd, err := generateCreateCommandForIdentity(testmodel.TaskIdentity, testmodel.Manager(), func(opts ...maniphttp.Option) (manipulate.Manipulator, error) {
+			return m, nil
+		})
+
+		So(err, ShouldEqual, nil)
+		assertCommandAndSetFlags(cmd)
+
+		Convey("When I call execute with a json output", func() {
+
+			cmd.Flags().Set("name", "my task")
+			cmd.Flags().Set("output", "json")
+			output := bytes.NewBufferString("")
+			cmd.SetOut(output)
+			err := cmd.Execute()
+
+			Convey("Then I should get a generated command", func() {
+				So(err, ShouldNotEqual, nil)
+				So(err.Error(), ShouldEqual, "unable to create task: boom")
+			})
+		})
+	})
+
 }

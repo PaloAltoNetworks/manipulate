@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -63,7 +64,9 @@ func generateListenCommand(modelManager elemental.ModelManager, manipulatorMaker
 			}
 			outputFormat := prepareOutputFormat(outputType, formatTypeHash, fFormatTypeColumn, fOutputTemplate)
 
+			var once sync.Once
 			terminated := make(chan struct{})
+
 			go func() {
 
 				pullErrorIfAny := func() error {
@@ -100,7 +103,7 @@ func generateListenCommand(modelManager elemental.ModelManager, manipulatorMaker
 							zap.L().Debug("status update", zap.String("status", "reconnection failed"), zap.Error(pullErrorIfAny()))
 						case manipulate.SubscriberStatusFinalDisconnection:
 							zap.L().Debug("status update", zap.String("status", "terminated"))
-							close(terminated)
+							once.Do(func() { close(terminated) })
 						}
 
 					case err := <-subscriber.Errors():
@@ -109,7 +112,7 @@ func generateListenCommand(modelManager elemental.ModelManager, manipulatorMaker
 				}
 			}()
 
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(cmd.Context())
 			defer cancel()
 			subscriber.Start(ctx, filter)
 
@@ -117,9 +120,13 @@ func generateListenCommand(modelManager elemental.ModelManager, manipulatorMaker
 			signal.Reset(os.Interrupt)
 			signal.Notify(c, os.Interrupt)
 
-			<-c
+			select {
+			case <-c:
+				cancel()
+			case <-cmd.Context().Done():
+				fmt.Println("command context done")
+			}
 
-			cancel()
 			<-terminated
 
 			return nil

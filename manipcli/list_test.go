@@ -42,7 +42,7 @@ func Test_generateListCommandForIdentity(t *testing.T) {
 		So(err, ShouldEqual, nil)
 		assertCommandAndSetFlags(cmd)
 
-		Convey("When I call execute", func() {
+		Convey("When I call execute without filter", func() {
 			output := bytes.NewBufferString("")
 			cmd.SetOut(output)
 			err := cmd.Execute()
@@ -69,6 +69,48 @@ func Test_generateListCommandForIdentity(t *testing.T) {
 ]`)
 			})
 		})
+
+		Convey("When I call execute with a valid filter", func() {
+			output := bytes.NewBufferString("")
+			cmd.SetOut(output)
+			cmd.Flags().Set("filter", "name == x")
+			err := cmd.Execute()
+
+			Convey("Then I should get a generated command", func() {
+				So(err, ShouldEqual, nil)
+				So(output.String(), ShouldEqual, `[
+  {
+    "ID": "617aec75a829de0001da2032",
+    "description": "",
+    "name": "task1",
+    "parentID": "",
+    "parentType": "",
+    "status": "TODO"
+  },
+  {
+    "ID": "111aec75a829de0001da1111",
+    "description": "",
+    "name": "task2",
+    "parentID": "",
+    "parentType": "",
+    "status": "TODO"
+  }
+]`)
+			})
+		})
+
+		Convey("When I call execute with an invalid filter", func() {
+			output := bytes.NewBufferString("")
+			cmd.SetOut(output)
+			cmd.Flags().Set("filter", "name...")
+			err := cmd.Execute()
+
+			Convey("Then I should get a generated command", func() {
+				So(err, ShouldNotEqual, nil)
+				So(err.Error(), ShouldContainSubstring, "unable to parse filter")
+			})
+		})
+
 	})
 
 	Convey("Given I generate a delete-many command that returns an error", t, func() {
@@ -87,6 +129,33 @@ func Test_generateListCommandForIdentity(t *testing.T) {
 			Convey("Then I should get an error", func() {
 				So(err, ShouldNotEqual, nil)
 				So(err.Error(), ShouldEqual, "unable to make manipulator: boom")
+			})
+		})
+	})
+
+	Convey("Given I generate a delete-many command and a manipulator that fails", t, func() {
+
+		m := maniptest.NewTestManipulator()
+		m.MockRetrieveMany(t, func(mctx manipulate.Context, dest elemental.Identifiables) error {
+			return fmt.Errorf("boom")
+		})
+
+		cmd, err := generateListCommandForIdentity(testmodel.TaskIdentity, testmodel.Manager(), func(opts ...maniphttp.Option) (manipulate.Manipulator, error) {
+			return m, nil
+		})
+
+		So(err, ShouldEqual, nil)
+		assertCommandAndSetFlags(cmd)
+
+		Convey("When I call execute without filter", func() {
+			output := bytes.NewBufferString("")
+			cmd.SetOut(output)
+			err := cmd.Execute()
+
+			Convey("Then I should get a generated command", func() {
+				So(err, ShouldNotEqual, nil)
+				So(err.Error(), ShouldEqual, "unable to retrieve all tasks: boom")
+
 			})
 		})
 	})

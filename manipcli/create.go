@@ -48,7 +48,7 @@ func generateCreateCommandForIdentity(identity elemental.Identity, modelManager 
 				return fmt.Errorf("unable to read flags: %w", err)
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			ctx, cancel := context.WithTimeout(cmd.Context(), 20*time.Second)
 			defer cancel()
 
 			mctx := manipulate.NewContext(ctx, options...)

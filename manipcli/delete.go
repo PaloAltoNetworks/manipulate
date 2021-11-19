@@ -46,7 +46,7 @@ func generateDeleteCommandForIdentity(identity elemental.Identity, modelManager 
 				manipulate.ContextOptionOverride(fForce),
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			ctx, cancel := context.WithTimeout(cmd.Context(), 20*time.Second)
 			defer cancel()
 
 			mctx := manipulate.NewContext(ctx, options...)

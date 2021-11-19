@@ -29,7 +29,7 @@ func Test_generateCountCommandForIdentity(t *testing.T) {
 		So(err, ShouldEqual, nil)
 		assertCommandAndSetFlags(cmd)
 
-		Convey("When I call execute", func() {
+		Convey("When I call execute without filter", func() {
 
 			output := bytes.NewBufferString("")
 			cmd.SetOut(output)
@@ -38,6 +38,32 @@ func Test_generateCountCommandForIdentity(t *testing.T) {
 			Convey("Then I should get a generated command", func() {
 				So(err, ShouldEqual, nil)
 				So(output.String(), ShouldEqual, "2")
+			})
+		})
+
+		Convey("When I call execute with valid filter", func() {
+
+			output := bytes.NewBufferString("")
+			cmd.SetOut(output)
+			cmd.Flags().Set("filter", "name == x")
+			err := cmd.Execute()
+
+			Convey("Then I should get a generated command", func() {
+				So(err, ShouldEqual, nil)
+				So(output.String(), ShouldEqual, "2")
+			})
+		})
+
+		Convey("When I call execute with invalid filter", func() {
+
+			output := bytes.NewBufferString("")
+			cmd.SetOut(output)
+			cmd.Flags().Set("filter", "name...")
+			err := cmd.Execute()
+
+			Convey("Then I should get a generated command", func() {
+				So(err, ShouldNotEqual, nil)
+				So(err.Error(), ShouldContainSubstring, "unable to parse filter")
 			})
 		})
 	})
