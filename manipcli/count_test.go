@@ -45,7 +45,7 @@ func Test_generateCountCommandForIdentity(t *testing.T) {
 
 			output := bytes.NewBufferString("")
 			cmd.SetOut(output)
-			cmd.Flags().Set("filter", "name == x")
+			cmd.Flags().Set("filter", "name == x") // nolint
 			err := cmd.Execute()
 
 			Convey("Then I should get a generated command", func() {
@@ -58,7 +58,7 @@ func Test_generateCountCommandForIdentity(t *testing.T) {
 
 			output := bytes.NewBufferString("")
 			cmd.SetOut(output)
-			cmd.Flags().Set("filter", "name...")
+			cmd.Flags().Set("filter", "name...") // nolint
 			err := cmd.Execute()
 
 			Convey("Then I should get a generated command", func() {

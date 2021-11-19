@@ -77,7 +77,7 @@ func generateCountCommandForIdentity(identity elemental.Identity, modelManager e
 				return fmt.Errorf("unable to format output: %w", err)
 			}
 
-			fmt.Fprintf(cmd.OutOrStdout(), result)
+			fmt.Fprint(cmd.OutOrStdout(), result)
 
 			return nil
 

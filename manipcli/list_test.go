@@ -73,7 +73,7 @@ func Test_generateListCommandForIdentity(t *testing.T) {
 		Convey("When I call execute with a valid filter", func() {
 			output := bytes.NewBufferString("")
 			cmd.SetOut(output)
-			cmd.Flags().Set("filter", "name == x")
+			cmd.Flags().Set("filter", "name == x") // nolint
 			err := cmd.Execute()
 
 			Convey("Then I should get a generated command", func() {
@@ -102,7 +102,7 @@ func Test_generateListCommandForIdentity(t *testing.T) {
 		Convey("When I call execute with an invalid filter", func() {
 			output := bytes.NewBufferString("")
 			cmd.SetOut(output)
-			cmd.Flags().Set("filter", "name...")
+			cmd.Flags().Set("filter", "name...") // nolint
 			err := cmd.Execute()
 
 			Convey("Then I should get a generated command", func() {

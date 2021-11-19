@@ -71,7 +71,7 @@ func generateCreateCommandForIdentity(identity elemental.Identity, modelManager 
 				return fmt.Errorf("unable to format output: %w", err)
 			}
 
-			fmt.Fprintf(cmd.OutOrStdout(), result)
+			fmt.Fprint(cmd.OutOrStdout(), result)
 			return nil
 		},
 	}

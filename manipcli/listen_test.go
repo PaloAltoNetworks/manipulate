@@ -42,7 +42,7 @@ func Test_generateListenCommand(t *testing.T) {
 			}
 
 			go func() {
-				defer ws.Close()
+				defer ws.Close() // nolint
 				for {
 					fmt.Println("writeMessage...")
 					if err := ws.WriteMessage(websocket.TextMessage, data); err != nil {

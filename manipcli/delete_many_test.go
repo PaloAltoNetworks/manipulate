@@ -49,7 +49,7 @@ func Test_generateDeleteManyCommandForIdentity(t *testing.T) {
 		Convey("When I use a valid filter", func() {
 			output := bytes.NewBufferString("")
 			cmd.SetOut(output)
-			cmd.Flags().Set("filter", "name == x")
+			cmd.Flags().Set("filter", "name == x") // nolint
 			err := cmd.Execute()
 
 			Convey("Then I should get a generated command", func() {
@@ -61,7 +61,7 @@ func Test_generateDeleteManyCommandForIdentity(t *testing.T) {
 		Convey("When I use an invalid filter", func() {
 			output := bytes.NewBufferString("")
 			cmd.SetOut(output)
-			cmd.Flags().Set("filter", "name...<.ds>")
+			cmd.Flags().Set("filter", "name...<.ds>") // nolint
 			err := cmd.Execute()
 
 			Convey("Then I should get a generated command", func() {
