@@ -66,8 +66,9 @@ func ManipulatorMakerFromFlags(options ...maniphttp.Option) ManipulatorMaker {
 			return nil, fmt.Errorf("unable to load root ca pool: %s", err)
 		}
 
+		/* #nosec */
 		tlsConfig := &tls.Config{
-			InsecureSkipVerify: skip, // #nosec G402
+			InsecureSkipVerify: skip,
 			RootCAs:            rootCAPool,
 		}
 
