@@ -67,7 +67,7 @@ func ManipulatorMakerFromFlags(options ...maniphttp.Option) ManipulatorMaker {
 		}
 
 		tlsConfig := &tls.Config{
-			InsecureSkipVerify: skip,
+			InsecureSkipVerify: skip, // #nosec
 			RootCAs:            rootCAPool,
 		}
 
