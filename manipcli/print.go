@@ -3,8 +3,10 @@ package manipcli
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
+	"sync"
 	"text/template"
 
 	prettyjson "github.com/hokaccha/go-prettyjson"
@@ -349,4 +351,17 @@ func remarshal(object interface{}, target interface{}) error {
 	}
 
 	return elemental.Decode(elemental.EncodingTypeMSGPACK, buf, target)
+}
+
+var wg sync.WaitGroup
+var realStdout *os.File
+var wPipe, rPipe *os.File
+
+// FlushOutputAndExit provides a way to ensure we flush our pipe and write to stdout before exiting the program.
+// Needs to be called before returning from main and anywhere os.Exit is called.
+func flushOutputAndExit(code int) {
+	os.Stdout = realStdout
+	_ = wPipe.Close()
+	wg.Wait()
+	os.Exit(code)
 }

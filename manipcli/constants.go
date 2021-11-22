@@ -32,6 +32,19 @@ const (
 	flagParameters    = "param"
 )
 
+// Create/update FLags
+const (
+	flagInteractive = "interactive"
+	flagInputValues = "input-values"
+	flagInputData   = "input-data"
+	flagEditor      = "editor"
+	flagInputFile   = "input-file"
+	flagInputURL    = "input-url"
+	flagInputSet    = "input-set"
+	flagPrint       = "print"
+	flagRender      = "render"
+)
+
 // List Flags
 const (
 	flagPageSize = "page-size"

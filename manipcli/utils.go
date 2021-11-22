@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"reflect"
@@ -17,7 +19,10 @@ import (
 	"github.com/spf13/viper"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.aporeto.io/underwater/gotpl"
 	"go.uber.org/zap"
+	yaml "gopkg.in/yaml.v2"
+	"k8s.io/helm/pkg/strvals"
 )
 
 // prepareAPICACertPool prepares the API cert pool if not empty.
@@ -285,4 +290,141 @@ func nameToFlag(name string) string {
 	flag := matchFirstCap.ReplaceAllString(name, "${1}-${2}")
 	flag = matchAllCap.ReplaceAllString(flag, "${1}-${2}")
 	return strings.ToLower(flag)
+}
+
+type commonValues struct {
+	Namespace string
+	API       string
+}
+
+type tplValues struct {
+	Values map[string]interface{}
+	Common commonValues
+}
+
+// readData reads the data from a path or a url or stdin
+func readData(
+	mandatory bool,
+) (data []byte, err error) {
+
+	d := viper.GetString(flagInputData)
+	if d != "" {
+		return []byte(d), nil
+	}
+
+	apiurl := viper.GetString(flagAPI)
+	namespace := viper.GetString(flagNamespace)
+	file := viper.GetString(flagInputFile)
+	url := viper.GetString(flagInputURL)
+	valuesFile := viper.GetString(flagInputValues)
+	values := viper.GetStringSlice(flagInputSet)
+	renderOnly := viper.GetBool(flagRender)
+	printOnly := viper.GetBool(flagPrint)
+
+	if url == "" && file == "" {
+		if mandatory {
+			return nil, fmt.Errorf("You must pass either %s or %s", flagInputFile, flagInputURL)
+		}
+		return nil, nil
+	}
+
+	if url != "" && file != "" {
+		return nil, fmt.Errorf("You cannot set both %s and %s", flagInputFile, flagInputURL)
+	}
+
+	var processed bool
+
+	// reading input-url
+	if url != "" {
+		resp, err := http.Get(url)
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("Unable to retrieve data from url %s: %s", url, resp.Status)
+		}
+
+		defer resp.Body.Close() // nolint
+		data, err = io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		processed = true
+	}
+
+	// Reading input-file
+	if file != "" && file != "-" {
+
+		data, err = os.ReadFile(file)
+		if err != nil {
+			return nil, err
+		}
+
+		processed = true
+	}
+
+	if file == "-" {
+
+		data, err = io.ReadAll(os.Stdin)
+		if err != nil {
+			return nil, err
+		}
+
+		processed = true
+	}
+
+	if !processed && mandatory {
+		return nil, fmt.Errorf("You must pass either %s or %s", flagInputFile, flagInputURL)
+	}
+
+	if !processed && !mandatory {
+		return nil, nil
+	}
+
+	if printOnly {
+		fmt.Println(string(data))
+		flushOutputAndExit(0)
+		return nil, nil
+	}
+
+	templateValues := map[string]interface{}{}
+
+	// reading input-values
+	if valuesFile != "" {
+
+		data, err := os.ReadFile(valuesFile)
+		if err != nil {
+			return nil, err
+		}
+
+		if err = yaml.Unmarshal(data, &templateValues); err != nil {
+			return nil, err
+		}
+	}
+
+	for _, value := range values {
+		if err := strvals.ParseInto(value, templateValues); err != nil {
+			return nil, err
+		}
+	}
+
+	result, err := gotpl.RenderTemplate(string(data[:]), tplValues{
+		Values: templateValues,
+		Common: commonValues{
+			Namespace: namespace,
+			API:       apiurl,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if renderOnly {
+		fmt.Println(string(result))
+		flushOutputAndExit(0)
+	}
+
+	return result, nil
 }
