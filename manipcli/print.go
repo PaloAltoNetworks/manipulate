@@ -9,10 +9,10 @@ import (
 	"sync"
 	"text/template"
 
+	"github.com/ghodss/yaml"
 	prettyjson "github.com/hokaccha/go-prettyjson"
 	"github.com/olekukonko/tablewriter"
 	"go.aporeto.io/elemental"
-	yaml "gopkg.in/yaml.v2"
 )
 
 type prepareOutputConfig struct {
