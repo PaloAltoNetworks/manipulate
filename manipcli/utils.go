@@ -472,7 +472,10 @@ func openInEditor(
 ) ([]byte, error) {
 
 	if editor == "" {
-		return nil, fmt.Errorf("you must pass a valid --%s", flagEditor)
+		editor, _ = os.LookupEnv("EDITOR")
+		if editor == "" {
+			return nil, fmt.Errorf("you must pass a valid --%s", flagEditor)
+		}
 	}
 
 	file, err := os.CreateTemp(os.TempDir(), "cli")
