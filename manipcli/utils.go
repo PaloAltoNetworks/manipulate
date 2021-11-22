@@ -474,7 +474,7 @@ func openInEditor(
 	if editor == "" {
 		editor, _ = os.LookupEnv("EDITOR")
 		if editor == "" {
-			return nil, fmt.Errorf("you must pass a valid --%s", flagEditor)
+			return nil, fmt.Errorf("you must pass a valid --%s or set EDITOR environment variable", flagEditor)
 		}
 	}
 

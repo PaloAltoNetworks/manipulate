@@ -129,7 +129,7 @@ func generateCreateCommandForIdentity(identity elemental.Identity, modelManager 
 	cmd.Flags().Bool(flagPrint, false, "If set will print the raw data. Only works for --file and --url")
 	cmd.Flags().Bool(flagRender, false, "If set will render and print the data. Only works for --file and --url")
 	cmd.Flags().BoolP(flagInteractive, "i", false, "Set to create the object in the given --editor.")
-	cmd.Flags().StringP(flagEditor, "", "vi", "Choose the editor when using --interactive.")
+	cmd.Flags().StringP(flagEditor, "", "", "Choose the editor when using --interactive.")
 
 	return cmd, nil
 }
