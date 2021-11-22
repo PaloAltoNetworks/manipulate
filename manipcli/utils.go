@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"reflect"
 	"regexp"
 	"runtime"
@@ -18,13 +19,13 @@ import (
 
 	"github.com/Masterminds/sprig"
 	"github.com/araddon/dateparse"
-	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.uber.org/zap"
 	"k8s.io/helm/pkg/strvals"
+	"sigs.k8s.io/yaml"
 )
 
 // prepareAPICACertPool prepares the API cert pool if not empty.
@@ -459,4 +460,125 @@ func renderTemplate(content string, values interface{}) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
+}
+
+func openInEditor(
+	identifiable elemental.Identifiable,
+	editor string,
+	message string,
+	stripReadOnlyAttribute bool,
+	stripCreationOnlyAttribute bool,
+	showRawInitialData bool,
+) ([]byte, error) {
+
+	if editor == "" {
+		return nil, fmt.Errorf("you must pass a valid --%s", flagEditor)
+	}
+
+	file, err := os.CreateTemp(os.TempDir(), "cli")
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(file.Name()) // nolint: errcheck
+
+	data, err := generateFileData(
+		identifiable,
+		message,
+		stripReadOnlyAttribute,
+		stripCreationOnlyAttribute,
+		showRawInitialData,
+		outputFormat{
+			formatType: formatTypeHash,
+			output:     flagOutputYAML,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err = file.Write([]byte(data)); err != nil {
+		return nil, err
+	}
+	if err = file.Close(); err != nil {
+		return nil, err
+	}
+
+	var params []string
+	switch editor {
+	case "atom", "atom-beta":
+		params = append(params, "-w")
+	case "code", "code-insiders":
+		params = append(params, "-w")
+	}
+	params = append(params, file.Name())
+	cmd := exec.Command(editor, params...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	if err = cmd.Run(); err != nil {
+		return nil, err
+	}
+
+	newData, err := os.ReadFile(file.Name())
+	if err != nil {
+		return nil, err
+	}
+
+	if string(newData) == data {
+		return nil, nil
+	}
+
+	reJSON, err := yaml.YAMLToJSON(newData)
+	if err != nil {
+		return nil, err
+	}
+
+	return reJSON, nil
+}
+
+// generateFileData generate []bytes containing
+// a ready to write text file of the given identity.
+func generateFileData(
+	identifiable elemental.Identifiable,
+	message string,
+	stripReadOnlyAttribute bool,
+	stripCreationOnlyAttribute bool,
+	showRawInitialData bool,
+	format outputFormat,
+) (string, error) {
+
+	initialData, err := formatObjectsStripped(
+		format,
+		stripReadOnlyAttribute,
+		stripCreationOnlyAttribute,
+		false,
+		identifiable,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	sData := ""
+	if message != "" {
+		sData = fmt.Sprintf("# %s\n\n", message)
+	}
+	sData = sData + initialData
+
+	if showRawInitialData {
+		rawInitialData, e := formatObjects(format, false, identifiable)
+
+		if e != nil {
+			return "", e
+		}
+		rawInitialLines := strings.Split(rawInitialData, "\n")
+		rawInitialLines = append(rawInitialLines, "\n\n")
+		for i, l := range rawInitialLines {
+			rawInitialLines[i] = "# " + l
+		}
+
+		sData = fmt.Sprintf("%s\n# Here is a copy of the full original object you are editing:\n#\n%s",
+			sData,
+			strings.Join(rawInitialLines[:len(rawInitialLines)-3], "\n"))
+	}
+
+	return sData, nil
 }

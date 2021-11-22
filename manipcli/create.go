@@ -47,7 +47,23 @@ func generateCreateCommandForIdentity(identity elemental.Identity, modelManager 
 
 			identifiable := modelManager.IdentifiableFromString(identity.Name)
 
-			if viper.IsSet(flagInputValues) || viper.IsSet(flagInputData) || viper.IsSet(flagInputFile) || viper.IsSet(flagInputURL) {
+			if viper.GetBool(flagInteractive) {
+
+				data, err := openInEditor(identifiable, viper.GetString(flagEditor), cmd.Short, true, false, false)
+				if err != nil {
+					return fmt.Errorf("unable to open editor %s: %w", viper.GetString(flagEditor), err)
+				}
+
+				if data == nil {
+					return fmt.Errorf("empty data")
+				}
+
+				if err := json.Unmarshal(data, identifiable); err != nil {
+					return fmt.Errorf("unable to unmarshall: %w", err)
+				}
+
+			} else if viper.IsSet(flagInputValues) || viper.IsSet(flagInputData) || viper.IsSet(flagInputFile) || viper.IsSet(flagInputURL) {
+
 				data, err := readData(false)
 				if err != nil {
 					return fmt.Errorf("unable to read data: %w", err)
@@ -61,10 +77,11 @@ func generateCreateCommandForIdentity(identity elemental.Identity, modelManager 
 				}
 
 				if err := json.Unmarshal(data, identifiable); err != nil {
-					return fmt.Errorf("invalid format: %w", err)
+					return fmt.Errorf("unable to unmarshall: %w", err)
 				}
 
 			} else {
+
 				if err := readViperFlags(identifiable); err != nil {
 					return fmt.Errorf("unable to read flags: %w", err)
 				}
@@ -109,12 +126,10 @@ func generateCreateCommandForIdentity(identity elemental.Identity, modelManager 
 	cmd.Flags().StringP(flagInputFile, "f", "", "Optional file to read the data from. Set `-` to read from stdin")
 	cmd.Flags().StringP(flagInputURL, "u", "", "Optional url where to read the data from. If you don't set it, stdin or --file will used")
 	cmd.Flags().StringSlice(flagInputSet, nil, "Set a value to in the imported data in case it is a Go template.")
-
-	cmd.Flags().BoolP(flagInteractive, "i", false, "Set to create the object in the given --editor.")
-	cmd.Flags().StringP(flagEditor, "", "vi", "Choose the editor when using --interactive.")
-
 	cmd.Flags().Bool(flagPrint, false, "If set will print the raw data. Only works for --file and --url")
 	cmd.Flags().Bool(flagRender, false, "If set will render and print the data. Only works for --file and --url")
+	cmd.Flags().BoolP(flagInteractive, "i", false, "Set to create the object in the given --editor.")
+	cmd.Flags().StringP(flagEditor, "", "vi", "Choose the editor when using --interactive.")
 
 	return cmd, nil
 }
