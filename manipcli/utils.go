@@ -1,6 +1,7 @@
 package manipcli
 
 import (
+	"bytes"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
@@ -13,13 +14,14 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"text/template"
 
+	"github.com/Masterminds/sprig"
 	"github.com/araddon/dateparse"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
-	"go.aporeto.io/underwater/gotpl"
 	"go.uber.org/zap"
 	yaml "gopkg.in/yaml.v2"
 	"k8s.io/helm/pkg/strvals"
@@ -410,7 +412,7 @@ func readData(
 		}
 	}
 
-	result, err := gotpl.RenderTemplate(string(data[:]), tplValues{
+	result, err := renderTemplate(string(data[:]), tplValues{
 		Values: templateValues,
 		Common: commonValues{
 			Namespace: namespace,
@@ -427,4 +429,34 @@ func readData(
 	}
 
 	return result, nil
+}
+
+func renderTemplate(content string, values interface{}) ([]byte, error) {
+
+	funcs := sprig.TxtFuncMap()
+	funcs["required"] = func(warn string, val interface{}) (interface{}, error) {
+		if val == nil {
+			return val, fmt.Errorf(warn)
+		} else if _, ok := val.(string); ok {
+			if val == "" {
+				return val, fmt.Errorf(warn)
+			}
+		}
+		return val, nil
+	}
+
+	tpl, err := template.New("template").Funcs(funcs).Parse(content)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse template: %s", err)
+	}
+
+	buf := &bytes.Buffer{}
+	if err := tpl.Execute(
+		buf,
+		values,
+	); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
