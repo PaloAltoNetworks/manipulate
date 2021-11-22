@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"sigs.k8s.io/yaml"
 )
 
 // generateCreateCommandForIdentity generates the command to create an object based on its identity.
@@ -50,6 +51,13 @@ func generateCreateCommandForIdentity(identity elemental.Identity, modelManager 
 				data, err := readData(false)
 				if err != nil {
 					return fmt.Errorf("unable to read data: %w", err)
+				}
+
+				if data != nil {
+					data, err = yaml.YAMLToJSON(data)
+					if err != nil {
+						return err
+					}
 				}
 
 				if err := json.Unmarshal(data, identifiable); err != nil {
