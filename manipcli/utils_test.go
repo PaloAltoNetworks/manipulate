@@ -579,3 +579,155 @@ func Test_nameToFlag(t *testing.T) {
 		})
 	}
 }
+
+func Test_renderTemplate(t *testing.T) {
+
+	Convey("Given a valid template", t, func() {
+
+		content := "hello {{ .name }}"
+		values := map[string]string{
+			"name": "world",
+		}
+
+		Convey("When I call renderTemplate", func() {
+
+			data, err := renderTemplate(content, values)
+
+			Convey("Then I should get no error", func() {
+				So(err, ShouldEqual, nil)
+				So(string(data), ShouldEqual, "hello world")
+			})
+		})
+	})
+
+	Convey("Given an invalid template", t, func() {
+
+		content := "hello {{ .name "
+		values := map[string]string{
+			"name": "world",
+		}
+
+		Convey("When I call renderTemplate", func() {
+
+			_, err := renderTemplate(content, values)
+
+			Convey("Then I should get an error", func() {
+				So(err, ShouldNotEqual, nil)
+			})
+		})
+	})
+
+}
+
+func Test_generateFileData(t *testing.T) {
+
+	Convey("Given a nil identifiable", t, func() {
+
+		Convey("When I call generateFileData", func() {
+
+			_, err := generateFileData(nil, "message", true, true, true, outputFormat{
+				formatType: formatTypeHash,
+				output:     flagOutputYAML,
+			})
+
+			Convey("Then I should get an error", func() {
+				So(err, ShouldNotEqual, nil)
+				So(err.Error(), ShouldContainSubstring, "identifiable is nil")
+			})
+		})
+	})
+
+	Convey("Given a valid identifiable", t, func() {
+
+		Convey("When I call generateFileData", func() {
+
+			str, err := generateFileData(testmodel.NewTask(), "message", true, true, true, outputFormat{
+				formatType: formatTypeHash,
+				output:     flagOutputYAML,
+			})
+
+			Convey("Then I should get no error", func() {
+				So(err, ShouldEqual, nil)
+				So(str, ShouldEqual, `# message
+
+description: ""
+name: ""
+status: TODO
+
+# Here is a copy of the full original object you are editing:
+#
+# ID: ""
+# description: ""
+# name: ""
+# parentID: ""
+# parentType: ""`)
+			})
+		})
+	})
+
+}
+
+func Test_splitParentInfo(t *testing.T) {
+	type args struct {
+		parent string
+	}
+	tests := []struct {
+		name     string
+		args     args
+		wantName string
+		wantID   string
+		wantErr  bool
+	}{
+		{
+			"valid format",
+			args{
+				parent: "resource/12345",
+			},
+			"resource",
+			"12345",
+			false,
+		},
+		{
+			"empty parent",
+			args{
+				parent: "",
+			},
+			"",
+			"",
+			true,
+		},
+		{
+			"no / separator",
+			args{
+				parent: "just-a-name",
+			},
+			"",
+			"",
+			true,
+		},
+		{
+			"multiple / separator",
+			args{
+				parent: "just/a/name",
+			},
+			"",
+			"",
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1, err := splitParentInfo(tt.args.parent)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("splitParentInfo() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.wantName {
+				t.Errorf("splitParentInfo() got = %v, want %v", got, tt.wantName)
+			}
+			if got1 != tt.wantID {
+				t.Errorf("splitParentInfo() got1 = %v, want %v", got1, tt.wantID)
+			}
+		})
+	}
+}

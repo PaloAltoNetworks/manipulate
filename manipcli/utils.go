@@ -549,6 +549,9 @@ func generateFileData(
 	format outputFormat,
 ) (string, error) {
 
+	if identifiable == nil {
+		return "", fmt.Errorf("identifiable is nil")
+	}
 	initialData, err := formatObjectsStripped(
 		format,
 		stripReadOnlyAttribute,
