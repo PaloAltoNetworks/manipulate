@@ -45,6 +45,20 @@ func generateCreateCommandForIdentity(identity elemental.Identity, modelManager 
 				manipulate.ContextOptionFields(fFormatTypeColumn),
 			}
 
+			if viper.IsSet(flagParent) {
+				parentName, parentID, err := splitParentInfo(viper.GetString(flagParent))
+				if err != nil {
+					return err
+				}
+
+				parent := modelManager.IdentifiableFromString(parentName)
+				if parent == nil {
+					return fmt.Errorf("unknown identity %s", parentName)
+				}
+				parent.SetIdentifier(parentID)
+				options = append(options, manipulate.ContextOptionParent(parent))
+			}
+
 			identifiable := modelManager.IdentifiableFromString(identity.Name)
 
 			if viper.GetBool(flagInteractive) {
@@ -130,6 +144,7 @@ func generateCreateCommandForIdentity(identity elemental.Identity, modelManager 
 	cmd.Flags().Bool(flagRender, false, "If set will render and print the data. Only works for --file and --url")
 	cmd.Flags().BoolP(flagInteractive, "i", false, "Set to create the object in the given --editor.")
 	cmd.Flags().StringP(flagEditor, "", "", "Choose the editor when using --interactive.")
+	cmd.Flags().StringP(flagParent, "", "", "Provide information about parent resource. Format `name/ID`")
 
 	return cmd, nil
 }

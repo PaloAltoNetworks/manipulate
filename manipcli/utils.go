@@ -585,3 +585,19 @@ func generateFileData(
 
 	return sData, nil
 }
+
+// splitParentInfo splits the parent info into name, ID
+func splitParentInfo(parent string) (string, string, error) {
+
+	if parent == "" {
+		return "", "", fmt.Errorf("no parent information provided")
+	}
+
+	data := strings.Split(parent, "/")
+
+	if len(data) != 2 {
+		return "", "", fmt.Errorf("invalid parent format, use `name/ID`.")
+	}
+
+	return data[0], data[1], nil
+}

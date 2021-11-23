@@ -69,6 +69,20 @@ func generateListCommandForIdentity(identity elemental.Identity, modelManager el
 				options = append(options, manipulate.ContextOptionFilter(f))
 			}
 
+			if viper.IsSet(flagParent) {
+				parentName, parentID, err := splitParentInfo(viper.GetString(flagParent))
+				if err != nil {
+					return err
+				}
+
+				parent := modelManager.IdentifiableFromString(parentName)
+				if parent == nil {
+					return fmt.Errorf("unknown identity %s", parentName)
+				}
+				parent.SetIdentifier(parentID)
+				options = append(options, manipulate.ContextOptionParent(parent))
+			}
+
 			ctx, cancel := context.WithTimeout(cmd.Context(), 20*time.Second)
 			defer cancel()
 
@@ -102,6 +116,7 @@ func generateListCommandForIdentity(identity elemental.Identity, modelManager el
 	cmd.Flags().IntP(flagPage, "P", 0, "Page number to retrieve.")
 	cmd.Flags().StringP(flagFilter, "f", "", "Query filter.")
 	cmd.Flags().StringSliceP(flagOrder, "O", nil, "Ordering of the result.")
+	cmd.Flags().StringP(flagParent, "", "", "Provide information about parent resource. Format `name/ID`")
 
 	return cmd, nil
 }
