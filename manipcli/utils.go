@@ -165,9 +165,8 @@ func retrieveObjectByIDOrByName(
 	return lst[0], nil
 }
 
-// readViperFlags reads all viper flags and fill the identifiable properties.
-// TODO: Make it better and add more types here.
-func readViperFlags(identifiable elemental.Identifiable) error {
+// readViperFlags reads all vipers flags without prefix
+func readViperFlags(identifiable elemental.Identifiable, modelManager elemental.ModelManager) error {
 
 	if identifiable == nil {
 		return fmt.Errorf("provided identifiable is nil")
@@ -177,7 +176,14 @@ func readViperFlags(identifiable elemental.Identifiable) error {
 		return fmt.Errorf("%s is not an AttributeSpecifiable", identifiable.Identity().Name)
 	}
 
-	rv := reflect.ValueOf(identifiable).Elem()
+	return readViperFlagsWithPrefix(specifiable, modelManager, "")
+}
+
+// readViperFlags reads all viper flags and fill the identifiable properties.
+// TODO: Make it better and add more types here.
+func readViperFlagsWithPrefix(specifiable elemental.AttributeSpecifiable, modelManager elemental.ModelManager, prefix string) error {
+
+	rv := reflect.ValueOf(specifiable).Elem()
 
 	for _, spec := range specifiable.AttributeSpecifications() {
 
@@ -186,6 +192,10 @@ func readViperFlags(identifiable elemental.Identifiable) error {
 		}
 
 		flagName := nameToFlag(spec.Name)
+		if prefix != "" {
+			flagName = fmt.Sprintf("%s.%s", prefix, flagName)
+		}
+
 		if !viper.IsSet(flagName) {
 			continue
 		}
@@ -212,6 +222,25 @@ func readViperFlags(identifiable elemental.Identifiable) error {
 			}
 			fv.Set(reflect.ValueOf(t))
 
+		case "ref":
+			instance := reflect.New(fv.Type().Elem())
+
+			specifiable, ok := instance.Interface().(elemental.AttributeSpecifiable)
+			if !ok {
+				rt := reflect.TypeOf(specifiable.ValueForAttribute(flagName))
+				rv := reflect.New(rt)
+				if err := json.Unmarshal([]byte(viper.GetString(flagName)), rv.Interface()); err != nil {
+					return err
+				}
+				fv.Set(rv.Elem())
+				continue
+			}
+
+			err := readViperFlagsWithPrefix(specifiable, modelManager, flagName)
+			if err != nil {
+				return err
+			}
+
 		default:
 			rt := reflect.TypeOf(specifiable.ValueForAttribute(flagName))
 			rv := reflect.New(rt)
@@ -225,9 +254,8 @@ func readViperFlags(identifiable elemental.Identifiable) error {
 	return nil
 }
 
-// setViperFlags sets the viper flags to the command according to the identifiable
-// TODO: Make it better and add more types here.
-func setViperFlags(cmd *cobra.Command, identifiable elemental.Identifiable, forceRequired bool) error {
+// setViperFlags
+func setViperFlags(cmd *cobra.Command, identifiable elemental.Identifiable, modelManager elemental.ModelManager) error {
 
 	if cmd == nil {
 		return fmt.Errorf("provided command is nil")
@@ -242,6 +270,15 @@ func setViperFlags(cmd *cobra.Command, identifiable elemental.Identifiable, forc
 		return fmt.Errorf("%s is not an AttributeSpecifiable", identifiable.Identity().Name)
 	}
 
+	return setViperFlagsWithPrefix(cmd, specifiable, modelManager, "")
+}
+
+// setViperFlagsWithPrefix sets the viper flags to the command according to the identifiable
+// TODO: Make it better and add more types here.
+func setViperFlagsWithPrefix(cmd *cobra.Command, specifiable elemental.AttributeSpecifiable, modelManager elemental.ModelManager, prefix string) error {
+
+	rv := reflect.ValueOf(specifiable).Elem()
+
 	for _, spec := range specifiable.AttributeSpecifications() {
 
 		if !shouldManageAttribute(spec) {
@@ -249,6 +286,9 @@ func setViperFlags(cmd *cobra.Command, identifiable elemental.Identifiable, forc
 		}
 
 		flagName := nameToFlag(spec.Name)
+		if prefix != "" {
+			flagName = fmt.Sprintf("%s.%s", prefix, flagName)
+		}
 
 		// Register flag based on type
 		switch spec.Type {
@@ -271,15 +311,25 @@ func setViperFlags(cmd *cobra.Command, identifiable elemental.Identifiable, forc
 		case "time":
 			cmd.Flags().StringP(flagName, "", "", spec.Description)
 
-		default:
-			zap.L().Debug("use default type string for attribute", zap.String("attribute", spec.Name), zap.String("identity", identifiable.Identity().Name))
-			cmd.Flags().StringP(flagName, "", "", spec.Description)
-		}
+		case "ref":
 
-		if forceRequired && spec.Required {
-			if err := cmd.MarkFlagRequired(flagName); err != nil {
-				return fmt.Errorf("unable to mark flag %s as required", flagName)
+			fv := rv.FieldByName(spec.ConvertedName)
+			instance := reflect.New(fv.Type().Elem())
+
+			specifiable, ok := instance.Interface().(elemental.AttributeSpecifiable)
+			if !ok {
+				cmd.Flags().StringP(flagName, "", "", spec.Description)
+				continue
 			}
+
+			err := setViperFlagsWithPrefix(cmd, specifiable, modelManager, flagName)
+			if err != nil {
+				return err
+			}
+
+		default:
+			zap.L().Debug("use default type string for attribute", zap.String("attribute", spec.Name))
+			cmd.Flags().StringP(flagName, "", "", spec.Description)
 		}
 	}
 
@@ -287,10 +337,12 @@ func setViperFlags(cmd *cobra.Command, identifiable elemental.Identifiable, forc
 }
 
 var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
-var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
+var matchAllNumber = regexp.MustCompile("([a-z])([0-9]+)")
+var matchAllCap = regexp.MustCompile("([a-z])([A-Z])")
 
 func nameToFlag(name string) string {
 	flag := matchFirstCap.ReplaceAllString(name, "${1}-${2}")
+	flag = matchAllNumber.ReplaceAllString(flag, "${1}-${2}")
 	flag = matchAllCap.ReplaceAllString(flag, "${1}-${2}")
 	return strings.ToLower(flag)
 }
