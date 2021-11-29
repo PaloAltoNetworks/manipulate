@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	go.aporeto.io/elemental v1.100.1-0.20211117023454-0c8e5dca0782
-	go.aporeto.io/wsc v1.36.1-0.20210528201141-2af38def4959
+	go.aporeto.io/wsc v1.36.1-0.20211129232025-0fb193525664
 )
 
 require (
@@ -22,3 +22,5 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20210510120138-977fb7262007
 )
+
+replace github.com/gorilla/websocket v1.4.2 => github.com/philipatl/websocket v1.4.3-0.20211129194947-7f3a5bcae0fa
