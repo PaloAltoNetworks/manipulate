@@ -105,6 +105,9 @@ func generateCreateCommandForIdentity(identity elemental.Identity, modelManager 
 			ctx, cancel := context.WithTimeout(cmd.Context(), 20*time.Second)
 			defer cancel()
 
+			x, _ := json.MarshalIndent(identifiable, "", "  ")
+			fmt.Println(string(x))
+
 			mctx := manipulate.NewContext(ctx, options...)
 			if err := manipulator.Create(mctx, identifiable); err != nil {
 				return fmt.Errorf("unable to create %s: %w", identity.Name, err)

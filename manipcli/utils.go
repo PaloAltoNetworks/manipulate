@@ -196,26 +196,39 @@ func readViperFlagsWithPrefix(specifiable elemental.AttributeSpecifiable, modelM
 			flagName = fmt.Sprintf("%s.%s", prefix, flagName)
 		}
 
-		if !viper.IsSet(flagName) {
-			continue
-		}
-
 		fv := rv.FieldByName(spec.ConvertedName)
 
 		switch spec.Type {
 		case "string", "enum":
+			if !viper.IsSet(flagName) {
+				continue
+			}
 			fv.SetString(viper.GetString(flagName))
 
 		case "float64":
+			if !viper.IsSet(flagName) {
+				continue
+			}
+
 			fv.SetFloat(viper.GetFloat64(flagName))
 
 		case "boolean":
+			if !viper.IsSet(flagName) {
+				continue
+			}
 			fv.SetBool(viper.GetBool(flagName))
 
 		case "integer":
+			if !viper.IsSet(flagName) {
+				continue
+			}
 			fv.SetInt(viper.GetInt64(flagName))
 
 		case "time":
+			if !viper.IsSet(flagName) {
+				continue
+			}
+
 			t, err := dateparse.ParseAny(viper.GetString(flagName))
 			if err != nil {
 				return err
@@ -227,6 +240,10 @@ func readViperFlagsWithPrefix(specifiable elemental.AttributeSpecifiable, modelM
 
 			specifiable, ok := instance.Interface().(elemental.AttributeSpecifiable)
 			if !ok {
+				if !viper.IsSet(flagName) {
+					continue
+				}
+
 				rt := reflect.TypeOf(specifiable.ValueForAttribute(flagName))
 				rv := reflect.New(rt)
 				if err := json.Unmarshal([]byte(viper.GetString(flagName)), rv.Interface()); err != nil {
@@ -240,6 +257,7 @@ func readViperFlagsWithPrefix(specifiable elemental.AttributeSpecifiable, modelM
 			if err != nil {
 				return err
 			}
+			fv.Set(reflect.ValueOf(specifiable))
 
 		default:
 			rt := reflect.TypeOf(specifiable.ValueForAttribute(flagName))

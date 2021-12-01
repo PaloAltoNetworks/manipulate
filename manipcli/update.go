@@ -102,6 +102,9 @@ func generateUpdateCommandForIdentity(identity elemental.Identity, modelManager 
 
 			mctx = manipulate.NewContext(updateCtx, options...)
 
+			x, _ := json.MarshalIndent(identifiable, "", "  ")
+			fmt.Println(string(x))
+
 			if err := manipulator.Update(mctx, identifiable); err != nil {
 				return fmt.Errorf("unable to update %s: %w", identity.Name, err)
 			}
