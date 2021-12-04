@@ -245,6 +245,9 @@ func readViperFlagsWithPrefix(specifiable elemental.AttributeSpecifiable, modelM
 				}
 
 				rt := reflect.TypeOf(specifiable.ValueForAttribute(flagName))
+				if rt == nil {
+					return nil
+				}
 				rv := reflect.New(rt)
 				if err := json.Unmarshal([]byte(viper.GetString(flagName)), rv.Interface()); err != nil {
 					return err
@@ -261,6 +264,9 @@ func readViperFlagsWithPrefix(specifiable elemental.AttributeSpecifiable, modelM
 
 		default:
 			rt := reflect.TypeOf(specifiable.ValueForAttribute(flagName))
+			if rt == nil {
+				return nil
+			}
 			rv := reflect.New(rt)
 			if err := json.Unmarshal([]byte(viper.GetString(flagName)), rv.Interface()); err != nil {
 				return err
