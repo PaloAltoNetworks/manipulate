@@ -355,7 +355,7 @@ func remarshal(object interface{}, target interface{}) error {
 
 var wg sync.WaitGroup
 var realStdout *os.File
-var wPipe, rPipe *os.File
+var wPipe *os.File
 
 // FlushOutputAndExit provides a way to ensure we flush our pipe and write to stdout before exiting the program.
 // Needs to be called before returning from main and anywhere os.Exit is called.

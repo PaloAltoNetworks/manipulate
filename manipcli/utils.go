@@ -166,7 +166,7 @@ func retrieveObjectByIDOrByName(
 }
 
 // readViperFlags reads all vipers flags without prefix
-func readViperFlags(identifiable elemental.Identifiable, modelManager elemental.ModelManager) error {
+func readViperFlags(identifiable elemental.Identifiable, modelManager elemental.ModelManager, prefix string) error {
 
 	if identifiable == nil {
 		return fmt.Errorf("provided identifiable is nil")
@@ -176,7 +176,7 @@ func readViperFlags(identifiable elemental.Identifiable, modelManager elemental.
 		return fmt.Errorf("%s is not an AttributeSpecifiable", identifiable.Identity().Name)
 	}
 
-	return readViperFlagsWithPrefix(specifiable, modelManager, "")
+	return readViperFlagsWithPrefix(specifiable, modelManager, prefix)
 }
 
 // readViperFlags reads all viper flags and fill the identifiable properties.
@@ -279,7 +279,7 @@ func readViperFlagsWithPrefix(specifiable elemental.AttributeSpecifiable, modelM
 }
 
 // setViperFlags
-func setViperFlags(cmd *cobra.Command, identifiable elemental.Identifiable, modelManager elemental.ModelManager) error {
+func setViperFlags(cmd *cobra.Command, identifiable elemental.Identifiable, modelManager elemental.ModelManager, prefix string) error {
 
 	if cmd == nil {
 		return fmt.Errorf("provided command is nil")
@@ -294,7 +294,7 @@ func setViperFlags(cmd *cobra.Command, identifiable elemental.Identifiable, mode
 		return fmt.Errorf("%s is not an AttributeSpecifiable", identifiable.Identity().Name)
 	}
 
-	return setViperFlagsWithPrefix(cmd, specifiable, modelManager, "")
+	return setViperFlagsWithPrefix(cmd, specifiable, modelManager, prefix)
 }
 
 // setViperFlagsWithPrefix sets the viper flags to the command according to the identifiable

@@ -17,6 +17,7 @@ import (
 // cliConfig hods the generate configuration.
 type cliConfig struct {
 	ignoredIdentities map[string]struct{}
+	argumentsPrefix   string
 }
 
 // Option represents an option can for the generate command.
@@ -32,6 +33,14 @@ func OptionIgnoreIdentities(identities ...elemental.Identity) Option {
 		}
 
 		g.ignoredIdentities = m
+	}
+}
+
+// OptionArgumentsPrefix sets which non-private identities should be ignored.
+func OptionArgumentsPrefix(prefix string) Option {
+	return func(g *cliConfig) {
+
+		g.argumentsPrefix = prefix
 	}
 }
 
@@ -169,7 +178,7 @@ func New(modelManager elemental.ModelManager, manipulatorMaker ManipulatorMaker,
 			continue
 		}
 
-		if cmd, err := generateCreateCommandForIdentity(identity, modelManager, manipulatorMaker); err == nil {
+		if cmd, err := generateCreateCommandForIdentity(identity, modelManager, manipulatorMaker, optionArgumentsPrefix(cfg.argumentsPrefix)); err == nil {
 			createCmd.AddCommand(cmd)
 		} else {
 			zap.L().Debug("unable to generate create command for identity", zap.String("identity", identity.Name), zap.Error(err))

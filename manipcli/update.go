@@ -14,7 +14,13 @@ import (
 )
 
 // generateUpdateCommandForIdentity generates the command to update an object based on its identity.
-func generateUpdateCommandForIdentity(identity elemental.Identity, modelManager elemental.ModelManager, manipulatorMaker ManipulatorMaker) (*cobra.Command, error) {
+func generateUpdateCommandForIdentity(identity elemental.Identity, modelManager elemental.ModelManager, manipulatorMaker ManipulatorMaker, options ...cmdOption) (*cobra.Command, error) {
+
+	cfg := &cmdConfig{}
+
+	for _, opt := range options {
+		opt(cfg)
+	}
 
 	cmd := &cobra.Command{
 		Use:     fmt.Sprintf("%s <id-or-name>", identity.Name),
@@ -92,7 +98,7 @@ func generateUpdateCommandForIdentity(identity elemental.Identity, modelManager 
 
 			} else {
 
-				if err := readViperFlags(identifiable, modelManager); err != nil {
+				if err := readViperFlags(identifiable, modelManager, cfg.argumentsPrefix); err != nil {
 					return fmt.Errorf("unable to read flags: %w", err)
 				}
 			}
@@ -138,7 +144,7 @@ func generateUpdateCommandForIdentity(identity elemental.Identity, modelManager 
 	cmd.Flags().StringP(flagEditor, "", "", "Choose the editor when using --interactive.")
 
 	identifiable := modelManager.IdentifiableFromString(identity.Name)
-	if err := setViperFlags(cmd, identifiable, modelManager); err != nil {
+	if err := setViperFlags(cmd, identifiable, modelManager, cfg.argumentsPrefix); err != nil {
 		return nil, fmt.Errorf("unable to set flags for %s: %w", identity.Name, err)
 	}
 
