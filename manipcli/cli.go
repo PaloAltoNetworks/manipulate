@@ -184,7 +184,7 @@ func New(modelManager elemental.ModelManager, manipulatorMaker ManipulatorMaker,
 			zap.L().Debug("unable to generate create command for identity", zap.String("identity", identity.Name), zap.Error(err))
 		}
 
-		if cmd, err := generateUpdateCommandForIdentity(identity, modelManager, manipulatorMaker); err == nil {
+		if cmd, err := generateUpdateCommandForIdentity(identity, modelManager, manipulatorMaker, optionArgumentsPrefix(cfg.argumentsPrefix)); err == nil {
 			updateCmd.AddCommand(cmd)
 		} else {
 			zap.L().Debug("unable to generate update command for identity", zap.String("identity", identity.Name), zap.Error(err))

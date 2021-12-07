@@ -244,9 +244,9 @@ func readViperFlagsWithPrefix(specifiable elemental.AttributeSpecifiable, modelM
 					continue
 				}
 
-				rt := reflect.TypeOf(specifiable.ValueForAttribute(flagName))
+				rt := reflect.TypeOf(specifiable.ValueForAttribute(spec.Name))
 				if rt == nil {
-					return nil
+					return fmt.Errorf("unable to find attribute %s", spec.Name)
 				}
 				rv := reflect.New(rt)
 				if err := json.Unmarshal([]byte(viper.GetString(flagName)), rv.Interface()); err != nil {
@@ -263,10 +263,15 @@ func readViperFlagsWithPrefix(specifiable elemental.AttributeSpecifiable, modelM
 			fv.Set(reflect.ValueOf(specifiable))
 
 		default:
-			rt := reflect.TypeOf(specifiable.ValueForAttribute(flagName))
-			if rt == nil {
-				return nil
+			if !viper.IsSet(flagName) {
+				continue
 			}
+
+			rt := reflect.TypeOf(specifiable.ValueForAttribute(spec.Name))
+			if rt == nil {
+				return fmt.Errorf("unable to find attribute %s", spec.Name)
+			}
+
 			rv := reflect.New(rt)
 			if err := json.Unmarshal([]byte(viper.GetString(flagName)), rv.Interface()); err != nil {
 				return err
@@ -336,7 +341,6 @@ func setViperFlagsWithPrefix(cmd *cobra.Command, specifiable elemental.Attribute
 			cmd.Flags().StringP(flagName, "", "", spec.Description)
 
 		case "ref":
-
 			fv := rv.FieldByName(spec.ConvertedName)
 			instance := reflect.New(fv.Type().Elem())
 
