@@ -176,53 +176,60 @@ func readViperFlags(identifiable elemental.Identifiable, modelManager elemental.
 		return fmt.Errorf("%s is not an AttributeSpecifiable", identifiable.Identity().Name)
 	}
 
-	return readViperFlagsWithPrefix(specifiable, modelManager, prefix)
+	_, err := readViperFlagsWithPrefix(specifiable, modelManager, prefix)
+	return err
 }
 
 // readViperFlags reads all viper flags and fill the identifiable properties.
 // TODO: Make it better and add more types here.
-func readViperFlagsWithPrefix(specifiable elemental.AttributeSpecifiable, modelManager elemental.ModelManager, prefix string) error {
+func readViperFlagsWithPrefix(specifiable elemental.AttributeSpecifiable, modelManager elemental.ModelManager, prefix string) (bool, error) {
+
+	var didSet bool
 
 	rv := reflect.ValueOf(specifiable).Elem()
 
-	for _, spec := range specifiable.AttributeSpecifications() {
+	for _, attrSpec := range specifiable.AttributeSpecifications() {
 
-		if !shouldManageAttribute(spec) {
+		if !shouldManageAttribute(attrSpec) {
 			continue
 		}
 
-		flagName := nameToFlag(spec.Name)
+		flagName := nameToFlag(attrSpec.Name)
 		if prefix != "" {
 			flagName = fmt.Sprintf("%s.%s", prefix, flagName)
 		}
 
-		fv := rv.FieldByName(spec.ConvertedName)
+		fv := rv.FieldByName(attrSpec.ConvertedName)
 
-		switch spec.Type {
+		switch attrSpec.Type {
+
 		case "string", "enum":
 			if !viper.IsSet(flagName) {
 				continue
 			}
 			fv.SetString(viper.GetString(flagName))
+			didSet = true
 
 		case "float64":
 			if !viper.IsSet(flagName) {
 				continue
 			}
-
 			fv.SetFloat(viper.GetFloat64(flagName))
+			didSet = true
 
 		case "boolean":
 			if !viper.IsSet(flagName) {
 				continue
 			}
 			fv.SetBool(viper.GetBool(flagName))
+			didSet = true
 
 		case "integer":
 			if !viper.IsSet(flagName) {
 				continue
 			}
 			fv.SetInt(viper.GetInt64(flagName))
+			didSet = true
 
 		case "time":
 			if !viper.IsSet(flagName) {
@@ -231,56 +238,69 @@ func readViperFlagsWithPrefix(specifiable elemental.AttributeSpecifiable, modelM
 
 			t, err := dateparse.ParseAny(viper.GetString(flagName))
 			if err != nil {
-				return err
+				return false, err
 			}
+
 			fv.Set(reflect.ValueOf(t))
+			didSet = true
 
 		case "ref":
-			instance := reflect.New(fv.Type().Elem())
 
+			instance := reflect.New(fv.Type().Elem())
 			specifiable, ok := instance.Interface().(elemental.AttributeSpecifiable)
+
 			if !ok {
 				if !viper.IsSet(flagName) {
 					continue
 				}
 
-				rt := reflect.TypeOf(specifiable.ValueForAttribute(spec.Name))
+				rt := reflect.TypeOf(specifiable.ValueForAttribute(attrSpec.Name))
 				if rt == nil {
-					return fmt.Errorf("unable to find attribute %s", spec.Name)
+					return false, fmt.Errorf("unable to find attribute %s", attrSpec.Name)
 				}
+
 				rv := reflect.New(rt)
 				if err := json.Unmarshal([]byte(viper.GetString(flagName)), rv.Interface()); err != nil {
-					return err
+					return false, err
 				}
+
 				fv.Set(rv.Elem())
+				didSet = true
+
 				continue
 			}
 
-			err := readViperFlagsWithPrefix(specifiable, modelManager, flagName)
+			innerDidSet, err := readViperFlagsWithPrefix(specifiable, modelManager, flagName)
 			if err != nil {
-				return err
+				return false, err
 			}
-			fv.Set(reflect.ValueOf(specifiable))
+
+			if innerDidSet {
+				fv.Set(reflect.ValueOf(specifiable))
+				didSet = true
+			}
 
 		default:
 			if !viper.IsSet(flagName) {
 				continue
 			}
 
-			rt := reflect.TypeOf(specifiable.ValueForAttribute(spec.Name))
+			rt := reflect.TypeOf(specifiable.ValueForAttribute(attrSpec.Name))
 			if rt == nil {
-				return fmt.Errorf("unable to find attribute %s", spec.Name)
+				return false, fmt.Errorf("unable to find attribute %s", attrSpec.Name)
 			}
 
 			rv := reflect.New(rt)
 			if err := json.Unmarshal([]byte(viper.GetString(flagName)), rv.Interface()); err != nil {
-				return err
+				return false, err
 			}
+
 			fv.Set(rv.Elem())
+			didSet = true
 		}
 	}
 
-	return nil
+	return didSet, nil
 }
 
 // setViperFlags
