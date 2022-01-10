@@ -610,10 +610,8 @@ func openInEditor(
 	switch editor {
 	case "atom", "atom-beta", "code", "code-insiders":
 		params = append(params, "-w")
-	case "vim", "nano":
-	default:
-		return nil, fmt.Errorf("unknown editor %s", editor)
 	}
+
 	params = append(params, file.Name())
 	cmd := exec.Command(editor, params...) /* # nosec G204 */
 	cmd.Stdin = os.Stdin
