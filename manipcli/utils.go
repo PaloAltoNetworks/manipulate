@@ -439,7 +439,7 @@ func readData(
 
 	// reading input-url
 	if url != "" {
-		resp, err := http.Get(url) // nosec
+		resp, err := http.Get(url) /* # nosec G107 */
 		if err != nil {
 			return nil, err
 		}
@@ -615,7 +615,7 @@ func openInEditor(
 		return nil, fmt.Errorf("unknown editor %s", editor)
 	}
 	params = append(params, file.Name())
-	cmd := exec.Command(editor, params...)
+	cmd := exec.Command(editor, params...) /* # nosec G204 */
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	if err = cmd.Run(); err != nil {
