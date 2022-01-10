@@ -439,7 +439,7 @@ func readData(
 
 	// reading input-url
 	if url != "" {
-		resp, err := http.Get(url)
+		resp, err := http.Get(url) // nosec
 		if err != nil {
 			return nil, err
 		}
@@ -608,10 +608,11 @@ func openInEditor(
 
 	var params []string
 	switch editor {
-	case "atom", "atom-beta":
+	case "atom", "atom-beta", "code", "code-insiders":
 		params = append(params, "-w")
-	case "code", "code-insiders":
-		params = append(params, "-w")
+	case "vim", "nano":
+	default:
+		return nil, fmt.Errorf("unknown editor %s", editor)
 	}
 	params = append(params, file.Name())
 	cmd := exec.Command(editor, params...)
