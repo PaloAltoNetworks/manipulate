@@ -19,13 +19,13 @@ import (
 
 	"github.com/Masterminds/sprig"
 	"github.com/araddon/dateparse"
+	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.uber.org/zap"
 	"k8s.io/helm/pkg/strvals"
-	"sigs.k8s.io/yaml"
 )
 
 // prepareAPICACertPool prepares the API cert pool if not empty.

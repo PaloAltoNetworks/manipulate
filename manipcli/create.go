@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/viper"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
-	"sigs.k8s.io/yaml"
+	"github.com/ghodss/yaml"
 )
 
 // generateCreateCommandForIdentity generates the command to create an object based on its identity.
