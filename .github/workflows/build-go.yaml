@@ -20,8 +20,8 @@ jobs:
       matrix:
         go:
           - 1.17
-          - 1.15
           - 1.16
+          
     steps:
       - uses: actions/checkout@v2
 
@@ -37,6 +37,7 @@ jobs:
           # see release notes and this file for detail:
           # https://github.com/golangci/golangci-lint/blob/v1.43.0/.github/workflows/pr.yml#L67-70
           go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.42.1
+          go get github.com/Masterminds/sprig@v2.22.0+incompatible
 
       - name: setup-for-current-go
         if: ${{ matrix.go >= 1.17 }}
