@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
-	"github.com/ghodss/yaml"
 )
 
 // generateCreateCommandForIdentity generates the command to create an object based on its identity.

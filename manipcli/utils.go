@@ -700,7 +700,7 @@ func splitParentInfo(parent string) (string, string, error) {
 	data := strings.Split(parent, "/")
 
 	if len(data) != 2 {
-		return "", "", fmt.Errorf("invalid parent format, use `name/ID`.")
+		return "", "", fmt.Errorf("invalid parent format, use name or ID")
 	}
 
 	return data[0], data[1], nil
