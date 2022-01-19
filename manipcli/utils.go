@@ -546,6 +546,13 @@ func renderTemplate(content string, values interface{}) ([]byte, error) {
 		}
 		return val, nil
 	}
+	funcs["readFile"] = func(path string) (string, error) {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return "", err
+		}
+		return string(data), nil
+	}
 
 	tpl, err := template.New("template").Funcs(funcs).Parse(content)
 	if err != nil {
