@@ -1914,6 +1914,7 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 					context.Background(),
 					ContextOptionOverrideContentType("dawg"),
 					ContextOptionOverrideAccept("mew"),
+					ContextOptionAdditionalHeaders(http.Header{"Hello": {"world"}}),
 				)
 
 				m.prepareHeaders(req, ctx)
@@ -1921,6 +1922,7 @@ func TestHTTP_prepareHeaders(t *testing.T) {
 				Convey("Then header should be correct", func() {
 					So(req.Header.Get("Content-Type"), ShouldEqual, "dawg")
 					So(req.Header.Get("Accept"), ShouldEqual, "mew")
+					So(req.Header.Get("hello"), ShouldEqual, "world")
 				})
 			})
 		})

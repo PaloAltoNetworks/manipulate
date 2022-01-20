@@ -172,4 +172,11 @@ func Test_Options(t *testing.T) {
 		ContextOptionOverrideAccept("chien")(mctx)
 		So(mctx.(opaquer).Opaque()[opaqueKeyOverrideHeaderAccept], ShouldEqual, "chien")
 	})
+
+	Convey("Calling ContextOptionAdditionalHeaders should work", t, func() {
+		h := http.Header{}
+		mctx := manipulate.NewContext(context.Background())
+		ContextOptionAdditionalHeaders(h)(mctx)
+		So(mctx.(opaquer).Opaque()[opaqueKeyAdditionalHeaders], ShouldEqual, h)
+	})
 }

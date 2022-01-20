@@ -201,6 +201,7 @@ func OptionStrongBackoffCurve(curve []time.Duration) Option {
 var (
 	opaqueKeyOverrideHeaderContentType = "maniphttp.opaqueKeyOverrideHeaderContentType"
 	opaqueKeyOverrideHeaderAccept      = "maniphttp.opaqueKeyOverrideHeaderAccept"
+	opaqueKeyAdditionalHeaders         = "maniphttp.opaqueKeyAdditionalHeaders"
 )
 
 type opaquer interface {
@@ -224,5 +225,17 @@ func ContextOptionOverrideAccept(accept string) manipulate.ContextOption {
 
 	return func(c manipulate.Context) {
 		c.(opaquer).Opaque()[opaqueKeyOverrideHeaderAccept] = accept
+	}
+}
+
+// ContextOptionAdditionalHeaders is an advanced feature that allows to inject
+// additional HTTP headers in the request. They will be inserted before traditional
+// headers and after global additional headers.
+// This means you cannot use this option to override headers normally
+// inserted by the manipulator, but you can override the global ones.
+func ContextOptionAdditionalHeaders(headers http.Header) manipulate.ContextOption {
+
+	return func(c manipulate.Context) {
+		c.(opaquer).Opaque()[opaqueKeyAdditionalHeaders] = headers
 	}
 }

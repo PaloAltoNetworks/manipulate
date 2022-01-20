@@ -457,6 +457,12 @@ func (s *httpManipulator) prepareHeaders(request *http.Request, mctx manipulate.
 
 	opaque := mctx.(opaquer).Opaque()
 
+	if value, ok := opaque[opaqueKeyAdditionalHeaders]; ok {
+		for k, v := range value.(http.Header) {
+			request.Header[k] = v
+		}
+	}
+
 	if value, ok := opaque[opaqueKeyOverrideHeaderContentType]; ok {
 		request.Header.Set("Content-Type", value.(string))
 	} else {
