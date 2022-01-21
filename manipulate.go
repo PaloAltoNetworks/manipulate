@@ -119,3 +119,14 @@ type TokenManager interface {
 	// given channel.
 	Run(ctx context.Context, tokenCh chan string)
 }
+
+// A SelfTokenManager is a TokenManager that can use the manipulator it is used
+// with to retrieve a token. Manipulator will call this function passing
+// itself before using any other method of the interface.
+type SelfTokenManager interface {
+
+	// SetManipulator will be called to inject the manipulator.
+	SetManipulator(Manipulator)
+
+	TokenManager
+}

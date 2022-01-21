@@ -130,6 +130,10 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 
 	if m.tokenManager != nil {
 
+		if s, ok := m.tokenManager.(manipulate.SelfTokenManager); ok {
+			s.SetManipulator(m)
+		}
+
 		ictx, cancel := context.WithTimeout(m.ctx, 30*time.Second)
 		defer cancel()
 
