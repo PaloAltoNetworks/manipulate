@@ -137,6 +137,8 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 		ictx, cancel := context.WithTimeout(m.ctx, 30*time.Second)
 		defer cancel()
 
+		m.atomicRenewTokenFunc = elemental.AtomicJob(m.renewToken)
+
 		token, err := m.tokenManager.Issue(ictx)
 		if err != nil {
 			return nil, err
@@ -144,8 +146,6 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 
 		m.username = "Bearer"
 		m.password = token
-
-		m.atomicRenewTokenFunc = elemental.AtomicJob(m.renewToken)
 
 		go func() {
 			tokenCh := make(chan string)
