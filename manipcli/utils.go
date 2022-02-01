@@ -405,24 +405,22 @@ type tplValues struct {
 	Common commonValues
 }
 
-// readData reads the data from a path or a url or stdin
-func readData(
+func ReadData(
+	apiurl string,
+	namespace string,
+	file string,
+	url string,
+	inputData string,
+	valuesFile string,
+	values []string,
+	renderOnly bool,
+	printOnly bool,
 	mandatory bool,
 ) (data []byte, err error) {
 
-	d := viper.GetString(flagInputData)
-	if d != "" {
-		return []byte(d), nil
+	if inputData != "" {
+		return []byte(inputData), nil
 	}
-
-	apiurl := viper.GetString(flagAPI)
-	namespace := viper.GetString(flagNamespace)
-	file := viper.GetString(flagInputFile)
-	url := viper.GetString(flagInputURL)
-	valuesFile := viper.GetString(flagInputValues)
-	values := viper.GetStringSlice(flagInputSet)
-	renderOnly := viper.GetBool(flagRender)
-	printOnly := viper.GetBool(flagPrint)
 
 	if url == "" && file == "" {
 		if mandatory {
@@ -531,6 +529,23 @@ func readData(
 	}
 
 	return result, nil
+}
+
+// readData reads the data from a path or a url or stdin
+func readData(mandatory bool) (data []byte, err error) {
+
+	return ReadData(
+		viper.GetString(flagAPI),
+		viper.GetString(flagNamespace),
+		viper.GetString(flagInputFile),
+		viper.GetString(flagInputURL),
+		viper.GetString(flagInputData),
+		viper.GetString(flagInputValues),
+		viper.GetStringSlice(flagInputSet),
+		viper.GetBool(flagRender),
+		viper.GetBool(flagPrint),
+		mandatory,
+	)
 }
 
 func renderTemplate(content string, values interface{}) ([]byte, error) {

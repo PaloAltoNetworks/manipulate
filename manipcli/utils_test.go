@@ -3,7 +3,10 @@ package manipcli
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -719,6 +722,158 @@ func Test_splitParentInfo(t *testing.T) {
 			}
 			if got1 != tt.wantID {
 				t.Errorf("splitParentInfo() got1 = %v, want %v", got1, tt.wantID)
+			}
+		})
+	}
+}
+
+func TestReadData(t *testing.T) {
+
+	expectedData := `name: chris`
+
+	// Temporary template
+	templateFile, err := os.CreateTemp("", "test-data-template-")
+	if err != nil {
+		panic(err.Error())
+	}
+	defer os.RemoveAll(templateFile.Name())
+
+	_, err = templateFile.Write([]byte("hello {{ .Values.name }}"))
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// Temporary value file
+	valuesFile, err := os.CreateTemp("", "test-data-values-")
+	if err != nil {
+		panic(err.Error())
+	}
+	defer os.RemoveAll(valuesFile.Name())
+
+	_, err = valuesFile.Write([]byte("name: jeanmichel"))
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// Fake http server
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(expectedData)) // nolint: errcheck
+	}))
+	defer ts.Close()
+
+	type args struct {
+		apiurl     string
+		namespace  string
+		file       string
+		url        string
+		inputData  string
+		valuesFile string
+		values     []string
+		renderOnly bool
+		printOnly  bool
+		mandatory  bool
+	}
+	tests := []struct {
+		name     string
+		args     args
+		wantData []byte
+		wantErr  bool
+	}{
+		{
+			"read from input data",
+			args{
+				apiurl:     "https://api.test.com",
+				namespace:  "/test",
+				file:       "",
+				url:        "",
+				inputData:  expectedData,
+				valuesFile: "",
+				values:     []string{},
+				renderOnly: false,
+				printOnly:  false,
+				mandatory:  false,
+			},
+			[]byte(expectedData),
+			false,
+		},
+		{
+			"read from url and return data",
+			args{
+				apiurl:     "https://api.test.com",
+				namespace:  "/test",
+				file:       "",
+				url:        ts.URL,
+				inputData:  "",
+				valuesFile: "",
+				values:     []string{},
+				renderOnly: false,
+				printOnly:  false,
+				mandatory:  false,
+			},
+			[]byte(expectedData),
+			false,
+		},
+		{
+			"read from file without values",
+			args{
+				apiurl:     "https://api.test.com",
+				namespace:  "/test",
+				file:       templateFile.Name(),
+				url:        "",
+				inputData:  "",
+				valuesFile: "",
+				values:     []string{},
+				renderOnly: false,
+				printOnly:  false,
+				mandatory:  false,
+			},
+			[]byte("hello <no value>"),
+			false,
+		},
+		{
+			"read from file with value files",
+			args{
+				apiurl:     "https://api.test.com",
+				namespace:  "/test",
+				file:       templateFile.Name(),
+				url:        "",
+				inputData:  "",
+				valuesFile: valuesFile.Name(),
+				values:     nil,
+				renderOnly: false,
+				printOnly:  false,
+				mandatory:  false,
+			},
+			[]byte("hello jeanmichel"),
+			false,
+		},
+		{
+			"read from file with values override",
+			args{
+				apiurl:     "https://api.test.com",
+				namespace:  "/test",
+				file:       templateFile.Name(),
+				url:        "",
+				inputData:  "",
+				valuesFile: valuesFile.Name(),
+				values:     []string{"name=chris"},
+				renderOnly: false,
+				printOnly:  false,
+				mandatory:  false,
+			},
+			[]byte("hello chris"),
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotData, err := ReadData(tt.args.apiurl, tt.args.namespace, tt.args.file, tt.args.url, tt.args.inputData, tt.args.valuesFile, tt.args.values, tt.args.renderOnly, tt.args.printOnly, tt.args.mandatory)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ReadData() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(gotData, tt.wantData) {
+				t.Errorf("ReadData() = %v, want %v", string(gotData), string(tt.wantData))
 			}
 		})
 	}
