@@ -405,6 +405,8 @@ type tplValues struct {
 	Common commonValues
 }
 
+// ReadData reads data from a template coming from a url or a file.
+// It can get some additional values from different sources (user input, values file or single values).
 func ReadData(
 	apiurl string,
 	namespace string,

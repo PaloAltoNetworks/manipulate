@@ -736,7 +736,7 @@ func TestReadData(t *testing.T) {
 	if err != nil {
 		panic(err.Error())
 	}
-	defer os.RemoveAll(templateFile.Name())
+	defer os.RemoveAll(templateFile.Name()) // nolint
 
 	_, err = templateFile.Write([]byte("hello {{ .Values.name }}"))
 	if err != nil {
@@ -748,7 +748,7 @@ func TestReadData(t *testing.T) {
 	if err != nil {
 		panic(err.Error())
 	}
-	defer os.RemoveAll(valuesFile.Name())
+	defer os.RemoveAll(valuesFile.Name()) // nolint
 
 	_, err = valuesFile.Write([]byte("name: jeanmichel"))
 	if err != nil {
