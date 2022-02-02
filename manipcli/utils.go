@@ -413,7 +413,6 @@ func ReadData(
 	inputData string,
 	valuesFile string,
 	values []string,
-	renderOnly bool,
 	printOnly bool,
 	mandatory bool,
 ) (data []byte, err error) {
@@ -486,9 +485,7 @@ func ReadData(
 	}
 
 	if printOnly {
-		fmt.Println(string(data))
-		flushOutputAndExit(0)
-		return nil, nil
+		return data, nil
 	}
 
 	templateValues := map[string]interface{}{}
@@ -523,18 +520,13 @@ func ReadData(
 		return nil, err
 	}
 
-	if renderOnly {
-		fmt.Println(string(result))
-		flushOutputAndExit(0)
-	}
-
 	return result, nil
 }
 
 // readData reads the data from a path or a url or stdin
 func readData(mandatory bool) (data []byte, err error) {
 
-	return ReadData(
+	data, err = ReadData(
 		viper.GetString(flagAPI),
 		viper.GetString(flagNamespace),
 		viper.GetString(flagInputFile),
@@ -542,10 +534,20 @@ func readData(mandatory bool) (data []byte, err error) {
 		viper.GetString(flagInputData),
 		viper.GetString(flagInputValues),
 		viper.GetStringSlice(flagInputSet),
-		viper.GetBool(flagRender),
 		viper.GetBool(flagPrint),
 		mandatory,
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	if viper.GetBool(flagPrint) || viper.GetBool(flagRender) {
+		fmt.Println(string(data))
+		flushOutputAndExit(0)
+	}
+
+	return data, nil
+
 }
 
 func renderTemplate(content string, values interface{}) ([]byte, error) {

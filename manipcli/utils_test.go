@@ -769,7 +769,6 @@ func TestReadData(t *testing.T) {
 		inputData  string
 		valuesFile string
 		values     []string
-		renderOnly bool
 		printOnly  bool
 		mandatory  bool
 	}
@@ -789,7 +788,6 @@ func TestReadData(t *testing.T) {
 				inputData:  expectedData,
 				valuesFile: "",
 				values:     []string{},
-				renderOnly: false,
 				printOnly:  false,
 				mandatory:  false,
 			},
@@ -806,8 +804,23 @@ func TestReadData(t *testing.T) {
 				inputData:  "",
 				valuesFile: "",
 				values:     []string{},
-				renderOnly: false,
 				printOnly:  false,
+				mandatory:  false,
+			},
+			[]byte(expectedData),
+			false,
+		},
+		{
+			"read from url and return print-only data",
+			args{
+				apiurl:     "https://api.test.com",
+				namespace:  "/test",
+				file:       "",
+				url:        ts.URL,
+				inputData:  "",
+				valuesFile: "",
+				values:     []string{},
+				printOnly:  true,
 				mandatory:  false,
 			},
 			[]byte(expectedData),
@@ -823,12 +836,27 @@ func TestReadData(t *testing.T) {
 				inputData:  "",
 				valuesFile: "",
 				values:     []string{},
-				renderOnly: false,
 				printOnly:  false,
 				mandatory:  false,
 			},
 			[]byte("hello <no value>"),
 			false,
+		},
+		{
+			"read from file without mandatory file",
+			args{
+				apiurl:     "https://api.test.com",
+				namespace:  "/test",
+				file:       "",
+				url:        "",
+				inputData:  "",
+				valuesFile: "",
+				values:     []string{},
+				printOnly:  false,
+				mandatory:  true,
+			},
+			nil,
+			true,
 		},
 		{
 			"read from file with value files",
@@ -840,7 +868,6 @@ func TestReadData(t *testing.T) {
 				inputData:  "",
 				valuesFile: valuesFile.Name(),
 				values:     nil,
-				renderOnly: false,
 				printOnly:  false,
 				mandatory:  false,
 			},
@@ -857,7 +884,6 @@ func TestReadData(t *testing.T) {
 				inputData:  "",
 				valuesFile: valuesFile.Name(),
 				values:     []string{"name=chris"},
-				renderOnly: false,
 				printOnly:  false,
 				mandatory:  false,
 			},
@@ -867,7 +893,7 @@ func TestReadData(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotData, err := ReadData(tt.args.apiurl, tt.args.namespace, tt.args.file, tt.args.url, tt.args.inputData, tt.args.valuesFile, tt.args.values, tt.args.renderOnly, tt.args.printOnly, tt.args.mandatory)
+			gotData, err := ReadData(tt.args.apiurl, tt.args.namespace, tt.args.file, tt.args.url, tt.args.inputData, tt.args.valuesFile, tt.args.values, tt.args.printOnly, tt.args.mandatory)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReadData() error = %v, wantErr %v", err, tt.wantErr)
 				return
