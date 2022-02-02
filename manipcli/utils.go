@@ -405,24 +405,18 @@ type tplValues struct {
 	Common commonValues
 }
 
-// readData reads the data from a path or a url or stdin
-func readData(
+// ReadData reads data from a template coming from a url or a file.
+// It can get some additional values from different sources (user input, values file or single values).
+func ReadData(
+	apiurl string,
+	namespace string,
+	file string,
+	url string,
+	valuesFile string,
+	values []string,
+	printOnly bool,
 	mandatory bool,
 ) (data []byte, err error) {
-
-	d := viper.GetString(flagInputData)
-	if d != "" {
-		return []byte(d), nil
-	}
-
-	apiurl := viper.GetString(flagAPI)
-	namespace := viper.GetString(flagNamespace)
-	file := viper.GetString(flagInputFile)
-	url := viper.GetString(flagInputURL)
-	valuesFile := viper.GetString(flagInputValues)
-	values := viper.GetStringSlice(flagInputSet)
-	renderOnly := viper.GetBool(flagRender)
-	printOnly := viper.GetBool(flagPrint)
 
 	if url == "" && file == "" {
 		if mandatory {
@@ -488,9 +482,7 @@ func readData(
 	}
 
 	if printOnly {
-		fmt.Println(string(data))
-		flushOutputAndExit(0)
-		return nil, nil
+		return data, nil
 	}
 
 	templateValues := map[string]interface{}{}
@@ -525,12 +517,37 @@ func readData(
 		return nil, err
 	}
 
-	if renderOnly {
-		fmt.Println(string(result))
+	return result, nil
+}
+
+// readData reads the data from a path or a url or stdin
+func readData(mandatory bool) (data []byte, err error) {
+
+	if inputData := viper.GetString(flagInputData); inputData != "" {
+		return []byte(inputData), nil
+	}
+
+	data, err = ReadData(
+		viper.GetString(flagAPI),
+		viper.GetString(flagNamespace),
+		viper.GetString(flagInputFile),
+		viper.GetString(flagInputURL),
+		viper.GetString(flagInputValues),
+		viper.GetStringSlice(flagInputSet),
+		viper.GetBool(flagPrint),
+		mandatory,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if viper.GetBool(flagPrint) || viper.GetBool(flagRender) {
+		fmt.Println(string(data))
 		flushOutputAndExit(0)
 	}
 
-	return result, nil
+	return data, nil
+
 }
 
 func renderTemplate(content string, values interface{}) ([]byte, error) {
