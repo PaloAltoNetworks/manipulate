@@ -766,7 +766,6 @@ func TestReadData(t *testing.T) {
 		namespace  string
 		file       string
 		url        string
-		inputData  string
 		valuesFile string
 		values     []string
 		printOnly  bool
@@ -779,29 +778,12 @@ func TestReadData(t *testing.T) {
 		wantErr  bool
 	}{
 		{
-			"read from input data",
-			args{
-				apiurl:     "https://api.test.com",
-				namespace:  "/test",
-				file:       "",
-				url:        "",
-				inputData:  expectedData,
-				valuesFile: "",
-				values:     []string{},
-				printOnly:  false,
-				mandatory:  false,
-			},
-			[]byte(expectedData),
-			false,
-		},
-		{
 			"read from url and return data",
 			args{
 				apiurl:     "https://api.test.com",
 				namespace:  "/test",
 				file:       "",
 				url:        ts.URL,
-				inputData:  "",
 				valuesFile: "",
 				values:     []string{},
 				printOnly:  false,
@@ -817,7 +799,6 @@ func TestReadData(t *testing.T) {
 				namespace:  "/test",
 				file:       "",
 				url:        ts.URL,
-				inputData:  "",
 				valuesFile: "",
 				values:     []string{},
 				printOnly:  true,
@@ -833,7 +814,6 @@ func TestReadData(t *testing.T) {
 				namespace:  "/test",
 				file:       templateFile.Name(),
 				url:        "",
-				inputData:  "",
 				valuesFile: "",
 				values:     []string{},
 				printOnly:  false,
@@ -849,7 +829,6 @@ func TestReadData(t *testing.T) {
 				namespace:  "/test",
 				file:       "",
 				url:        "",
-				inputData:  "",
 				valuesFile: "",
 				values:     []string{},
 				printOnly:  false,
@@ -865,7 +844,6 @@ func TestReadData(t *testing.T) {
 				namespace:  "/test",
 				file:       templateFile.Name(),
 				url:        "",
-				inputData:  "",
 				valuesFile: valuesFile.Name(),
 				values:     nil,
 				printOnly:  false,
@@ -881,7 +859,6 @@ func TestReadData(t *testing.T) {
 				namespace:  "/test",
 				file:       templateFile.Name(),
 				url:        "",
-				inputData:  "",
 				valuesFile: valuesFile.Name(),
 				values:     []string{"name=chris"},
 				printOnly:  false,
@@ -893,7 +870,7 @@ func TestReadData(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotData, err := ReadData(tt.args.apiurl, tt.args.namespace, tt.args.file, tt.args.url, tt.args.inputData, tt.args.valuesFile, tt.args.values, tt.args.printOnly, tt.args.mandatory)
+			gotData, err := ReadData(tt.args.apiurl, tt.args.namespace, tt.args.file, tt.args.url, tt.args.valuesFile, tt.args.values, tt.args.printOnly, tt.args.mandatory)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReadData() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -412,16 +412,11 @@ func ReadData(
 	namespace string,
 	file string,
 	url string,
-	inputData string,
 	valuesFile string,
 	values []string,
 	printOnly bool,
 	mandatory bool,
 ) (data []byte, err error) {
-
-	if inputData != "" {
-		return []byte(inputData), nil
-	}
 
 	if url == "" && file == "" {
 		if mandatory {
@@ -528,12 +523,15 @@ func ReadData(
 // readData reads the data from a path or a url or stdin
 func readData(mandatory bool) (data []byte, err error) {
 
+	if inputData := viper.GetString(flagInputData); inputData != "" {
+		return []byte(inputData), nil
+	}
+
 	data, err = ReadData(
 		viper.GetString(flagAPI),
 		viper.GetString(flagNamespace),
 		viper.GetString(flagInputFile),
 		viper.GetString(flagInputURL),
-		viper.GetString(flagInputData),
 		viper.GetString(flagInputValues),
 		viper.GetStringSlice(flagInputSet),
 		viper.GetBool(flagPrint),
