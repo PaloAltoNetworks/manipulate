@@ -40,6 +40,7 @@ import (
 	"go.aporeto.io/manipulate/internal/idempotency"
 	"go.aporeto.io/manipulate/internal/snip"
 	"go.aporeto.io/manipulate/internal/tracing"
+	"moul.io/http2curl"
 )
 
 const (
@@ -690,6 +691,14 @@ func (s *httpManipulator) send(
 		}
 
 		// We launch the request
+		curlCmd, err := http2curl.GetCurlCommand(request)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Printf("\n======== http Request =======\n")
+		fmt.Printf("\n%s\n", curlCmd)
+		fmt.Printf("\n=========================\n\n")
+
 		response, err := s.client.Do(request)
 
 		if err != nil {
