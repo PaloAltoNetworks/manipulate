@@ -38,6 +38,7 @@ import (
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/backoff"
 	"go.aporeto.io/manipulate/internal/idempotency"
+	"go.aporeto.io/manipulate/internal/k6composer"
 	"go.aporeto.io/manipulate/internal/snip"
 	"go.aporeto.io/manipulate/internal/tracing"
 	"moul.io/http2curl"
@@ -690,17 +691,22 @@ func (s *httpManipulator) send(
 			return nil, err
 		}
 
-		// We launch the request
+		// Print requests in curl format.
 		curlCmd, err := http2curl.GetCurlCommand(request)
 		if err != nil {
 			return nil, err
 		}
-		fmt.Printf("\n======== http Request =======\n")
+		fmt.Printf("\n======== Curl Request =======\n")
 		fmt.Printf("\n%s\n", curlCmd)
 		fmt.Printf("\n=========================\n\n")
 
-		response, err := s.client.Do(request)
+		// Call K6 copier methods.
+		if err := k6composer.K6Copy(request); err != nil {
+			return nil, err
+		}
 
+		// We launch the request
+		response, err := s.client.Do(request)
 		if err != nil {
 
 			// Per doc, client.Do always returns an *url.Error.
