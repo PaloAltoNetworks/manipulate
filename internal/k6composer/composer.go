@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -15,6 +16,7 @@ import (
 )
 
 var mu sync.Mutex
+var k6file *os.File
 
 func init() {
 
@@ -27,6 +29,11 @@ func init() {
 		"",
 	}
 
+	var err error
+	if k6file, err = os.OpenFile("k6-script.js", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0755); err != nil {
+		panic(errors.Wrap(err, "failed to create k6 script"))
+	}
+
 	if err := K6Writer(strings.Join(basestr, "\n")); err != nil {
 		panic(err)
 	}
@@ -34,23 +41,17 @@ func init() {
 
 // K6Writer setups the k6 script for writing.
 func K6Writer(content string) error {
-	var k6file *os.File
-	var err error
 
 	mu.Lock()
 	defer mu.Unlock()
-
-	if k6file, err = os.OpenFile("k6-script.js", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0755); err != nil {
-		return errors.Wrap(err, "failed to create k6 script")
-	}
 
 	if _, err := k6file.WriteString(content); err != nil {
 		return errors.Wrap(err, "failed to write to k6 script")
 	}
 
-	if err := k6file.Close(); err != nil {
-		return errors.Wrap(err, "failed to closed k6 script")
-	}
+	// if err := k6file.Close(); err != nil {
+	// 	return errors.Wrap(err, "failed to closed k6 script")
+	// }
 
 	return nil
 }
@@ -61,7 +62,18 @@ func K6Copy(req *http.Request) error {
 	fmt.Printf("\n======== K6 dump =======\n")
 
 	// Insert the k6 group request.
-	if err := K6Writer(fmt.Sprintf("\n\tgroup('%s %s', function () {", req.Method, req.URL)); err != nil {
+	url := req.URL
+	method := req.Method
+
+	apiPath, err := decodedURI(url)
+	if err != nil {
+		return errors.Wrap(err, "failed to parse url")
+	}
+
+	if err := K6Writer(
+		fmt.Sprintf("\n\tgroup('%s %s', function () {",
+			method,
+			apiPath)); err != nil {
 		return errors.Wrap(err, "failed to create request group")
 	}
 
@@ -76,7 +88,14 @@ func K6Copy(req *http.Request) error {
 		return errors.Wrap(err, "failed to write headers to k6 script")
 	}
 
-	if req.Method == "POST" {
+	switch method {
+
+	case "GET":
+		if err := K6Writer(fmt.Sprintf("\n\tvar response = http.get('%s', params);\n\tcheck(response, { 'status is 200': (response) => response.status === 200, });", url)); err != nil {
+			return errors.Wrap(err, "failed in k6 GET op")
+		}
+
+	case "POST":
 		var data []byte
 		data, err = io.ReadAll(req.Body)
 		if err != nil {
@@ -97,6 +116,7 @@ func K6Copy(req *http.Request) error {
 	return nil
 }
 
+// k6Headers extracts the headers from the request.
 func k6Headers(headers []byte) error {
 
 	if err := K6Writer(fmt.Sprintf("\nvar params = {\n\theaders:%s\n}\n", string(headers))); err != nil {
@@ -104,4 +124,30 @@ func k6Headers(headers []byte) error {
 	}
 
 	return nil
+}
+
+// decodedURL constructs human readable URI by parsing raw url.
+func decodedURI(rawURL *url.URL) (string, error) {
+
+	// Parse url for better readability.
+	parsedURL, err := url.Parse(rawURL.String())
+	if err != nil {
+		return "", errors.Wrap(err, "failed to parse the url")
+	}
+
+	path, err := url.PathUnescape(parsedURL.Path)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to parse url path")
+	}
+
+	query, err := url.QueryUnescape(parsedURL.RawQuery)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to parse url query")
+	}
+
+	if query != "" {
+		path = fmt.Sprintf("%s?%s", path, query)
+	}
+
+	return path, nil
 }
