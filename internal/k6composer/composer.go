@@ -91,30 +91,24 @@ func K6Copy(req *http.Request) error {
 	case "GET":
 		lines = []string{
 			fmt.Sprintf("\n\tvar response = http.get('%s', params);", url),
-			"\tcheck(response, ",
-			"{ 'status is 200': (response) => response.status === 200, }",
+			"\tcheck(response,",
+			"\t\t{ 'status is 200': (response) => response.status === 200, }",
 			"\t);",
 		}
 
 	case "POST":
-		var data []byte
-		data, err = io.ReadAll(req.Body)
+		encodedData, err := b64Body(req)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to encode body")
 		}
-
-		// Re-write the body to original request object.
-		req.Body = ioutil.NopCloser(bytes.NewReader(data))
-
-		encodedData := base64.StdEncoding.EncodeToString(data)
 
 		lines = []string{
 			fmt.Sprintf("\n\tvar postdata = '%s'", encodedData),
 			fmt.Sprintf("\tvar response = http.post('%s', ", url),
 			"encoding.b64decode(postdata, 'std', ''),",
 			"params);",
-			"\tcheck(response, ",
-			"\t{ 'status is 200': (response) => response.status === 200,}",
+			"\tcheck(response,",
+			"\t\t{ 'status is 200': (response) => response.status === 200,}",
 			"\t);",
 		}
 
@@ -122,13 +116,28 @@ func K6Copy(req *http.Request) error {
 		lines = []string{
 			fmt.Sprintf("\n\tvar response = http.del('%s'", url),
 			", null, params);",
-			"\tcheck(response, ",
-			"\t{ 'status is 200': (response) => response.status === 200,",
-			"\t'status is 404': (response) => response.status === 404,}",
+			"\tcheck(response,",
+			"\t\t{ 'status is 200': (response) => response.status === 200,",
+			"\t\t'status is 404': (response) => response.status === 404,}",
 			"\t);",
 		}
 
 	case "PATCH":
+
+		encodedData, err := b64Body(req)
+		if err != nil {
+			return errors.Wrap(err, "failed to encode body in PATCH")
+		}
+
+		lines = []string{
+			fmt.Sprintf("\n\tvar patchdata = '%s'", encodedData),
+			fmt.Sprintf("\tvar response = http.patch('%s', ", url),
+			"encoding.b64decode(patchdata, 'std', ''),",
+			"params);",
+			"\tcheck(response,",
+			"\t\t{ 'status is 200': (response) => response.status === 200,}",
+			"\t);",
+		}
 
 	default:
 		fmt.Printf("unhandled request for method %s", method)
@@ -183,4 +192,18 @@ func decodedURI(rawURL *url.URL) (string, error) {
 	}
 
 	return path, nil
+}
+
+//b64Body encodes the request body in base64 encoding.
+func b64Body(req *http.Request) (string, error) {
+
+	data, err := io.ReadAll(req.Body)
+	if err != nil {
+		return "", err
+	}
+
+	// Re-write the body to original request object.
+	req.Body = ioutil.NopCloser(bytes.NewReader(data))
+
+	return base64.StdEncoding.EncodeToString(data), nil
 }
