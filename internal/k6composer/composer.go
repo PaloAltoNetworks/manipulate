@@ -32,7 +32,7 @@ func init() {
 	}
 
 	var err error
-	if k6file, err = os.OpenFile("k6-script.js", os.O_CREATE|os.O_WRONLY, 0777); err != nil {
+	if k6file, err = os.OpenFile("k6-script.js", os.O_CREATE|os.O_WRONLY, 0755); err != nil {
 		panic(errors.Wrap(err, "failed to create k6 script"))
 	}
 
@@ -84,11 +84,17 @@ func K6Copy(req *http.Request) error {
 	}
 	reqGroup = append(reqGroup, line)
 
+	lines := []string{}
+
 	switch method {
 
 	case "GET":
-		line = fmt.Sprintf("\n\tvar response = http.get('%s', params);\n\tcheck(response, { 'status is 200': (response) => response.status === 200,\n});", url)
-		reqGroup = append(reqGroup, line)
+		lines = []string{
+			fmt.Sprintf("\n\tvar response = http.get('%s', params);", url),
+			"\tcheck(response, ",
+			"{ 'status is 200': (response) => response.status === 200, }",
+			"\t);",
+		}
 
 	case "POST":
 		var data []byte
@@ -101,22 +107,40 @@ func K6Copy(req *http.Request) error {
 		req.Body = ioutil.NopCloser(bytes.NewReader(data))
 
 		encodedData := base64.StdEncoding.EncodeToString(data)
-		line = fmt.Sprintf("\n\tvar postdata = '%s'\n\tvar response = http.post('%s', \nencoding.b64decode(postdata, 'std', ''), \nparams);\n\tcheck(response, { 'status is 200': (response) => response.status === 200,\n});",
-			encodedData, url)
-		reqGroup = append(reqGroup, line)
+
+		lines = []string{
+			fmt.Sprintf("\n\tvar postdata = '%s'", encodedData),
+			fmt.Sprintf("\tvar response = http.post('%s', ", url),
+			"encoding.b64decode(postdata, 'std', ''),",
+			"params);",
+			"\tcheck(response, ",
+			"\t{ 'status is 200': (response) => response.status === 200,}",
+			"\t);",
+		}
 
 	case "DELETE":
+		lines = []string{
+			fmt.Sprintf("\n\tvar response = http.del('%s'", url),
+			", null, params);",
+			"\tcheck(response, ",
+			"\t{ 'status is 200': (response) => response.status === 200,",
+			"\t'status is 404': (response) => response.status === 404,}",
+			"\t);",
+		}
+
 	case "PATCH":
 
 	default:
 		fmt.Printf("unhandled request for method %s", method)
 	}
-	fmt.Printf("\n=========================\n\n")
 
 	// Close the k6 request group.
-	line = "\n});"
-	reqGroup = append(reqGroup, line)
+	lines = append(lines, "});")
+	reqGroup = append(reqGroup, strings.Join(lines, "\n"))
+
 	fmt.Println(strings.Join(reqGroup, ""))
+	fmt.Printf("\n====================\n")
+
 	if err := k6Writer(strings.Join(reqGroup, "")); err != nil {
 		return errors.Wrap(err, "failed write the request group")
 	}
