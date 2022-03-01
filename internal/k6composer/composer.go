@@ -78,6 +78,19 @@ func K6Copy(req *http.Request) error {
 	reqGroup = append(reqGroup,
 		fmt.Sprintf("\n\tgroup('%s %s', function () {", method, apiPath))
 
+	checker := []string{
+		"\tcheck(response,",
+		"\t\t{ 'status is 200': (response) => response.status === 200, }",
+		"\t);",
+		"\tif (response.status !== 200) {",
+		"\t\tconsole.error(`${response.request.method} ${response.request.url},",
+		"\t\tStatus ${response.status},",
+		"\t\tError code: ${response.error_code},",
+		"\t\tError Msg: ${response.error},",
+		"\t\tBody: ${JSON.stringify(response.body)},",
+		"\t`);}",
+	}
+
 	line, err = k6Headers(req.Header)
 	if err != nil {
 		return errors.Wrap(err, "failed to write headers to k6 script")
@@ -85,15 +98,11 @@ func K6Copy(req *http.Request) error {
 	reqGroup = append(reqGroup, line)
 
 	lines := []string{}
-
 	switch method {
 
 	case "GET":
 		lines = []string{
 			fmt.Sprintf("\n\tvar response = http.get('%s', params);", url),
-			"\tcheck(response,",
-			"\t\t{ 'status is 200': (response) => response.status === 200, }",
-			"\t);",
 		}
 
 	case "POST":
@@ -104,22 +113,15 @@ func K6Copy(req *http.Request) error {
 
 		lines = []string{
 			fmt.Sprintf("\n\tvar postdata = '%s'", encodedData),
-			fmt.Sprintf("\tvar response = http.post('%s', ", url),
+			fmt.Sprintf("\tvar response = http.post('%s',", url),
 			"encoding.b64decode(postdata, 'std', ''),",
 			"params);",
-			"\tcheck(response,",
-			"\t\t{ 'status is 200': (response) => response.status === 200,}",
-			"\t);",
 		}
 
 	case "DELETE":
 		lines = []string{
 			fmt.Sprintf("\n\tvar response = http.del('%s'", url),
 			", null, params);",
-			"\tcheck(response,",
-			"\t\t{ 'status is 200': (response) => response.status === 200,",
-			"\t\t'status is 404': (response) => response.status === 404,}",
-			"\t);",
 		}
 
 	case "PATCH":
@@ -131,17 +133,17 @@ func K6Copy(req *http.Request) error {
 
 		lines = []string{
 			fmt.Sprintf("\n\tvar patchdata = '%s'", encodedData),
-			fmt.Sprintf("\tvar response = http.patch('%s', ", url),
+			fmt.Sprintf("\tvar response = http.patch('%s',", url),
 			"encoding.b64decode(patchdata, 'std', ''),",
 			"params);",
-			"\tcheck(response,",
-			"\t\t{ 'status is 200': (response) => response.status === 200,}",
-			"\t);",
 		}
 
 	default:
 		fmt.Printf("unhandled request for method %s", method)
 	}
+
+	// Add checkers.
+	lines = append(lines, strings.Join(checker, "\n"))
 
 	// Close the k6 request group.
 	lines = append(lines, "});")
