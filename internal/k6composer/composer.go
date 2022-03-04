@@ -62,8 +62,6 @@ func k6Writer(content string) error {
 // K6Copy copies the http request for scripting.
 func K6Copy(req *http.Request) error {
 
-	fmt.Printf("\n======== K6 dump =======\n")
-
 	// Insert the k6 group request.
 	url := req.URL
 	method := req.Method
@@ -80,15 +78,17 @@ func K6Copy(req *http.Request) error {
 
 	checker := []string{
 		"\tcheck(response,",
-		"\t\t{ 'status is 200': (response) => response.status === 200, }",
+		"\t\t{ 'status is 200': (response) => response.status === 200,",
+		"\t\t'status is 404': (response) => response.status === 404, }",
 		"\t);",
-		"\tif (response.status !== 200) {",
-		"\t\tconsole.error(`${response.request.method} ${response.request.url},",
-		"\t\tStatus ${response.status},",
-		"\t\tError code: ${response.error_code},",
-		"\t\tError Msg: ${response.error},",
-		"\t\tBody: ${JSON.stringify(response.body)},",
-		"\t`);}",
+		// "\tif (response.status !== 200) {",
+		// "\t\tconsole.log(``),",
+		// "\t\tconsole.error(`${response.request.method} ${response.request.url},",
+		// "\t\tStatus ${response.status},",
+		// "\t\tError code: ${response.error_code},",
+		// "\t\tError Msg: ${response.error},",
+		// "\t\tBody: ${JSON.stringify(response.body)},",
+		// "\t`);}",
 	}
 
 	line, err = k6Headers(req.Header)
@@ -149,6 +149,7 @@ func K6Copy(req *http.Request) error {
 	lines = append(lines, "});")
 	reqGroup = append(reqGroup, strings.Join(lines, "\n"))
 
+	fmt.Printf("\n======== K6 dump =======\n")
 	fmt.Println(strings.Join(reqGroup, ""))
 	fmt.Printf("\n====================\n")
 
