@@ -81,14 +81,6 @@ func K6Copy(req *http.Request) error {
 		"\t\t{ 'status is 200': (response) => response.status === 200,",
 		"\t\t'status is 404': (response) => response.status === 404, }",
 		"\t);",
-		// "\tif (response.status !== 200) {",
-		// "\t\tconsole.log(``),",
-		// "\t\tconsole.error(`${response.request.method} ${response.request.url},",
-		// "\t\tStatus ${response.status},",
-		// "\t\tError code: ${response.error_code},",
-		// "\t\tError Msg: ${response.error},",
-		// "\t\tBody: ${JSON.stringify(response.body)},",
-		// "\t`);}",
 	}
 
 	line, err = k6Headers(req.Header)
