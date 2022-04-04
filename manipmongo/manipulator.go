@@ -148,13 +148,17 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	}
 
 	if mctx.Namespace() != "" {
+		var opts []CompilerOption
+		if attrSpec != nil {
+			opts = append(opts, CompilerOptionTranslateKeysFromSpec(attrSpec))
+		}
 		f := manipulate.NewNamespaceFilter(mctx.Namespace(), mctx.Recursive())
 		if mctx.Propagated() {
 			if fp := manipulate.NewPropagationFilter(mctx.Namespace()); fp != nil {
 				f = elemental.NewFilterComposer().Or(f, fp).Done()
 			}
 		}
-		ands = append(ands, CompileFilter(f))
+		ands = append(ands, CompileFilter(f, opts...))
 	}
 
 	if m.forcedReadFilter != nil {
@@ -311,13 +315,17 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	}
 
 	if mctx.Namespace() != "" {
+		var opts []CompilerOption
+		if attrSpec != nil {
+			opts = append(opts, CompilerOptionTranslateKeysFromSpec(attrSpec))
+		}
 		f := manipulate.NewNamespaceFilter(mctx.Namespace(), mctx.Recursive())
 		if mctx.Propagated() {
 			if fp := manipulate.NewPropagationFilter(mctx.Namespace()); fp != nil {
 				f = elemental.NewFilterComposer().Or(f, fp).Done()
 			}
 		}
-		ands = append(ands, CompileFilter(f))
+		ands = append(ands, CompileFilter(f, opts...))
 	}
 
 	if m.forcedReadFilter != nil {
@@ -479,13 +487,17 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		}
 
 		if mctx.Namespace() != "" {
+			var opts []CompilerOption
+			if attrSpec != nil {
+				opts = append(opts, CompilerOptionTranslateKeysFromSpec(attrSpec))
+			}
 			f := manipulate.NewNamespaceFilter(mctx.Namespace(), mctx.Recursive())
 			if mctx.Propagated() {
 				if fp := manipulate.NewPropagationFilter(mctx.Namespace()); fp != nil {
 					f = elemental.NewFilterComposer().Or(f, fp).Done()
 				}
 			}
-			ands = append(ands, CompileFilter(f))
+			ands = append(ands, CompileFilter(f, opts...))
 		}
 
 		if m.forcedReadFilter != nil {
@@ -596,13 +608,21 @@ func (m *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 	}
 
 	if mctx.Namespace() != "" {
+		var attrSpec elemental.AttributeSpecifiable
+		if m.attributeSpecifiers != nil {
+			attrSpec = m.attributeSpecifiers[object.Identity()]
+		}
+		var opts []CompilerOption
+		if attrSpec != nil {
+			opts = append(opts, CompilerOptionTranslateKeysFromSpec(attrSpec))
+		}
 		f := manipulate.NewNamespaceFilter(mctx.Namespace(), mctx.Recursive())
 		if mctx.Propagated() {
 			if fp := manipulate.NewPropagationFilter(mctx.Namespace()); fp != nil {
 				f = elemental.NewFilterComposer().Or(f, fp).Done()
 			}
 		}
-		ands = append(ands, CompileFilter(f))
+		ands = append(ands, CompileFilter(f, opts...))
 	}
 
 	if m.forcedReadFilter != nil {
@@ -671,13 +691,21 @@ func (m *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 	}
 
 	if mctx.Namespace() != "" {
+		var attrSpec elemental.AttributeSpecifiable
+		if m.attributeSpecifiers != nil {
+			attrSpec = m.attributeSpecifiers[object.Identity()]
+		}
+		var opts []CompilerOption
+		if attrSpec != nil {
+			opts = append(opts, CompilerOptionTranslateKeysFromSpec(attrSpec))
+		}
 		f := manipulate.NewNamespaceFilter(mctx.Namespace(), mctx.Recursive())
 		if mctx.Propagated() {
 			if fp := manipulate.NewPropagationFilter(mctx.Namespace()); fp != nil {
 				f = elemental.NewFilterComposer().Or(f, fp).Done()
 			}
 		}
-		ands = append(ands, CompileFilter(f))
+		ands = append(ands, CompileFilter(f, opts...))
 	}
 
 	if m.forcedReadFilter != nil {
@@ -758,13 +786,17 @@ func (m *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 	}
 
 	if mctx.Namespace() != "" {
+		var opts []CompilerOption
+		if attrSpec != nil {
+			opts = append(opts, CompilerOptionTranslateKeysFromSpec(attrSpec))
+		}
 		f := manipulate.NewNamespaceFilter(mctx.Namespace(), mctx.Recursive())
 		if mctx.Propagated() {
 			if fp := manipulate.NewPropagationFilter(mctx.Namespace()); fp != nil {
 				f = elemental.NewFilterComposer().Or(f, fp).Done()
 			}
 		}
-		ands = append(ands, CompileFilter(f))
+		ands = append(ands, CompileFilter(f, opts...))
 	}
 
 	if m.forcedReadFilter != nil {
@@ -831,13 +863,17 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	}
 
 	if mctx.Namespace() != "" {
+		var opts []CompilerOption
+		if attrSpec != nil {
+			opts = append(opts, CompilerOptionTranslateKeysFromSpec(attrSpec))
+		}
 		f := manipulate.NewNamespaceFilter(mctx.Namespace(), mctx.Recursive())
 		if mctx.Propagated() {
 			if fp := manipulate.NewPropagationFilter(mctx.Namespace()); fp != nil {
 				f = elemental.NewFilterComposer().Or(f, fp).Done()
 			}
 		}
-		ands = append(ands, CompileFilter(f))
+		ands = append(ands, CompileFilter(f, opts...))
 	}
 
 	if m.forcedReadFilter != nil {
