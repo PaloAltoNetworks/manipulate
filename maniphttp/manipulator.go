@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"net/http"
@@ -638,7 +637,7 @@ func (s *httpManipulator) send(
 	var responseBodyCloser io.ReadCloser
 	closeCurrentResponseBody := func() {
 		if responseBodyCloser != nil {
-			_, _ = io.Copy(ioutil.Discard, responseBodyCloser)
+			_, _ = io.Copy(io.Discard, responseBodyCloser)
 			_ = responseBodyCloser.Close() // nolint
 		}
 	}

@@ -73,13 +73,13 @@ func IterUntilFunc(
 // Not that this function cannot populate the data in the identifiable parameter. Instead
 // It will return the destination.
 //
-// Always pass an empty elemental.Identifiables to this function
+// # Always pass an empty elemental.Identifiables to this function
 //
 // For more information, please check IterFunc documentation.
 //
 // Example:
-//     dest, err := Iter(context.Background(), m, mctx, model.ThingsList{}, 100)
 //
+//	dest, err := Iter(context.Background(), m, mctx, model.ThingsList{}, 100)
 func Iter(
 	ctx context.Context,
 	m Manipulator,

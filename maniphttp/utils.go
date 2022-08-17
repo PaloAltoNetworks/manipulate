@@ -16,7 +16,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"strconv"
@@ -94,7 +94,7 @@ func decodeData(r *http.Response, dest interface{}) (err error) {
 	}
 
 	var data []byte
-	if data, err = ioutil.ReadAll(r.Body); err != nil {
+	if data, err = io.ReadAll(r.Body); err != nil {
 		return manipulate.ErrCannotUnmarshal{Err: fmt.Errorf("unable to read data: %w", err)}
 	}
 
