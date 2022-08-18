@@ -15,7 +15,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"testing"
@@ -212,7 +212,7 @@ func Test_decodeData(t *testing.T) {
 	Convey("Given I have valid json data in a reader", t, func() {
 
 		r := &http.Response{
-			Body: ioutil.NopCloser(bytes.NewBuffer([]byte(`{"name":"thename","age": 2}`))),
+			Body: io.NopCloser(bytes.NewBuffer([]byte(`{"name":"thename","age": 2}`))),
 		}
 
 		Convey("When I call decodeData", func() {
@@ -235,7 +235,7 @@ func Test_decodeData(t *testing.T) {
 	Convey("Given I have invalid valid json data in a reader", t, func() {
 
 		r := &http.Response{
-			Body: ioutil.NopCloser(bytes.NewBuffer([]byte(`<html><body>not json</body></html>`))),
+			Body: io.NopCloser(bytes.NewBuffer([]byte(`<html><body>not json</body></html>`))),
 		}
 
 		Convey("When I call decodeData", func() {
@@ -279,7 +279,7 @@ func Test_decodeData(t *testing.T) {
 	Convey("Given I have a reader that returns an errpr", t, func() {
 
 		r := &http.Response{
-			Body: ioutil.NopCloser(&fakeReader{}),
+			Body: io.NopCloser(&fakeReader{}),
 		}
 
 		Convey("When I call decodeData", func() {

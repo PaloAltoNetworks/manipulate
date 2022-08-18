@@ -14,7 +14,6 @@ package push
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"net/url"
 	"strings"
@@ -28,7 +27,7 @@ func decodeErrors(r io.Reader, encoding elemental.EncodingType) error {
 
 	es := []elemental.Error{}
 
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return manipulate.ErrCannotUnmarshal{Err: fmt.Errorf("%w: %s", err, string(data))}
 	}

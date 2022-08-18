@@ -15,13 +15,14 @@
 // Methods can be mocked by using one of the MockXX method.
 //
 // For example:
-//      m := maniptest.NewTestManipulator()
-//      m.MockCreate(t, func(context *manipulate.Context, objects ...elemental.Identifiable) error {
-//          return elemental.NewError("title", "description", "subject", 43)
-//      })
+//
+//	m := maniptest.NewTestManipulator()
+//	m.MockCreate(t, func(context *manipulate.Context, objects ...elemental.Identifiable) error {
+//	    return elemental.NewError("title", "description", "subject", 43)
+//	})
 //
 // The next calls to the Create method will use the given method, in the context of the given *testing.T.
 // If you need to reset the mocked method in the context of the same test, simply do:
 //
-//      m.MockCreate(t, nil)
+//	m.MockCreate(t, nil)
 package maniptest // import "go.aporeto.io/manipulate/maniptest"

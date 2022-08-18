@@ -154,10 +154,11 @@ func OptionSendCredentialsAsCookie(key string) Option {
 // and error it should return.
 //
 // For instance, take the following map:
-//      map[float64]error{
-//          0.10: manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("Oh no!")},
-//          0.25: manipulate.ErrCannotCommunicate{Err: fmt.Errorf("Service is gone")},
-//      }
+//
+//	map[float64]error{
+//	    0.10: manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("Oh no!")},
+//	    0.25: manipulate.ErrCannotCommunicate{Err: fmt.Errorf("Service is gone")},
+//	}
 //
 // It will return manipulate.ErrCannotBuildQuery around 10% of the requests,
 // manipulate.ErrCannotCommunicate around 25% of the requests.

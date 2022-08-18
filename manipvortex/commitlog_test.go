@@ -14,7 +14,6 @@ package manipvortex
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -70,7 +69,7 @@ func Test_newLogWriter(t *testing.T) {
 			c <- e
 			time.Sleep(500 * time.Millisecond)
 
-			data, err := ioutil.ReadFile("test.log")
+			data, err := os.ReadFile("test.log")
 			So(err, ShouldBeNil)
 
 			model := &testDataType{}

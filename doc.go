@@ -28,24 +28,24 @@
 //
 // Example for creating an object:
 //
-//      // Create a User from a generated Elemental model.
-//      user := models.NewUser()
-//      user.FullName, user.Login := "Antoine Mercadal", "primalmotion"
+//	// Create a User from a generated Elemental model.
+//	user := models.NewUser()
+//	user.FullName, user.Login := "Antoine Mercadal", "primalmotion"
 //
-//      // Create Mongo Manipulator.
-//      m := manipmongo.NewMongoManipulator([]{"127.0.0.1"}, "test", "db-username", "db-password", "db-authsource", 512)
+//	// Create Mongo Manipulator.
+//	m := manipmongo.NewMongoManipulator([]{"127.0.0.1"}, "test", "db-username", "db-password", "db-authsource", 512)
 //
-//      // Then create the User.
-//      m.Create(nil, user)
+//	// Then create the User.
+//	m.Create(nil, user)
 //
 // Example for retreving an object:
 //
-//      // Create a Context with a filter.
-//      ctx := manipulate.NewContextWithFilter(
-//          manipulate.NewFilterComposer().WithKey("login").Equals("primalmotion").
-//          Done())
+//	// Create a Context with a filter.
+//	ctx := manipulate.NewContextWithFilter(
+//	    manipulate.NewFilterComposer().WithKey("login").Equals("primalmotion").
+//	    Done())
 //
-//      // Retrieve the users matching the filter.
-//      var users models.UserLists
-//      m.RetrieveMany(ctx, models.UserIdentity, &users)
+//	// Retrieve the users matching the filter.
+//	var users models.UserLists
+//	m.RetrieveMany(ctx, models.UserIdentity, &users)
 package manipulate // import "go.aporeto.io/manipulate"

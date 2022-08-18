@@ -136,13 +136,14 @@ func OptionAttributeEncrypter(enc elemental.AttributeEncrypter) Option {
 // OptionExplain allows to tell manipmongo to explain the query before it
 // runs it for the given identities on the given operations.
 // For example, consider passing:
-//      map[elemental.Identity][]elemental.Operation{
-//          model.ThisIndentity: []elemental.Operation{elemental.OperationRetrieveMany, elemental.OperationCreate},
-//          model.ThatIndentity: []elemental.Operation{}, // or nil
-//      }
 //
-//  This would trigger explanation on retrieveMany and create for model.ThisIndentity
-//  and every operation on model.ThatIndentity.
+//	    map[elemental.Identity][]elemental.Operation{
+//	        model.ThisIndentity: []elemental.Operation{elemental.OperationRetrieveMany, elemental.OperationCreate},
+//	        model.ThatIndentity: []elemental.Operation{}, // or nil
+//	    }
+//
+//	This would trigger explanation on retrieveMany and create for model.ThisIndentity
+//	and every operation on model.ThatIndentity.
 func OptionExplain(explain map[elemental.Identity]map[elemental.Operation]struct{}) Option {
 	return func(c *config) {
 		c.explain = explain

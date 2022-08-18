@@ -24,7 +24,9 @@ import (
 // using reflection and builds an index on that field. The Indexer
 // takes objects that the underlying is string, even though the original
 // type is not string. For example, if you declare a type as
-//     type ABC string
+//
+//	type ABC string
+//
 // then you should use this indexer. It implements the memdb indexer
 // interface.
 type stringBasedFieldIndex struct {
