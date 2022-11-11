@@ -211,7 +211,7 @@ func TestHTTP_New(t *testing.T) {
 
 		Convey("Then err should not be nil", func() {
 			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, "paf")
+			So(err.Error(), ShouldEqual, "unable to call initial tokenmanager.Issue: paf")
 		})
 	})
 }
