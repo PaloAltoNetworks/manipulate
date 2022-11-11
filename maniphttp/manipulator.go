@@ -140,7 +140,7 @@ func New(ctx context.Context, url string, options ...Option) (manipulate.Manipul
 
 		token, err := m.tokenManager.Issue(ictx)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unable to call initial tokenmanager.Issue: %w", err)
 		}
 
 		m.username = "Bearer"
