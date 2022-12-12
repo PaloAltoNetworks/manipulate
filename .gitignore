@@ -9,7 +9,7 @@ vendor/
 *.lock
 testresults.xml
 profile.out
-*.cov
+unit_coverage.out
 artifacts
 remod.dev
 .remod
