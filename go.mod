@@ -3,8 +3,8 @@ module go.aporeto.io/manipulate
 go 1.16
 
 require (
-	go.aporeto.io/elemental v1.100.1-0.20220524204820-ddfa01dc1c96
-	go.aporeto.io/wsc v1.36.1-0.20210528201141-2af38def4959
+	go.aporeto.io/elemental v1.100.1-0.20230120233255-d53c7252f28d
+	go.aporeto.io/wsc v1.36.1-0.20221212182835-206c1bc3fdb1
 )
 
 require (
@@ -30,7 +30,7 @@ require (
 	github.com/spf13/viper v1.7.1
 	go.uber.org/zap v1.19.0
 	golang.org/x/lint v0.0.0-20200130185559-910be7a94367 // indirect
-	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
-	golang.org/x/sys v0.2.0
+	golang.org/x/sync v0.1.0
+	golang.org/x/sys v0.4.0
 	k8s.io/helm v2.17.0+incompatible
 )
