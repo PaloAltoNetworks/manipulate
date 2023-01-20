@@ -8,9 +8,7 @@ require (
 )
 
 require (
-	github.com/Masterminds/goutils v1.1.0 // indirect
-	github.com/Masterminds/semver v1.5.0 // indirect
-	github.com/Masterminds/sprig v2.22.0+incompatible
+	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/araddon/dateparse v0.0.0-20200409225146-d820a6159ab1
 	github.com/ghodss/yaml v1.0.0
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
@@ -21,8 +19,6 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/hashicorp/go-memdb v1.2.1
 	github.com/hokaccha/go-prettyjson v0.0.0-20210113012101-fb4e108d2519
-	github.com/huandu/xstrings v1.3.0 // indirect
-	github.com/imdario/mergo v0.3.8 // indirect
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/opentracing/opentracing-go v1.2.0
@@ -34,7 +30,7 @@ require (
 	github.com/spf13/viper v1.7.1
 	go.uber.org/zap v1.19.0
 	golang.org/x/lint v0.0.0-20200130185559-910be7a94367 // indirect
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20210510120138-977fb7262007
+	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
+	golang.org/x/sys v0.2.0
 	k8s.io/helm v2.17.0+incompatible
 )
