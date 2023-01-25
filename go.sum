@@ -286,11 +286,11 @@ github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
-go.aporeto.io/elemental v1.100.1-0.20230121000747-5a4669c1ae56 h1:yK1GPXFDVSLaJ9X1ndwSeLlAW4pBXXfwSSN1vblWxdM=
-go.aporeto.io/elemental v1.100.1-0.20230121000747-5a4669c1ae56/go.mod h1:V9OmdMKPgCAePXtA89teEevoGlxWWdfxjRynOZu3SAI=
+go.aporeto.io/elemental v1.121.0 h1:cGZI1D4Hthrhzlsn5XHjWF53ADUTD4xDFgMRsdFjdu4=
+go.aporeto.io/elemental v1.121.0/go.mod h1:V9OmdMKPgCAePXtA89teEevoGlxWWdfxjRynOZu3SAI=
 go.aporeto.io/regolithe v1.50.1-0.20230120233001-d168bc52c0c1/go.mod h1:TVCPw4WWHRZrK3LAW5GKWbSopjiXUN9Ux2uUfo+kjPw=
-go.aporeto.io/wsc v1.36.1-0.20230120235706-940550d26c7c h1:nAwsf6WqryKHB+sXSkJY++02leRmHDIfhHnhFx2B9t0=
-go.aporeto.io/wsc v1.36.1-0.20230120235706-940550d26c7c/go.mod h1:Vvz4EtpZx3TVGxWmpwkq8ho4ku9dIa+omfS7I5Ul0hg=
+go.aporeto.io/wsc v1.50.0 h1:qYLIWlc/5Hq0Cc+BL8WEcjXrK0sgYcWTqbzdV2ifDyQ=
+go.aporeto.io/wsc v1.50.0/go.mod h1:Vvz4EtpZx3TVGxWmpwkq8ho4ku9dIa+omfS7I5Ul0hg=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
