@@ -102,7 +102,7 @@ func TestHTTP_New(t *testing.T) {
 
 		Convey("Then the it should implement Manipulator interface", func() {
 
-			var i interface{} = m
+			var i any = m
 			var ok bool
 			_, ok = i.(manipulate.Manipulator)
 			So(ok, ShouldBeTrue)

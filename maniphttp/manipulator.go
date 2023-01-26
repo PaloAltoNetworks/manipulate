@@ -593,7 +593,7 @@ func (s *httpManipulator) send(
 	method string,
 	requrl string,
 	body *bytes.Reader,
-	dest interface{},
+	dest any,
 	sp opentracing.Span,
 ) (*http.Response, error) {
 

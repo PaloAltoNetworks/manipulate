@@ -177,7 +177,7 @@ func massageKey(key string) string {
 	return k
 }
 
-func massageValue(k string, v interface{}) interface{} {
+func massageValue(k string, v any) any {
 
 	if reflect.TypeOf(v).Name() == "Duration" {
 		return time.Now().Add(v.(time.Duration))
@@ -196,10 +196,10 @@ func massageValue(k string, v interface{}) interface{} {
 	return v
 }
 
-func massageValues(key string, values []interface{}) []interface{} {
+func massageValues(key string, values []any) []any {
 
 	k := massageKey(key)
-	out := make([]interface{}, len(values))
+	out := make([]any, len(values))
 
 	for i, v := range values {
 		out[i] = massageValue(k, v)

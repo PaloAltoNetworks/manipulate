@@ -87,7 +87,7 @@ func addQueryParameters(req *http.Request, ctx manipulate.Context) error {
 	return nil
 }
 
-func decodeData(r *http.Response, dest interface{}) (err error) {
+func decodeData(r *http.Response, dest any) (err error) {
 
 	if r.Body == nil {
 		return manipulate.ErrCannotUnmarshal{Err: fmt.Errorf("nil reader")}

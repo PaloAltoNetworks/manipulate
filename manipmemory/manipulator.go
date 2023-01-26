@@ -119,7 +119,7 @@ func (m *memdbManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 		return manipulate.ErrObjectNotFound{Err: fmt.Errorf("cannot find the object for the given ID")}
 	}
 
-	var cp interface{}
+	var cp any
 	if m.noCopy {
 		cp = raw
 	} else {
@@ -151,7 +151,7 @@ func (m *memdbManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		object.SetIdentifier(bson.NewObjectId().Hex())
 	}
 
-	var cp interface{}
+	var cp any
 	if m.noCopy {
 		cp = object
 	} else {
@@ -189,7 +189,7 @@ func (m *memdbManipulator) Update(mctx manipulate.Context, object elemental.Iden
 		return manipulate.ErrObjectNotFound{Err: fmt.Errorf("Cannot find object with given ID")}
 	}
 
-	var cp interface{}
+	var cp any
 	if m.noCopy {
 		cp = object
 	} else {
@@ -422,7 +422,7 @@ func (m *memdbManipulator) retrieveFromFilter(identity string, f *elemental.Filt
 	return nil
 }
 
-func (m *memdbManipulator) retrieveIntersection(identity string, k string, value interface{}, items *map[string]elemental.Identifiable, fullquery bool) error {
+func (m *memdbManipulator) retrieveIntersection(identity string, k string, value any, items *map[string]elemental.Identifiable, fullquery bool) error {
 
 	var iterator memdb.ResultIterator
 	var err error
@@ -446,7 +446,7 @@ func (m *memdbManipulator) retrieveIntersection(identity string, k string, value
 
 	for raw != nil {
 
-		var o interface{}
+		var o any
 		if m.noCopy {
 			o = raw
 		} else {

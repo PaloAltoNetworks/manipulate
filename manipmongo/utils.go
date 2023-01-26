@@ -69,7 +69,7 @@ func applyOrdering(order []string, spec elemental.AttributeSpecifiable) []string
 
 func prepareNextFilter(collection *mgo.Collection, orderingField string, next string) (bson.D, error) {
 
-	var id interface{}
+	var id any
 	if oid, ok := objectid.Parse(next); ok {
 		id = oid
 	} else {

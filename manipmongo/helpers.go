@@ -213,7 +213,7 @@ func SetConsistencyMode(manipulator manipulate.Manipulator, mode mgo.Mode, refre
 // RunQuery runs a function that must run a mongodb operation.
 // It will retry in case of failure. This is an advanced helper can
 // be used when you get a session from using GetDatabase().
-func RunQuery(mctx manipulate.Context, operationFunc func() (interface{}, error), baseRetryInfo RetryInfo) (interface{}, error) {
+func RunQuery(mctx manipulate.Context, operationFunc func() (any, error), baseRetryInfo RetryInfo) (any, error) {
 
 	var try int
 

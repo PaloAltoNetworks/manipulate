@@ -138,7 +138,7 @@ type mcontext struct {
 	username             string
 	version              int
 	writeConsistency     WriteConsistency
-	opaque               map[string]interface{}
+	opaque               map[string]any
 }
 
 // NewContext creates a context with the given ContextOption.
@@ -153,7 +153,7 @@ func NewContext(ctx context.Context, options ...ContextOption) Context {
 		writeConsistency: WriteConsistencyDefault,
 		readConsistency:  ReadConsistencyDefault,
 		retryRatio:       4,
-		opaque:           map[string]interface{}{},
+		opaque:           map[string]any{},
 	}
 
 	for _, opt := range options {
@@ -168,9 +168,9 @@ func NewContext(ctx context.Context, options ...ContextOption) Context {
 // are reset for the derived context.
 func (c *mcontext) Derive(options ...ContextOption) Context {
 
-	var opaqueCopy map[string]interface{}
+	var opaqueCopy map[string]any
 	if len(c.opaque) > 0 {
-		opaqueCopy = make(map[string]interface{}, len(c.opaque))
+		opaqueCopy = make(map[string]any, len(c.opaque))
 		for k, v := range c.opaque {
 			opaqueCopy[k] = v
 		}
@@ -325,7 +325,7 @@ func (c *mcontext) RetryRatio() int64 { return c.retryRatio }
 func (c *mcontext) RetryFunc() RetryFunc { return c.retryFunc }
 
 // Opaque returns the context opaque data.
-func (c *mcontext) Opaque() map[string]interface{} { return c.opaque }
+func (c *mcontext) Opaque() map[string]any { return c.opaque }
 
 // SetDelegationToken sets the delegation token for this context.
 func (c *mcontext) SetCredentials(username, password string) {

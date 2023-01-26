@@ -152,7 +152,7 @@ func TestManipulate_ContextOption(t *testing.T) {
 	})
 
 	Convey("Calling ContextOptionOpaque should work", t, func() {
-		m := map[string]interface{}{}
+		m := map[string]any{}
 		ContextOptionOpaque(m)(mctx.(*mcontext))
 		So(mctx.(*mcontext).opaque, ShouldEqual, m)
 	})

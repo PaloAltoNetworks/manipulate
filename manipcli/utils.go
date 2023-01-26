@@ -401,7 +401,7 @@ type commonValues struct {
 }
 
 type tplValues struct {
-	Values map[string]interface{}
+	Values map[string]any
 	Common commonValues
 }
 
@@ -485,7 +485,7 @@ func ReadData(
 		return data, nil
 	}
 
-	templateValues := map[string]interface{}{}
+	templateValues := map[string]any{}
 
 	// reading input-values
 	if valuesFile != "" {
@@ -550,10 +550,10 @@ func readData(mandatory bool) (data []byte, err error) {
 
 }
 
-func renderTemplate(content string, values interface{}) ([]byte, error) {
+func renderTemplate(content string, values any) ([]byte, error) {
 
 	funcs := sprig.TxtFuncMap()
-	funcs["required"] = func(warn string, val interface{}) (interface{}, error) {
+	funcs["required"] = func(warn string, val any) (any, error) {
 		if val == nil {
 			return val, fmt.Errorf(warn)
 		} else if _, ok := val.(string); ok {

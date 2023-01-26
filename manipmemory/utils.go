@@ -35,7 +35,7 @@ type stringBasedFieldIndex struct {
 }
 
 // FromObject implements the memdb indexer interface.
-func (s *stringBasedFieldIndex) FromObject(obj interface{}) (bool, []byte, error) {
+func (s *stringBasedFieldIndex) FromObject(obj any) (bool, []byte, error) {
 	v := reflect.ValueOf(obj)
 	v = reflect.Indirect(v) // Dereference the pointer if any
 
@@ -60,7 +60,7 @@ func (s *stringBasedFieldIndex) FromObject(obj interface{}) (bool, []byte, error
 }
 
 // FromArgs implements the memdb indexer interface.
-func (s *stringBasedFieldIndex) FromArgs(args ...interface{}) ([]byte, error) {
+func (s *stringBasedFieldIndex) FromArgs(args ...any) ([]byte, error) {
 	if len(args) != 1 {
 		return nil, fmt.Errorf("must provide only a single argument")
 	}
@@ -105,7 +105,7 @@ func createSchema(c *IdentitySchema) (*memdb.TableSchema, error) {
 
 		case IndexTypeBoolean:
 			attr := index.Attribute
-			indexConfig = &memdb.ConditionalIndex{Conditional: func(obj interface{}) (bool, error) {
+			indexConfig = &memdb.ConditionalIndex{Conditional: func(obj any) (bool, error) {
 				return boolIndex(obj, attr)
 			}}
 
@@ -128,7 +128,7 @@ func createSchema(c *IdentitySchema) (*memdb.TableSchema, error) {
 }
 
 // boolIndex is a conditional indexer for booleans.
-func boolIndex(obj interface{}, field string) (bool, error) {
+func boolIndex(obj any, field string) (bool, error) {
 
 	v := reflect.ValueOf(obj)
 	v = reflect.Indirect(v) // Dereference the pointer if any
