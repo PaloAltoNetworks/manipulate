@@ -217,7 +217,7 @@ func Test_decodeData(t *testing.T) {
 
 		Convey("When I call decodeData", func() {
 
-			dest := map[string]interface{}{}
+			dest := map[string]any{}
 			err := decodeData(r, &dest)
 
 			Convey("Then err should be nil", func() {
@@ -240,7 +240,7 @@ func Test_decodeData(t *testing.T) {
 
 		Convey("When I call decodeData", func() {
 
-			dest := map[string]interface{}{}
+			dest := map[string]any{}
 			err := decodeData(r, &dest)
 
 			Convey("Then err should not be nil", func() {
@@ -262,7 +262,7 @@ func Test_decodeData(t *testing.T) {
 				Body: nil,
 			}
 
-			dest := map[string]interface{}{}
+			dest := map[string]any{}
 			err := decodeData(r, &dest)
 
 			Convey("Then err should not be nil", func() {
@@ -284,7 +284,7 @@ func Test_decodeData(t *testing.T) {
 
 		Convey("When I call decodeData", func() {
 
-			dest := map[string]interface{}{}
+			dest := map[string]any{}
 			err := decodeData(r, &dest)
 
 			Convey("Then err should not be nil", func() {

@@ -148,7 +148,7 @@ func TestContext_Derive(t *testing.T) {
 			readConsistency:      ReadConsistencyMonotonic,
 			clientIP:             "1.1.1.1",
 			retryRatio:           12,
-			opaque:               map[string]interface{}{"a": "b"},
+			opaque:               map[string]any{"a": "b"},
 		}
 
 		mctx.SetCount(3)

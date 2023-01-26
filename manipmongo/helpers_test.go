@@ -184,7 +184,7 @@ func TestRunQuery(t *testing.T) {
 		var lastErr error
 		var imctx *manipulate.Context
 
-		f := func() (interface{}, error) { return "hello", nil }
+		f := func() (any, error) { return "hello", nil }
 		rf := func(i manipulate.RetryInfo) error {
 			try = i.Try()
 			lastErr = i.Err()
@@ -250,7 +250,7 @@ func TestRunQuery(t *testing.T) {
 			return nil
 		}
 
-		f := func() (interface{}, error) { return nil, fmt.Errorf("boom") }
+		f := func() (any, error) { return nil, fmt.Errorf("boom") }
 
 		Convey("When I call RunQuery", func() {
 
@@ -312,7 +312,7 @@ func TestRunQuery(t *testing.T) {
 			return nil
 		}
 
-		f := func() (interface{}, error) {
+		f := func() (any, error) {
 			if try == 2 {
 				return "hello", nil
 			}
@@ -370,7 +370,7 @@ func TestRunQuery(t *testing.T) {
 
 	Convey("Given I have query function that returns a net.Error and and a retry func that returns an error", t, func() {
 
-		f := func() (interface{}, error) {
+		f := func() (any, error) {
 			return nil, &net.OpError{Err: fmt.Errorf("hello")}
 		}
 
@@ -404,7 +404,7 @@ func TestRunQuery(t *testing.T) {
 
 	Convey("Given I have query function that returns a net.Error and a retry func and a default retry func", t, func() {
 
-		f := func() (interface{}, error) {
+		f := func() (any, error) {
 			return nil, &net.OpError{Err: fmt.Errorf("hello")}
 		}
 
@@ -439,7 +439,7 @@ func TestRunQuery(t *testing.T) {
 
 	Convey("Given I have query function that returns a net.Error and a default retry func", t, func() {
 
-		f := func() (interface{}, error) {
+		f := func() (any, error) {
 			return nil, &net.OpError{Err: fmt.Errorf("hello")}
 		}
 
@@ -472,7 +472,7 @@ func TestRunQuery(t *testing.T) {
 
 	Convey("Given I have query function that returns a net.Error and never works", t, func() {
 
-		f := func() (interface{}, error) {
+		f := func() (any, error) {
 			return nil, &net.OpError{Err: fmt.Errorf("hello")}
 		}
 

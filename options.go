@@ -200,7 +200,7 @@ func ContextOptionIdempotencyKey(key string) ContextOption {
 
 // ContextOptionOpaque sets a opaque data. Their interpretation
 // depends on the manipulator implementation.
-func ContextOptionOpaque(o map[string]interface{}) ContextOption {
+func ContextOptionOpaque(o map[string]any) ContextOption {
 	return func(c Context) {
 		c.(*mcontext).opaque = o
 	}

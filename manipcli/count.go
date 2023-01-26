@@ -84,7 +84,7 @@ func generateCountCommandForIdentity(identity elemental.Identity, modelManager e
 			result, err := formatMaps(
 				prepareOutputFormat(outputType, formatTypeCount, fFormatTypeColumn, fOutputTemplate),
 				false,
-				[]map[string]interface{}{{formatTypeCount: num}},
+				[]map[string]any{{formatTypeCount: num}},
 			)
 
 			if err != nil {

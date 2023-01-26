@@ -180,7 +180,7 @@ func OptionTranslateKeysFromModelManager(manager elemental.ModelManager) Option 
 const opaqueKeyUpsert = "manipmongo.upsert"
 
 type opaquer interface {
-	Opaque() map[string]interface{}
+	Opaque() map[string]any
 }
 
 // ContextOptionUpsert tells to use upsert for an Create operation.

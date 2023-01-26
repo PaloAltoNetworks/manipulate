@@ -206,7 +206,7 @@ var (
 )
 
 type opaquer interface {
-	Opaque() map[string]interface{}
+	Opaque() map[string]any
 }
 
 // ContextOptionOverrideContentType is an advanced feature that allows you
