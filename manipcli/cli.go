@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -56,7 +57,7 @@ func ManipulatorMakerFromFlags(options ...maniphttp.Option) ManipulatorMaker {
 		api := viper.GetString(flagAPI)
 		token := viper.GetString(flagToken)
 		namespace := viper.GetString(flagNamespace)
-		capath := viper.GetString(flagCACertPath)
+		capath := os.ExpandEnv(viper.GetString(flagCACertPath))
 		skip := viper.GetBool(flagAPISkipVerify)
 		encoding := viper.GetString(flagEncoding)
 
