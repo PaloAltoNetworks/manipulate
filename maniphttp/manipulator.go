@@ -732,7 +732,7 @@ func (s *httpManipulator) send(
 
 				goto RETRY
 
-			case x509.UnknownAuthorityError, x509.CertificateInvalidError, x509.HostnameError:
+			case x509.UnknownAuthorityError, x509.CertificateInvalidError, x509.HostnameError, x509.InsecureAlgorithmError, *tls.CertificateVerificationError:
 				return nil, manipulate.ErrTLS{Err: err}
 
 			default:

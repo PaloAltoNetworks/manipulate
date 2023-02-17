@@ -1152,7 +1152,7 @@ func TestHTTP_send(t *testing.T) {
 
 		So(err, ShouldNotBeNil)
 		So(err, ShouldHaveSameTypeAs, manipulate.ErrTLS{})
-		So(err.Error(), ShouldEqual, fmt.Sprintf(`TLS error: Post "%s": x509: certificate signed by unknown authority`, ts.URL))
+		So(err.Error(), ShouldEqual, fmt.Sprintf(`TLS error: Post "%s": tls: failed to verify certificate: x509: certificate signed by unknown authority`, ts.URL))
 
 		So(resp, ShouldBeNil)
 	})
