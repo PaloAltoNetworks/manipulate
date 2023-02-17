@@ -46,10 +46,6 @@ const (
 	minContextTimeout           = 20 * time.Second
 )
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
 type httpManipulator struct {
 	username             string
 	password             string
