@@ -214,9 +214,9 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	}
 
 	// Query timing limiting
-	q = q.SetMaxTime(defaultGlobalContextTimeout)
-	if d, ok := mctx.Context().Deadline(); ok {
-		q = q.SetMaxTime(time.Until(d))
+	var err error
+	if q, err = setMaxTime(mctx.Context(), q); err != nil {
+		return err
 	}
 
 	if _, err := RunQuery(
@@ -345,9 +345,9 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 		q = q.Select(sels)
 	}
 
-	q = q.SetMaxTime(defaultGlobalContextTimeout)
-	if d, ok := mctx.Context().Deadline(); ok {
-		q = q.SetMaxTime(time.Until(d))
+	var err error
+	if q, err = setMaxTime(mctx.Context(), q); err != nil {
+		return err
 	}
 
 	if _, err := RunQuery(
@@ -887,10 +887,11 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.count.%s", identity.Category))
 	defer sp.Finish()
 
-	q := c.Find(filter).SetMaxTime(defaultGlobalContextTimeout)
+	q := c.Find(filter)
 
-	if d, ok := mctx.Context().Deadline(); ok {
-		q = q.SetMaxTime(time.Until(d))
+	var err error
+	if q, err = setMaxTime(mctx.Context(), q); err != nil {
+		return 0, err
 	}
 
 	out, err := RunQuery(
