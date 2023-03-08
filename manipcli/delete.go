@@ -80,7 +80,7 @@ func generateDeleteCommandForIdentity(identity elemental.Identity, modelManager 
 		},
 	}
 
-	cmd.Flags().StringP(flagForce, "", "", "Force deletion of protected object")
+	cmd.Flags().BoolP(flagForce, "", false, "Force deletion of protected object")
 
 	return cmd, nil
 }

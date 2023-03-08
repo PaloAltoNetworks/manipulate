@@ -132,7 +132,7 @@ func generateUpdateCommandForIdentity(identity elemental.Identity, modelManager 
 		},
 	}
 
-	cmd.Flags().StringP(flagForce, "", "", "Force modification of protected object")
+	cmd.Flags().BoolP(flagForce, "", false, "Force modification of protected object")
 	cmd.Flags().String(flagInputValues, "", "Optional path to file containing templating values")
 	cmd.Flags().StringP(flagInputData, "d", "", "Data of the request body in the JSON format.")
 	cmd.Flags().StringP(flagInputFile, "f", "", "Optional file to read the data from. Set `-` to read from stdin")
