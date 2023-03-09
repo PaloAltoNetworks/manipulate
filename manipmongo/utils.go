@@ -12,11 +12,13 @@
 package manipmongo
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
@@ -385,4 +387,19 @@ func explain(query *mgo.Query, operation elemental.Operation, identity elemental
 	fmt.Println("")
 
 	return nil
+}
+
+func setMaxTime(ctx context.Context, q *mgo.Query) (*mgo.Query, error) {
+
+	d, ok := ctx.Deadline()
+	if !ok {
+		return q.SetMaxTime(defaultGlobalContextTimeout), nil
+	}
+
+	mx := time.Until(d)
+	if err := ctx.Err(); err != nil {
+		return nil, manipulate.ErrCannotBuildQuery{Err: err}
+	}
+
+	return q.SetMaxTime(mx), nil
 }
