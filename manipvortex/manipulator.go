@@ -449,11 +449,7 @@ func (m *vortexManipulator) commitUpstream(ctx context.Context, operation elemen
 	}
 
 	// We always commit if prehook says ok or it is not a managed object.
-	if err := m.methodFromType(operation)(mctx, object); err != nil {
-		return err
-	}
-
-	return nil
+	return m.methodFromType(operation)(mctx, object)
 }
 
 // commitLocal will commit a transaction locally after processing any

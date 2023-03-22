@@ -192,8 +192,8 @@ func BatchCreate(manipulator manipulate.Manipulator, mctx manipulate.Context, ob
 
 	body := bytes.NewBuffer(nil)
 
-	encoder, close := elemental.MakeStreamEncoder(encoding, body)
-	defer close()
+	encoder, closeFunc := elemental.MakeStreamEncoder(encoding, body)
+	defer closeFunc()
 
 	for _, o := range objects {
 		if err := encoder(o); err != nil {

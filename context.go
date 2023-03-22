@@ -184,7 +184,7 @@ func (c *mcontext) Derive(options ...ContextOption) Context {
 		}
 	}
 
-	copy := &mcontext{
+	copied := &mcontext{
 		clientIP:             c.clientIP,
 		createFinalizer:      c.createFinalizer,
 		ctx:                  c.ctx,
@@ -215,10 +215,10 @@ func (c *mcontext) Derive(options ...ContextOption) Context {
 	}
 
 	for _, opt := range options {
-		opt(copy)
+		opt(copied)
 	}
 
-	return copy
+	return copied
 }
 
 // Count returns the count

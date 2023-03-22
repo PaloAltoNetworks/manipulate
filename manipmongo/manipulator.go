@@ -110,8 +110,8 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve_many.%s", dest.Identity().Category))
 	defer sp.Finish()
 
-	c, close := m.makeSession(dest.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
-	defer close()
+	c, closeFunc := m.makeSession(dest.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
+	defer closeFunc()
 
 	var attrSpec elemental.AttributeSpecifiable
 	if m.attributeSpecifiers != nil {
@@ -279,8 +279,8 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 		mctx = manipulate.NewContext(ctx)
 	}
 
-	c, close := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
-	defer close()
+	c, closeFunc := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
+	defer closeFunc()
 
 	var attrSpec elemental.AttributeSpecifiable
 	if m.attributeSpecifiers != nil {
@@ -395,8 +395,8 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		mctx = manipulate.NewContext(ctx)
 	}
 
-	c, close := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
-	defer close()
+	c, closeFunc := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
+	defer closeFunc()
 
 	oid := bson.NewObjectId()
 	object.SetIdentifier(oid.Hex())
@@ -581,8 +581,8 @@ func (m *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 		}
 	}
 
-	c, close := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
-	defer close()
+	c, closeFunc := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
+	defer closeFunc()
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.update.object.%s", object.Identity().Name))
 	sp.LogFields(log.String("object_id", object.Identifier()))
@@ -664,8 +664,8 @@ func (m *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 		mctx = manipulate.NewContext(ctx)
 	}
 
-	c, close := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
-	defer close()
+	c, closeFunc := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
+	defer closeFunc()
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongobject.delete.object.%s", object.Identity().Name))
 	sp.LogFields(log.String("object_id", object.Identifier()))
@@ -755,8 +755,8 @@ func (m *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.delete_many.%s", identity.Name))
 	defer sp.Finish()
 
-	c, close := m.makeSession(identity, mctx.ReadConsistency(), mctx.WriteConsistency())
-	defer close()
+	c, closeFunc := m.makeSession(identity, mctx.ReadConsistency(), mctx.WriteConsistency())
+	defer closeFunc()
 
 	var attrSpec elemental.AttributeSpecifiable
 	if m.attributeSpecifiers != nil {
@@ -832,8 +832,8 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 		mctx = manipulate.NewContext(ctx)
 	}
 
-	c, close := m.makeSession(identity, mctx.ReadConsistency(), mctx.WriteConsistency())
-	defer close()
+	c, closeFunc := m.makeSession(identity, mctx.ReadConsistency(), mctx.WriteConsistency())
+	defer closeFunc()
 
 	var attrSpec elemental.AttributeSpecifiable
 	if m.attributeSpecifiers != nil {
