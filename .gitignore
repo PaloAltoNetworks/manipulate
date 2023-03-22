@@ -10,6 +10,7 @@ vendor/
 testresults.xml
 profile.out
 unit_coverage.out
+cov.report
 artifacts
 remod.dev
 .remod
