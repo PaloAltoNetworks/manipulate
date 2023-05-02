@@ -37,7 +37,7 @@ jobs:
         run: |
           make
 
-      - uses: PaloAltoNetworks/cov@3.0.0
+      - uses: PaloAltoNetworks/cov@gitlab-pipeline-id
         with:
           main_branch: master
           cov_file: unit_coverage.out
