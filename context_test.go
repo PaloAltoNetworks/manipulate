@@ -49,7 +49,7 @@ func TestMethodWithContext(t *testing.T) {
 
 		Convey("Then my context should be initiliazed", func() {
 			So(mctx.Page(), ShouldEqual, 1)
-			So(mctx.Context(), ShouldEqual, ctx)
+			So(mctx.Context(), ShouldResemble, ctx)
 		})
 	})
 
@@ -197,7 +197,7 @@ func TestContext_Derive(t *testing.T) {
 				So(copied.username, ShouldEqual, mctx.username)
 				So(copied.Version(), ShouldEqual, mctx.version)
 				So(copied.WriteConsistency(), ShouldEqual, mctx.writeConsistency)
-				So(copied.Context(), ShouldEqual, mctx.ctx)
+				So(copied.Context(), ShouldResemble, mctx.ctx)
 				So(copied.RetryRatio(), ShouldEqual, mctx.retryRatio)
 				So(copied.Opaque(), ShouldResemble, mctx.opaque)
 				So(copied.Opaque(), ShouldNotEqual, mctx.opaque)
@@ -242,7 +242,7 @@ func TestContext_Derive(t *testing.T) {
 				So(copied.username, ShouldEqual, mctx.username)
 				So(copied.Version(), ShouldEqual, mctx.version)
 				So(copied.WriteConsistency(), ShouldEqual, mctx.writeConsistency)
-				So(copied.Context(), ShouldEqual, mctx.ctx)
+				So(copied.Context(), ShouldResemble, mctx.ctx)
 				So(copied.RetryRatio(), ShouldEqual, mctx.retryRatio)
 				So(copied.Opaque(), ShouldResemble, mctx.opaque)
 				So(copied.Opaque(), ShouldNotEqual, mctx.opaque)
