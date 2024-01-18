@@ -18,10 +18,10 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/backoff"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // DoesDatabaseExist checks if the database used by the given manipulator exists.

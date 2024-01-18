@@ -19,12 +19,12 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/opentracing/opentracing-go/log"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/objectid"
 	"go.aporeto.io/manipulate/internal/tracing"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const defaultGlobalContextTimeout = 60 * time.Second

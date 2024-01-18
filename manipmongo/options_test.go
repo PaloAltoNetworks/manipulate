@@ -17,10 +17,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type fakeSharder struct{}

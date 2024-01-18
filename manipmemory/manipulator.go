@@ -18,11 +18,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/globalsign/mgo/bson"
 	memdb "github.com/hashicorp/go-memdb"
 	"github.com/mitchellh/copystructure"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type txnRegistry map[manipulate.TransactionID]*memdb.Txn
@@ -148,7 +148,7 @@ func (m *memdbManipulator) Create(mctx manipulate.Context, object elemental.Iden
 	// In caching scenarios the identifier is already set. Do not insert
 	// here. We will get it pre-populated from the master DB.
 	if object.Identifier() == "" {
-		object.SetIdentifier(bson.NewObjectId().Hex())
+		object.SetIdentifier(primitive.NewObjectID().Hex())
 	}
 
 	var cp any

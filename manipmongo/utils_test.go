@@ -22,12 +22,12 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/golang/mock/gomock"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/manipmongo/internal"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func Test_HandleQueryError(t *testing.T) {

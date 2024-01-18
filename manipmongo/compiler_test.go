@@ -16,11 +16,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/golang/mock/gomock"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate/manipmongo/internal"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestCompilerOption(t *testing.T) {

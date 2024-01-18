@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate/internal/objectid"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type compilerConfig struct {

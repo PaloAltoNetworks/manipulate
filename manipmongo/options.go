@@ -15,9 +15,9 @@ import (
 	"crypto/tls"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // An Option represents a maniphttp.Manipulator option.
