@@ -25,6 +25,7 @@ import (
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/objectid"
+	mongooptions "go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -390,6 +391,21 @@ func explain(query *mgo.Query, operation elemental.Operation, identity elemental
 }
 
 func setMaxTime(ctx context.Context, q *mgo.Query) (*mgo.Query, error) {
+
+	d, ok := ctx.Deadline()
+	if !ok {
+		return q.SetMaxTime(defaultGlobalContextTimeout), nil
+	}
+
+	mx := time.Until(d)
+	if err := ctx.Err(); err != nil {
+		return nil, manipulate.ErrCannotBuildQuery{Err: err}
+	}
+
+	return q.SetMaxTime(mx), nil
+}
+
+func setQueryMaxTime(ctx context.Context, q *mongooptions.FindOptions) (*mongooptions.FindOptions, error) {
 
 	d, ok := ctx.Deadline()
 	if !ok {

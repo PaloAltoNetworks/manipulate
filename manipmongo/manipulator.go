@@ -13,9 +13,7 @@ package manipmongo
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
-	"net"
 	"time"
 
 	"github.com/globalsign/mgo"
@@ -25,6 +23,11 @@ import (
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/objectid"
 	"go.aporeto.io/manipulate/internal/tracing"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	mongooptions "go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 )
 
 const defaultGlobalContextTimeout = 60 * time.Second
@@ -33,6 +36,8 @@ const defaultGlobalContextTimeout = 60 * time.Second
 type mongoManipulator struct {
 	rootSession         *mgo.Session
 	dbName              string
+	client              *mongo.Client
+	database            *mongo.Database
 	sharder             Sharder
 	defaultRetryFunc    manipulate.RetryFunc
 	forcedReadFilter    bson.D
@@ -49,47 +54,74 @@ func New(url string, db string, options ...Option) (manipulate.TransactionalMani
 		o(cfg)
 	}
 
-	dialInfo, err := mgo.ParseURL(url)
-	if err != nil {
-		return nil, fmt.Errorf("cannot parse mongo url '%s': %s", url, err)
-	}
+	// dialInfo, err := mgo.ParseURL(url)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("cannot parse mongo url '%s': %s", url, err)
+	// }
 
-	dialInfo.Database = db
-	dialInfo.PoolLimit = cfg.poolLimit
-	dialInfo.Username = cfg.username
-	dialInfo.Password = cfg.password
-	dialInfo.Source = cfg.authsource
-	dialInfo.Timeout = cfg.connectTimeout
+	// dialInfo.Database = db
+	// dialInfo.PoolLimit = cfg.poolLimit
+	// dialInfo.Username = cfg.username
+	// dialInfo.Password = cfg.password
+	// dialInfo.Source = cfg.authsource
+	// dialInfo.Timeout = cfg.connectTimeout
+
+	// if cfg.tlsConfig != nil {
+	// 	dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
+	// 		return tls.DialWithDialer(
+	// 			&net.Dialer{
+	// 				Timeout: dialInfo.Timeout,
+	// 			},
+	// 			"tcp",
+	// 			addr.String(),
+	// 			cfg.tlsConfig,
+	// 		)
+	// 	}
+	// } else {
+	// 	dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
+	// 		return net.DialTimeout("tcp", addr.String(), dialInfo.Timeout)
+	// 	}
+	// }
+
+	// session, err := mgo.DialWithInfo(dialInfo)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("cannot connect to mongo url '%s': %s", url, err)
+	// }
+
+	// session.SetSocketTimeout(cfg.socketTimeout)
+	// session.SetMode(convertReadConsistency(cfg.readConsistency), true)
+	// session.SetSafe(convertWriteConsistency(cfg.writeConsistency))
+
+	clientOptions := mongooptions.Client().ApplyURI(url).
+		SetAuth(mongooptions.Credential{
+			Username:   cfg.username,
+			Password:   cfg.password,
+			AuthSource: cfg.authsource,
+		}).
+		SetMaxPoolSize(uint64(cfg.poolLimit)).
+		SetConnectTimeout(cfg.connectTimeout)
 
 	if cfg.tlsConfig != nil {
-		dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
-			return tls.DialWithDialer(
-				&net.Dialer{
-					Timeout: dialInfo.Timeout,
-				},
-				"tcp",
-				addr.String(),
-				cfg.tlsConfig,
-			)
-		}
-	} else {
-		dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
-			return net.DialTimeout("tcp", addr.String(), dialInfo.Timeout)
-		}
+		clientOptions.SetTLSConfig(cfg.tlsConfig)
 	}
 
-	session, err := mgo.DialWithInfo(dialInfo)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.connectTimeout)
+	defer cancel()
+
+	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to mongo url '%s': %s", url, err)
 	}
 
-	session.SetSocketTimeout(cfg.socketTimeout)
-	session.SetMode(convertReadConsistency(cfg.readConsistency), true)
-	session.SetSafe(convertWriteConsistency(cfg.writeConsistency))
+	err = client.Ping(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("cannot ping mongo: %s", err)
+	}
 
 	return &mongoManipulator{
 		dbName:              db,
-		rootSession:         session,
+		client:              client,
+		database:            client.Database(db),
 		sharder:             cfg.sharder,
 		defaultRetryFunc:    cfg.defaultRetryFunc,
 		forcedReadFilter:    cfg.forcedReadFilter,
@@ -111,7 +143,7 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	defer sp.Finish()
 
 	c, closeFunc := m.makeSession(dest.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
-	defer closeFunc()
+	defer closeFunc(mctx.Context())
 
 	var attrSpec elemental.AttributeSpecifiable
 	if m.attributeSpecifiers != nil {
@@ -136,6 +168,7 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	}
 
 	var ands []bson.D
+	var err error
 
 	if m.sharder != nil {
 		sq, err := m.sharder.FilterMany(m, mctx, dest.Identity())
@@ -189,35 +222,67 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	}
 
 	// Query building
-	q := c.Find(filter)
+	findOptions := options.Find()
 
-	// limiting
+	// Limiting
 	if limit := mctx.Limit(); limit > 0 {
-		q = q.Limit(limit)
+		findOptions.SetLimit(int64(limit))
 	} else if pageSize := mctx.PageSize(); pageSize > 0 {
-		q = q.Limit(pageSize)
+		findOptions.SetLimit(int64(pageSize))
 	}
 
 	// Old pagination
 	if p := mctx.Page(); p > 0 {
-		q = q.Skip((p - 1) * mctx.PageSize())
+		findOptions.SetSkip(int64((p - 1) * mctx.PageSize()))
 	}
 
 	// Ordering
-	if len(order) > 0 {
-		q = q.Sort(order...)
-	}
+	// if len(order) > 0 {
+	// 	findOptions.SetSort(bson.D{{Key: order[0], Value: 1}, {Key: order[1], Value: 1}})
+	// }
 
 	// Fields selection
 	if sels := makeFieldsSelector(mctx.Fields(), attrSpec); sels != nil {
-		q = q.Select(sels)
+		findOptions.SetProjection(sels)
 	}
 
 	// Query timing limiting
-	var err error
-	if q, err = setMaxTime(mctx.Context(), q); err != nil {
+	if findOptions, err = setQueryMaxTime(mctx.Context(), findOptions); err != nil {
 		return err
 	}
+
+	q, err := c.Find(mctx.Context(), filter, findOptions)
+	if err != nil {
+		return err
+	}
+	defer q.Close(mctx.Context())
+
+	// // limiting
+	// if limit := mctx.Limit(); limit > 0 {
+	// 	q = q.Limit(limit)
+	// } else if pageSize := mctx.PageSize(); pageSize > 0 {
+	// 	q = q.Limit(pageSize)
+	// }
+
+	// // Old pagination
+	// if p := mctx.Page(); p > 0 {
+	// 	q = q.Skip((p - 1) * mctx.PageSize())
+	// }
+
+	// // Ordering
+	// if len(order) > 0 {
+	// 	q = q.Sort(order...)
+	// }
+
+	// // Fields selection
+	// if sels := makeFieldsSelector(mctx.Fields(), attrSpec); sels != nil {
+	// 	q = q.Select(sels)
+	// }
+
+	// // Query timing limiting
+	// if q, err = setMaxTime(mctx.Context(), q); err != nil {
+	// 	return err
+	// }
 
 	if _, err := RunQuery(
 		mctx,
@@ -227,7 +292,7 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 					return nil, manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("retrievemany: unable to explain: %w", err)}
 				}
 			}
-			return nil, q.All(dest)
+			return nil, q.All(mctx.Context(), dest)
 		},
 		RetryInfo{
 			Operation:        elemental.OperationRetrieveMany,
@@ -280,7 +345,7 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	}
 
 	c, closeFunc := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
-	defer closeFunc()
+	defer closeFunc(mctx.Context())
 
 	var attrSpec elemental.AttributeSpecifiable
 	if m.attributeSpecifiers != nil {
@@ -396,7 +461,7 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 	}
 
 	c, closeFunc := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
-	defer closeFunc()
+	defer closeFunc(mctx.Context())
 
 	oid := bson.NewObjectId()
 	object.SetIdentifier(oid.Hex())
@@ -582,7 +647,7 @@ func (m *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 	}
 
 	c, closeFunc := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
-	defer closeFunc()
+	defer closeFunc(mctx.Context())
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.update.object.%s", object.Identity().Name))
 	sp.LogFields(log.String("object_id", object.Identifier()))
@@ -665,7 +730,7 @@ func (m *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 	}
 
 	c, closeFunc := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
-	defer closeFunc()
+	defer closeFunc(mctx.Context())
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongobject.delete.object.%s", object.Identity().Name))
 	sp.LogFields(log.String("object_id", object.Identifier()))
@@ -756,7 +821,7 @@ func (m *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 	defer sp.Finish()
 
 	c, closeFunc := m.makeSession(identity, mctx.ReadConsistency(), mctx.WriteConsistency())
-	defer closeFunc()
+	defer closeFunc(mctx.Context())
 
 	var attrSpec elemental.AttributeSpecifiable
 	if m.attributeSpecifiers != nil {
@@ -833,7 +898,7 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	}
 
 	c, closeFunc := m.makeSession(identity, mctx.ReadConsistency(), mctx.WriteConsistency())
-	defer closeFunc()
+	defer closeFunc(mctx.Context())
 
 	var attrSpec elemental.AttributeSpecifiable
 	if m.attributeSpecifiers != nil {
@@ -928,7 +993,9 @@ func (m *mongoManipulator) Ping(timeout time.Duration) error {
 	errChannel := make(chan error, 1)
 
 	go func() {
-		errChannel <- m.rootSession.Ping()
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		errChannel <- m.client.Ping(ctx, nil)
 	}()
 
 	select {
@@ -943,15 +1010,30 @@ func (m *mongoManipulator) makeSession(
 	identity elemental.Identity,
 	readConsistency manipulate.ReadConsistency,
 	writeConsistency manipulate.WriteConsistency,
-) (*mgo.Collection, func()) {
+) (*mongo.Collection, func(context.Context)) {
 
-	session := m.rootSession.Copy()
+	// session := m.rootSession.Copy()
 
-	if mrc := convertReadConsistency(readConsistency); mrc != -1 {
-		session.SetMode(mrc, true)
+	// if mrc := convertReadConsistency(readConsistency); mrc != -1 {
+	// 	session.SetMode(mrc, true)
+	// }
+
+	// session.SetSafe(convertWriteConsistency(writeConsistency))
+
+	// return session.DB(m.dbName).C(identity.Name), session.Close
+
+	readConcern := &readconcern.ReadConcern{}
+	writeConcern := &writeconcern.WriteConcern{}
+	opts := options.Collection().
+		SetReadConcern(readConcern).
+		SetWriteConcern(writeConcern)
+
+	session, err := m.client.StartSession()
+	if err != nil {
+		// Handle error
+		return nil, nil
 	}
 
-	session.SetSafe(convertWriteConsistency(writeConsistency))
-
-	return session.DB(m.dbName).C(identity.Name), session.Close
+	collection := m.database.Collection(identity.Name, opts)
+	return collection, session.EndSession
 }
