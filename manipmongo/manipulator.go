@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/opentracing/opentracing-go/log"
 	"go.aporeto.io/elemental"
@@ -538,8 +537,8 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		}
 
 		switch chinfo := info.(type) {
-		case *mgo.ChangeInfo:
-			if noid, ok := chinfo.UpsertedId.(bson.ObjectId); ok {
+		case *mongo.UpdateResult:
+			if noid, ok := chinfo.UpsertedID.(bson.ObjectId); ok {
 				object.SetIdentifier(noid.Hex())
 			}
 		}
