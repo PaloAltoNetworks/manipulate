@@ -520,7 +520,11 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 
 		info, err := RunQuery(
 			mctx,
-			func() (any, error) { return c.Upsert(filter, baseOps) },
+			func() (any, error) {
+				upsertOptions := mongooptions.Update().SetUpsert(true)
+				// Perform the upsert operation
+				return c.UpdateOne(mctx.Context(), filter, baseOps, upsertOptions)
+			},
 			RetryInfo{
 				Operation:        elemental.OperationCreate,
 				Identity:         object.Identity(),
@@ -543,7 +547,7 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 	} else {
 		_, err := RunQuery(
 			mctx,
-			func() (any, error) { return nil, c.Insert(object) },
+			func() (any, error) { return c.InsertOne(mctx.Context(), object) },
 			RetryInfo{
 				Operation:        elemental.OperationCreate,
 				Identity:         object.Identity(),
@@ -645,7 +649,7 @@ func (m *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 
 	if _, err := RunQuery(
 		mctx,
-		func() (any, error) { return nil, c.Update(filter, bson.M{"$set": object}) },
+		func() (any, error) { return c.UpdateOne(mctx.Context(), filter, bson.M{"$set": object}) },
 		RetryInfo{
 			Operation:        elemental.OperationUpdate,
 			Identity:         object.Identity(),
@@ -728,7 +732,7 @@ func (m *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 
 	if _, err := RunQuery(
 		mctx,
-		func() (any, error) { return nil, c.Remove(filter) },
+		func() (any, error) { return c.DeleteOne(mctx.Context(), filter) },
 		RetryInfo{
 			Operation:        elemental.OperationDelete,
 			Identity:         object.Identity(),
@@ -819,7 +823,7 @@ func (m *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 
 	if _, err := RunQuery(
 		mctx,
-		func() (any, error) { return c.RemoveAll(filter) },
+		func() (any, error) { return c.DeleteMany(mctx.Context(), filter) },
 		RetryInfo{
 			Operation:        elemental.OperationDelete, // we miss DeleteMany
 			Identity:         identity,
@@ -897,22 +901,28 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.count.%s", identity.Category))
 	defer sp.Finish()
 
-	q := c.Find(filter)
-
+	findOptions := mongooptions.Find()
 	var err error
-	if q, err = setMaxTime(mctx.Context(), q); err != nil {
+
+	if findOptions, err = setQueryMaxTime(mctx.Context(), findOptions); err != nil {
 		return 0, err
 	}
+
+	cursor, err := c.Find(mctx.Context(), filter, findOptions)
+	if err != nil {
+		return 0, err
+	}
+	defer cursor.Close(mctx.Context())
 
 	out, err := RunQuery(
 		mctx,
 		func() (any, error) {
-			if exp := explainIfNeeded(q, filter, identity, elemental.OperationInfo, m.explain); exp != nil {
+			if exp := explainIfNeeded(c, filter, identity, elemental.OperationInfo, m.explain); exp != nil {
 				if err := exp(); err != nil {
 					return nil, manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("count: unable to explain: %w", err)}
 				}
 			}
-			return q.Count()
+			return c.CountDocuments(mctx.Context(), filter)
 		},
 		RetryInfo{
 			Operation:        elemental.OperationInfo,
