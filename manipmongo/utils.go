@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"strings"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/objectid"
+	"go.mongodb.org/mongo-driver/mongo"
 	mongooptions "go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -70,7 +72,7 @@ func applyOrdering(order []string, spec elemental.AttributeSpecifiable) []string
 	return o
 }
 
-func prepareNextFilter(collection *mgo.Collection, orderingField string, next string) (bson.D, error) {
+func prepareNextFilter(collection *mongo.Collection, orderingField string, next string) (bson.D, error) {
 
 	var id any
 	if oid, ok := objectid.Parse(next); ok {
@@ -100,8 +102,14 @@ func prepareNextFilter(collection *mgo.Collection, orderingField string, next st
 	}
 
 	doc := bson.M{}
-	if err := collection.FindId(id).Select(bson.M{orderingField: 1}).One(&doc); err != nil {
-		return nil, HandleQueryError(err)
+	// if err := collection.FindId(id).Select(bson.M{orderingField: 1}).One(&doc); err != nil {
+	// 	return nil, HandleQueryError(err)
+	// }
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	opts := mongooptions.FindOne().SetProjection(bson.M{"orderingField": 1})
+	if err := collection.FindOne(ctx, bson.M{"_id": id}, opts).Decode(&doc); err != nil {
+		log.Fatal(err)
 	}
 
 	return bson.D{
@@ -329,7 +337,7 @@ func convertWriteConsistency(c manipulate.WriteConsistency) *mgo.Safe {
 }
 
 func explainIfNeeded(
-	query *mgo.Query,
+	collection *mongo.Collection,
 	filter bson.D,
 	identity elemental.Identity,
 	operation elemental.Operation,
@@ -346,20 +354,61 @@ func explainIfNeeded(
 	}
 
 	if len(exp) == 0 {
-		return func() error { return explain(query, operation, identity, filter) }
+		return func() error { return explain(collection, operation, identity, filter) }
 	}
 
 	if _, ok = exp[operation]; ok {
-		return func() error { return explain(query, operation, identity, filter) }
+		return func() error { return explain(collection, operation, identity, filter) }
 	}
 
 	return nil
 }
 
-func explain(query *mgo.Query, operation elemental.Operation, identity elemental.Identity, filter bson.D) error {
+func explain(collection *mongo.Collection, operation elemental.Operation, identity elemental.Identity, filter bson.D) error {
 
-	r := bson.M{}
-	if err := query.Explain(&r); err != nil {
+	// r := bson.M{}
+	// if err := query.Explain(&r); err != nil {
+	// 	return fmt.Errorf("unable to explain: %s", err)
+	// }
+
+	// f := "<none>"
+	// if filter != nil {
+	// 	fdata, err := json.MarshalIndent(filter, "", "  ")
+	// 	if err != nil {
+	// 		return fmt.Errorf("unable to marshal filter: %s", err)
+	// 	}
+	// 	f = string(fdata)
+	// }
+
+	// rdata, err := json.MarshalIndent(r, "", "  ")
+	// if err != nil {
+	// 	return fmt.Errorf("unable to marshal explanation: %s", err)
+	// }
+
+	// fmt.Println("")
+	// fmt.Println("--------------------------------")
+	// fmt.Printf("Operation:  %s\n", operation)
+	// fmt.Printf("Identity:   %s\n", identity.Name)
+	// fmt.Printf("Filter:     %s\n", f)
+	// fmt.Println("Explanation:")
+	// fmt.Println(string(rdata))
+	// fmt.Println("--------------------------------")
+	// fmt.Println("")
+
+	// return nil
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	explainCmd := bson.D{
+		{Name: "explain", Value: bson.D{
+			{Name: "find", Value: collection.Name()},
+			{Name: "filter", Value: filter},
+		}},
+	}
+
+	var result bson.M
+	if err := collection.Database().RunCommand(ctx, explainCmd).Decode(&result); err != nil {
 		return fmt.Errorf("unable to explain: %s", err)
 	}
 
@@ -372,7 +421,7 @@ func explain(query *mgo.Query, operation elemental.Operation, identity elemental
 		f = string(fdata)
 	}
 
-	rdata, err := json.MarshalIndent(r, "", "  ")
+	rdata, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
 		return fmt.Errorf("unable to marshal explanation: %s", err)
 	}

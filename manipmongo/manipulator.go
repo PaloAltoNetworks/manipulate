@@ -251,11 +251,11 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 		return err
 	}
 
-	q, err := c.Find(mctx.Context(), filter, findOptions)
+	cursor, err := c.Find(mctx.Context(), filter, findOptions)
 	if err != nil {
 		return err
 	}
-	defer q.Close(mctx.Context())
+	defer cursor.Close(mctx.Context())
 
 	// // limiting
 	// if limit := mctx.Limit(); limit > 0 {
@@ -287,12 +287,12 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	if _, err := RunQuery(
 		mctx,
 		func() (any, error) {
-			if exp := explainIfNeeded(q, filter, dest.Identity(), elemental.OperationRetrieveMany, m.explain); exp != nil {
+			if exp := explainIfNeeded(c, filter, dest.Identity(), elemental.OperationRetrieveMany, m.explain); exp != nil {
 				if err := exp(); err != nil {
 					return nil, manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("retrievemany: unable to explain: %w", err)}
 				}
 			}
-			return nil, q.All(mctx.Context(), dest)
+			return nil, cursor.All(mctx.Context(), dest)
 		},
 		RetryInfo{
 			Operation:        elemental.OperationRetrieveMany,
