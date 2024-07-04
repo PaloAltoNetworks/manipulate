@@ -23,8 +23,8 @@ import (
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/objectid"
 	"go.aporeto.io/manipulate/internal/tracing"
+
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	mongooptions "go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
@@ -34,7 +34,6 @@ const defaultGlobalContextTimeout = 60 * time.Second
 
 // MongoStore represents a MongoDB session.
 type mongoManipulator struct {
-	rootSession         *mgo.Session
 	dbName              string
 	client              *mongo.Client
 	database            *mongo.Database
@@ -53,44 +52,6 @@ func New(url string, db string, options ...Option) (manipulate.TransactionalMani
 	for _, o := range options {
 		o(cfg)
 	}
-
-	// dialInfo, err := mgo.ParseURL(url)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("cannot parse mongo url '%s': %s", url, err)
-	// }
-
-	// dialInfo.Database = db
-	// dialInfo.PoolLimit = cfg.poolLimit
-	// dialInfo.Username = cfg.username
-	// dialInfo.Password = cfg.password
-	// dialInfo.Source = cfg.authsource
-	// dialInfo.Timeout = cfg.connectTimeout
-
-	// if cfg.tlsConfig != nil {
-	// 	dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
-	// 		return tls.DialWithDialer(
-	// 			&net.Dialer{
-	// 				Timeout: dialInfo.Timeout,
-	// 			},
-	// 			"tcp",
-	// 			addr.String(),
-	// 			cfg.tlsConfig,
-	// 		)
-	// 	}
-	// } else {
-	// 	dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
-	// 		return net.DialTimeout("tcp", addr.String(), dialInfo.Timeout)
-	// 	}
-	// }
-
-	// session, err := mgo.DialWithInfo(dialInfo)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("cannot connect to mongo url '%s': %s", url, err)
-	// }
-
-	// session.SetSocketTimeout(cfg.socketTimeout)
-	// session.SetMode(convertReadConsistency(cfg.readConsistency), true)
-	// session.SetSafe(convertWriteConsistency(cfg.writeConsistency))
 
 	clientOptions := mongooptions.Client().ApplyURI(url).
 		SetAuth(mongooptions.Credential{
@@ -222,7 +183,7 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	}
 
 	// Query building
-	findOptions := options.Find()
+	findOptions := mongooptions.Find()
 
 	// Limiting
 	if limit := mctx.Limit(); limit > 0 {
@@ -237,9 +198,13 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	}
 
 	// Ordering
-	// if len(order) > 0 {
-	// 	findOptions.SetSort(bson.D{{Key: order[0], Value: 1}, {Key: order[1], Value: 1}})
-	// }
+	if len(order) > 0 {
+		var sortFields bson.D
+		for _, field := range order {
+			sortFields = append(sortFields, bson.DocElem{Name: field, Value: 1})
+		}
+		findOptions.SetSort(sortFields)
+	}
 
 	// Fields selection
 	if sels := makeFieldsSelector(mctx.Fields(), attrSpec); sels != nil {
@@ -256,33 +221,6 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 		return err
 	}
 	defer cursor.Close(mctx.Context())
-
-	// // limiting
-	// if limit := mctx.Limit(); limit > 0 {
-	// 	q = q.Limit(limit)
-	// } else if pageSize := mctx.PageSize(); pageSize > 0 {
-	// 	q = q.Limit(pageSize)
-	// }
-
-	// // Old pagination
-	// if p := mctx.Page(); p > 0 {
-	// 	q = q.Skip((p - 1) * mctx.PageSize())
-	// }
-
-	// // Ordering
-	// if len(order) > 0 {
-	// 	q = q.Sort(order...)
-	// }
-
-	// // Fields selection
-	// if sels := makeFieldsSelector(mctx.Fields(), attrSpec); sels != nil {
-	// 	q = q.Select(sels)
-	// }
-
-	// // Query timing limiting
-	// if q, err = setMaxTime(mctx.Context(), q); err != nil {
-	// 	return err
-	// }
 
 	if _, err := RunQuery(
 		mctx,
@@ -405,25 +343,32 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	sp.LogFields(log.String("object_id", object.Identifier()), log.Object("filter", filter))
 	defer sp.Finish()
 
-	q := c.Find(filter)
+	findOptions := mongooptions.Find()
+	var err error
+
 	if sels := makeFieldsSelector(mctx.Fields(), attrSpec); sels != nil {
-		q = q.Select(sels)
+		findOptions.SetProjection(sels)
 	}
 
-	var err error
-	if q, err = setMaxTime(mctx.Context(), q); err != nil {
+	if findOptions, err = setQueryMaxTime(mctx.Context(), findOptions); err != nil {
 		return err
 	}
+
+	cursor, err := c.Find(mctx.Context(), filter, findOptions)
+	if err != nil {
+		return err
+	}
+	defer cursor.Close(mctx.Context())
 
 	if _, err := RunQuery(
 		mctx,
 		func() (any, error) {
-			if exp := explainIfNeeded(q, filter, object.Identity(), elemental.OperationRetrieve, m.explain); exp != nil {
+			if exp := explainIfNeeded(c, filter, object.Identity(), elemental.OperationRetrieve, m.explain); exp != nil {
 				if err := exp(); err != nil {
 					return nil, manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("retrieve: unable to explain: %w", err)}
 				}
 			}
-			return nil, q.One(object)
+			return nil, cursor.Decode(object)
 		},
 		RetryInfo{
 			Operation:        elemental.OperationRetrieve,
@@ -1024,7 +969,7 @@ func (m *mongoManipulator) makeSession(
 
 	readConcern := &readconcern.ReadConcern{}
 	writeConcern := &writeconcern.WriteConcern{}
-	opts := options.Collection().
+	opts := mongooptions.Collection().
 		SetReadConcern(readConcern).
 		SetWriteConcern(writeConcern)
 
