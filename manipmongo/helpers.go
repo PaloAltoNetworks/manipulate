@@ -72,7 +72,7 @@ func CreateIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 
 	collection := m.database.Collection(identity.Name)
 
-	var indexModels []mongo.IndexModel
+	indexModels := make([]mongo.IndexModel, len(indexes))
 	for i, index := range indexes {
 		if index.Name == "" {
 			index.Name = "index_" + identity.Name + "_" + strconv.Itoa(i)
@@ -225,8 +225,11 @@ func SetConsistencyMode(manipulator manipulate.Manipulator, mode mgo.Mode, refre
 		// Set strong consistency using majority read concern and primary read preference
 		opts := options.Client().SetReadConcern(readconcern.Majority()).SetReadPreference(readpref.Primary())
 		if refresh {
-			m.client.Disconnect(context.Background())
 			var err error
+			err = m.client.Disconnect(context.Background())
+			if err != nil {
+				panic(fmt.Sprintf("unable to disconnect for connecting with new consistency mode: %v", err))
+			}
 			m.client, err = mongo.Connect(context.Background(), opts)
 			if err != nil {
 				panic(fmt.Sprintf("unable to reconnect with new consistency mode: %v", err))
@@ -237,8 +240,11 @@ func SetConsistencyMode(manipulator manipulate.Manipulator, mode mgo.Mode, refre
 		// Set monotonic consistency using local read concern and nearest read preference
 		opts := options.Client().SetReadConcern(readconcern.Local()).SetReadPreference(readpref.Nearest())
 		if refresh {
-			m.client.Disconnect(context.Background())
 			var err error
+			err = m.client.Disconnect(context.Background())
+			if err != nil {
+				panic(fmt.Sprintf("unable to disconnect for connecting with new consistency mode: %v", err))
+			}
 			m.client, err = mongo.Connect(context.Background(), opts)
 			if err != nil {
 				panic(fmt.Sprintf("unable to reconnect with new consistency mode: %v", err))
@@ -249,8 +255,11 @@ func SetConsistencyMode(manipulator manipulate.Manipulator, mode mgo.Mode, refre
 		// Set eventual consistency using available read concern and secondaryPreferred read preference
 		opts := options.Client().SetReadConcern(readconcern.Available()).SetReadPreference(readpref.SecondaryPreferred())
 		if refresh {
-			m.client.Disconnect(context.Background())
 			var err error
+			err = m.client.Disconnect(context.Background())
+			if err != nil {
+				panic(fmt.Sprintf("unable to disconnect for connecting with new consistency mode: %v", err))
+			}
 			m.client, err = mongo.Connect(context.Background(), opts)
 			if err != nil {
 				panic(fmt.Sprintf("unable to reconnect with new consistency mode: %v", err))

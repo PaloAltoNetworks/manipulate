@@ -219,7 +219,11 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	if err != nil {
 		return err
 	}
-	defer cursor.Close(mctx.Context())
+	defer func() {
+		if err := cursor.Close(mctx.Context()); err != nil {
+			log.Error(err)
+		}
+	}()
 
 	if _, err := RunQuery(
 		mctx,
@@ -357,7 +361,11 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	if err != nil {
 		return err
 	}
-	defer cursor.Close(mctx.Context())
+	defer func() {
+		if err := cursor.Close(mctx.Context()); err != nil {
+			log.Error(err)
+		}
+	}()
 
 	if _, err := RunQuery(
 		mctx,
@@ -911,7 +919,11 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	if err != nil {
 		return 0, err
 	}
-	defer cursor.Close(mctx.Context())
+	defer func() {
+		if err := cursor.Close(mctx.Context()); err != nil {
+			log.Error(err)
+		}
+	}()
 
 	out, err := RunQuery(
 		mctx,
