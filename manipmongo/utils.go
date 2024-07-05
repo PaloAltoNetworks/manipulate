@@ -306,35 +306,35 @@ func makeFieldsSelector(fields []string, spec elemental.AttributeSpecifiable) bs
 	return sels
 }
 
-func convertReadConsistency(c manipulate.ReadConsistency) mgo.Mode {
-	switch c {
-	case manipulate.ReadConsistencyEventual:
-		return mgo.Eventual
-	case manipulate.ReadConsistencyMonotonic:
-		return mgo.Monotonic
-	case manipulate.ReadConsistencyNearest:
-		return mgo.Nearest
-	case manipulate.ReadConsistencyStrong:
-		return mgo.Strong
-	case manipulate.ReadConsistencyWeakest:
-		return mgo.SecondaryPreferred
-	default:
-		return -1
-	}
-}
+// func convertReadConsistency(c manipulate.ReadConsistency) mgo.Mode {
+// 	switch c {
+// 	case manipulate.ReadConsistencyEventual:
+// 		return mgo.Eventual
+// 	case manipulate.ReadConsistencyMonotonic:
+// 		return mgo.Monotonic
+// 	case manipulate.ReadConsistencyNearest:
+// 		return mgo.Nearest
+// 	case manipulate.ReadConsistencyStrong:
+// 		return mgo.Strong
+// 	case manipulate.ReadConsistencyWeakest:
+// 		return mgo.SecondaryPreferred
+// 	default:
+// 		return -1
+// 	}
+// }
 
-func convertWriteConsistency(c manipulate.WriteConsistency) *mgo.Safe {
-	switch c {
-	case manipulate.WriteConsistencyNone:
-		return nil
-	case manipulate.WriteConsistencyStrong:
-		return &mgo.Safe{WMode: "majority"}
-	case manipulate.WriteConsistencyStrongest:
-		return &mgo.Safe{WMode: "majority", J: true}
-	default:
-		return &mgo.Safe{}
-	}
-}
+// func convertWriteConsistency(c manipulate.WriteConsistency) *mgo.Safe {
+// 	switch c {
+// 	case manipulate.WriteConsistencyNone:
+// 		return nil
+// 	case manipulate.WriteConsistencyStrong:
+// 		return &mgo.Safe{WMode: "majority"}
+// 	case manipulate.WriteConsistencyStrongest:
+// 		return &mgo.Safe{WMode: "majority", J: true}
+// 	default:
+// 		return &mgo.Safe{}
+// 	}
+// }
 
 func explainIfNeeded(
 	collection *mongo.Collection,
