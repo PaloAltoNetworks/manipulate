@@ -211,7 +211,7 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	}
 
 	// Query timing limiting
-	if findOptions, err = setQueryMaxTime(mctx.Context(), findOptions); err != nil {
+	if findOptions, err = setMaxTime(mctx.Context(), findOptions); err != nil {
 		return err
 	}
 
@@ -349,7 +349,7 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 		findOptions.SetProjection(sels)
 	}
 
-	if findOptions, err = setQueryMaxTime(mctx.Context(), findOptions); err != nil {
+	if findOptions, err = setMaxTime(mctx.Context(), findOptions); err != nil {
 		return err
 	}
 
@@ -903,7 +903,7 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	findOptions := mongooptions.Find()
 	var err error
 
-	if findOptions, err = setQueryMaxTime(mctx.Context(), findOptions); err != nil {
+	if findOptions, err = setMaxTime(mctx.Context(), findOptions); err != nil {
 		return 0, err
 	}
 

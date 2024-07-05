@@ -439,22 +439,7 @@ func explain(collection *mongo.Collection, operation elemental.Operation, identi
 	return nil
 }
 
-func setMaxTime(ctx context.Context, q *mgo.Query) (*mgo.Query, error) {
-
-	d, ok := ctx.Deadline()
-	if !ok {
-		return q.SetMaxTime(defaultGlobalContextTimeout), nil
-	}
-
-	mx := time.Until(d)
-	if err := ctx.Err(); err != nil {
-		return nil, manipulate.ErrCannotBuildQuery{Err: err}
-	}
-
-	return q.SetMaxTime(mx), nil
-}
-
-func setQueryMaxTime(ctx context.Context, q *mongooptions.FindOptions) (*mongooptions.FindOptions, error) {
+func setMaxTime(ctx context.Context, q *mongooptions.FindOptions) (*mongooptions.FindOptions, error) {
 
 	d, ok := ctx.Deadline()
 	if !ok {
