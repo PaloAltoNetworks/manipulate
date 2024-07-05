@@ -948,7 +948,7 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 		return 0, err
 	}
 
-	return out.(int), nil
+	return int(out.(int64)), nil
 }
 
 func (m *mongoManipulator) Commit(id manipulate.TransactionID) error { return nil }
