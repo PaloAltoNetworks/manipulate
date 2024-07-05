@@ -19,10 +19,10 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/backoff"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
@@ -110,8 +110,12 @@ func EnsureIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 		if index.Name == "" {
 			index.Name = "index_" + identity.Name + "_" + strconv.Itoa(i)
 		}
+		var keys bson.D
+		for _, key := range index.Key {
+			keys = append(keys, bson.E{Key: key, Value: 1}) // Use 1 for ascending order
+		}
 		indexModel := mongo.IndexModel{
-			Keys:    index.Key,
+			Keys:    keys,
 			Options: options.Index().SetName(index.Name).SetUnique(index.Unique).SetExpireAfterSeconds(int32(index.ExpireAfter.Seconds())),
 		}
 		_, err := collection.Indexes().CreateOne(context.Background(), indexModel)
@@ -123,8 +127,8 @@ func EnsureIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 				if index.ExpireAfter > 0 {
 
 					modifyCmd := bson.D{
-						{Name: "collMod", Value: collection.Name()},
-						{Name: "index", Value: bson.M{"name": index.Name, "expireAfterSeconds": int(index.ExpireAfter.Seconds())}},
+						{Key: "collMod", Value: collection.Name()},
+						{Key: "index", Value: bson.M{"name": index.Name, "expireAfterSeconds": int(index.ExpireAfter.Seconds())}},
 					}
 					err := m.database.RunCommand(context.Background(), modifyCmd).Err()
 					if err != nil {

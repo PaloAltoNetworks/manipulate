@@ -70,7 +70,7 @@ func New(url string, db string, options ...Option) (manipulate.TransactionalMani
 
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
-		return nil, fmt.Errorf("cannot connect to mongo url '%s': %s", url, err)
+		return nil, fmt.Errorf("cannot connect to mongo url using mongo-go-driver'%s': %s", url, err)
 	}
 
 	err = client.Ping(ctx, nil)
