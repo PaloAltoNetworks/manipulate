@@ -132,11 +132,11 @@ func HandleQueryError(err error) error {
 		return manipulate.ErrCannotCommunicate{Err: err}
 	}
 
-	if err == mgo.ErrNotFound {
+	if err == mongo.ErrNoDocuments {
 		return manipulate.ErrObjectNotFound{Err: fmt.Errorf("cannot find the object for the given ID")}
 	}
 
-	if mgo.IsDup(err) {
+	if mongo.IsDuplicateKeyError(err) {
 		return manipulate.ErrConstraintViolation{Err: fmt.Errorf("duplicate key")}
 	}
 
