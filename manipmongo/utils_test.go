@@ -20,11 +20,11 @@ import (
 	"testing"
 
 	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/golang/mock/gomock"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/manipmongo/internal"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 

@@ -16,13 +16,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/opentracing/opentracing-go/log"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/objectid"
 	"go.aporeto.io/manipulate/internal/tracing"
 
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	mongooptions "go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
@@ -178,7 +179,7 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	}
 
 	if len(ands) > 0 {
-		filter = bson.D{{Name: "$and", Value: append(ands, filter)}}
+		filter = bson.D{{Key: "$and", Value: append(ands, filter)}}
 	}
 
 	// Query building
@@ -200,7 +201,7 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	if len(order) > 0 {
 		var sortFields bson.D
 		for _, field := range order {
-			sortFields = append(sortFields, bson.DocElem{Name: field, Value: 1})
+			sortFields = append(sortFields, bson.E{Key: field, Value: 1})
 		}
 		findOptions.SetSort(sortFields)
 	}
@@ -303,9 +304,9 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	}
 
 	if oid, ok := objectid.Parse(object.Identifier()); ok {
-		filter = append(filter, bson.DocElem{Name: "_id", Value: oid})
+		filter = append(filter, bson.E{Key: "_id", Value: oid})
 	} else {
-		filter = append(filter, bson.DocElem{Name: "_id", Value: object.Identifier()})
+		filter = append(filter, bson.E{Key: "_id", Value: object.Identifier()})
 	}
 
 	var ands []bson.D
@@ -339,7 +340,7 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	}
 
 	if len(ands) > 0 {
-		filter = bson.D{{Name: "$and", Value: append(ands, filter)}}
+		filter = bson.D{{Key: "$and", Value: append(ands, filter)}}
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.retrieve.object.%s", object.Identity().Name))
@@ -415,7 +416,7 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 	c, closeFunc := m.makeSession(object.Identity(), mctx.ReadConsistency(), mctx.WriteConsistency())
 	defer closeFunc(mctx.Context())
 
-	oid := bson.NewObjectId()
+	oid := primitive.NewObjectID()
 	object.SetIdentifier(oid.Hex())
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.create.object.%s", object.Identity().Name))
@@ -522,7 +523,7 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		}
 
 		if len(ands) > 0 {
-			filter = bson.D{{Name: "$and", Value: append(ands, filter)}}
+			filter = bson.D{{Key: "$and", Value: append(ands, filter)}}
 		}
 
 		info, err := RunQuery(
@@ -546,7 +547,7 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 
 		switch chinfo := info.(type) {
 		case *mongo.UpdateResult:
-			if noid, ok := chinfo.UpsertedID.(bson.ObjectId); ok {
+			if noid, ok := chinfo.UpsertedID.(primitive.ObjectID); ok {
 				object.SetIdentifier(noid.Hex())
 			}
 		}
@@ -611,9 +612,9 @@ func (m *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 
 	var filter bson.D
 	if oid, ok := objectid.Parse(object.Identifier()); ok {
-		filter = append(filter, bson.DocElem{Name: "_id", Value: oid})
+		filter = append(filter, bson.E{Key: "_id", Value: oid})
 	} else {
-		filter = append(filter, bson.DocElem{Name: "_id", Value: object.Identifier()})
+		filter = append(filter, bson.E{Key: "_id", Value: object.Identifier()})
 	}
 
 	var ands []bson.D
@@ -651,7 +652,7 @@ func (m *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 	}
 
 	if len(ands) > 0 {
-		filter = bson.D{{Name: "$and", Value: append(ands, filter)}}
+		filter = bson.D{{Key: "$and", Value: append(ands, filter)}}
 	}
 
 	if _, err := RunQuery(
@@ -694,9 +695,9 @@ func (m *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 
 	var filter bson.D
 	if oid, ok := objectid.Parse(object.Identifier()); ok {
-		filter = append(filter, bson.DocElem{Name: "_id", Value: oid})
+		filter = append(filter, bson.E{Key: "_id", Value: oid})
 	} else {
-		filter = append(filter, bson.DocElem{Name: "_id", Value: object.Identifier()})
+		filter = append(filter, bson.E{Key: "_id", Value: object.Identifier()})
 	}
 
 	var ands []bson.D
@@ -734,7 +735,7 @@ func (m *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 	}
 
 	if len(ands) > 0 {
-		filter = bson.D{{Name: "$and", Value: append(ands, filter)}}
+		filter = bson.D{{Key: "$and", Value: append(ands, filter)}}
 	}
 
 	if _, err := RunQuery(
@@ -825,7 +826,7 @@ func (m *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 	}
 
 	if len(ands) > 0 {
-		filter = bson.D{{Name: "$and", Value: append(ands, filter)}}
+		filter = bson.D{{Key: "$and", Value: append(ands, filter)}}
 	}
 
 	if _, err := RunQuery(
@@ -902,7 +903,7 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	}
 
 	if len(ands) > 0 {
-		filter = bson.D{{Name: "$and", Value: append(ands, filter)}}
+		filter = bson.D{{Key: "$and", Value: append(ands, filter)}}
 	}
 
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.count.%s", identity.Category))

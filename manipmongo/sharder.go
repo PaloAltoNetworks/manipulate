@@ -12,9 +12,9 @@
 package manipmongo
 
 import (
-	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // A Sharder is the interface of an object that can be use

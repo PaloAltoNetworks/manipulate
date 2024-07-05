@@ -22,10 +22,10 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/objectid"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	mongooptions "go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -84,10 +84,10 @@ func prepareNextFilter(collection *mongo.Collection, orderingField string, next 
 	if orderingField == "" {
 		return bson.D{
 			{
-				Name: "_id",
+				Key: "_id",
 				Value: bson.D{
 					{
-						Name:  "$gt",
+						Key:   "$gt",
 						Value: id,
 					},
 				},
@@ -114,10 +114,10 @@ func prepareNextFilter(collection *mongo.Collection, orderingField string, next 
 
 	return bson.D{
 		{
-			Name: orderingField,
+			Key: orderingField,
 			Value: bson.D{
 				{
-					Name:  comp,
+					Key:   comp,
 					Value: doc[orderingField],
 				},
 			},
@@ -401,9 +401,9 @@ func explain(collection *mongo.Collection, operation elemental.Operation, identi
 	defer cancel()
 
 	explainCmd := bson.D{
-		{Name: "explain", Value: bson.D{
-			{Name: "find", Value: collection.Name()},
-			{Name: "filter", Value: filter},
+		{Key: "explain", Value: bson.D{
+			{Key: "find", Value: collection.Name()},
+			{Key: "filter", Value: filter},
 		}},
 	}
 

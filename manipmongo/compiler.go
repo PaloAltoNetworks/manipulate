@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate/internal/objectid"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type compilerConfig struct {
@@ -82,56 +82,56 @@ func CompileFilter(f *elemental.Filter, opts ...CompilerOption) bson.D {
 				switch b := v.(type) {
 				case bool:
 					if b {
-						items = append(items, bson.D{{Name: k, Value: bson.M{"$eq": v}}})
+						items = append(items, bson.D{{Key: k, Value: bson.M{"$eq": v}}})
 					} else {
 						items = append(
 							items,
 							bson.D{{
-								Name: "$or",
+								Key: "$or",
 								Value: []bson.D{
-									{{Name: k, Value: bson.D{{Name: "$eq", Value: v}}}},
-									{{Name: k, Value: bson.D{{Name: "$exists", Value: false}}}},
+									{{Key: k, Value: bson.D{{Key: "$eq", Value: v}}}},
+									{{Key: k, Value: bson.D{{Key: "$exists", Value: false}}}},
 								},
 							}},
 						)
 					}
 				default:
-					items = append(items, bson.D{{Name: k, Value: bson.D{{Name: "$eq", Value: massageValue(k, v)}}}})
+					items = append(items, bson.D{{Key: k, Value: bson.D{{Key: "$eq", Value: massageValue(k, v)}}}})
 				}
 
 			case elemental.NotEqualComparator:
-				items = append(items, bson.D{{Name: k, Value: bson.D{{Name: "$ne", Value: massageValue(k, f.Values()[i][0])}}}})
+				items = append(items, bson.D{{Key: k, Value: bson.D{{Key: "$ne", Value: massageValue(k, f.Values()[i][0])}}}})
 
 			case elemental.InComparator, elemental.ContainComparator:
-				items = append(items, bson.D{{Name: k, Value: bson.D{{Name: "$in", Value: massageValues(k, f.Values()[i])}}}})
+				items = append(items, bson.D{{Key: k, Value: bson.D{{Key: "$in", Value: massageValues(k, f.Values()[i])}}}})
 
 			case elemental.NotInComparator, elemental.NotContainComparator:
-				items = append(items, bson.D{{Name: k, Value: bson.D{{Name: "$nin", Value: massageValues(k, f.Values()[i])}}}})
+				items = append(items, bson.D{{Key: k, Value: bson.D{{Key: "$nin", Value: massageValues(k, f.Values()[i])}}}})
 
 			case elemental.GreaterOrEqualComparator:
-				items = append(items, bson.D{{Name: k, Value: bson.D{{Name: "$gte", Value: massageValue(k, f.Values()[i][0])}}}})
+				items = append(items, bson.D{{Key: k, Value: bson.D{{Key: "$gte", Value: massageValue(k, f.Values()[i][0])}}}})
 
 			case elemental.GreaterComparator:
-				items = append(items, bson.D{{Name: k, Value: bson.D{{Name: "$gt", Value: massageValue(k, f.Values()[i][0])}}}})
+				items = append(items, bson.D{{Key: k, Value: bson.D{{Key: "$gt", Value: massageValue(k, f.Values()[i][0])}}}})
 
 			case elemental.LesserOrEqualComparator:
-				items = append(items, bson.D{{Name: k, Value: bson.D{{Name: "$lte", Value: massageValue(k, f.Values()[i][0])}}}})
+				items = append(items, bson.D{{Key: k, Value: bson.D{{Key: "$lte", Value: massageValue(k, f.Values()[i][0])}}}})
 
 			case elemental.LesserComparator:
-				items = append(items, bson.D{{Name: k, Value: bson.D{{Name: "$lt", Value: massageValue(k, f.Values()[i][0])}}}})
+				items = append(items, bson.D{{Key: k, Value: bson.D{{Key: "$lt", Value: massageValue(k, f.Values()[i][0])}}}})
 
 			case elemental.ExistsComparator:
-				items = append(items, bson.D{{Name: k, Value: bson.D{{Name: "$exists", Value: true}}}})
+				items = append(items, bson.D{{Key: k, Value: bson.D{{Key: "$exists", Value: true}}}})
 
 			case elemental.NotExistsComparator:
-				items = append(items, bson.D{{Name: k, Value: bson.D{{Name: "$exists", Value: false}}}})
+				items = append(items, bson.D{{Key: k, Value: bson.D{{Key: "$exists", Value: false}}}})
 
 			case elemental.MatchComparator:
 				dest := []bson.D{}
 				for _, v := range f.Values()[i] {
-					dest = append(dest, bson.D{{Name: k, Value: bson.D{{Name: "$regex", Value: v}}}})
+					dest = append(dest, bson.D{{Key: k, Value: bson.D{{Key: "$regex", Value: v}}}})
 				}
-				items = append(items, bson.D{{Name: "$or", Value: dest}})
+				items = append(items, bson.D{{Key: "$or", Value: dest}})
 			}
 
 			ands = append(ands, items...)
@@ -141,20 +141,20 @@ func CompileFilter(f *elemental.Filter, opts ...CompilerOption) bson.D {
 			for _, sub := range f.AndFilters()[i] {
 				subs = append(subs, CompileFilter(sub, opts...))
 			}
-			ands = append(ands, bson.D{{Name: "$and", Value: subs}})
+			ands = append(ands, bson.D{{Key: "$and", Value: subs}})
 
 		case elemental.OrFilterOperator:
 			subs := []bson.D{}
 			for _, sub := range f.OrFilters()[i] {
 				subs = append(subs, CompileFilter(sub, opts...))
 			}
-			ands = append(ands, bson.D{{Name: "$or", Value: subs}})
+			ands = append(ands, bson.D{{Key: "$or", Value: subs}})
 		}
 	}
 
 	return bson.D{
 		{
-			Name:  "$and",
+			Key:   "$and",
 			Value: ands,
 		},
 	}
