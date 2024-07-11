@@ -79,7 +79,7 @@ func CreateIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 		}
 		indexModels = append(indexModels, mongo.IndexModel{
 			Keys:    index.Key,
-			Options: options.Index().SetName(index.Name).SetUnique(index.Unique).SetExpireAfterSeconds(int32(index.ExpireAfter.Seconds())),
+			Options: options.Index().SetName(index.Name).SetUnique(index.Unique).SetSparse(index.Sparse).SetExpireAfterSeconds(int32(index.ExpireAfter.Seconds())),
 		})
 	}
 	_, err := collection.Indexes().CreateMany(context.Background(), indexModels)
@@ -116,7 +116,7 @@ func EnsureIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 		}
 		indexModel := mongo.IndexModel{
 			Keys:    keys,
-			Options: options.Index().SetName(index.Name).SetUnique(index.Unique).SetExpireAfterSeconds(int32(index.ExpireAfter.Seconds())),
+			Options: options.Index().SetName(index.Name).SetUnique(index.Unique).SetSparse(index.Sparse).SetExpireAfterSeconds(int32(index.ExpireAfter.Seconds())),
 		}
 		_, err := collection.Indexes().CreateOne(context.Background(), indexModel)
 		if err != nil {
