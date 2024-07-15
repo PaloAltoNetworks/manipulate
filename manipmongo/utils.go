@@ -453,3 +453,18 @@ func setMaxTime(ctx context.Context, q *mongooptions.FindOptions) (*mongooptions
 
 	return q.SetMaxTime(mx), nil
 }
+
+func setFindOneMaxTime(ctx context.Context, q *mongooptions.FindOneOptions) (*mongooptions.FindOneOptions, error) {
+
+	d, ok := ctx.Deadline()
+	if !ok {
+		return q.SetMaxTime(defaultGlobalContextTimeout), nil
+	}
+
+	mx := time.Until(d)
+	if err := ctx.Err(); err != nil {
+		return nil, manipulate.ErrCannotBuildQuery{Err: err}
+	}
+
+	return q.SetMaxTime(mx), nil
+}

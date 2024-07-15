@@ -347,26 +347,18 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	sp.LogFields(log.String("object_id", object.Identifier()), log.Object("filter", filter))
 	defer sp.Finish()
 
-	findOptions := mongooptions.Find()
+	findOptions := mongooptions.FindOne()
 	var err error
 
 	if sels := makeFieldsSelector(mctx.Fields(), attrSpec); sels != nil {
 		findOptions.SetProjection(sels)
 	}
 
-	if findOptions, err = setMaxTime(mctx.Context(), findOptions); err != nil {
+	if findOptions, err = setFindOneMaxTime(mctx.Context(), findOptions); err != nil {
 		return err
 	}
 
-	cursor, err := c.Find(mctx.Context(), filter, findOptions)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := cursor.Close(mctx.Context()); err != nil {
-			log.Error(err)
-		}
-	}()
+	result := c.FindOne(mctx.Context(), filter, findOptions)
 
 	if _, err := RunQuery(
 		mctx,
@@ -376,7 +368,7 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 					return nil, manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("retrieve: unable to explain: %w", err)}
 				}
 			}
-			return nil, cursor.Decode(object)
+			return nil, result.Decode(object)
 		},
 		RetryInfo{
 			Operation:        elemental.OperationRetrieve,
