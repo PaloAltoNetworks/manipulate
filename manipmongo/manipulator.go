@@ -553,7 +553,7 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		}
 
 	} else {
-		_, err := RunQuery(
+		info, err := RunQuery(
 			mctx,
 			func() (any, error) { return c.InsertOne(mctx.Context(), object) },
 			RetryInfo{
@@ -567,6 +567,13 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 			sp.SetTag("error", true)
 			sp.LogFields(log.Error(err))
 			return err
+		}
+
+		switch chinfo := info.(type) {
+		case *mongo.InsertOneResult:
+			if noid, ok := chinfo.InsertedID.(primitive.ObjectID); ok {
+				object.SetIdentifier(noid.Hex())
+			}
 		}
 	}
 
@@ -948,7 +955,7 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 		return 0, err
 	}
 
-	return int(out.(int64)), nil
+	return out.(int), nil
 }
 
 func (m *mongoManipulator) Commit(id manipulate.TransactionID) error { return nil }
