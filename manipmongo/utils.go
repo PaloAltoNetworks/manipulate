@@ -336,7 +336,6 @@ func convertWriteConsistency(c manipulate.WriteConsistency) *writeconcern.WriteC
 			}
 		}
 	default:
-		//return writeconcern.Unacknowledged()
 		return &writeconcern.WriteConcern{}
 	}
 }
