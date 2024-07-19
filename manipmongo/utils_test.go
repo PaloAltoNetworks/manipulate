@@ -12,13 +12,11 @@
 package manipmongo
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"reflect"
 	"testing"
 
-	"github.com/globalsign/mgo"
 	"github.com/golang/mock/gomock"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
@@ -680,92 +678,6 @@ func Test_isConnectionError(t *testing.T) {
 	}
 }
 
-func Test_invalidQuery(t *testing.T) {
-
-	type args struct {
-		err error
-	}
-
-	testCases := map[string]struct {
-		input   args
-		wantOk  bool
-		wantErr error
-	}{
-		"code 2 - bad regex": {
-			input: args{
-				err: &mgo.QueryError{
-					Code:    2,
-					Message: errInvalidQueryBadRegex,
-				},
-			},
-			wantOk: true,
-			wantErr: manipulate.ErrInvalidQuery{
-				DueToFilter: true,
-				Err: &mgo.QueryError{
-					Code:    2,
-					Message: errInvalidQueryBadRegex,
-				},
-			},
-		},
-		"code 51091 - invalid regex": {
-			input: args{
-				err: &mgo.QueryError{
-					Code:    51091,
-					Message: errInvalidQueryInvalidRegex,
-				},
-			},
-			wantOk: true,
-			wantErr: manipulate.ErrInvalidQuery{
-				DueToFilter: true,
-				Err: &mgo.QueryError{
-					Code:    51091,
-					Message: errInvalidQueryInvalidRegex,
-				},
-			},
-		},
-		"nil": {
-			input: args{
-				err: nil,
-			},
-			wantOk:  false,
-			wantErr: nil,
-		},
-		"not an invalid query error": {
-			input: args{
-				err: errors.New("some other error"),
-			},
-			wantOk:  false,
-			wantErr: nil,
-		},
-	}
-
-	for scenario, tc := range testCases {
-		t.Run(scenario, func(t *testing.T) {
-			ok, err := invalidQuery(tc.input.err)
-
-			if ok != tc.wantOk {
-				t.Errorf("wanted '%t', got '%t'", tc.wantOk, ok)
-			}
-
-			if ok && err == nil {
-				t.Error("no error was returned when one was expected")
-			}
-
-			if !reflect.DeepEqual(err, tc.wantErr) {
-				t.Log("Error types did not match")
-				t.Errorf("\n"+
-					"EXPECTED:\n"+
-					"%+v\n"+
-					"ACTUAL:\n"+
-					"%+v",
-					tc.wantErr,
-					err,
-				)
-			}
-		})
-	}
-}
-
 func Test_explainIfNeeded(t *testing.T) {
 
 	identity := elemental.MakeIdentity("thing", "things")
@@ -865,50 +777,3 @@ func Test_explainIfNeeded(t *testing.T) {
 		})
 	}
 }
-
-// func TestSetMaxTime(t *testing.T) {
-
-// 	Convey("Calling setMaxTime with a context with no deadline should work", t, func() {
-// 		q := &mgo.Query{}
-// 		q, err := setMaxTime(context.Background(), q)
-// 		So(err, ShouldBeNil)
-// 		qr := (&mgo.Query{}).SetMaxTime(defaultGlobalContextTimeout)
-// 		So(q, ShouldResemble, qr)
-// 	})
-
-// 	Convey("Calling setMaxTime with a context with valid deadline should work", t, func() {
-// 		q := &mgo.Query{}
-// 		deadline := time.Now().Add(3 * time.Second)
-// 		ctx, cancel := context.WithDeadline(context.Background(), deadline)
-// 		defer cancel()
-
-// 		q, err := setMaxTime(ctx, q)
-// 		So(err, ShouldBeNil)
-// 		qr := (&mgo.Query{}).SetMaxTime(time.Until(deadline))
-// 		So(q, ShouldResemble, qr)
-// 	})
-
-// 	Convey("Calling setMaxTime with a context with expired deadline should not work", t, func() {
-// 		q := &mgo.Query{}
-// 		deadline := time.Now().Add(-3 * time.Second)
-// 		ctx, cancel := context.WithDeadline(context.Background(), deadline)
-// 		defer cancel()
-
-// 		q, err := setMaxTime(ctx, q)
-// 		So(err, ShouldNotBeNil)
-// 		So(err.Error(), ShouldEqual, "Unable to build query: context deadline exceeded")
-// 		So(q, ShouldBeNil)
-// 	})
-
-// 	Convey("Calling setMaxTime with a canceled context should not work", t, func() {
-// 		q := &mgo.Query{}
-// 		deadline := time.Now().Add(3 * time.Second)
-// 		ctx, cancel := context.WithDeadline(context.Background(), deadline)
-// 		cancel()
-
-// 		q, err := setMaxTime(ctx, q)
-// 		So(err, ShouldNotBeNil)
-// 		So(err.Error(), ShouldEqual, "Unable to build query: context canceled")
-// 		So(q, ShouldBeNil)
-// 	})
-// }

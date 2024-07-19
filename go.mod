@@ -11,7 +11,6 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/ghodss/yaml v1.0.0
-	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/websocket v1.5.0
@@ -36,6 +35,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.2.0 // indirect
 	github.com/fatih/color v1.14.1 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1 // indirect

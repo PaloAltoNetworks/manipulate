@@ -18,11 +18,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/maniptest"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestCompileFilter(t *testing.T) {
@@ -37,14 +37,14 @@ func TestCompileFilter(t *testing.T) {
 
 			ddd := bson.D{
 				{
-					Name: "$and",
+					Key: "$and",
 					Value: []bson.D{
 						{
 							{
-								Name: "a",
+								Key: "a",
 								Value: bson.D{
 									{
-										Name:  "$eq",
+										Key:   "$eq",
 										Value: "b",
 									},
 								},
