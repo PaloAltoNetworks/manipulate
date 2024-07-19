@@ -28,7 +28,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	mongooptions "go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 )
 
 const (
@@ -103,13 +104,9 @@ func prepareNextFilter(collection *mongo.Collection, orderingField string, next 
 	}
 
 	doc := bson.M{}
-	// if err := collection.FindId(id).Select(bson.M{orderingField: 1}).One(&doc); err != nil {
-	// 	return nil, HandleQueryError(err)
-	// }
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	opts := mongooptions.FindOne().SetProjection(bson.M{"orderingField": 1})
-	if err := collection.FindOne(ctx, bson.M{"_id": id}, opts).Decode(&doc); err != nil {
+
+	opts := options.FindOne().SetProjection(bson.M{"orderingField": 1})
+	if err := collection.FindOne(context.Background(), bson.M{"_id": id}, opts).Decode(&doc); err != nil {
 		log.Fatal(err)
 	}
 
@@ -307,35 +304,42 @@ func makeFieldsSelector(fields []string, spec elemental.AttributeSpecifiable) bs
 	return sels
 }
 
-// func convertReadConsistency(c manipulate.ReadConsistency) mgo.Mode {
-// 	switch c {
-// 	case manipulate.ReadConsistencyEventual:
-// 		return mgo.Eventual
-// 	case manipulate.ReadConsistencyMonotonic:
-// 		return mgo.Monotonic
-// 	case manipulate.ReadConsistencyNearest:
-// 		return mgo.Nearest
-// 	case manipulate.ReadConsistencyStrong:
-// 		return mgo.Strong
-// 	case manipulate.ReadConsistencyWeakest:
-// 		return mgo.SecondaryPreferred
-// 	default:
-// 		return -1
-// 	}
-// }
+func convertReadConsistency(c manipulate.ReadConsistency) *readconcern.ReadConcern {
+	switch c {
+	case manipulate.ReadConsistencyEventual:
+		return readconcern.Available()
+	case manipulate.ReadConsistencyMonotonic:
+		return readconcern.Majority()
+	case manipulate.ReadConsistencyNearest:
+		return readconcern.Local()
+	case manipulate.ReadConsistencyStrong:
+		return readconcern.Majority()
+	case manipulate.ReadConsistencyWeakest:
+		return readconcern.Available()
+	default:
+		return readconcern.Majority()
+	}
+}
 
-// func convertWriteConsistency(c manipulate.WriteConsistency) *mgo.Safe {
-// 	switch c {
-// 	case manipulate.WriteConsistencyNone:
-// 		return nil
-// 	case manipulate.WriteConsistencyStrong:
-// 		return &mgo.Safe{WMode: "majority"}
-// 	case manipulate.WriteConsistencyStrongest:
-// 		return &mgo.Safe{WMode: "majority", J: true}
-// 	default:
-// 		return &mgo.Safe{}
-// 	}
-// }
+func convertWriteConsistency(c manipulate.WriteConsistency) *writeconcern.WriteConcern {
+	switch c {
+	case manipulate.WriteConsistencyNone:
+		return writeconcern.Unacknowledged()
+	case manipulate.WriteConsistencyStrong:
+		return writeconcern.Majority()
+	case manipulate.WriteConsistencyStrongest:
+		{
+			journal := true
+			return &writeconcern.WriteConcern{
+				W:       "majority",
+				Journal: &journal,
+			}
+		}
+	default:
+		//return writeconcern.Unacknowledged()
+		return &writeconcern.WriteConcern{}
+	}
+}
 
 func explainIfNeeded(
 	collection *mongo.Collection,
@@ -366,37 +370,6 @@ func explainIfNeeded(
 }
 
 func explain(collection *mongo.Collection, operation elemental.Operation, identity elemental.Identity, filter bson.D) error {
-
-	// r := bson.M{}
-	// if err := query.Explain(&r); err != nil {
-	// 	return fmt.Errorf("unable to explain: %s", err)
-	// }
-
-	// f := "<none>"
-	// if filter != nil {
-	// 	fdata, err := json.MarshalIndent(filter, "", "  ")
-	// 	if err != nil {
-	// 		return fmt.Errorf("unable to marshal filter: %s", err)
-	// 	}
-	// 	f = string(fdata)
-	// }
-
-	// rdata, err := json.MarshalIndent(r, "", "  ")
-	// if err != nil {
-	// 	return fmt.Errorf("unable to marshal explanation: %s", err)
-	// }
-
-	// fmt.Println("")
-	// fmt.Println("--------------------------------")
-	// fmt.Printf("Operation:  %s\n", operation)
-	// fmt.Printf("Identity:   %s\n", identity.Name)
-	// fmt.Printf("Filter:     %s\n", f)
-	// fmt.Println("Explanation:")
-	// fmt.Println(string(rdata))
-	// fmt.Println("--------------------------------")
-	// fmt.Println("")
-
-	// return nil
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

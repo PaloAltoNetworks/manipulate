@@ -27,8 +27,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	mongooptions "go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readconcern"
-	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 )
 
 const defaultGlobalContextTimeout = 60 * time.Second
@@ -1040,29 +1038,19 @@ func (m *mongoManipulator) makeSession(
 	writeConsistency manipulate.WriteConsistency,
 ) (*mongo.Collection, mongo.Session, error) {
 
-	// session := m.rootSession.Copy()
-
-	// if mrc := convertReadConsistency(readConsistency); mrc != -1 {
-	// 	session.SetMode(mrc, true)
-	// }
-
-	// session.SetSafe(convertWriteConsistency(writeConsistency))
-
-	// return session.DB(m.dbName).C(identity.Name), session.Close
-
-	// TODO: Figure out the below consistencies to match used earlier above
-	readConcern := &readconcern.ReadConcern{}
-	writeConcern := &writeconcern.WriteConcern{}
+	// To be safe we are setting the read/write concerns on both collection
+	// as well as session level. It should be enough to just set it at session
+	// level.
+	readConcern := convertReadConsistency(readConsistency)
+	writeConcern := convertWriteConsistency(writeConsistency)
 	opts := mongooptions.Collection().
 		SetReadConcern(readConcern).
 		SetWriteConcern(writeConcern)
 
-	// TODO: check if we need to set consistency options on the collection like this?
-	// sessionOptions := mongooptions.Session()
-	// sessionOptions.SetCausalConsistency(true)
-	// sessionOptions.SetDefaultReadConcern(readconcern.Majority())
-	// session, err := m.client.StartSession(sessionOptions)
-	session, err := m.client.StartSession()
+	sessionOptions := mongooptions.Session()
+	sessionOptions.SetDefaultReadConcern(readConcern)
+	sessionOptions.SetDefaultWriteConcern(writeConcern)
+	session, err := m.client.StartSession(sessionOptions)
 	if err != nil {
 		return nil, nil, err
 	}
