@@ -27,6 +27,7 @@ import (
 	"go.aporeto.io/manipulate/internal/objectid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	mongooptions "go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -439,32 +440,27 @@ func explain(collection *mongo.Collection, operation elemental.Operation, identi
 	return nil
 }
 
-func setMaxTime(ctx context.Context, q *mongooptions.FindOptions) (*mongooptions.FindOptions, error) {
-
+func setMaxTime(ctx context.Context, q interface{}) (interface{}, error) {
 	d, ok := ctx.Deadline()
+	var mx time.Duration
 	if !ok {
-		return q.SetMaxTime(defaultGlobalContextTimeout), nil
+		mx = defaultGlobalContextTimeout
+	} else {
+		mx = time.Until(d)
 	}
 
-	mx := time.Until(d)
 	if err := ctx.Err(); err != nil {
 		return nil, manipulate.ErrCannotBuildQuery{Err: err}
 	}
 
-	return q.SetMaxTime(mx), nil
-}
-
-func setFindOneMaxTime(ctx context.Context, q *mongooptions.FindOneOptions) (*mongooptions.FindOneOptions, error) {
-
-	d, ok := ctx.Deadline()
-	if !ok {
-		return q.SetMaxTime(defaultGlobalContextTimeout), nil
+	switch opts := q.(type) {
+	case *options.FindOptions:
+		return opts.SetMaxTime(mx), nil
+	case *options.FindOneOptions:
+		return opts.SetMaxTime(mx), nil
+	case *options.CountOptions:
+		return opts.SetMaxTime(mx), nil
+	default:
+		return nil, manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("unsupported options type")}
 	}
-
-	mx := time.Until(d)
-	if err := ctx.Err(); err != nil {
-		return nil, manipulate.ErrCannotBuildQuery{Err: err}
-	}
-
-	return q.SetMaxTime(mx), nil
 }

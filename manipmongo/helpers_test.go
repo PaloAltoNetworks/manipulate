@@ -154,7 +154,7 @@ func TestGetDatabase(t *testing.T) {
 
 		Convey("When I call GetDatabase", func() {
 			Convey("Then it should panic", func() {
-				So(func() { _, _, _ = GetDatabase(m) }, ShouldPanicWith, "you can only pass a mongo manipulator to GetDatabase")
+				So(func() { _ = GetDatabase(m) }, ShouldPanicWith, "you can only pass a mongo manipulator to GetDatabase")
 			})
 		})
 	})

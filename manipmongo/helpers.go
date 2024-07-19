@@ -58,8 +58,8 @@ func DropDatabase(manipulator manipulate.Manipulator) error {
 	if !ok {
 		panic("you can only pass a mongo manipulator to DropDatabase")
 	}
-
-	return m.database.Drop(context.Background())
+	database := m.client.Database(m.dbName)
+	return database.Drop(context.Background())
 }
 
 // CreateIndex creates multiple index for the collection storing info for the given identity using the given manipulator.
@@ -70,7 +70,8 @@ func CreateIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 		panic("you can only pass a mongo manipulator to CreateIndex")
 	}
 
-	collection := m.database.Collection(identity.Name)
+	database := m.client.Database(m.dbName)
+	collection := database.Collection(identity.Name)
 
 	indexModels := make([]mongo.IndexModel, len(indexes))
 	for i, index := range indexes {
@@ -99,7 +100,8 @@ func EnsureIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 		panic("you can only pass a mongo manipulator to CreateIndex")
 	}
 
-	collection := m.database.Collection(identity.Name)
+	database := m.client.Database(m.dbName)
+	collection := database.Collection(identity.Name)
 	// TODO: mgo driver based code was using below to set strong consistency here. Figure out how
 	// to do that with mongo-go-driver on an existing mongo client
 	// session := m.rootSession.Copy()
@@ -130,7 +132,8 @@ func EnsureIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 						{Key: "collMod", Value: collection.Name()},
 						{Key: "index", Value: bson.M{"name": index.Name, "expireAfterSeconds": int(index.ExpireAfter.Seconds())}},
 					}
-					err := m.database.RunCommand(context.Background(), modifyCmd).Err()
+					database := m.client.Database(m.dbName)
+					err := database.RunCommand(context.Background(), modifyCmd).Err()
 					if err != nil {
 						return fmt.Errorf("cannot update TTL index: %s", err)
 					}
@@ -167,7 +170,8 @@ func DeleteIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 		panic("you can only pass a mongo manipulator to DeleteIndex")
 	}
 
-	collection := m.database.Collection(identity.Name)
+	database := m.client.Database(m.dbName)
+	collection := database.Collection(identity.Name)
 
 	for _, index := range indexes {
 		_, err := collection.Indexes().DropOne(context.Background(), index)
@@ -187,7 +191,8 @@ func CreateCollection(manipulator manipulate.Manipulator, identity elemental.Ide
 		panic("you can only pass a mongo manipulator to CreateCollection")
 	}
 
-	err := m.database.CreateCollection(context.Background(), identity.Name, info)
+	database := m.client.Database(m.dbName)
+	err := database.CreateCollection(context.Background(), identity.Name, info)
 	if err != nil {
 		return fmt.Errorf("unable to create collection '%s': %w", identity.Name, err)
 	}
@@ -195,19 +200,15 @@ func CreateCollection(manipulator manipulate.Manipulator, identity elemental.Ide
 	return nil
 }
 
-// GetDatabase returns a ready to use mgo.Database. Use at your own risks.
-// You are responsible for closing the session by calling the returner close function
-func GetDatabase(manipulator manipulate.Manipulator) (*mongo.Database, func(), error) {
+// GetDatabase returns a ready to use mongo.Database. Use at your own risks.
+func GetDatabase(manipulator manipulate.Manipulator) *mongo.Database {
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
 		panic("you can only pass a mongo manipulator to GetDatabase")
 	}
 
-	// session := m.rootSession.Copy()
-
-	// return session.DB(m.dbName), func() { session.Close() }, nil
-	return m.database, func() {}, nil
+	return m.client.Database(m.dbName)
 }
 
 // SetConsistencyMode sets the mongo consistency mode of the mongo session.
