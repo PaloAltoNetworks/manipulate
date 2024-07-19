@@ -317,7 +317,7 @@ func convertReadConsistency(c manipulate.ReadConsistency) *readconcern.ReadConce
 	case manipulate.ReadConsistencyWeakest:
 		return readconcern.Available()
 	default:
-		return readconcern.Majority()
+		return &readconcern.ReadConcern{}
 	}
 }
 
