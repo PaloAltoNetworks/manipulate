@@ -15,7 +15,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"reflect"
 	"testing"
 
@@ -26,199 +25,9 @@ import (
 	"go.aporeto.io/manipulate/manipmongo/internal"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 )
-
-func Test_HandleQueryError(t *testing.T) {
-	type args struct {
-		err error
-	}
-	tests := []struct {
-		name      string
-		args      args
-		errString string
-	}{
-		{
-			"error 2",
-			args{
-				&mgo.QueryError{
-					Code:    2,
-					Message: errInvalidQueryBadRegex,
-				},
-			},
-			"Query invalid: $regex has to be a string",
-		},
-		{
-			"error 51091",
-			args{
-				&mgo.QueryError{
-					Code:    51091,
-					Message: errInvalidQueryInvalidRegex,
-				},
-			},
-			"Query invalid: regular expression is invalid",
-		},
-		{
-			"net error",
-			args{
-				&net.OpError{
-					Op:  "coucou",
-					Err: fmt.Errorf("network sucks"),
-				},
-			},
-			"Cannot communicate: coucou: network sucks",
-		},
-		{
-			"err not found",
-			args{
-				mgo.ErrNotFound,
-			},
-			"Object not found: cannot find the object for the given ID",
-		},
-		{
-			"err dup",
-			args{
-				&mgo.LastError{Code: 11000},
-			},
-			"Constraint violation: duplicate key",
-		},
-		{
-			"isConnectionError says yes",
-			args{
-				fmt.Errorf("lost connection to server"),
-			},
-			"Cannot communicate: lost connection to server",
-		},
-		{
-			"isConnectionError says no",
-			args{
-				fmt.Errorf("no"),
-			},
-			"Unable to execute query: no",
-		},
-
-		{
-			"err 6",
-			args{
-				&mgo.LastError{Code: 6, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 7",
-			args{
-				&mgo.LastError{Code: 7, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 71",
-			args{
-				&mgo.LastError{Code: 71, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 74",
-			args{
-				&mgo.LastError{Code: 74, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 91",
-			args{
-				&mgo.LastError{Code: 91, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 109",
-			args{
-				&mgo.LastError{Code: 109, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 189",
-			args{
-				&mgo.LastError{Code: 189, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 202",
-			args{
-				&mgo.LastError{Code: 202, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 216",
-			args{
-				&mgo.LastError{Code: 216, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 10107",
-			args{
-				&mgo.LastError{Code: 10107, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 13436",
-			args{
-				&mgo.LastError{Code: 13436, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 13435",
-			args{
-				&mgo.LastError{Code: 13435, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 11600",
-			args{
-				&mgo.LastError{Code: 11600, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 11602",
-			args{
-				&mgo.LastError{Code: 11602, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 424242",
-			args{
-				&mgo.LastError{Code: 424242, Err: "boom"},
-			},
-			"Unable to execute query: boom",
-		},
-
-		{
-			"err 11602 QueryError ",
-			args{
-				&mgo.QueryError{Code: 424242, Message: "boom"},
-			},
-			"Unable to execute query: boom",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := HandleQueryError(tt.args.err)
-			if tt.errString != err.Error() {
-				t.Errorf("HandleQueryError() error = %v, wantErr %v", err, tt.errString)
-			}
-		})
-	}
-}
 
 func Test_makeFieldsSelector(t *testing.T) {
 	type args struct {
@@ -683,103 +492,97 @@ func Test_applyOrdering(t *testing.T) {
 	}
 }
 
-// func Test_convertReadConsistency(t *testing.T) {
-// 	type args struct {
-// 		c manipulate.ReadConsistency
-// 	}
-// 	tests := []struct {
-// 		name string
-// 		args args
-// 		want mgo.Mode
-// 	}{
-// 		{
-// 			"eventual",
-// 			args{manipulate.ReadConsistencyEventual},
-// 			mgo.Eventual,
-// 		},
-// 		{
-// 			"monotonic",
-// 			args{manipulate.ReadConsistencyMonotonic},
-// 			mgo.Monotonic,
-// 		},
-// 		{
-// 			"nearest",
-// 			args{manipulate.ReadConsistencyNearest},
-// 			mgo.Nearest,
-// 		},
-// 		{
-// 			"strong",
-// 			args{manipulate.ReadConsistencyStrong},
-// 			mgo.Strong,
-// 		},
-// 		{
-// 			"weakest",
-// 			args{manipulate.ReadConsistencyWeakest},
-// 			mgo.SecondaryPreferred,
-// 		},
-// 		{
-// 			"default",
-// 			args{manipulate.ReadConsistencyDefault},
-// 			-1,
-// 		},
-// 		{
-// 			"something else",
-// 			args{manipulate.ReadConsistency("else")},
-// 			-1,
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			if got := convertReadConsistency(tt.args.c); !reflect.DeepEqual(got, tt.want) {
-// 				t.Errorf("convertConsistency() = %v, want %v", got, tt.want)
-// 			}
-// 		})
-// 	}
-// }
+func Test_convertReadConsistency(t *testing.T) {
+	type args struct {
+		c manipulate.ReadConsistency
+	}
+	tests := []struct {
+		name string
+		args args
+		want *readconcern.ReadConcern
+	}{
+		{
+			"eventual",
+			args{manipulate.ReadConsistencyEventual},
+			readconcern.Available(),
+		},
+		{
+			"monotonic",
+			args{manipulate.ReadConsistencyMonotonic},
+			readconcern.Majority(),
+		},
+		{
+			"nearest",
+			args{manipulate.ReadConsistencyNearest},
+			readconcern.Local(),
+		},
+		{
+			"strong",
+			args{manipulate.ReadConsistencyStrong},
+			readconcern.Majority(),
+		},
+		{
+			"weakest",
+			args{manipulate.ReadConsistencyWeakest},
+			readconcern.Available(),
+		},
+		{
+			"default",
+			args{manipulate.ReadConsistencyDefault},
+			&readconcern.ReadConcern{},
+		},
+		{
+			"something else",
+			args{manipulate.ReadConsistency("else")},
+			&readconcern.ReadConcern{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := convertReadConsistency(tt.args.c); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("convertConsistency() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 
-// func Test_convertWriteConsistency(t *testing.T) {
-// 	type args struct {
-// 		c manipulate.WriteConsistency
-// 	}
-// 	tests := []struct {
-// 		name string
-// 		args args
-// 		want *mgo.Safe
-// 	}{
-// 		{
-// 			"none",
-// 			args{manipulate.WriteConsistencyNone},
-// 			nil,
-// 		},
-// 		{
-// 			"strong",
-// 			args{manipulate.WriteConsistencyStrong},
-// 			&mgo.Safe{WMode: "majority"},
-// 		},
-// 		{
-// 			"strongest",
-// 			args{manipulate.WriteConsistencyStrongest},
-// 			&mgo.Safe{WMode: "majority", J: true},
-// 		},
-// 		{
-// 			"default",
-// 			args{manipulate.WriteConsistencyDefault},
-// 			&mgo.Safe{},
-// 		},
-// 		{
-// 			"something else",
-// 			args{manipulate.WriteConsistency("else")},
-// 			&mgo.Safe{},
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			if got := convertWriteConsistency(tt.args.c); !reflect.DeepEqual(got, tt.want) {
-// 				t.Errorf("convertWriteConsistency() = %v, want %v", got, tt.want)
-// 			}
-// 		})
-// 	}
-// }
+func Test_convertWriteConsistency(t *testing.T) {
+	type args struct {
+		c manipulate.WriteConsistency
+	}
+	trueVal := true
+	tests := []struct {
+		name string
+		args args
+		want *writeconcern.WriteConcern
+	}{
+		{
+			"none",
+			args{manipulate.WriteConsistencyNone},
+			writeconcern.Unacknowledged(),
+		},
+		{
+			"strong",
+			args{manipulate.WriteConsistencyStrong},
+			writeconcern.Majority(),
+		},
+		{
+			"strongest",
+			args{manipulate.WriteConsistencyStrongest},
+			&writeconcern.WriteConcern{
+				W:       "majority",
+				Journal: &trueVal,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := convertWriteConsistency(tt.args.c); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("convertWriteConsistency() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 
 func Test_isConnectionError(t *testing.T) {
 	type args struct {
@@ -872,54 +675,6 @@ func Test_isConnectionError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := isConnectionError(tt.args.err); got != tt.want {
 				t.Errorf("isConnectionError() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_getErrorCode(t *testing.T) {
-	type args struct {
-		err error
-	}
-	tests := []struct {
-		name string
-		args args
-		want int
-	}{
-		{
-			"*mgo.QueryError",
-			args{
-				&mgo.QueryError{Code: 42},
-			},
-			42,
-		},
-		{
-			"*mgo.LastError",
-			args{
-				&mgo.LastError{Code: 42},
-			},
-			42,
-		},
-
-		{
-			"*mgo.BulkError",
-			args{
-				&mgo.BulkError{ /* private */ },
-			},
-			0, // Should be 42. but that is sadly untestable... or is it?
-		},
-		{
-			"",
-			args{
-				fmt.Errorf("yo"),
-			},
-			0,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := getErrorCode(tt.args.err); got != tt.want {
-				t.Errorf("getErrorCode() = %v, want %v", got, tt.want)
 			}
 		})
 	}

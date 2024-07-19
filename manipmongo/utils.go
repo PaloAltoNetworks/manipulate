@@ -21,7 +21,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/objectid"
@@ -146,48 +145,11 @@ func HandleQueryError(err error) error {
 		return err
 	}
 
-	// see https://github.com/mongodb/mongo/blob/master/src/mongo/base/error_codes.err
-	switch getErrorCode(err) {
-	case 6, 7, 71, 74, 91, 109, 189, 202, 216, 262, 10107, 13436, 13435, 11600, 11602:
-		// HostUnreachable
-		// HostNotFound,
-		// ReplicaSetNotFound,
-		// NodeNotFound,
-		// ConfigurationInProgress,
-		// ShutdownInProgress
-		// PrimarySteppedDown,
-		// NetworkInterfaceExceededTimeLimit
-		// ElectionInProgress
-		// ExceededTimeLimit
-		// NotMaster
-		// NotMasterOrSecondary
-		// NotMasterNoSlaveOk
-		// InterruptedAtShutdown
-		// InterruptedDueToStepDown
+	if mongo.IsNetworkError(err) {
 		return manipulate.ErrCannotCommunicate{Err: err}
-	default:
-		return manipulate.ErrCannotExecuteQuery{Err: err}
-	}
-}
-
-func getErrorCode(err error) int {
-
-	switch e := err.(type) {
-
-	case *mgo.QueryError:
-		return e.Code
-
-	case *mgo.LastError:
-		return e.Code
-
-	case *mgo.BulkError:
-		// we just get the first
-		for _, c := range e.Cases() {
-			return getErrorCode(c.Err)
-		}
 	}
 
-	return 0
+	return manipulate.ErrCannotExecuteQuery{Err: err}
 }
 
 func invalidQuery(err error) (bool, error) {
@@ -197,39 +159,27 @@ func invalidQuery(err error) (bool, error) {
 		return false, nil
 	}
 
-	errCopyLower := strings.ToLower(qErr.Message)
-	switch {
-	case qErr.Code == 2 && strings.Contains(errCopyLower, errInvalidQueryBadRegex):
-		return true, manipulate.ErrInvalidQuery{
-			DueToFilter: true,
-			Err:         qErr,
-		}
-	case qErr.Code == 51091 && strings.Contains(errCopyLower, errInvalidQueryInvalidRegex):
-		return true, manipulate.ErrInvalidQuery{
-			DueToFilter: true,
-			Err:         qErr,
-		}
-	default:
-		return false, nil
+	return true, manipulate.ErrInvalidQuery{
+		DueToFilter: true,
+		Err:         qErr,
 	}
 }
 
-func queryError(err error) (*mgo.QueryError, bool) {
+func queryError(err error) (error, bool) {
 
 	if err == nil {
 		return nil, false
 	}
 
 	switch e := err.(type) {
-	case *mgo.QueryError:
+	case mongo.CommandError:
 		return e, true
-	case *mgo.BulkError:
-		for _, c := range e.Cases() {
-			return queryError(c.Err)
+	case mongo.BulkWriteException:
+		for _, writeErr := range e.WriteErrors {
+			return queryError(writeErr)
 		}
 	}
-
-	return nil, false
+	return err, false
 }
 
 func isConnectionError(err error) bool {

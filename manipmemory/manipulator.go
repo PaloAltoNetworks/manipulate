@@ -18,11 +18,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/globalsign/mgo/bson"
 	memdb "github.com/hashicorp/go-memdb"
 	"github.com/mitchellh/copystructure"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type txnRegistry map[manipulate.TransactionID]*memdb.Txn
@@ -148,7 +148,7 @@ func (m *memdbManipulator) Create(mctx manipulate.Context, object elemental.Iden
 	// In caching scenarios the identifier is already set. Do not insert
 	// here. We will get it pre-populated from the master DB.
 	if object.Identifier() == "" {
-		object.SetIdentifier(bson.NewObjectId().Hex())
+		object.SetIdentifier(primitive.NewObjectID().Hex())
 	}
 
 	var cp any
@@ -186,7 +186,7 @@ func (m *memdbManipulator) Update(mctx manipulate.Context, object elemental.Iden
 
 	o, err := txn.Get(object.Identity().Category, "id", object.Identifier())
 	if err != nil || o.Next() == nil {
-		return manipulate.ErrObjectNotFound{Err: fmt.Errorf("Cannot find object with given ID")}
+		return manipulate.ErrObjectNotFound{Err: fmt.Errorf("cannot find object with given ID")}
 	}
 
 	var cp any
@@ -258,7 +258,7 @@ func (m *memdbManipulator) Commit(id manipulate.TransactionID) error {
 	txn := m.registeredTxnWithID(id)
 
 	if txn == nil {
-		return manipulate.ErrCannotCommit{Err: fmt.Errorf("Cannot find transaction: %s ", id)}
+		return manipulate.ErrCannotCommit{Err: fmt.Errorf("cannot find transaction: %s ", id)}
 	}
 
 	txn.Commit()
@@ -354,7 +354,7 @@ func (m *memdbManipulator) retrieveFromFilter(identity string, f *elemental.Filt
 				for _, v := range values {
 
 					if !strings.HasPrefix(v.(string), "^") {
-						return manipulate.ErrCannotExecuteQuery{Err: fmt.Errorf("Matches filter only works for prefix matching and must always start with a '^'")}
+						return manipulate.ErrCannotExecuteQuery{Err: fmt.Errorf("matches filter only works for prefix matching and must always start with a '^'")}
 					}
 
 					fv := strings.TrimPrefix(v.(string), "^")

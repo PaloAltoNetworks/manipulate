@@ -18,7 +18,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/backoff"
@@ -26,7 +25,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 )
 
 // DoesDatabaseExist checks if the database used by the given manipulator exists.
@@ -62,8 +61,19 @@ func DropDatabase(manipulator manipulate.Manipulator) error {
 	return database.Drop(context.Background())
 }
 
+// setNameOnIndexModel sets index options and the Name field in the options of an IndexModel if
+// not already set
+func setNameOnIndexModel(indexModel mongo.IndexModel, name string) mongo.IndexModel {
+	if indexModel.Options == nil {
+		indexModel.Options = options.Index().SetName(name)
+	} else if indexModel.Options.Name == nil {
+		indexModel.Options.SetName(name)
+	}
+	return indexModel
+}
+
 // CreateIndex creates multiple index for the collection storing info for the given identity using the given manipulator.
-func CreateIndex(manipulator manipulate.Manipulator, identity elemental.Identity, indexes ...mgo.Index) error {
+func CreateIndex(manipulator manipulate.Manipulator, identity elemental.Identity, indexModels ...mongo.IndexModel) error {
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
@@ -73,19 +83,15 @@ func CreateIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 	database := m.client.Database(m.dbName)
 	collection := database.Collection(identity.Name)
 
-	indexModels := make([]mongo.IndexModel, len(indexes))
-	for i, index := range indexes {
-		if index.Name == "" {
-			index.Name = "index_" + identity.Name + "_" + strconv.Itoa(i)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	for i, indexModel := range indexModels {
+		name := "index_" + identity.Name + "_" + strconv.Itoa(i)
+		indexModel = setNameOnIndexModel(indexModel, name)
+		if idx, err := collection.Indexes().CreateOne(ctx, indexModel); err != nil {
+			return fmt.Errorf("unable to ensure index '%s': %s", idx, err)
 		}
-		indexModels = append(indexModels, mongo.IndexModel{
-			Keys:    index.Key,
-			Options: options.Index().SetName(index.Name).SetUnique(index.Unique).SetSparse(index.Sparse).SetExpireAfterSeconds(int32(index.ExpireAfter.Seconds())),
-		})
-	}
-	_, err := collection.Indexes().CreateMany(context.Background(), indexModels)
-	if err != nil {
-		return fmt.Errorf("unable to ensure indexes: %s", err)
 	}
 
 	return nil
@@ -93,73 +99,77 @@ func CreateIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 
 // EnsureIndex works like create index, but it will delete existing index
 // if they changed before creating a new one.
-func EnsureIndex(manipulator manipulate.Manipulator, identity elemental.Identity, indexes ...mgo.Index) error {
+func EnsureIndex(manipulator manipulate.Manipulator, identity elemental.Identity, indexModels ...mongo.IndexModel) error {
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
 		panic("you can only pass a mongo manipulator to CreateIndex")
 	}
 
-	database := m.client.Database(m.dbName)
-	collection := database.Collection(identity.Name)
-	// TODO: mgo driver based code was using below to set strong consistency here. Figure out how
-	// to do that with mongo-go-driver on an existing mongo client
-	// session := m.rootSession.Copy()
-	// session.SetMode(mgo.Strong, false)
-	// session.EnsureSafe(&mgo.Safe{})
+	// Start a new session
+	sessionOptions := options.Session().SetCausalConsistency(false)
+	session, err := m.client.StartSession(sessionOptions)
+	if err != nil {
+		return err
+	}
+	defer session.EndSession(context.Background())
 
-	for i, index := range indexes {
-		if index.Name == "" {
-			index.Name = "index_" + identity.Name + "_" + strconv.Itoa(i)
-		}
-		var keys bson.D
-		for _, key := range index.Key {
-			keys = append(keys, bson.E{Key: key, Value: 1}) // Use 1 for ascending order
-		}
-		indexModel := mongo.IndexModel{
-			Keys:    keys,
-			Options: options.Index().SetName(index.Name).SetUnique(index.Unique).SetSparse(index.Sparse).SetExpireAfterSeconds(int32(index.ExpireAfter.Seconds())),
-		}
-		_, err := collection.Indexes().CreateOne(context.Background(), indexModel)
-		if err != nil {
-			if strings.Contains(err.Error(), "already exists with different options") {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-				// In case we are changing a TTL we are using colMod instead
-				// as per https://docs.mongodb.com/manual/core/index-ttl/#restrictions
-				if index.ExpireAfter > 0 {
+	err = mongo.WithSession(ctx, session, func(sc mongo.SessionContext) error {
+		// Set the read concern to "majority" (equivalent to mgo.Strong)
+		rc := readconcern.Majority()
+		wc := &writeconcern.WriteConcern{}
+		database := m.client.Database(m.dbName, options.Database().SetReadConcern(rc).SetWriteConcern(wc))
+		collection := database.Collection(identity.Name)
 
-					modifyCmd := bson.D{
-						{Key: "collMod", Value: collection.Name()},
-						{Key: "index", Value: bson.M{"name": index.Name, "expireAfterSeconds": int(index.ExpireAfter.Seconds())}},
+		for i, indexModel := range indexModels {
+			name := "index_" + identity.Name + "_" + strconv.Itoa(i)
+			indexModel = setNameOnIndexModel(indexModel, name)
+
+			_, err := collection.Indexes().CreateOne(ctx, indexModel)
+			if err != nil {
+				if strings.Contains(err.Error(), "already exists with different options") {
+
+					// In case we are changing a TTL we are using colMod instead
+					// as per https://docs.mongodb.com/manual/core/index-ttl/#restrictions
+					if indexModel.Options.ExpireAfterSeconds != nil && *indexModel.Options.ExpireAfterSeconds > 0 {
+
+						modifyCmd := bson.D{
+							{Key: "collMod", Value: collection.Name()},
+							{Key: "index", Value: bson.M{"name": *indexModel.Options.Name, "expireAfterSeconds": int(*indexModel.Options.ExpireAfterSeconds)}},
+						}
+						database := m.client.Database(m.dbName)
+						err := database.RunCommand(context.Background(), modifyCmd).Err()
+						if err != nil {
+							return fmt.Errorf("cannot update TTL index: %s", err)
+						}
+
+					} else {
+
+						_, err := collection.Indexes().DropOne(context.Background(), *indexModel.Options.Name)
+						if err != nil {
+							return fmt.Errorf("cannot delete previous index: %s", err)
+						}
+
+						_, err = collection.Indexes().CreateOne(context.Background(), indexModel)
+						if err != nil {
+							return fmt.Errorf("unable to ensure index after dropping old one '%s': %s", *indexModel.Options.Name, err)
+						}
+
 					}
-					database := m.client.Database(m.dbName)
-					err := database.RunCommand(context.Background(), modifyCmd).Err()
-					if err != nil {
-						return fmt.Errorf("cannot update TTL index: %s", err)
-					}
 
-				} else {
-
-					_, err := collection.Indexes().DropOne(context.Background(), index.Name)
-					if err != nil {
-						return fmt.Errorf("cannot delete previous index: %s", err)
-					}
-
-					_, err = collection.Indexes().CreateOne(context.Background(), indexModel)
-					if err != nil {
-						return fmt.Errorf("unable to ensure index after dropping old one '%s': %s", index.Name, err)
-					}
-
+					continue
 				}
 
-				continue
+				return fmt.Errorf("unable to ensure index '%s': %s", *indexModel.Options.Name, err)
 			}
-
-			return fmt.Errorf("unable to ensure index '%s': %s", index.Name, err)
 		}
-	}
+		return nil
+	})
 
-	return nil
+	return err
 }
 
 // DeleteIndex deletes multiple mgo.Index for the collection.
@@ -183,7 +193,7 @@ func DeleteIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 	return nil
 }
 
-// CreateCollection creates a collection using the given mgo.CollectionInfo.
+// CreateCollection creates a collection using the given options.CollectionInfo.
 func CreateCollection(manipulator manipulate.Manipulator, identity elemental.Identity, info *options.CreateCollectionOptions) error {
 
 	m, ok := manipulator.(*mongoManipulator)
@@ -209,71 +219,6 @@ func GetDatabase(manipulator manipulate.Manipulator) *mongo.Database {
 	}
 
 	return m.client.Database(m.dbName)
-}
-
-// SetConsistencyMode sets the mongo consistency mode of the mongo session.
-func SetConsistencyMode(manipulator manipulate.Manipulator, mode mgo.Mode, refresh bool) {
-
-	m, ok := manipulator.(*mongoManipulator)
-	if !ok {
-		panic("you can only pass a mongo manipulator to SetConsistencyMode")
-	}
-
-	// if m.rootSession == nil {
-	// 	panic("cannot apply SetConsistencyMode. The root mongo session is not ready")
-	// }
-
-	// m.rootSession.SetMode(mode, refresh)
-
-	switch mode {
-	case mgo.Strong:
-		// Set strong consistency using majority read concern and primary read preference
-		opts := options.Client().SetReadConcern(readconcern.Majority()).SetReadPreference(readpref.Primary())
-		if refresh {
-			var err error
-			err = m.client.Disconnect(context.Background())
-			if err != nil {
-				panic(fmt.Sprintf("unable to disconnect for connecting with new consistency mode: %v", err))
-			}
-			m.client, err = mongo.Connect(context.Background(), opts)
-			if err != nil {
-				panic(fmt.Sprintf("unable to reconnect with new consistency mode: %v", err))
-			}
-		}
-
-	case mgo.Monotonic:
-		// Set monotonic consistency using local read concern and nearest read preference
-		opts := options.Client().SetReadConcern(readconcern.Local()).SetReadPreference(readpref.Nearest())
-		if refresh {
-			var err error
-			err = m.client.Disconnect(context.Background())
-			if err != nil {
-				panic(fmt.Sprintf("unable to disconnect for connecting with new consistency mode: %v", err))
-			}
-			m.client, err = mongo.Connect(context.Background(), opts)
-			if err != nil {
-				panic(fmt.Sprintf("unable to reconnect with new consistency mode: %v", err))
-			}
-		}
-
-	case mgo.Eventual:
-		// Set eventual consistency using available read concern and secondaryPreferred read preference
-		opts := options.Client().SetReadConcern(readconcern.Available()).SetReadPreference(readpref.SecondaryPreferred())
-		if refresh {
-			var err error
-			err = m.client.Disconnect(context.Background())
-			if err != nil {
-				panic(fmt.Sprintf("unable to disconnect for connecting with new consistency mode: %v", err))
-			}
-			m.client, err = mongo.Connect(context.Background(), opts)
-			if err != nil {
-				panic(fmt.Sprintf("unable to reconnect with new consistency mode: %v", err))
-			}
-		}
-
-	default:
-		panic("unsupported consistency mode")
-	}
 }
 
 // RunQuery runs a function that must run a mongodb operation.
