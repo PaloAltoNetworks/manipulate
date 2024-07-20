@@ -25,6 +25,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 )
 
@@ -114,21 +115,17 @@ func EnsureIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 	}
 	defer session.EndSession(context.Background())
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	err = mongo.WithSession(ctx, session, func(sc mongo.SessionContext) error {
-		// Set the read concern to "majority" (equivalent to mgo.Strong)
-		rc := readconcern.Majority()
+	err = mongo.WithSession(context.Background(), session, func(sc mongo.SessionContext) error {
+		rc := &readconcern.ReadConcern{}
 		wc := &writeconcern.WriteConcern{}
-		database := m.client.Database(m.dbName, options.Database().SetReadConcern(rc).SetWriteConcern(wc))
+		database := m.client.Database(m.dbName, options.Database().SetReadConcern(rc).SetWriteConcern(wc).SetReadPreference(readpref.Primary()))
 		collection := database.Collection(identity.Name)
 
 		for i, indexModel := range indexModels {
 			name := "index_" + identity.Name + "_" + strconv.Itoa(i)
 			indexModel = setNameOnIndexModel(indexModel, name)
 
-			_, err := collection.Indexes().CreateOne(ctx, indexModel)
+			_, err := collection.Indexes().CreateOne(sc, indexModel)
 			if err != nil {
 				if strings.Contains(err.Error(), "already exists with different options") {
 
