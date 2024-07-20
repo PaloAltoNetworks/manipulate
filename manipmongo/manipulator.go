@@ -26,7 +26,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	mongooptions "go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const defaultGlobalContextTimeout = 60 * time.Second
@@ -44,15 +43,15 @@ type mongoManipulator struct {
 }
 
 // New returns a new manipulator backed by MongoDB.
-func New(url string, db string, options ...Option) (manipulate.TransactionalManipulator, error) {
+func New(url string, db string, opts ...Option) (manipulate.TransactionalManipulator, error) {
 
 	cfg := newConfig()
-	for _, o := range options {
+	for _, o := range opts {
 		o(cfg)
 	}
 
-	clientOptions := mongooptions.Client().ApplyURI(url).
-		SetAuth(mongooptions.Credential{
+	clientOptions := options.Client().ApplyURI(url).
+		SetAuth(options.Credential{
 			Username:   cfg.username,
 			Password:   cfg.password,
 			AuthSource: cfg.authsource,
@@ -184,7 +183,7 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	}
 
 	// Query building
-	findOptions := mongooptions.Find()
+	findOptions := options.Find()
 
 	// Limiting
 	if limit := mctx.Limit(); limit > 0 {
@@ -359,7 +358,7 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	sp.LogFields(log.String("object_id", object.Identifier()), log.Object("filter", filter))
 	defer sp.Finish()
 
-	findOptions := mongooptions.FindOne()
+	findOptions := options.FindOne()
 
 	if sels := makeFieldsSelector(mctx.Fields(), attrSpec); sels != nil {
 		findOptions.SetProjection(sels)
@@ -546,7 +545,7 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 			info, err := RunQuery(
 				mctx,
 				func() (any, error) {
-					upsertOptions := mongooptions.Update().SetUpsert(true)
+					upsertOptions := options.Update().SetUpsert(true)
 					// Perform the upsert operation
 					return c.UpdateOne(sessCtx, filter, baseOps, upsertOptions)
 				},
@@ -971,7 +970,7 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	sp := tracing.StartTrace(mctx, fmt.Sprintf("manipmongo.count.%s", identity.Category))
 	defer sp.Finish()
 
-	countOptions := mongooptions.Count()
+	countOptions := options.Count()
 	updatedCountOptions, err := setMaxTime(mctx.Context(), countOptions)
 	if err != nil {
 		return 0, err
@@ -1043,11 +1042,11 @@ func (m *mongoManipulator) makeSession(
 	// level.
 	readConcern := convertReadConsistency(readConsistency)
 	writeConcern := convertWriteConsistency(writeConsistency)
-	opts := mongooptions.Collection().
+	opts := options.Collection().
 		SetReadConcern(readConcern).
 		SetWriteConcern(writeConcern)
 
-	sessionOptions := mongooptions.Session()
+	sessionOptions := options.Session()
 	sessionOptions.SetDefaultReadConcern(readConcern)
 	sessionOptions.SetDefaultWriteConcern(writeConcern)
 	session, err := m.client.StartSession(sessionOptions)
