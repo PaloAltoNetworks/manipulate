@@ -154,7 +154,7 @@ func HandleQueryError(err error) error {
 
 func invalidQuery(err error) (bool, error) {
 
-	qErr, ok := queryError(err)
+	ok, qErr := queryError(err)
 	if !ok {
 		return false, nil
 	}
@@ -165,21 +165,21 @@ func invalidQuery(err error) (bool, error) {
 	}
 }
 
-func queryError(err error) (error, bool) {
+func queryError(err error) (bool, error) {
 
 	if err == nil {
-		return nil, false
+		return false, nil
 	}
 
 	switch e := err.(type) {
 	case mongo.CommandError:
-		return e, true
+		return true, e
 	case mongo.BulkWriteException:
 		for _, writeErr := range e.WriteErrors {
 			return queryError(writeErr)
 		}
 	}
-	return err, false
+	return false, err
 }
 
 func isConnectionError(err error) bool {
