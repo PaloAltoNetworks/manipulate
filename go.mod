@@ -1,9 +1,9 @@
 module go.aporeto.io/manipulate
 
-go 1.20
+go 1.22
 
 require (
-	go.aporeto.io/elemental v1.123.0
+	go.aporeto.io/elemental v1.123.1-0.20240723180601-4e889389e543
 	go.aporeto.io/wsc v1.51.0
 )
 
@@ -74,5 +74,3 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace go.aporeto.io/elemental => ../elemental
