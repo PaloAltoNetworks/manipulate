@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
+	// nolint:revive // Allow dot imports for readability in tests
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate/manipmongo/internal"

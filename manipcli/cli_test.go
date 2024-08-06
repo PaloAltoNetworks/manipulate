@@ -4,6 +4,7 @@ import (
 	"sort"
 	"testing"
 
+	// nolint:revive // Allow dot imports for readability in tests
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

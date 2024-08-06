@@ -21,6 +21,7 @@ import (
 	"go.aporeto.io/elemental"
 
 	memdb "github.com/hashicorp/go-memdb"
+	// nolint:revive // Allow dot imports for readability in tests
 	. "github.com/smartystreets/goconvey/convey"
 	testmodel "go.aporeto.io/elemental/test/model"
 	"go.aporeto.io/manipulate"

@@ -17,6 +17,7 @@ import (
 
 	"go.aporeto.io/manipulate"
 
+	// nolint:revive // Allow dot imports for readability in tests
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/manipulate/maniptest"
 )
