@@ -14,6 +14,7 @@ package manipmongo
 import (
 	"context"
 	"fmt"
+	neturl "net/url"
 	"time"
 
 	"github.com/opentracing/opentracing-go/log"
@@ -50,14 +51,29 @@ func New(url string, db string, opts ...Option) (manipulate.TransactionalManipul
 		o(cfg)
 	}
 
+	// Parse the URL to check for authMechanism
+	parsedURL, err := neturl.Parse(url)
+	if err != nil {
+		return nil, fmt.Errorf("invalid mongo URL: %w", err)
+	}
+
+	// Check if authMechanism is present in the query
+	queryParams := parsedURL.Query()
+	authMechanism := queryParams.Get("authMechanism")
+
 	clientOptions := options.Client().ApplyURI(url).
-		SetAuth(options.Credential{
+		SetMaxPoolSize(uint64(cfg.poolLimit)).
+		SetConnectTimeout(cfg.connectTimeout)
+
+	// If authMechanism is MONGODB-X509, then we don't specify username etc as those are derived from
+	// the certificate. Specifying them regardless would cause mongo-go-driver to pick default authMechanism.
+	if authMechanism != "MONGODB-X509" {
+		clientOptions.SetAuth(options.Credential{
 			Username:   cfg.username,
 			Password:   cfg.password,
 			AuthSource: cfg.authsource,
-		}).
-		SetMaxPoolSize(uint64(cfg.poolLimit)).
-		SetConnectTimeout(cfg.connectTimeout)
+		})
+	}
 
 	if cfg.tlsConfig != nil {
 		clientOptions.SetTLSConfig(cfg.tlsConfig)
