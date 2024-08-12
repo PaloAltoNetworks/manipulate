@@ -15,6 +15,7 @@ import (
 	"context"
 	"fmt"
 	neturl "net/url"
+	"strings"
 	"time"
 
 	"github.com/opentracing/opentracing-go/log"
@@ -55,6 +56,17 @@ func New(url string, db string, opts ...Option) (manipulate.TransactionalManipul
 	parsedURL, err := neturl.Parse(url)
 	if err != nil {
 		return nil, fmt.Errorf("invalid mongo URL: %w", err)
+	}
+
+	// Ensure there's a '/' before the query parameters if missing and not already present
+	if parsedURL.Path == "" && parsedURL.RawQuery != "" {
+		url = strings.Replace(url, "?"+parsedURL.RawQuery, "/?"+parsedURL.RawQuery, 1)
+
+		// Re-parse the URL after potential modification
+		parsedURL, err = neturl.Parse(url)
+		if err != nil {
+			return nil, fmt.Errorf("invalid mongo URL after modification: %w", err)
+		}
 	}
 
 	// Check if authMechanism is present in the query
