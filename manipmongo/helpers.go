@@ -218,6 +218,17 @@ func GetDatabase(manipulator manipulate.Manipulator) *mongo.Database {
 	return m.client.Database(m.dbName)
 }
 
+// GetClient returns the mongo.Client that's already connected to the mongoDB. Use at your own risks.
+func GetClient(manipulator manipulate.Manipulator) *mongo.Client {
+
+	m, ok := manipulator.(*mongoManipulator)
+	if !ok {
+		panic("you can only pass a mongo manipulator to GetDatabase")
+	}
+
+	return m.client
+}
+
 // RunQuery runs a function that must run a mongodb operation.
 // It will retry in case of failure. This is an advanced helper can
 // be used when you get a session from using GetDatabase().
