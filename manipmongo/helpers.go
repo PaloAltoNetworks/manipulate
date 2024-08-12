@@ -127,7 +127,9 @@ func EnsureIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 
 			_, err := collection.Indexes().CreateOne(sc, indexModel)
 			if err != nil {
-				if strings.Contains(err.Error(), "already exists with different options") {
+				// Check if the error message contains the specific conflict string
+				if strings.Contains(err.Error(), "IndexOptionsConflict") ||
+					strings.Contains(err.Error(), "already exists with different options") {
 
 					// In case we are changing a TTL we are using colMod instead
 					// as per https://docs.mongodb.com/manual/core/index-ttl/#restrictions
