@@ -1065,14 +1065,8 @@ func (m *mongoManipulator) makeSession(
 	writeConsistency manipulate.WriteConsistency,
 ) (*mongo.Collection, mongo.Session, error) {
 
-	// To be safe we are setting the read/write concerns on both collection
-	// as well as session level. It should be enough to just set it at session
-	// level.
 	readConcern := convertReadConsistency(readConsistency)
 	writeConcern := convertWriteConsistency(writeConsistency)
-	opts := options.Collection().
-		SetReadConcern(readConcern).
-		SetWriteConcern(writeConcern)
 
 	sessionOptions := options.Session()
 	sessionOptions.SetDefaultReadConcern(readConcern)
@@ -1083,6 +1077,6 @@ func (m *mongoManipulator) makeSession(
 	}
 
 	database := m.client.Database(m.dbName)
-	collection := database.Collection(identity.Name, opts)
+	collection := database.Collection(identity.Name)
 	return collection, session, nil
 }
