@@ -555,10 +555,10 @@ func renderTemplate(content string, values any) ([]byte, error) {
 	funcs := sprig.TxtFuncMap()
 	funcs["required"] = func(warn string, val any) (any, error) {
 		if val == nil {
-			return val, fmt.Errorf(warn)
+			return val, fmt.Errorf(warn) //nolint:staticcheck
 		} else if _, ok := val.(string); ok {
 			if val == "" {
-				return val, fmt.Errorf(warn)
+				return val, fmt.Errorf(warn) //nolint:staticcheck
 			}
 		}
 		return val, nil
