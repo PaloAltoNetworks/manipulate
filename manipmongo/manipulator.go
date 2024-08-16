@@ -246,7 +246,7 @@ func (m *mongoManipulator) RetrieveMany(mctx manipulate.Context, dest elemental.
 	}
 	findOptions = updatedFindOptions.(*options.FindOptions)
 
-	err = mongo.WithSession(mctx.Context(), session, func(sessCtx mongo.SessionContext) error {
+	err = mongo.WithSession(context.Background(), session, func(sessCtx mongo.SessionContext) error {
 
 		cursor, err := c.Find(sessCtx, filter, findOptions)
 		if err != nil {
@@ -398,7 +398,7 @@ func (m *mongoManipulator) Retrieve(mctx manipulate.Context, object elemental.Id
 	}
 	findOptions = updatedFindOptions.(*options.FindOneOptions)
 
-	err = mongo.WithSession(mctx.Context(), session, func(sessCtx mongo.SessionContext) error {
+	err = mongo.WithSession(context.Background(), session, func(sessCtx mongo.SessionContext) error {
 
 		result := c.FindOne(sessCtx, filter, findOptions)
 
@@ -489,7 +489,7 @@ func (m *mongoManipulator) Create(mctx manipulate.Context, object elemental.Iden
 		}
 	}
 
-	err = mongo.WithSession(mctx.Context(), session, func(sessCtx mongo.SessionContext) error {
+	err = mongo.WithSession(context.Background(), session, func(sessCtx mongo.SessionContext) error {
 
 		if operations, upsert := mctx.(opaquer).Opaque()[opaqueKeyUpsert]; upsert {
 
@@ -714,7 +714,7 @@ func (m *mongoManipulator) Update(mctx manipulate.Context, object elemental.Iden
 		filter = bson.D{{Key: "$and", Value: append(ands, filter)}}
 	}
 
-	err = mongo.WithSession(mctx.Context(), session, func(sessCtx mongo.SessionContext) error {
+	err = mongo.WithSession(context.Background(), session, func(sessCtx mongo.SessionContext) error {
 
 		if _, err := RunQuery(
 			mctx,
@@ -807,7 +807,7 @@ func (m *mongoManipulator) Delete(mctx manipulate.Context, object elemental.Iden
 		filter = bson.D{{Key: "$and", Value: append(ands, filter)}}
 	}
 
-	err = mongo.WithSession(mctx.Context(), session, func(sessCtx mongo.SessionContext) error {
+	err = mongo.WithSession(context.Background(), session, func(sessCtx mongo.SessionContext) error {
 
 		if _, err := RunQuery(
 			mctx,
@@ -908,7 +908,7 @@ func (m *mongoManipulator) DeleteMany(mctx manipulate.Context, identity elementa
 		filter = bson.D{{Key: "$and", Value: append(ands, filter)}}
 	}
 
-	err = mongo.WithSession(mctx.Context(), session, func(sessCtx mongo.SessionContext) error {
+	err = mongo.WithSession(context.Background(), session, func(sessCtx mongo.SessionContext) error {
 
 		if _, err := RunQuery(
 			mctx,
@@ -1006,7 +1006,7 @@ func (m *mongoManipulator) Count(mctx manipulate.Context, identity elemental.Ide
 	countOptions = updatedCountOptions.(*options.CountOptions)
 
 	var count int64
-	err = mongo.WithSession(mctx.Context(), session, func(sessCtx mongo.SessionContext) error {
+	err = mongo.WithSession(context.Background(), session, func(sessCtx mongo.SessionContext) error {
 
 		out, err := RunQuery(
 			mctx,
