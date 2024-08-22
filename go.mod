@@ -1,9 +1,11 @@
 module go.aporeto.io/manipulate
 
-go 1.21
+go 1.22
+
+toolchain go1.22.6
 
 require (
-	go.aporeto.io/elemental v1.123.1-0.20240723180601-4e889389e543
+	go.aporeto.io/elemental v1.123.1-0.20240822212917-6f8c7be6698c
 	go.aporeto.io/wsc v1.51.0
 )
 
