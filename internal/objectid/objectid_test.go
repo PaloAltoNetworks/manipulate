@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/globalsign/mgo/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestParse(t *testing.T) {
@@ -14,7 +14,7 @@ func TestParse(t *testing.T) {
 	tests := []struct {
 		name  string
 		args  args
-		want  bson.ObjectId
+		want  func() primitive.ObjectID
 		want1 bool
 	}{
 		{
@@ -22,7 +22,10 @@ func TestParse(t *testing.T) {
 			args{
 				"5d66b8f7919e0c446f0b4597",
 			},
-			bson.ObjectIdHex("5d66b8f7919e0c446f0b4597"),
+			func() primitive.ObjectID {
+				id, _ := primitive.ObjectIDFromHex("5d66b8f7919e0c446f0b4597")
+				return id
+			},
 			true,
 		},
 		{
@@ -30,7 +33,9 @@ func TestParse(t *testing.T) {
 			args{
 				"ZZZ6b8f7919e0c446f0b4597",
 			},
-			bson.ObjectId(""),
+			func() primitive.ObjectID {
+				return primitive.NilObjectID
+			},
 			false,
 		},
 		{
@@ -38,7 +43,9 @@ func TestParse(t *testing.T) {
 			args{
 				"5d66b8f7919e0c446f0b459",
 			},
-			bson.ObjectId(""),
+			func() primitive.ObjectID {
+				return primitive.NilObjectID
+			},
 			false,
 		},
 		{
@@ -46,7 +53,9 @@ func TestParse(t *testing.T) {
 			args{
 				"",
 			},
-			bson.ObjectId(""),
+			func() primitive.ObjectID {
+				return primitive.NilObjectID
+			},
 			false,
 		},
 		{
@@ -54,15 +63,17 @@ func TestParse(t *testing.T) {
 			args{
 				"hello world how are you",
 			},
-			bson.ObjectId(""),
+			func() primitive.ObjectID {
+				return primitive.NilObjectID
+			},
 			false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, got1 := Parse(tt.args.s)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Parse() got = %v, want %v", got, tt.want)
+			if !reflect.DeepEqual(got, tt.want()) {
+				t.Errorf("Parse() got = %v, want %v", got, tt.want())
 			}
 			if got1 != tt.want1 {
 				t.Errorf("Parse() got1 = %v, want %v", got1, tt.want1)

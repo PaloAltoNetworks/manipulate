@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	// nolint:revive // Allow dot imports for readability in tests
 	. "github.com/smartystreets/goconvey/convey"
 	internalsyscall "go.aporeto.io/manipulate/maniphttp/internal/syscall"
 	"golang.org/x/sys/unix"

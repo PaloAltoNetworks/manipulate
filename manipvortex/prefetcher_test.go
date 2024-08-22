@@ -20,6 +20,7 @@ import (
 	testmodel "go.aporeto.io/elemental/test/model"
 	"go.aporeto.io/manipulate"
 
+	// nolint:revive // Allow dot imports for readability in tests
 	. "github.com/smartystreets/goconvey/convey"
 )
 

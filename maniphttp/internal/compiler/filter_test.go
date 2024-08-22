@@ -14,6 +14,7 @@ package compiler
 import (
 	"testing"
 
+	// nolint:revive // Allow dot imports for readability in tests
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
 )

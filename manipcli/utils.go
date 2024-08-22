@@ -420,13 +420,13 @@ func ReadData(
 
 	if url == "" && file == "" {
 		if mandatory {
-			return nil, fmt.Errorf("You must pass either %s or %s", flagInputFile, flagInputURL)
+			return nil, fmt.Errorf("you must pass either %s or %s", flagInputFile, flagInputURL)
 		}
 		return nil, nil
 	}
 
 	if url != "" && file != "" {
-		return nil, fmt.Errorf("You cannot set both %s and %s", flagInputFile, flagInputURL)
+		return nil, fmt.Errorf("you cannot set both %s and %s", flagInputFile, flagInputURL)
 	}
 
 	var processed bool
@@ -440,7 +440,7 @@ func ReadData(
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("Unable to retrieve data from url %s: %s", url, resp.Status)
+			return nil, fmt.Errorf("unable to retrieve data from url %s: %s", url, resp.Status)
 		}
 
 		defer resp.Body.Close() // nolint
@@ -474,7 +474,7 @@ func ReadData(
 	}
 
 	if !processed && mandatory {
-		return nil, fmt.Errorf("You must pass either %s or %s", flagInputFile, flagInputURL)
+		return nil, fmt.Errorf("you must pass either %s or %s", flagInputFile, flagInputURL)
 	}
 
 	if !processed && !mandatory {
@@ -555,10 +555,10 @@ func renderTemplate(content string, values any) ([]byte, error) {
 	funcs := sprig.TxtFuncMap()
 	funcs["required"] = func(warn string, val any) (any, error) {
 		if val == nil {
-			return val, fmt.Errorf(warn)
+			return val, fmt.Errorf(warn) //nolint:staticcheck
 		} else if _, ok := val.(string); ok {
 			if val == "" {
-				return val, fmt.Errorf(warn)
+				return val, fmt.Errorf(warn) //nolint:staticcheck
 			}
 		}
 		return val, nil

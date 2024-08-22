@@ -16,15 +16,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/objectid"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 )
 
 const (
@@ -69,7 +73,7 @@ func applyOrdering(order []string, spec elemental.AttributeSpecifiable) []string
 	return o
 }
 
-func prepareNextFilter(collection *mgo.Collection, orderingField string, next string) (bson.D, error) {
+func prepareNextFilter(collection *mongo.Collection, orderingField string, next string) (bson.D, error) {
 
 	var id any
 	if oid, ok := objectid.Parse(next); ok {
@@ -81,10 +85,10 @@ func prepareNextFilter(collection *mgo.Collection, orderingField string, next st
 	if orderingField == "" {
 		return bson.D{
 			{
-				Name: "_id",
+				Key: "_id",
 				Value: bson.D{
 					{
-						Name:  "$gt",
+						Key:   "$gt",
 						Value: id,
 					},
 				},
@@ -99,16 +103,18 @@ func prepareNextFilter(collection *mgo.Collection, orderingField string, next st
 	}
 
 	doc := bson.M{}
-	if err := collection.FindId(id).Select(bson.M{orderingField: 1}).One(&doc); err != nil {
-		return nil, HandleQueryError(err)
+
+	opts := options.FindOne().SetProjection(bson.M{"orderingField": 1})
+	if err := collection.FindOne(context.Background(), bson.M{"_id": id}, opts).Decode(&doc); err != nil {
+		log.Fatal(err)
 	}
 
 	return bson.D{
 		{
-			Name: orderingField,
+			Key: orderingField,
 			Value: bson.D{
 				{
-					Name:  comp,
+					Key:   comp,
 					Value: doc[orderingField],
 				},
 			},
@@ -123,11 +129,11 @@ func HandleQueryError(err error) error {
 		return manipulate.ErrCannotCommunicate{Err: err}
 	}
 
-	if err == mgo.ErrNotFound {
+	if err == mongo.ErrNoDocuments {
 		return manipulate.ErrObjectNotFound{Err: fmt.Errorf("cannot find the object for the given ID")}
 	}
 
-	if mgo.IsDup(err) {
+	if mongo.IsDuplicateKeyError(err) {
 		return manipulate.ErrConstraintViolation{Err: fmt.Errorf("duplicate key")}
 	}
 
@@ -139,90 +145,41 @@ func HandleQueryError(err error) error {
 		return err
 	}
 
-	// see https://github.com/mongodb/mongo/blob/master/src/mongo/base/error_codes.err
-	switch getErrorCode(err) {
-	case 6, 7, 71, 74, 91, 109, 189, 202, 216, 262, 10107, 13436, 13435, 11600, 11602:
-		// HostUnreachable
-		// HostNotFound,
-		// ReplicaSetNotFound,
-		// NodeNotFound,
-		// ConfigurationInProgress,
-		// ShutdownInProgress
-		// PrimarySteppedDown,
-		// NetworkInterfaceExceededTimeLimit
-		// ElectionInProgress
-		// ExceededTimeLimit
-		// NotMaster
-		// NotMasterOrSecondary
-		// NotMasterNoSlaveOk
-		// InterruptedAtShutdown
-		// InterruptedDueToStepDown
+	if mongo.IsNetworkError(err) {
 		return manipulate.ErrCannotCommunicate{Err: err}
-	default:
-		return manipulate.ErrCannotExecuteQuery{Err: err}
-	}
-}
-
-func getErrorCode(err error) int {
-
-	switch e := err.(type) {
-
-	case *mgo.QueryError:
-		return e.Code
-
-	case *mgo.LastError:
-		return e.Code
-
-	case *mgo.BulkError:
-		// we just get the first
-		for _, c := range e.Cases() {
-			return getErrorCode(c.Err)
-		}
 	}
 
-	return 0
+	return manipulate.ErrCannotExecuteQuery{Err: err}
 }
 
 func invalidQuery(err error) (bool, error) {
 
-	qErr, ok := queryError(err)
+	ok, qErr := queryError(err)
 	if !ok {
 		return false, nil
 	}
 
-	errCopyLower := strings.ToLower(qErr.Message)
-	switch {
-	case qErr.Code == 2 && strings.Contains(errCopyLower, errInvalidQueryBadRegex):
-		return true, manipulate.ErrInvalidQuery{
-			DueToFilter: true,
-			Err:         qErr,
-		}
-	case qErr.Code == 51091 && strings.Contains(errCopyLower, errInvalidQueryInvalidRegex):
-		return true, manipulate.ErrInvalidQuery{
-			DueToFilter: true,
-			Err:         qErr,
-		}
-	default:
-		return false, nil
+	return true, manipulate.ErrInvalidQuery{
+		DueToFilter: true,
+		Err:         qErr,
 	}
 }
 
-func queryError(err error) (*mgo.QueryError, bool) {
+func queryError(err error) (bool, error) {
 
 	if err == nil {
-		return nil, false
+		return false, nil
 	}
 
 	switch e := err.(type) {
-	case *mgo.QueryError:
-		return e, true
-	case *mgo.BulkError:
-		for _, c := range e.Cases() {
-			return queryError(c.Err)
+	case mongo.CommandError:
+		return true, e
+	case mongo.BulkWriteException:
+		for _, writeErr := range e.WriteErrors {
+			return queryError(writeErr)
 		}
 	}
-
-	return nil, false
+	return false, err
 }
 
 func isConnectionError(err error) bool {
@@ -297,38 +254,44 @@ func makeFieldsSelector(fields []string, spec elemental.AttributeSpecifiable) bs
 	return sels
 }
 
-func convertReadConsistency(c manipulate.ReadConsistency) mgo.Mode {
+func convertReadConsistency(c manipulate.ReadConsistency) *readconcern.ReadConcern {
 	switch c {
 	case manipulate.ReadConsistencyEventual:
-		return mgo.Eventual
+		return readconcern.Available()
 	case manipulate.ReadConsistencyMonotonic:
-		return mgo.Monotonic
+		return readconcern.Majority()
 	case manipulate.ReadConsistencyNearest:
-		return mgo.Nearest
+		return readconcern.Local()
 	case manipulate.ReadConsistencyStrong:
-		return mgo.Strong
+		return readconcern.Majority()
 	case manipulate.ReadConsistencyWeakest:
-		return mgo.SecondaryPreferred
+		return readconcern.Available()
 	default:
-		return -1
+		return &readconcern.ReadConcern{}
 	}
 }
 
-func convertWriteConsistency(c manipulate.WriteConsistency) *mgo.Safe {
+func convertWriteConsistency(c manipulate.WriteConsistency) *writeconcern.WriteConcern {
 	switch c {
 	case manipulate.WriteConsistencyNone:
-		return nil
+		return writeconcern.Unacknowledged()
 	case manipulate.WriteConsistencyStrong:
-		return &mgo.Safe{WMode: "majority"}
+		return writeconcern.Majority()
 	case manipulate.WriteConsistencyStrongest:
-		return &mgo.Safe{WMode: "majority", J: true}
+		{
+			journal := true
+			return &writeconcern.WriteConcern{
+				W:       "majority",
+				Journal: &journal,
+			}
+		}
 	default:
-		return &mgo.Safe{}
+		return &writeconcern.WriteConcern{}
 	}
 }
 
 func explainIfNeeded(
-	query *mgo.Query,
+	collection *mongo.Collection,
 	filter bson.D,
 	identity elemental.Identity,
 	operation elemental.Operation,
@@ -345,20 +308,30 @@ func explainIfNeeded(
 	}
 
 	if len(exp) == 0 {
-		return func() error { return explain(query, operation, identity, filter) }
+		return func() error { return explain(collection, operation, identity, filter) }
 	}
 
 	if _, ok = exp[operation]; ok {
-		return func() error { return explain(query, operation, identity, filter) }
+		return func() error { return explain(collection, operation, identity, filter) }
 	}
 
 	return nil
 }
 
-func explain(query *mgo.Query, operation elemental.Operation, identity elemental.Identity, filter bson.D) error {
+func explain(collection *mongo.Collection, operation elemental.Operation, identity elemental.Identity, filter bson.D) error {
 
-	r := bson.M{}
-	if err := query.Explain(&r); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	explainCmd := bson.D{
+		{Key: "explain", Value: bson.D{
+			{Key: "find", Value: collection.Name()},
+			{Key: "filter", Value: filter},
+		}},
+	}
+
+	var result bson.M
+	if err := collection.Database().RunCommand(ctx, explainCmd).Decode(&result); err != nil {
 		return fmt.Errorf("unable to explain: %s", err)
 	}
 
@@ -371,7 +344,7 @@ func explain(query *mgo.Query, operation elemental.Operation, identity elemental
 		f = string(fdata)
 	}
 
-	rdata, err := json.MarshalIndent(r, "", "  ")
+	rdata, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
 		return fmt.Errorf("unable to marshal explanation: %s", err)
 	}
@@ -389,17 +362,27 @@ func explain(query *mgo.Query, operation elemental.Operation, identity elemental
 	return nil
 }
 
-func setMaxTime(ctx context.Context, q *mgo.Query) (*mgo.Query, error) {
-
+func setMaxTime(ctx context.Context, q interface{}) (interface{}, error) {
 	d, ok := ctx.Deadline()
+	var mx time.Duration
 	if !ok {
-		return q.SetMaxTime(defaultGlobalContextTimeout), nil
+		mx = defaultGlobalContextTimeout
+	} else {
+		mx = time.Until(d)
 	}
 
-	mx := time.Until(d)
 	if err := ctx.Err(); err != nil {
 		return nil, manipulate.ErrCannotBuildQuery{Err: err}
 	}
 
-	return q.SetMaxTime(mx), nil
+	switch opts := q.(type) {
+	case *options.FindOptions:
+		return opts.SetMaxTime(mx), nil
+	case *options.FindOneOptions:
+		return opts.SetMaxTime(mx), nil
+	case *options.CountOptions:
+		return opts.SetMaxTime(mx), nil
+	default:
+		return nil, manipulate.ErrCannotBuildQuery{Err: fmt.Errorf("unsupported options type")}
+	}
 }

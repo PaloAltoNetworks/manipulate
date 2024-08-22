@@ -18,12 +18,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
+	// nolint:revive // Allow dot imports for readability in tests
 	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/maniptest"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestCompileFilter(t *testing.T) {
@@ -38,14 +38,14 @@ func TestCompileFilter(t *testing.T) {
 
 			ddd := bson.D{
 				{
-					Name: "$and",
+					Key: "$and",
 					Value: []bson.D{
 						{
 							{
-								Name: "a",
+								Key: "a",
 								Value: bson.D{
 									{
-										Name:  "$eq",
+										Key:   "$eq",
 										Value: "b",
 									},
 								},
@@ -154,21 +154,7 @@ func TestGetDatabase(t *testing.T) {
 
 		Convey("When I call GetDatabase", func() {
 			Convey("Then it should panic", func() {
-				So(func() { _, _, _ = GetDatabase(m) }, ShouldPanicWith, "you can only pass a mongo manipulator to GetDatabase")
-			})
-		})
-	})
-}
-
-func TestSetConsistencyMode(t *testing.T) {
-
-	Convey("Given I a test manipulator", t, func() {
-
-		m := maniptest.NewTestManipulator()
-
-		Convey("When I call SetConsistencyMode", func() {
-			Convey("Then it should panic", func() {
-				So(func() { SetConsistencyMode(m, mgo.Strong, true) }, ShouldPanicWith, "you can only pass a mongo manipulator to SetConsistencyMode")
+				So(func() { _ = GetDatabase(m) }, ShouldPanicWith, "you can only pass a mongo manipulator to GetDatabase")
 			})
 		})
 	})

@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	// nolint:revive // Allow dot imports for readability in tests
 	. "github.com/smartystreets/goconvey/convey"
 	"golang.org/x/sync/errgroup"
 
@@ -222,7 +223,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, `[{"ID": "1", "name": "name1"}, {"ID": "2", "name": "name2"}]`)
+			_, _ = fmt.Fprint(w, `[{"ID": "1", "name": "name1"}, {"ID": "2", "name": "name2"}]`)
 		}))
 		defer ts.Close()
 
@@ -330,7 +331,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, `[]`)
+			_, _ = fmt.Fprint(w, `[]`)
 		}))
 		defer ts.Close()
 
@@ -362,7 +363,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, "woops")
+			_, _ = fmt.Fprint(w, "woops")
 		}))
 		defer ts.Close()
 
@@ -381,7 +382,7 @@ func TestHTTP_RetrieveMany(t *testing.T) {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, `[not good]`)
+			_, _ = fmt.Fprint(w, `[not good]`)
 		}))
 		defer ts.Close()
 
@@ -405,7 +406,7 @@ func TestHTTP_Retrieve(t *testing.T) {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, `{"ID":"xxx","name":"the list 1"}`)
+			_, _ = fmt.Fprint(w, `{"ID":"xxx","name":"the list 1"}`)
 		}))
 		defer ts.Close()
 
@@ -477,7 +478,7 @@ func TestHTTP_Retrieve(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(422)
-			fmt.Fprint(w, `[{"code":422,"description":"nope.","subject":"elemental","title":"Read Only Error","data":null}]`)
+			_, _ = fmt.Fprint(w, `[{"code":422,"description":"nope.","subject":"elemental","title":"Read Only Error","data":null}]`)
 		}))
 		defer ts.Close()
 
@@ -502,7 +503,7 @@ func TestHTTP_Retrieve(t *testing.T) {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, `not good at all`)
+			_, _ = fmt.Fprint(w, `not good at all`)
 		}))
 		defer ts.Close()
 
@@ -530,7 +531,7 @@ func TestHTTP_Create(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			fmt.Fprint(w, `{"ID": "zzz"}`)
+			_, _ = fmt.Fprint(w, `{"ID": "zzz"}`)
 		}))
 		defer ts.Close()
 
@@ -627,7 +628,7 @@ func TestHTTP_Create(t *testing.T) {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, "")
+			_, _ = fmt.Fprint(w, "")
 		}))
 		defer ts.Close()
 
@@ -651,7 +652,7 @@ func TestHTTP_Create(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			fmt.Fprint(w, `[{"bad"}]`)
+			_, _ = fmt.Fprint(w, `[{"bad"}]`)
 		}))
 		defer ts.Close()
 
@@ -677,7 +678,7 @@ func TestHTTP_Update(t *testing.T) {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, `{"ID": "zzz", "parentType": "pedro", "parentID": "yyy"}`)
+			_, _ = fmt.Fprint(w, `{"ID": "zzz", "parentType": "pedro", "parentID": "yyy"}`)
 		}))
 		defer ts.Close()
 
@@ -773,7 +774,7 @@ func TestHTTP_Update(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, "nope")
+			_, _ = fmt.Fprint(w, "nope")
 		}))
 		defer ts.Close()
 
@@ -796,7 +797,7 @@ func TestHTTP_Update(t *testing.T) {
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, `bad json`)
+			_, _ = fmt.Fprint(w, `bad json`)
 		}))
 		defer ts.Close()
 
@@ -898,7 +899,7 @@ func TestHTTP_Delete(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, "nope")
+			_, _ = fmt.Fprint(w, "nope")
 		}))
 		defer ts.Close()
 
@@ -989,7 +990,7 @@ func TestHTTP_Count(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, "woops")
+			_, _ = fmt.Fprint(w, "woops")
 		}))
 		defer ts.Close()
 
@@ -1169,7 +1170,7 @@ func TestHTTP_send(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusRequestTimeout)
-			fmt.Fprint(w, `[{"code": 408, "title": "nope", "description": "boom"}]`)
+			_, _ = fmt.Fprint(w, `[{"code": 408, "title": "nope", "description": "boom"}]`)
 		}))
 		defer ts.Close()
 
@@ -1215,7 +1216,7 @@ func TestHTTP_send(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusRequestTimeout)
-			fmt.Fprint(w, `[{"code": 408, "title": "nope", "description": "boom"}]`)
+			_, _ = fmt.Fprint(w, `[{"code": 408, "title": "nope", "description": "boom"}]`)
 		}))
 		defer ts.Close()
 
@@ -1267,7 +1268,7 @@ func TestHTTP_send(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusRequestTimeout)
-			fmt.Fprint(w, `[{"code": 408, "title": "nope", "description": "boom"}]`)
+			_, _ = fmt.Fprint(w, `[{"code": 408, "title": "nope", "description": "boom"}]`)
 		}))
 		defer ts.Close()
 
@@ -1312,7 +1313,7 @@ func TestHTTP_send(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusRequestTimeout)
-			fmt.Fprint(w, `[{"code": 408, "title": "nope", "description": "boom"}]`)
+			_, _ = fmt.Fprint(w, `[{"code": 408, "title": "nope", "description": "boom"}]`)
 		}))
 		defer ts.Close()
 
@@ -1369,7 +1370,7 @@ func TestHTTP_send(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusRequestTimeout)
-			fmt.Fprint(w, `[{"code": 408, "title": "nope", "description": "boom"}]`)
+			_, _ = fmt.Fprint(w, `[{"code": 408, "title": "nope", "description": "boom"}]`)
 		}))
 		defer ts.Close()
 
@@ -1397,7 +1398,7 @@ func TestHTTP_send(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadGateway)
-			fmt.Fprint(w, `[{"code": 502, "title": "nope", "description": "boom"}]`)
+			_, _ = fmt.Fprint(w, `[{"code": 502, "title": "nope", "description": "boom"}]`)
 		}))
 		defer ts.Close()
 
@@ -1425,7 +1426,7 @@ func TestHTTP_send(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusServiceUnavailable)
-			fmt.Fprint(w, `[{"code": 503, "title": "nope", "description": "boom"}]`)
+			_, _ = fmt.Fprint(w, `[{"code": 503, "title": "nope", "description": "boom"}]`)
 		}))
 		defer ts.Close()
 
@@ -1453,7 +1454,7 @@ func TestHTTP_send(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusGatewayTimeout)
-			fmt.Fprint(w, `[{"code": 504, "title": "nope", "description": "boom"}]`)
+			_, _ = fmt.Fprint(w, `[{"code": 504, "title": "nope", "description": "boom"}]`)
 		}))
 		defer ts.Close()
 
@@ -1481,7 +1482,7 @@ func TestHTTP_send(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusTooManyRequests)
-			fmt.Fprint(w, `[{"code": 429, "title": "nope", "description": "boom"}]`)
+			_, _ = fmt.Fprint(w, `[{"code": 429, "title": "nope", "description": "boom"}]`)
 		}))
 		defer ts.Close()
 
@@ -1504,7 +1505,7 @@ func TestHTTP_send(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusForbidden)
-			fmt.Fprint(w, `[{"code": 403, "title": "nope", "description": "boom"}]`)
+			_, _ = fmt.Fprint(w, `[{"code": 403, "title": "nope", "description": "boom"}]`)
 		}))
 		defer ts.Close()
 
@@ -1525,7 +1526,7 @@ func TestHTTP_send(t *testing.T) {
 			if r.Header.Get("Authorization") != "Bearer ok-token" {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusForbidden)
-				fmt.Fprint(w, `[{"code": 403, "title": "nope", "description": "boom"}]`)
+				_, _ = fmt.Fprint(w, `[{"code": 403, "title": "nope", "description": "boom"}]`)
 			} else {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusNoContent)
@@ -1588,7 +1589,7 @@ func TestHTTP_send(t *testing.T) {
 			if call == 1 {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusForbidden)
-				fmt.Fprint(w, `[{"code": 403, "title": "nope", "description": "boom"}]`)
+				_, _ = fmt.Fprint(w, `[{"code": 403, "title": "nope", "description": "boom"}]`)
 			} else {
 				time.Sleep(5 * time.Second)
 				w.Header().Set("Content-Type", "application/json")
@@ -1621,7 +1622,7 @@ func TestHTTP_send(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusForbidden)
-			fmt.Fprint(w, `[{"code": 403, "title": "nope", "description": "boom"}]`)
+			_, _ = fmt.Fprint(w, `[{"code": 403, "title": "nope", "description": "boom"}]`)
 		}))
 		defer ts.Close()
 
@@ -1665,7 +1666,7 @@ func TestHTTP_send(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusLocked)
-			fmt.Fprint(w, `[{"code": 423, "title": "nope", "description": "boom"}]`)
+			_, _ = fmt.Fprint(w, `[{"code": 423, "title": "nope", "description": "boom"}]`)
 		}))
 		defer ts.Close()
 
@@ -1694,7 +1695,7 @@ func TestHTTP_send(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprint(w, `[{"code": 423, "]`)
+			_, _ = fmt.Fprint(w, `[{"code": 423, "]`)
 		}))
 		defer ts.Close()
 
@@ -1722,7 +1723,7 @@ func TestHTTP_send(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, `[{"code": 500, "title": "nope", "description": "boom"}]`)
+			_, _ = fmt.Fprint(w, `[{"code": 500, "title": "nope", "description": "boom"}]`)
 		}))
 		defer ts.Close()
 

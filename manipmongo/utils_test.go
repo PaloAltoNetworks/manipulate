@@ -12,215 +12,20 @@
 package manipmongo
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"io"
-	"net"
 	"reflect"
 	"testing"
-	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/golang/mock/gomock"
-	. "github.com/smartystreets/goconvey/convey"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/manipmongo/internal"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 )
-
-func Test_HandleQueryError(t *testing.T) {
-	type args struct {
-		err error
-	}
-	tests := []struct {
-		name      string
-		args      args
-		errString string
-	}{
-		{
-			"error 2",
-			args{
-				&mgo.QueryError{
-					Code:    2,
-					Message: errInvalidQueryBadRegex,
-				},
-			},
-			"Query invalid: $regex has to be a string",
-		},
-		{
-			"error 51091",
-			args{
-				&mgo.QueryError{
-					Code:    51091,
-					Message: errInvalidQueryInvalidRegex,
-				},
-			},
-			"Query invalid: regular expression is invalid",
-		},
-		{
-			"net error",
-			args{
-				&net.OpError{
-					Op:  "coucou",
-					Err: fmt.Errorf("network sucks"),
-				},
-			},
-			"Cannot communicate: coucou: network sucks",
-		},
-		{
-			"err not found",
-			args{
-				mgo.ErrNotFound,
-			},
-			"Object not found: cannot find the object for the given ID",
-		},
-		{
-			"err dup",
-			args{
-				&mgo.LastError{Code: 11000},
-			},
-			"Constraint violation: duplicate key",
-		},
-		{
-			"isConnectionError says yes",
-			args{
-				fmt.Errorf("lost connection to server"),
-			},
-			"Cannot communicate: lost connection to server",
-		},
-		{
-			"isConnectionError says no",
-			args{
-				fmt.Errorf("no"),
-			},
-			"Unable to execute query: no",
-		},
-
-		{
-			"err 6",
-			args{
-				&mgo.LastError{Code: 6, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 7",
-			args{
-				&mgo.LastError{Code: 7, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 71",
-			args{
-				&mgo.LastError{Code: 71, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 74",
-			args{
-				&mgo.LastError{Code: 74, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 91",
-			args{
-				&mgo.LastError{Code: 91, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 109",
-			args{
-				&mgo.LastError{Code: 109, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 189",
-			args{
-				&mgo.LastError{Code: 189, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 202",
-			args{
-				&mgo.LastError{Code: 202, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 216",
-			args{
-				&mgo.LastError{Code: 216, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 10107",
-			args{
-				&mgo.LastError{Code: 10107, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 13436",
-			args{
-				&mgo.LastError{Code: 13436, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 13435",
-			args{
-				&mgo.LastError{Code: 13435, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 11600",
-			args{
-				&mgo.LastError{Code: 11600, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 11602",
-			args{
-				&mgo.LastError{Code: 11602, Err: "boom"},
-			},
-			"Cannot communicate: boom",
-		},
-		{
-			"err 424242",
-			args{
-				&mgo.LastError{Code: 424242, Err: "boom"},
-			},
-			"Unable to execute query: boom",
-		},
-
-		{
-			"err 11602 QueryError ",
-			args{
-				&mgo.QueryError{Code: 424242, Message: "boom"},
-			},
-			"Unable to execute query: boom",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := HandleQueryError(tt.args.err)
-			if tt.errString != err.Error() {
-				t.Errorf("HandleQueryError() error = %v, wantErr %v", err, tt.errString)
-			}
-		})
-	}
-}
 
 func Test_makeFieldsSelector(t *testing.T) {
 	type args struct {
@@ -692,42 +497,42 @@ func Test_convertReadConsistency(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want mgo.Mode
+		want *readconcern.ReadConcern
 	}{
 		{
 			"eventual",
 			args{manipulate.ReadConsistencyEventual},
-			mgo.Eventual,
+			readconcern.Available(),
 		},
 		{
 			"monotonic",
 			args{manipulate.ReadConsistencyMonotonic},
-			mgo.Monotonic,
+			readconcern.Majority(),
 		},
 		{
 			"nearest",
 			args{manipulate.ReadConsistencyNearest},
-			mgo.Nearest,
+			readconcern.Local(),
 		},
 		{
 			"strong",
 			args{manipulate.ReadConsistencyStrong},
-			mgo.Strong,
+			readconcern.Majority(),
 		},
 		{
 			"weakest",
 			args{manipulate.ReadConsistencyWeakest},
-			mgo.SecondaryPreferred,
+			readconcern.Available(),
 		},
 		{
 			"default",
 			args{manipulate.ReadConsistencyDefault},
-			-1,
+			&readconcern.ReadConcern{},
 		},
 		{
 			"something else",
 			args{manipulate.ReadConsistency("else")},
-			-1,
+			&readconcern.ReadConcern{},
 		},
 	}
 	for _, tt := range tests {
@@ -743,35 +548,29 @@ func Test_convertWriteConsistency(t *testing.T) {
 	type args struct {
 		c manipulate.WriteConsistency
 	}
+	trueVal := true
 	tests := []struct {
 		name string
 		args args
-		want *mgo.Safe
+		want *writeconcern.WriteConcern
 	}{
 		{
 			"none",
 			args{manipulate.WriteConsistencyNone},
-			nil,
+			writeconcern.Unacknowledged(),
 		},
 		{
 			"strong",
 			args{manipulate.WriteConsistencyStrong},
-			&mgo.Safe{WMode: "majority"},
+			writeconcern.Majority(),
 		},
 		{
 			"strongest",
 			args{manipulate.WriteConsistencyStrongest},
-			&mgo.Safe{WMode: "majority", J: true},
-		},
-		{
-			"default",
-			args{manipulate.WriteConsistencyDefault},
-			&mgo.Safe{},
-		},
-		{
-			"something else",
-			args{manipulate.WriteConsistency("else")},
-			&mgo.Safe{},
+			&writeconcern.WriteConcern{
+				W:       "majority",
+				Journal: &trueVal,
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -879,146 +678,12 @@ func Test_isConnectionError(t *testing.T) {
 	}
 }
 
-func Test_getErrorCode(t *testing.T) {
-	type args struct {
-		err error
-	}
-	tests := []struct {
-		name string
-		args args
-		want int
-	}{
-		{
-			"*mgo.QueryError",
-			args{
-				&mgo.QueryError{Code: 42},
-			},
-			42,
-		},
-		{
-			"*mgo.LastError",
-			args{
-				&mgo.LastError{Code: 42},
-			},
-			42,
-		},
-
-		{
-			"*mgo.BulkError",
-			args{
-				&mgo.BulkError{ /* private */ },
-			},
-			0, // Should be 42. but that is sadly untestable... or is it?
-		},
-		{
-			"",
-			args{
-				fmt.Errorf("yo"),
-			},
-			0,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := getErrorCode(tt.args.err); got != tt.want {
-				t.Errorf("getErrorCode() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_invalidQuery(t *testing.T) {
-
-	type args struct {
-		err error
-	}
-
-	testCases := map[string]struct {
-		input   args
-		wantOk  bool
-		wantErr error
-	}{
-		"code 2 - bad regex": {
-			input: args{
-				err: &mgo.QueryError{
-					Code:    2,
-					Message: errInvalidQueryBadRegex,
-				},
-			},
-			wantOk: true,
-			wantErr: manipulate.ErrInvalidQuery{
-				DueToFilter: true,
-				Err: &mgo.QueryError{
-					Code:    2,
-					Message: errInvalidQueryBadRegex,
-				},
-			},
-		},
-		"code 51091 - invalid regex": {
-			input: args{
-				err: &mgo.QueryError{
-					Code:    51091,
-					Message: errInvalidQueryInvalidRegex,
-				},
-			},
-			wantOk: true,
-			wantErr: manipulate.ErrInvalidQuery{
-				DueToFilter: true,
-				Err: &mgo.QueryError{
-					Code:    51091,
-					Message: errInvalidQueryInvalidRegex,
-				},
-			},
-		},
-		"nil": {
-			input: args{
-				err: nil,
-			},
-			wantOk:  false,
-			wantErr: nil,
-		},
-		"not an invalid query error": {
-			input: args{
-				err: errors.New("some other error"),
-			},
-			wantOk:  false,
-			wantErr: nil,
-		},
-	}
-
-	for scenario, tc := range testCases {
-		t.Run(scenario, func(t *testing.T) {
-			ok, err := invalidQuery(tc.input.err)
-
-			if ok != tc.wantOk {
-				t.Errorf("wanted '%t', got '%t'", tc.wantOk, ok)
-			}
-
-			if ok && err == nil {
-				t.Error("no error was returned when one was expected")
-			}
-
-			if !reflect.DeepEqual(err, tc.wantErr) {
-				t.Log("Error types did not match")
-				t.Errorf("\n"+
-					"EXPECTED:\n"+
-					"%+v\n"+
-					"ACTUAL:\n"+
-					"%+v",
-					tc.wantErr,
-					err,
-				)
-			}
-		})
-	}
-}
-
 func Test_explainIfNeeded(t *testing.T) {
 
 	identity := elemental.MakeIdentity("thing", "things")
 
 	type args struct {
-		query      *mgo.Query
+		collection *mongo.Collection
 		filter     bson.D
 		identity   elemental.Identity
 		operation  elemental.Operation
@@ -1106,56 +771,9 @@ func Test_explainIfNeeded(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := explainIfNeeded(tt.args.query, tt.args.filter, tt.args.identity, tt.args.operation, tt.args.explainMap); (got != nil) != tt.wantFunc {
+			if got := explainIfNeeded(tt.args.collection, tt.args.filter, tt.args.identity, tt.args.operation, tt.args.explainMap); (got != nil) != tt.wantFunc {
 				t.Errorf("explainIfNeeded() = %v, want %v", (got != nil), tt.wantFunc)
 			}
 		})
 	}
-}
-
-func TestSetMaxTime(t *testing.T) {
-
-	Convey("Calling setMaxTime with a context with no deadline should work", t, func() {
-		q := &mgo.Query{}
-		q, err := setMaxTime(context.Background(), q)
-		So(err, ShouldBeNil)
-		qr := (&mgo.Query{}).SetMaxTime(defaultGlobalContextTimeout)
-		So(q, ShouldResemble, qr)
-	})
-
-	Convey("Calling setMaxTime with a context with valid deadline should work", t, func() {
-		q := &mgo.Query{}
-		deadline := time.Now().Add(3 * time.Second)
-		ctx, cancel := context.WithDeadline(context.Background(), deadline)
-		defer cancel()
-
-		q, err := setMaxTime(ctx, q)
-		So(err, ShouldBeNil)
-		qr := (&mgo.Query{}).SetMaxTime(time.Until(deadline))
-		So(q, ShouldResemble, qr)
-	})
-
-	Convey("Calling setMaxTime with a context with expired deadline should not work", t, func() {
-		q := &mgo.Query{}
-		deadline := time.Now().Add(-3 * time.Second)
-		ctx, cancel := context.WithDeadline(context.Background(), deadline)
-		defer cancel()
-
-		q, err := setMaxTime(ctx, q)
-		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldEqual, "Unable to build query: context deadline exceeded")
-		So(q, ShouldBeNil)
-	})
-
-	Convey("Calling setMaxTime with a canceled context should not work", t, func() {
-		q := &mgo.Query{}
-		deadline := time.Now().Add(3 * time.Second)
-		ctx, cancel := context.WithDeadline(context.Background(), deadline)
-		cancel()
-
-		q, err := setMaxTime(ctx, q)
-		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldEqual, "Unable to build query: context canceled")
-		So(q, ShouldBeNil)
-	})
 }

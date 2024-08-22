@@ -12,16 +12,21 @@
 package manipmongo
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"go.aporeto.io/elemental"
 	"go.aporeto.io/manipulate"
 	"go.aporeto.io/manipulate/internal/backoff"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 )
 
 // DoesDatabaseExist checks if the database used by the given manipulator exists.
@@ -32,7 +37,7 @@ func DoesDatabaseExist(manipulator manipulate.Manipulator) (bool, error) {
 		panic("you can only pass a mongo manipulator to DoesDatabaseExist")
 	}
 
-	dbs, err := m.rootSession.DatabaseNames()
+	dbs, err := m.client.ListDatabaseNames(context.Background(), nil)
 	if err != nil {
 		return false, err
 	}
@@ -53,32 +58,40 @@ func DropDatabase(manipulator manipulate.Manipulator) error {
 	if !ok {
 		panic("you can only pass a mongo manipulator to DropDatabase")
 	}
-
-	session := m.rootSession.Copy()
-	defer session.Close()
-
-	return session.DB(m.dbName).DropDatabase()
+	database := m.client.Database(m.dbName)
+	return database.Drop(context.Background())
 }
 
-// CreateIndex creates multiple mgo.Index for the collection storing info for the given identity using the given manipulator.
-func CreateIndex(manipulator manipulate.Manipulator, identity elemental.Identity, indexes ...mgo.Index) error {
+// setNameOnIndexModel sets index options and the Name field in the options of an IndexModel if
+// not already set
+func setNameOnIndexModel(indexModel mongo.IndexModel, name string) mongo.IndexModel {
+	if indexModel.Options == nil {
+		indexModel.Options = options.Index().SetName(name)
+	} else if indexModel.Options.Name == nil {
+		indexModel.Options.SetName(name)
+	}
+	return indexModel
+}
+
+// CreateIndex creates multiple index for the collection storing info for the given identity using the given manipulator.
+func CreateIndex(manipulator manipulate.Manipulator, identity elemental.Identity, indexModels ...mongo.IndexModel) error {
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
 		panic("you can only pass a mongo manipulator to CreateIndex")
 	}
 
-	session := m.rootSession.Copy()
-	defer session.Close()
+	database := m.client.Database(m.dbName)
+	collection := database.Collection(identity.Name)
 
-	collection := session.DB(m.dbName).C(identity.Name)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	for i, index := range indexes {
-		if index.Name == "" {
-			index.Name = "index_" + identity.Name + "_" + strconv.Itoa(i)
-		}
-		if err := collection.EnsureIndex(index); err != nil {
-			return fmt.Errorf("unable to ensure index '%s': %s", index.Name, err)
+	for i, indexModel := range indexModels {
+		name := "index_" + identity.Name + "_" + strconv.Itoa(i)
+		indexModel = setNameOnIndexModel(indexModel, name)
+		if idx, err := collection.Indexes().CreateOne(ctx, indexModel); err != nil {
+			return fmt.Errorf("unable to ensure index '%s': %s", idx, err)
 		}
 	}
 
@@ -87,60 +100,75 @@ func CreateIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 
 // EnsureIndex works like create index, but it will delete existing index
 // if they changed before creating a new one.
-func EnsureIndex(manipulator manipulate.Manipulator, identity elemental.Identity, indexes ...mgo.Index) error {
+func EnsureIndex(manipulator manipulate.Manipulator, identity elemental.Identity, indexModels ...mongo.IndexModel) error {
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
 		panic("you can only pass a mongo manipulator to CreateIndex")
 	}
 
-	session := m.rootSession.Copy()
-	session.SetMode(mgo.Strong, false)
-	session.EnsureSafe(&mgo.Safe{})
+	// Start a new session
+	sessionOptions := options.Session().SetCausalConsistency(false)
+	session, err := m.client.StartSession(sessionOptions)
+	if err != nil {
+		return err
+	}
+	defer session.EndSession(context.Background())
 
-	defer session.Close()
+	err = mongo.WithSession(context.Background(), session, func(sc mongo.SessionContext) error {
+		rc := &readconcern.ReadConcern{}
+		wc := &writeconcern.WriteConcern{}
+		database := m.client.Database(m.dbName, options.Database().SetReadConcern(rc).SetWriteConcern(wc).SetReadPreference(readpref.Primary()))
+		collection := database.Collection(identity.Name)
 
-	collection := session.DB(m.dbName).C(identity.Name)
+		for i, indexModel := range indexModels {
+			name := "index_" + identity.Name + "_" + strconv.Itoa(i)
+			indexModel = setNameOnIndexModel(indexModel, name)
 
-	for i, index := range indexes {
-		if index.Name == "" {
-			index.Name = "index_" + identity.Name + "_" + strconv.Itoa(i)
-		}
-		if err := collection.EnsureIndex(index); err != nil {
+			_, err := collection.Indexes().CreateOne(sc, indexModel)
+			if err != nil {
+				// Check if the error message contains the specific conflict string
+				if strings.Contains(err.Error(), "IndexOptionsConflict") ||
+					strings.Contains(err.Error(), "already exists with different options") {
 
-			if strings.Contains(err.Error(), "already exists with different options") {
+					// In case we are changing a TTL we are using colMod instead
+					// as per https://docs.mongodb.com/manual/core/index-ttl/#restrictions
+					if indexModel.Options.ExpireAfterSeconds != nil && *indexModel.Options.ExpireAfterSeconds > 0 {
 
-				// In case we are changing a TTL we are using colMod instead
-				// as per https://docs.mongodb.com/manual/core/index-ttl/#restrictions
-				if index.ExpireAfter > 0 {
+						modifyCmd := bson.D{
+							{Key: "collMod", Value: collection.Name()},
+							{Key: "index", Value: bson.M{"name": *indexModel.Options.Name, "expireAfterSeconds": int(*indexModel.Options.ExpireAfterSeconds)}},
+						}
+						database := m.client.Database(m.dbName)
+						err := database.RunCommand(context.Background(), modifyCmd).Err()
+						if err != nil {
+							return fmt.Errorf("cannot update TTL index: %s", err)
+						}
 
-					if err := collection.Database.Run(bson.D{
-						{Name: "collMod", Value: collection.Name},
-						{Name: "index", Value: bson.M{"name": index.Name, "expireAfterSeconds": int(index.ExpireAfter.Seconds())}},
-					}, nil); err != nil {
-						return fmt.Errorf("cannot update TTL index: %s", err)
+					} else {
+
+						_, err := collection.Indexes().DropOne(context.Background(), *indexModel.Options.Name)
+						if err != nil {
+							return fmt.Errorf("cannot delete previous index: %s", err)
+						}
+
+						_, err = collection.Indexes().CreateOne(context.Background(), indexModel)
+						if err != nil {
+							return fmt.Errorf("unable to ensure index after dropping old one '%s': %s", *indexModel.Options.Name, err)
+						}
+
 					}
 
-				} else {
-
-					if err := collection.DropIndexName(index.Name); err != nil {
-						return fmt.Errorf("cannot delete previous index: %s", err)
-					}
-
-					if err := collection.EnsureIndex(index); err != nil {
-						return fmt.Errorf("unable to ensure index after dropping old one '%s': %s", index.Name, err)
-					}
-
+					continue
 				}
 
-				continue
+				return fmt.Errorf("unable to ensure index '%s': %s", *indexModel.Options.Name, err)
 			}
-
-			return fmt.Errorf("unable to ensure index '%s': %s", index.Name, err)
 		}
-	}
+		return nil
+	})
 
-	return nil
+	return err
 }
 
 // DeleteIndex deletes multiple mgo.Index for the collection.
@@ -151,13 +179,12 @@ func DeleteIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 		panic("you can only pass a mongo manipulator to DeleteIndex")
 	}
 
-	session := m.rootSession.Copy()
-	defer session.Close()
-
-	collection := session.DB(m.dbName).C(identity.Name)
+	database := m.client.Database(m.dbName)
+	collection := database.Collection(identity.Name)
 
 	for _, index := range indexes {
-		if err := collection.DropIndexName(index); err != nil {
+		_, err := collection.Indexes().DropOne(context.Background(), index)
+		if err != nil {
 			return err
 		}
 	}
@@ -165,49 +192,43 @@ func DeleteIndex(manipulator manipulate.Manipulator, identity elemental.Identity
 	return nil
 }
 
-// CreateCollection creates a collection using the given mgo.CollectionInfo.
-func CreateCollection(manipulator manipulate.Manipulator, identity elemental.Identity, info *mgo.CollectionInfo) error {
+// CreateCollection creates a collection using the given options.CollectionInfo.
+func CreateCollection(manipulator manipulate.Manipulator, identity elemental.Identity, info *options.CreateCollectionOptions) error {
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
 		panic("you can only pass a mongo manipulator to CreateCollection")
 	}
 
-	session := m.rootSession.Copy()
-	defer session.Close()
+	database := m.client.Database(m.dbName)
+	err := database.CreateCollection(context.Background(), identity.Name, info)
+	if err != nil {
+		return fmt.Errorf("unable to create collection '%s': %w", identity.Name, err)
+	}
 
-	collection := session.DB(m.dbName).C(identity.Name)
-
-	return collection.Create(info)
+	return nil
 }
 
-// GetDatabase returns a ready to use mgo.Database. Use at your own risks.
-// You are responsible for closing the session by calling the returner close function
-func GetDatabase(manipulator manipulate.Manipulator) (*mgo.Database, func(), error) {
+// GetDatabase returns a ready to use mongo.Database. Use at your own risks.
+func GetDatabase(manipulator manipulate.Manipulator) *mongo.Database {
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
 		panic("you can only pass a mongo manipulator to GetDatabase")
 	}
 
-	session := m.rootSession.Copy()
-
-	return session.DB(m.dbName), func() { session.Close() }, nil
+	return m.client.Database(m.dbName)
 }
 
-// SetConsistencyMode sets the mongo consistency mode of the mongo session.
-func SetConsistencyMode(manipulator manipulate.Manipulator, mode mgo.Mode, refresh bool) {
+// GetClient returns the mongo.Client that's already connected to the mongoDB. Use at your own risks.
+func GetClient(manipulator manipulate.Manipulator) *mongo.Client {
 
 	m, ok := manipulator.(*mongoManipulator)
 	if !ok {
-		panic("you can only pass a mongo manipulator to SetConsistencyMode")
+		panic("you can only pass a mongo manipulator to GetDatabase")
 	}
 
-	if m.rootSession == nil {
-		panic("cannot apply SetConsistencyMode. The root mongo session is not ready")
-	}
-
-	m.rootSession.SetMode(mode, refresh)
+	return m.client
 }
 
 // RunQuery runs a function that must run a mongodb operation.

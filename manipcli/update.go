@@ -127,7 +127,7 @@ func generateUpdateCommandForIdentity(identity elemental.Identity, modelManager 
 				return fmt.Errorf("unable to format output: %w", err)
 			}
 
-			fmt.Fprint(cmd.OutOrStdout(), result)
+			_, _ = fmt.Fprint(cmd.OutOrStdout(), result)
 			return nil
 		},
 	}
