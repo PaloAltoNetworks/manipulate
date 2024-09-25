@@ -30,7 +30,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const defaultGlobalContextTimeout = 60 * time.Second
+const defaultGlobalContextTimeout = 120 * time.Second
 
 // MongoStore represents a MongoDB session.
 type mongoManipulator struct {
