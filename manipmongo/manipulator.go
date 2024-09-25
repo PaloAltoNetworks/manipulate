@@ -30,6 +30,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// Use a default 2 min timeout for mongo queries when timeout is not specified in context
 const defaultGlobalContextTimeout = 120 * time.Second
 
 // MongoStore represents a MongoDB session.
