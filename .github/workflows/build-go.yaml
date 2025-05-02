@@ -37,10 +37,3 @@ jobs:
       - name: build
         run: |
           make
-
-      - uses: PaloAltoNetworks/cov@3.2.0
-        with:
-          main_branch: master
-          cov_file: unit_coverage.out
-          cov_threshold: "0" # Let's not care about coverage percentage as we are already missing coverage a lot
-          cov_mode: coverage
